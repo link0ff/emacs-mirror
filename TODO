@@ -1,0 +1,95 @@
+
+only first conflict is refined
+
+
+Subject: Can't open gzipped files from tar archives
+
+cd /tmp
+
+echo "test" | gzip > test.gz
+zip test.zip test.gz
+C-x C-f test.zip RET
+RET  ; (archive-extract)
+
+File content is nicely displayed ungzipped from zip archive.
+
+echo "test" | gzip > test.gz
+tar zcvf test.tar.gz test.gz
+C-x C-f test.tar.gz RET
+RET  ; (tar-extract)
+
+Garbage is displayed instead of ungzipped file content.
+
+(qv "/home/juri/src/emacs/emacs-mirror/emacs/lisp/arc-mode.el"
+    "^[ 	]*(archive-try-jka-compr)     ;Pretty ugly hack :-($")
+
+It still doesn't support Unicode.
+
+
+Escape sequences for bottom progress bar are unhandled in shell:
+
+sudo apt install jq
+[sudo] password for juri:
+Reading package lists... Done
+Building dependency tree
+Reading state information... Done
+The following additional packages will be installed:
+  libjq1 libonig4
+The following NEW packages will be installed:
+  jq libjq1 libonig4
+0 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
+Need to get 276 kB of archives.
+After this operation, 930 kB of additional disk space will be used.
+Do you want to continue? [Y/n]
+Get:1 http://archive.ubuntu.com/ubuntu bionic/universe amd64 libonig4 amd64 6.7.0-1 [119 kB]
+Get:2 http://archive.ubuntu.com/ubuntu bionic/universe amd64 libjq1 amd64 1.5+dfsg-2 [111 kB]
+Get:3 http://archive.ubuntu.com/ubuntu bionic/universe amd64 jq amd64 1.5+dfsg-2 [45,6 kB]
+Fetched 276 kB in 0s (707 kB/s)
+debconf: unable to initialize frontend: Dialog
+debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
+debconf: falling back to frontend: Readline
+
+78Selecting previously unselected package libonig4:amd64.
+(Reading database ... 325210 files and directories currently installed.)
+Preparing to unpack .../libonig4_6.7.0-1_amd64.deb ...
+7Progress: [  0%] [................................................................................................] 87Progress: [  6%] [######..........................................................................................] 8Unpacking libonig4:amd64 (6.7.0-1) ...
+7Progress: [ 13%] [############....................................................................................] 87Progress: [ 19%] [##################..............................................................................] 8Selecting previously unselected package libjq1:amd64.
+Preparing to unpack .../libjq1_1.5+dfsg-2_amd64.deb ...
+7Progress: [ 25%] [########################........................................................................] 8Unpacking libjq1:amd64 (1.5+dfsg-2) ...
+7Progress: [ 31%] [##############################..................................................................] 87Progress: [ 38%] [####################################............................................................] 8Selecting previously unselected package jq.
+Preparing to unpack .../jq_1.5+dfsg-2_amd64.deb ...
+7Progress: [ 44%] [##########################################......................................................] 8Unpacking jq (1.5+dfsg-2) ...
+7Progress: [ 50%] [################################################................................................] 87Progress: [ 56%] [######################################################..........................................] 8Setting up libonig4:amd64 (6.7.0-1) ...
+7Progress: [ 63%] [############################################################....................................] 87Progress: [ 69%] [##################################################################..............................] 8Setting up libjq1:amd64 (1.5+dfsg-2) ...
+7Progress: [ 75%] [########################################################################........................] 87Progress: [ 81%] [##############################################################################..................] 8Processing triggers for libc-bin (2.27-3ubuntu1) ...
+Processing triggers for man-db (2.8.3-2ubuntu0.1) ...
+Setting up jq (1.5+dfsg-2) ...
+7Progress: [ 88%] [####################################################################################............] 87Progress: [ 94%] [##########################################################################################......] 8
+78
+
+
+
+It seems ~/.emacs.d/elpa/yaml-mode-20180409.607 font-lock is broken
+tested on /home/juri/gitlab/harid/harid/config/locales/et.yml
+
+Debugger entered--Lisp error: (error "No match 1 in highlight (1 font-lock-variable-name-face)")
+  signal(error ("No match 1 in highlight (1 font-lock-variable-name-face)"))
+  error("No match %d in highlight %S" 1 (1 font-lock-variable-name-face))
+  font-lock-fontify-keywords-region(3873 3894 nil)
+  font-lock-default-fontify-region(3873 3893 nil)
+  font-lock-fontify-region(3873 3893)
+  #f(compiled-function (fun) #<bytecode 0x44d827d>)(font-lock-fontify-region)
+  run-hook-wrapped(#f(compiled-function (fun) #<bytecode 0x44d827d>) font-lock-fontify-region)
+  jit-lock--run-functions(3873 3893)
+  jit-lock-fontify-now(3873 3893)
+  font-lock-ensure(3873 3893)
+  occur-engine-line(3873 3893 t)
+  occur-engine(#("\\(?:e[̀-̄̆-̧̨̣̭̰̉̌̏̑]\\|[eè-ëēĕėęěȅȇȩᵉḙḛẹẻẽₑℯⅇⓔｅ𝐞𝑒𝒆..." 0 308 (isearch-string "errors" isearch-regexp-function-descr "")) (#<buffer et.yml>) #<buffer *Occur*> 0 t header-line shadow match t)
+  occur-1(#("\\(?:e[̀-̄̆-̧̨̣̭̰̉̌̏̑]\\|[eè-ëēĕėęěȅȇȩᵉḙḛẹẻẽₑℯⅇⓔｅ𝐞𝑒𝒆..." 0 308 (isearch-string "errors" isearch-regexp-function-descr "")) nil (#<buffer et.yml>))
+  occur(#("\\(?:e[̀-̄̆-̧̨̣̭̰̉̌̏̑]\\|[eè-ëēĕėęěȅȇȩᵉḙḛẹẻẽₑℯⅇⓔｅ𝐞𝑒𝒆..." 0 308 (isearch-string "errors" isearch-regexp-function-descr "")) nil nil)
+  isearch-occur("\\(?:e[̀-̄̆-̧̨̣̭̰̉̌̏̑]\\|[eè-ëēĕėęěȅȇȩᵉḙḛẹẻẽₑℯⅇⓔｅ𝐞𝑒𝒆..." nil)
+  funcall-interactively(isearch-occur "\\(?:e[̀-̄̆-̧̨̣̭̰̉̌̏̑]\\|[eè-ëēĕėęěȅȇȩᵉḙḛẹẻẽₑℯⅇⓔｅ𝐞𝑒𝒆..." nil)
+  call-interactively(isearch-occur nil nil)
+  command-execute(isearch-occur)
+
+
