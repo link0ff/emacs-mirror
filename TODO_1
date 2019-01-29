@@ -1,0 +1,21 @@
+TODO: post to the same bug that recently proposed to rename
+
+aaa
+!<<<<<<< MINE
+yyy bbb zzz
+!=======
+yyy ccc zzz
+!>>>>>>> YOURS
+ddd
+!<<<<<<< MINE
+yyy eee zzz
+!=======
+yyy fff zzz
+!>>>>>>> YOURS
+ggg
+
+;;; in single-window frame eval shows Local Variables in right-hand window!
+
+;; Local Variables:
+;; eval: (smerge-start-session)
+;; End:

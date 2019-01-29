@@ -74,6 +74,10 @@ Used in `smerge-diff-base-upper' and related functions."
   "Non-nil means to leave `smerge-mode' when the last conflict is resolved."
   :type 'boolean)
 
+(defcustom smerge-auto-refine nil
+  "Non-nil means all conflicts are refined."
+  :type 'boolean)
+
 (defface smerge-upper
   '((((class color) (min-colors 88) (background light))
      :background "#ffdddd")

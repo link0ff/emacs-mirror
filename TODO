@@ -1,6 +1,9 @@
 
 only first conflict is refined
 
+(qv "/home/juri/src/emacs/emacs-mirror/emacs/lisp/vc/vc-git.el"
+    "^[ 	]*(defun vc-git-find-file-hook ()$")
+
 
 Subject: Can't open gzipped files from tar archives
 
