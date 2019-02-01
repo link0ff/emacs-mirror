@@ -22,6 +22,8 @@
 
 (require 'diff-mode)
 
+(defconst diff-mode-tests--datadir
+  (expand-file-name "test/data/vc/diff-mode" source-directory))
 
 (ert-deftest diff-mode-test-ignore-trailing-dashes ()
   "Check to make sure we successfully ignore trailing -- made by
@@ -199,5 +201,55 @@ youthfulness
           (kill-buffer buf2)
           (delete-directory temp-dir 'recursive))))))
 
+(ert-deftest diff-mode-test-font-lock-syntax ()
+  "Check source language syntax highlighting of diff hunks."
+  (let ((diff-font-lock-syntax t)
+        (default-directory diff-mode-tests--datadir))
+    (with-temp-buffer
+      (insert-file-contents
+       (expand-file-name "hello_diff_mode.diff" diff-mode-tests--datadir))
+      (diff-mode)
+      (setq diff-default-directory diff-mode-tests--datadir)
+      (diff-hunk-next)
+      (diff-syntax-fontify (diff-beginning-of-hunk) (diff-end-of-hunk))
+      (should (equal (mapcar (lambda (o)
+                               (list (overlay-start o)
+                                     (overlay-end o)
+                                     (overlay-properties o)))
+                             (overlays-in (point-min) (point-max)))
+                     '((155 161 (face font-lock-keyword-face evaporate t))
+                       (132 149 (face font-lock-string-face evaporate t))
+                       (102 119 (face font-lock-string-face evaporate t))
+                       (83 87 (face font-lock-type-face evaporate t))
+                       (78 82 (face font-lock-function-name-face evaporate t))
+                       (74 77 (face font-lock-type-face evaporate t))
+                       (63 72 (face font-lock-string-face evaporate t))
+                       (54 62 (face font-lock-preprocessor-face evaporate t))))))))
+
+(ert-deftest diff-mode-test-font-lock-syntax-one-incomplete-line ()
+  "Check syntax highlighting of diff hunks with one incomplete line."
+  (let ((diff-font-lock-syntax t)
+        (default-directory diff-mode-tests--datadir))
+    (with-temp-buffer
+      (insert-file-contents (expand-file-name "hello_diff_mode_1.diff" diff-mode-tests--datadir))
+      (diff-mode)
+      (setq diff-default-directory diff-mode-tests--datadir)
+      (diff-hunk-next)
+      (diff-syntax-fontify (diff-beginning-of-hunk) (diff-end-of-hunk))
+      (should (equal (mapcar (lambda (o)
+                               (list (overlay-start o)
+                                     (overlay-end o)
+                                     (overlay-properties o)))
+                             (overlays-in (point-min) (point-max)))
+                     '((183 189 (face font-lock-keyword-face evaporate t))
+                       (163 180 (face font-lock-string-face evaporate t))
+                       (148 152 (face font-lock-type-face evaporate t))
+                       (143 147 (face font-lock-function-name-face evaporate t))
+                       (139 142 (face font-lock-type-face evaporate t))
+                       (98 104 (face font-lock-keyword-face evaporate t))
+                       (78 95 (face font-lock-string-face evaporate t))
+                       (63 67 (face font-lock-type-face evaporate t))
+                       (58 62 (face font-lock-function-name-face evaporate t))
+                       (54 57 (face font-lock-type-face evaporate t))))))))
 
 (provide 'diff-mode-tests)

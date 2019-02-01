@@ -29,6 +29,15 @@ Garbage is displayed instead of ungzipped file content.
 It still doesn't support Unicode.
 
 
+Subject: flymake-start-on-save-buffer has no effect
+
+I have flymake-start-on-save-buffer set to t to check syntax
+only when a buffer is saved, but it still checks the unfinished work
+while edits are in progress showing the errors that make no sense
+until the buffer is saved, even when flymake-start-syntax-check-on-newline
+and flymake-start-on-flymake-mode are nil.
+
+
 Escape sequences for bottom progress bar are unhandled in shell:
 
 sudo apt install jq

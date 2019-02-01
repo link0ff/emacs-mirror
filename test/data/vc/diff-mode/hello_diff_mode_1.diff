@@ -1,0 +1,7 @@
+--- hello_world_1.c
++++ hello_emacs_1.c
+@@ -1 +1 @@
+-int main(void) { printf("Hello, World!\n"); return 0; }
+\ No newline at end of file
++int main(void) { printf("Hello, Emacs!\n"); return 0; }
+\ No newline at end of file
