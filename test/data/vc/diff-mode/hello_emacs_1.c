@@ -1,1 +1,1 @@
-int main(void) { printf("Hello, Emacs!\n"); return 0; }
+int main() { printf("Hello, Emacs!\n"); return 0; }

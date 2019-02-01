@@ -21,6 +21,7 @@
 ;;; Code:
 
 (require 'diff-mode)
+(require 'diff)
 
 (defconst diff-mode-tests--datadir
   (expand-file-name "test/data/vc/diff-mode" source-directory))
@@ -201,55 +202,114 @@ youthfulness
           (kill-buffer buf2)
           (delete-directory temp-dir 'recursive))))))
 
-(ert-deftest diff-mode-test-font-lock-syntax ()
-  "Check source language syntax highlighting of diff hunks."
-  (let ((diff-font-lock-syntax t)
-        (default-directory diff-mode-tests--datadir))
-    (with-temp-buffer
-      (insert-file-contents
-       (expand-file-name "hello_diff_mode.diff" diff-mode-tests--datadir))
-      (diff-mode)
-      (setq diff-default-directory diff-mode-tests--datadir)
-      (diff-hunk-next)
-      (diff-syntax-fontify (diff-beginning-of-hunk) (diff-end-of-hunk))
+(ert-deftest diff-mode-test-font-lock ()
+  "Check font-locking of diff hunks."
+  (let ((default-directory diff-mode-tests--datadir)
+        (old "hello_world.c")
+        (new "hello_emacs.c")
+        (diff-buffer (get-buffer-create "*Diff*"))
+        (diff-font-lock-refine t)
+        (diff-font-lock-syntax t)
+        diff-beg)
+    (diff-no-select old new '("-u") 'no-async diff-buffer)
+    (with-current-buffer diff-buffer
+      (font-lock-ensure)
+      (narrow-to-region (progn (diff-hunk-next)
+                               (setq diff-beg (diff-beginning-of-hunk)))
+                        (diff-end-of-hunk))
+
+      (should (equal-including-properties
+               (buffer-string)
+               #("@@ -1,6 +1,6 @@
+ #include <stdio.h>
+ int main()
+ {
+-  printf(\"Hello, World!\\n\");
++  printf(\"Hello, Emacs!\\n\");
+   return 0;
+ }
+"
+                 0 15 (face diff-hunk-header)
+                 16 36 (face diff-context)
+                 36 48 (face diff-context)
+                 48 51 (face diff-context)
+                 51 52 (face diff-indicator-removed)
+                 52 81 (face diff-removed)
+                 81 82 (face diff-indicator-added)
+                 82 111 (face diff-added)
+                 111 124 (face diff-context)
+                 124 127 (face diff-context))))
+
       (should (equal (mapcar (lambda (o)
-                               (list (overlay-start o)
-                                     (overlay-end o)
-                                     (overlay-properties o)))
-                             (overlays-in (point-min) (point-max)))
-                     '((155 161 (face font-lock-keyword-face evaporate t))
-                       (132 149 (face font-lock-string-face evaporate t))
-                       (102 119 (face font-lock-string-face evaporate t))
-                       (83 87 (face font-lock-type-face evaporate t))
-                       (78 82 (face font-lock-function-name-face evaporate t))
-                       (74 77 (face font-lock-type-face evaporate t))
-                       (63 72 (face font-lock-string-face evaporate t))
-                       (54 62 (face font-lock-preprocessor-face evaporate t))))))))
+                               (list (- (overlay-start o) diff-beg)
+                                     (- (overlay-end o) diff-beg)
+                                     (append (and (overlay-get o 'face)
+                                                  `(face ,(overlay-get o 'face)))
+                                             (and (overlay-get o 'diff-mode)
+                                                  `(diff-mode ,(overlay-get o 'diff-mode))))))
+                             (sort (overlays-in (point-min) (point-max))
+                                   (lambda (a b) (< (overlay-start a) (overlay-start b)))))
+                     '((0 127 (diff-mode fine))
+                       (0 127 (diff-mode syntax))
+                       (17 25 (face font-lock-preprocessor-face))
+                       (26 35 (face font-lock-string-face))
+                       (37 40 (face font-lock-type-face))
+                       (41 45 (face font-lock-function-name-face))
+                       (61 78 (face font-lock-string-face))
+                       (69 74 (face diff-refine-removed diff-mode fine))
+                       (91 108 (face font-lock-string-face))
+                       (99 104 (face diff-refine-added diff-mode fine))
+                       (114 120 (face font-lock-keyword-face))))))))
 
 (ert-deftest diff-mode-test-font-lock-syntax-one-incomplete-line ()
   "Check syntax highlighting of diff hunks with one incomplete line."
-  (let ((diff-font-lock-syntax t)
-        (default-directory diff-mode-tests--datadir))
-    (with-temp-buffer
-      (insert-file-contents (expand-file-name "hello_diff_mode_1.diff" diff-mode-tests--datadir))
-      (diff-mode)
-      (setq diff-default-directory diff-mode-tests--datadir)
-      (diff-hunk-next)
-      (diff-syntax-fontify (diff-beginning-of-hunk) (diff-end-of-hunk))
+  (let ((default-directory diff-mode-tests--datadir)
+        (old "hello_world_1.c")
+        (new "hello_emacs_1.c")
+        (diff-buffer (get-buffer-create "*Diff*"))
+        (diff-font-lock-refine nil)
+        (diff-font-lock-syntax t)
+        diff-beg)
+    (diff-no-select old new '("-u") 'no-async diff-buffer)
+    (with-current-buffer diff-buffer
+      (font-lock-ensure)
+      (narrow-to-region (progn (diff-hunk-next)
+                               (setq diff-beg (diff-beginning-of-hunk)))
+                        (diff-end-of-hunk))
+
+      (should (equal-including-properties
+               (buffer-string)
+               #("@@ -1 +1 @@
+-int main() { printf(\"Hello, World!\\n\"); return 0; }
+\\ No newline at end of file
++int main() { printf(\"Hello, Emacs!\\n\"); return 0; }
+\\ No newline at end of file
+"
+                 0 11 (face diff-hunk-header)
+                 12 13 (face diff-indicator-removed)
+                 13 65 (face diff-removed)
+                 65 93 (face diff-context)
+                 93 94 (face diff-indicator-added)
+                 94 146 (face diff-added)
+                 146 174 (face diff-context))))
+
       (should (equal (mapcar (lambda (o)
-                               (list (overlay-start o)
-                                     (overlay-end o)
-                                     (overlay-properties o)))
-                             (overlays-in (point-min) (point-max)))
-                     '((183 189 (face font-lock-keyword-face evaporate t))
-                       (163 180 (face font-lock-string-face evaporate t))
-                       (148 152 (face font-lock-type-face evaporate t))
-                       (143 147 (face font-lock-function-name-face evaporate t))
-                       (139 142 (face font-lock-type-face evaporate t))
-                       (98 104 (face font-lock-keyword-face evaporate t))
-                       (78 95 (face font-lock-string-face evaporate t))
-                       (63 67 (face font-lock-type-face evaporate t))
-                       (58 62 (face font-lock-function-name-face evaporate t))
-                       (54 57 (face font-lock-type-face evaporate t))))))))
+                               (list (- (overlay-start o) diff-beg)
+                                     (- (overlay-end o) diff-beg)
+                                     (append (and (overlay-get o 'face)
+                                                  `(face ,(overlay-get o 'face)))
+                                             (and (overlay-get o 'diff-mode)
+                                                  `(diff-mode ,(overlay-get o 'diff-mode))))))
+                             (sort (overlays-in (point-min) (point-max))
+                                   (lambda (a b) (< (overlay-start a) (overlay-start b)))))
+                     '((0 174 (diff-mode syntax))
+                       (13 16 (face font-lock-type-face))
+                       (17 21 (face font-lock-function-name-face))
+                       (33 50 (face font-lock-string-face))
+                       (53 59 (face font-lock-keyword-face))
+                       (94 97 (face font-lock-type-face))
+                       (98 102 (face font-lock-function-name-face))
+                       (114 131 (face font-lock-string-face))
+                       (134 140 (face font-lock-keyword-face))))))))
 
 (provide 'diff-mode-tests)
