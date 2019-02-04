@@ -29,6 +29,13 @@ Garbage is displayed instead of ungzipped file content.
 It still doesn't support Unicode.
 
 
+xref-find-definitions
+M-. doesn't work well with windowmove, e.g.
+
+<H-M-right> M-. displays xref in the specified window
+but RET still displayed in the original window
+
+
 Subject: flymake-start-on-save-buffer has no effect
 
 I have flymake-start-on-save-buffer set to t to check syntax
@@ -36,6 +43,11 @@ only when a buffer is saved, but it still checks the unfinished work
 while edits are in progress showing the errors that make no sense
 until the buffer is saved, even when flymake-start-syntax-check-on-newline
 and flymake-start-on-flymake-mode are nil.
+
+(setq flymake-no-changes-timeout nil)
+
+It still starts flymake on yanking text that contains newlines.
+I had to reset also flymake-start-syntax-check-on-newline to nil.
 
 
 Escape sequences for bottom progress bar are unhandled in shell:
