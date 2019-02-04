@@ -171,24 +171,12 @@ pass to the OPERATION."
 (defun tramp-rclone-parse-device-names (_ignore)
   "Return a list of (nil host) tuples allowed to access."
   (with-tramp-connection-property nil "rclone-device-names"
-    (with-timeout (10)
-      (with-temp-buffer
-	;; `call-process' does not react on timer under MS Windows.
-	;; That's why we use `start-process'.
-	(let ((p (start-process
-		  tramp-rclone-program (current-buffer)
-		  tramp-rclone-program "listremotes"))
-	      (v (make-tramp-file-name :method tramp-rclone-method))
-	      result)
-	  (tramp-message v 6 "%s" (mapconcat 'identity (process-command p) " "))
-	  (process-put p 'adjust-window-size-function 'ignore)
-	  (set-process-query-on-exit-flag p nil)
-	  (while (accept-process-output p nil nil t))
-	  (tramp-message v 6 "\n%s" (buffer-string))
-	  (goto-char (point-min))
-	  (while (search-forward-regexp "^\\(\\S-+\\):$" nil t)
-	    (push (list nil (match-string 1)) result))
-	  result)))))
+    (delq nil
+	  (mapcar
+	   (lambda (line)
+	     (when (string-match "^\\(\\S-+\\):$" line)
+	       `(nil ,(match-string 1 line))))
+	   (tramp-process-lines nil tramp-rclone-program "listremotes")))))
 
 
 ;; File name primitives.
@@ -469,12 +457,12 @@ file names."
     ;; to cache a nil result.
     (or (tramp-get-connection-property
 	 (tramp-get-connection-process vec) "mounted" nil)
-	(tramp-set-connection-property
-	 (tramp-get-connection-process vec) "mounted"
-	 (let* ((default-directory temporary-file-directory)
-		(mount (shell-command-to-string "mount -t fuse.rclone")))
-	   (tramp-message vec 6 "%s" "mount -t fuse.rclone")
-	   (tramp-message vec 6 "\n%s" mount)
+	(let* ((default-directory temporary-file-directory)
+	       (mount (shell-command-to-string "mount -t fuse.rclone")))
+	  (tramp-message vec 6 "%s" "mount -t fuse.rclone")
+	  (tramp-message vec 6 "\n%s" mount)
+	  (tramp-set-connection-property
+	   (tramp-get-connection-process vec) "mounted"
 	   (when (string-match
 		  (format
 		   "^\\(%s:\\S-*\\)" (regexp-quote (tramp-file-name-host vec)))
@@ -543,6 +531,14 @@ connection if a previous connection has died for some reason."
     (when (rassoc `(,host) (tramp-rclone-parse-device-names nil))
       (if (zerop (length host))
 	  (tramp-error vec 'file-error "Storage %s not connected" host))
+
+      ;; During completion, don't reopen a new connection.  We check
+      ;; this for the process related to `tramp-buffer-name';
+      ;; otherwise `start-file-process' wouldn't run ever when
+      ;; `non-essential' is non-nil.
+      (when (and (tramp-completion-mode-p)
+		 (null (get-process (tramp-buffer-name vec))))
+	(throw 'non-essential 'non-essential))
 
       ;; We need a process bound to the connection buffer.  Therefore,
       ;; we create a dummy process.  Maybe there is a better solution?

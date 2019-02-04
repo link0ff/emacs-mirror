@@ -867,9 +867,9 @@ actually appear on disk when you save the tar-file's buffer."
                   ;; Don't re-compress this data just before decompressing it.
                   (jka-compr-inhibit t))
               (write-region (point-min) (point-max) tmpfile nil 'quiet))
+            (set-buffer-multibyte t)
             (erase-buffer)
-            (let ((coding-system-for-read 'no-conversion))
-              (insert-file-contents tmpfile)))
+            (insert-file-contents tmpfile))
         (delete-file tmpfile)))))
 
 (defun tar-file-name-handler (op &rest args)
