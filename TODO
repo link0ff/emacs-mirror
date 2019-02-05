@@ -50,6 +50,18 @@ It still starts flymake on yanking text that contains newlines.
 I had to reset also flymake-start-syntax-check-on-newline to nil.
 
 
+(progn
+  (man "aliases(5)")
+  (forward-button 2)
+  (push-button))
+
+Can’t find the 1 agentnewaliases manpage
+
+SHOULD BE
+
+"1 agent newaliases"
+
+
 Escape sequences for bottom progress bar are unhandled in shell:
 
 sudo apt install jq
