@@ -1,4 +1,11 @@
 
+the same problem with *Marked Process*:
+in horizontall split windows
+select a process in Proced, type 'k',
+it displays *Marked Process* in adjacent window,
+not at bottom!
+
+
 only first conflict is refined
 
 (qv "/home/juri/src/emacs/emacs-mirror/emacs/lisp/vc/vc-git.el"
@@ -127,5 +134,41 @@ Debugger entered--Lisp error: (error "No match 1 in highlight (1 font-lock-varia
   funcall-interactively(isearch-occur "\\(?:e[̀-̄̆-̧̨̣̭̰̉̌̏̑]\\|[eè-ëēĕėęěȅȇȩᵉḙḛẹẻẽₑℯⅇⓔｅ𝐞𝑒𝒆..." nil)
   call-interactively(isearch-occur nil nil)
   command-execute(isearch-occur)
+
+
+~/src/social/pleroma/https/pleroma-fe/src/i18n/et.json
+
+C-x v g
+a
+
+Debugger entered--Lisp error: (error "Invalid argument to vc-annotate-warp-revision")
+  signal(error ("Invalid argument to vc-annotate-warp-revision"))
+  error("Invalid argument to vc-annotate-warp-revision")
+  vc-annotate-warp-revision(nil "/home/juri/src/social/pleroma/https/pleroma-fe/src...")
+  (if (not rev-at-line) (message "Cannot extract revision number from the current li...") (setq prev-rev (vc-call-backend vc-annotate-backend 'previous-revision fname rev)) (vc-annotate-warp-revision prev-rev fname))
+  (let* ((rev-at-line (vc-annotate-extract-revision-at-line)) (prev-rev nil) (rev (car rev-at-line)) (fname (cdr rev-at-line))) (if (not rev-at-line) (message "Cannot extract revision number from the current li...") (setq prev-rev (vc-call-backend vc-annotate-backend 'previous-revision fname rev)) (vc-annotate-warp-revision prev-rev fname)))
+  (if (not (equal major-mode 'vc-annotate-mode)) (message "Cannot be invoked outside of a vc annotate buffer") (let* ((rev-at-line (vc-annotate-extract-revision-at-line)) (prev-rev nil) (rev (car rev-at-line)) (fname (cdr rev-at-line))) (if (not rev-at-line) (message "Cannot extract revision number from the current li...") (setq prev-rev (vc-call-backend vc-annotate-backend 'previous-revision fname rev)) (vc-annotate-warp-revision prev-rev fname))))
+  vc-annotate-revision-previous-to-line()
+  funcall-interactively(vc-annotate-revision-previous-to-line)
+  call-interactively(vc-annotate-revision-previous-to-line nil nil)
+  command-execute(vc-annotate-revision-previous-to-line)
+
+
+~/.emacs.d/.emacs.desktop_BUG
+
+Debugger entered--Lisp error: (wrong-type-argument number-or-marker-p nil)
+  +(nil nil -1)
+  frameset-move-onscreen(#<frame emacs@t480 0x55a7cd486ed0> t)
+  frameset--restore-frame(((minibuffer . t) (undecorated . t) (override-redirect) (font-backend xft x) (font . "-PfEd-DejaVu Sans Mono-normal-normal-normal-*-13-*...") (font-parameter . "-misc-fixed-medium-r-normal--10-*-*-*-c-60-iso1064...") (border-width . 0) (internal-border-width . 0) (right-divider-width . 0) (bottom-divider-width . 0) (vertical-scroll-bars) (horizontal-scroll-bars) (foreground-color . "#202020") (background-color . "white") (mouse-color . "#202020") (border-color . "black") (screen-gamma) (line-spacing . 0) (left-fringe . 8) (right-fringe . 8) (no-special-glyphs) (scroll-bar-foreground . "#202020") (scroll-bar-background . "#f0f0f0") (menu-bar-lines . 0) (tool-bar-lines . 0) (title) (wait-for-wm . t) (tool-bar-position . top) (inhibit-double-buffering) (icon-type . t) (auto-raise) (auto-lower) (cursor-type . bar) (scroll-bar-width . 0) (scroll-bar-height . 0) (alpha) (no-focus-on-map) (no-accept-focus) (fullscreen . maximized) (visibility . t) (skip-taskbar) (z-group) (display-type . color) (background-mode . light) (cursor-color . "black") (sticky) (environment) (last-focus-update . t) (frameset--id . "AC0F-7D77-6EB5-089B") (frameset--mini t . t) ...) (((min-height . 4) (min-width . 10) (min-height-ignore . 3) (min-width-ignore . 4) (min-height-safe . 1) (min-width-safe . 2) (min-pixel-height . 68) (min-pixel-width . 80) (min-pixel-height-ignore . 51) (min-pixel-width-ignore . 32) (min-pixel-height-safe . 17) (min-pixel-width-safe . 16)) leaf (pixel-width . 1920) (pixel-height . 1036) (total-width . 240) (total-height . 61) (normal-height . 1.0) (normal-width . 1.0) (buffer "*ee-buffers*" (selected . t) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 17835) (start . 15122)) (prev-buffers ("*ee-buffers*" 1 318) ("*shell*<3>" 1687812 1703238) ("/home/juri/gitlab/harid/harid/<2>" 1 1) ("/home/juri/gitlab/harid/<2>" 1 1) ("/home/juri/gitlab/<2>" 1 1) ("/home/juri/gitlab/HarIDSync/" 1 1) ("/home/juri/gitlab/HarIDSync/HarIDSync/<2>" 1 1) ("*shell*<2>" 1 19322))) ((background-color . frameset-filter-sanitize-color) (buffer-list . :never) (buffer-predicate . :never) (buried-buffer-list . :never) (client . :never) (delete-before . :never) (font . frameset-filter-font-param) (foreground-color . frameset-filter-sanitize-color) (frameset--text-pixel-height . :save) (frameset--text-pixel-width . :save) (fullscreen . frameset-filter-shelve-param) (GUI:font . frameset-filter-unshelve-param) (GUI:fullscreen . frameset-filter-unshelve-param) (GUI:height . frameset-filter-unshelve-param) (GUI:width . frameset-filter-unshelve-param) (height . frameset-filter-shelve-param) (outer-window-id . :never) (parent-frame . :never) (parent-id . :never) (mouse-wheel-frame . :never) (tty . frameset-filter-tty-to-GUI) (tty-type . frameset-filter-tty-to-GUI) (width . frameset-filter-shelve-param) (window-id . :never) (window-system . :never) (name . :never) (left . frameset-filter-iconified) (minibuffer . frameset-filter-minibuffer) (top . frameset-filter-iconified)) t)
+  frameset-restore([frameset 1 (23641 42117 556471 119000) (desktop . "208") "juri@localhost" nil nil ((((minibuffer . t) (undecorated . t) (override-redirect) (font-backend xft x) (font . "-PfEd-DejaVu Sans Mono-normal-normal-normal-*-13-*...") (font-parameter . "-misc-fixed-medium-r-normal--10-*-*-*-c-60-iso1064...") (border-width . 0) (internal-border-width . 0) (right-divider-width . 0) (bottom-divider-width . 0) (vertical-scroll-bars) (horizontal-scroll-bars) (foreground-color . "#202020") (background-color . "white") (mouse-color . "#202020") (border-color . "black") (screen-gamma) (line-spacing . 0) (left-fringe . 8) (right-fringe . 8) (no-special-glyphs) (scroll-bar-foreground . "#202020") (scroll-bar-background . "#f0f0f0") (menu-bar-lines . 0) (tool-bar-lines . 0) (title) (wait-for-wm . t) (tool-bar-position . top) (inhibit-double-buffering) (icon-type . t) (auto-raise) (auto-lower) (cursor-type . bar) (scroll-bar-width . 0) (scroll-bar-height . 0) (alpha) (no-focus-on-map) (no-accept-focus) (fullscreen . maximized) (visibility . t) (skip-taskbar) (z-group) (display-type . color) (background-mode . light) (cursor-color . "black") (sticky) (environment) (last-focus-update . t) (frameset--id . "AC0F-7D77-6EB5-089B") (frameset--mini t . t) ...) ((min-height . 4) (min-width . 10) (min-height-ignore . 3) (min-width-ignore . 4) (min-height-safe . 1) (min-width-safe . 2) (min-pixel-height . 68) (min-pixel-width . 80) (min-pixel-height-ignore . 51) (min-pixel-width-ignore . 32) (min-pixel-height-safe . 17) (min-pixel-width-safe . 16)) leaf (pixel-width . 1920) (pixel-height . 1036) (total-width . 240) (total-height . 61) (normal-height . 1.0) (normal-width . 1.0) (buffer "*ee-buffers*" (selected . t) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . 17835) (start . 15122)) (prev-buffers ("*ee-buffers*" 1 318) ("*shell*<3>" 1687812 1703238) ("/home/juri/gitlab/harid/harid/<2>" 1 1) ("/home/juri/gitlab/harid/<2>" 1 1) ("/home/juri/gitlab/<2>" 1 1) ("/home/juri/gitlab/HarIDSync/" 1 1) ("/home/juri/gitlab/HarIDSync/HarIDSync/<2>" 1 1) ("*shell*<2>" 1 19322))))] :reuse-frames t :cleanup-frames t :force-display t :force-onscreen t)
+  desktop-restore-frameset()
+  desktop-read()
+  #f(compiled-function () #<bytecode 0x1569f365e3d5>)()
+  run-hooks(after-init-hook delayed-warnings-hook)
+  command-line()
+  normal-top-level()
+
+display-monitor-attributes-list in frame-monitor-attributes
+sometimes returns nil
 
 
