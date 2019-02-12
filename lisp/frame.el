@@ -644,8 +644,37 @@ Return nil if we don't know how to interpret DISPLAY."
 (defun make-frame-on-display (display &optional parameters)
   "Make a frame on display DISPLAY.
 The optional argument PARAMETERS specifies additional frame parameters."
-  (interactive "sMake frame on display: ")
+  (interactive (list (completing-read
+                      (format "Make frame on display: ")
+                      (delete-dups
+                       (mapcar (lambda (frame)
+                                 (frame-parameter frame 'display))
+                               (frame-list))))))
   (make-frame (cons (cons 'display display) parameters)))
+
+(defun make-frame-on-monitor (monitor &optional parameters)
+  "Make a frame on monitor MONITOR.
+The optional argument PARAMETERS specifies additional frame parameters."
+  (interactive (list (completing-read
+                      (format "Make frame on monitor: ")
+                      (mapcar (lambda (a)
+                                (cdr (assq 'name a)))
+                              (display-monitor-attributes-list)))))
+  (let ((geometry (car (delq nil (mapcar (lambda (a)
+                                           (when (equal (cdr (assq 'name a)) monitor)
+                                             (cdr (assq 'geometry a))))
+                                         (display-monitor-attributes-list))))))
+    (make-frame (append (x-parse-geometry (format "%dx%d+%d+%d"
+                                                  (nth 2 geometry)
+                                                  (nth 3 geometry)
+                                                  (nth 0 geometry)
+                                                  (nth 1 geometry)))
+                        parameters))))
+
+;; xrandr -q
+;; Screen 0: minimum 320 x 200, current 4480 x 1456, maximum 8192 x 8192
+;; eDP-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 309mm x 174mm
+;; DP-2-2 connected 2560x1440+1920+16 (normal left inverted right x axis y axis) 597mm x 336mm
 
 (declare-function x-close-connection "xfns.c" (terminal))
 
@@ -1605,6 +1634,7 @@ physical monitors.
 See `display-monitor-attributes-list' for the list of attribute
 keys and their meanings."
   (or frame (setq frame (selected-frame)))
+  ;; (message "frame-monitor-attributes: %S" (list frame (display-monitor-attributes-list frame)))
   (cl-loop for attributes in (display-monitor-attributes-list frame)
 	   for frames = (cdr (assq 'frames attributes))
 	   if (memq frame frames) return attributes))
