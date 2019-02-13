@@ -50,16 +50,15 @@
 
 ;;;###tramp-autoload
 (tramp--with-startup
- (add-to-list
-  'tramp-methods
-  `(,tramp-rclone-method
-    (tramp-mount-args nil)
-    (tramp-copyto-args nil)
-    (tramp-moveto-args nil)
-    (tramp-about-args ("--full")))))
+ (add-to-list 'tramp-methods
+	      `(,tramp-rclone-method
+		(tramp-mount-args nil)
+		(tramp-copyto-args nil)
+		(tramp-moveto-args nil)
+		(tramp-about-args ("--full"))))
 
-;;;###tramp-autoload
-(tramp--with-startup
+ (add-to-list 'tramp-default-host-alist `(,tramp-rclone-method nil ""))
+
  (tramp-set-completion-function
   tramp-rclone-method '((tramp-rclone-parse-device-names ""))))
 
@@ -569,7 +568,11 @@ connection if a previous connection has died for some reason."
 		 ;; This could be nil.
 		 ,(tramp-get-method-parameter vec 'tramp-mount-args))))
 	(while (not (file-exists-p (tramp-make-tramp-file-name vec 'localname)))
-	  (tramp-cleanup-connection vec 'keep-debug 'keep-password)))))
+	  (tramp-cleanup-connection vec 'keep-debug 'keep-password))
+
+	;; Mark it as connected.
+	(tramp-set-connection-property
+	 (tramp-get-connection-process vec) "connected" t))))
 
   ;; In `tramp-check-cached-permissions', the connection properties
   ;; "{uid,gid}-{integer,string}" are used.  We set them to proper values.
