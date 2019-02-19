@@ -1,4 +1,13 @@
+
+only first conflict is refined
+
+(qv "/home/juri/src/emacs/emacs-mirror/emacs/lisp/vc/vc-git.el"
+    "^[ 	]*(defun vc-git-find-file-hook ()$")
+
+
 TODO: post to the same bug that recently proposed to rename
+
+
 
 aaa
 !<<<<<<< MINE
@@ -13,8 +22,6 @@ yyy eee zzz
 yyy fff zzz
 !>>>>>>> YOURS
 ggg
-
-;;; in single-window frame eval shows Local Variables in right-hand window!
 
 ;; Local Variables:
 ;; eval: (smerge-start-session)
