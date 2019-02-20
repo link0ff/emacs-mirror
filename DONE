@@ -77,3 +77,12 @@ Debugger entered--Lisp error: (error "No match 1 in highlight (1 font-lock-varia
   command-execute(isearch-occur)
 
 
+;; (message "monitor-geometry: %S" monitor-geometry)
+;; (message "frame-geometry: %S" frame-geometry)
+;; (message "frame-geometry-in-pixels: %S" frame-geometry-in-pixels)
+;; ((height . 1080) (width . 1920) (top . 0) (left . 0))
+;; (setq frame-geometry '((height . (text-pixels . 1080)) (width . (text-pixels . 1920)) (top . 0) (left . 0)))
+;; (undecorated . t)
+;; (fullscreen . maximized)
+
+
