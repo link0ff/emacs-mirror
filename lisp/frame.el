@@ -654,31 +654,32 @@ The optional argument PARAMETERS specifies additional frame parameters."
 
 (defun make-frame-on-monitor (monitor &optional display parameters)
   "Make a frame on monitor MONITOR.
-The optional argument PARAMETERS specifies additional frame parameters."
+The optional argument DISPLAY can be a display name, and the optional
+argument PARAMETERS specifies additional frame parameters."
   (interactive (list (completing-read
                       (format "Make frame on monitor: ")
                       (mapcar (lambda (a)
                                 (cdr (assq 'name a)))
                               (display-monitor-attributes-list)))))
-  (let* ((monitor-geometry (car (delq nil (mapcar (lambda (a)
-                                                    (when (equal (cdr (assq 'name a)) monitor)
-                                                      (cdr (assq 'geometry a))))
-                                                  (display-monitor-attributes-list display)))))
-         (frame-geometry (x-parse-geometry (format "%dx%d+%d+%d"
-                                                   (nth 2 monitor-geometry)
-                                                   (nth 3 monitor-geometry)
-                                                   (nth 0 monitor-geometry)
-                                                   (nth 1 monitor-geometry))))
-         (frame-geometry-in-pixels `((top . ,(cdr (assq 'top frame-geometry)))
-                                     (left . ,(cdr (assq 'left frame-geometry)))
-                                     (height . (text-pixels . ,(cdr (assq 'height frame-geometry))))
-                                     (width . (text-pixels . ,(cdr (assq 'width frame-geometry)))))))
+  (let* ((monitor-geometry
+          (car (delq nil (mapcar (lambda (a)
+                                   (when (equal (cdr (assq 'name a)) monitor)
+                                     (cdr (assq 'geometry a))))
+                                 (display-monitor-attributes-list display)))))
+         (frame-geometry
+          (when monitor-geometry
+            (x-parse-geometry (format "%dx%d+%d+%d"
+                                      (nth 2 monitor-geometry)
+                                      (nth 3 monitor-geometry)
+                                      (nth 0 monitor-geometry)
+                                      (nth 1 monitor-geometry)))))
+         (frame-geometry-in-pixels
+          (when frame-geometry
+            `((top . ,(cdr (assq 'top frame-geometry)))
+              (left . ,(cdr (assq 'left frame-geometry)))
+              (height . (text-pixels . ,(cdr (assq 'height frame-geometry))))
+              (width . (text-pixels . ,(cdr (assq 'width frame-geometry))))))))
     (make-frame (append frame-geometry-in-pixels parameters))))
-
-;; xrandr -q
-;; Screen 0: minimum 320 x 200, current 4480 x 1456, maximum 8192 x 8192
-;; eDP-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 309mm x 174mm
-;; DP-2-2 connected 2560x1440+1920+16 (normal left inverted right x axis y axis) 597mm x 336mm
 
 (declare-function x-close-connection "xfns.c" (terminal))
 

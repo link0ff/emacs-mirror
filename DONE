@@ -77,6 +77,11 @@ Debugger entered--Lisp error: (error "No match 1 in highlight (1 font-lock-varia
   command-execute(isearch-occur)
 
 
+;; xrandr -q
+;; Screen 0: minimum 320 x 200, current 4480 x 1456, maximum 8192 x 8192
+;; eDP-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 309mm x 174mm
+;; DP-2-2 connected 2560x1440+1920+16 (normal left inverted right x axis y axis) 597mm x 336mm
+
 ;; (message "monitor-geometry: %S" monitor-geometry)
 ;; (message "frame-geometry: %S" frame-geometry)
 ;; (message "frame-geometry-in-pixels: %S" frame-geometry-in-pixels)
