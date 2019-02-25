@@ -365,6 +365,7 @@ value."
 
 (defun xref-push-marker-stack (&optional m)
   "Add point M (defaults to `point-marker') to the marker stack."
+  (push-mark nil t)
   (ring-insert xref--marker-ring (or m (point-marker))))
 
 ;;;###autoload

@@ -88,3 +88,19 @@ display-monitor-attributes-list in frame-monitor-attributes
 sometimes returns nil
 
 
+read-password hide input char after delay (default 1 sec)
+
+
+wrgrep - word rgrep
+
+
+Add support for --color-moved
+https://github.com/magit/magit/issues/3424
+https://github.blog/2018-04-05-git-217-released/#coloring-moved-code
+
+
+https://github.com/magit/magit/issues/3716
+https://github.com/magit/magit/commit/512790bb7119dabcd90a0695a0b506e315d72c2e
+https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-section-without-character/36090#36090
+
+

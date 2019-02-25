@@ -1815,7 +1815,7 @@ Return t if the buffer had changes, nil otherwise."
 ;;;###autoload
 (defun vc-root-version-diff (_files rev1 rev2)
   "Report diffs between REV1 and REV2 revisions of the whole tree."
-  (interactive (vc-diff-build-argument-list-internal))
+  (interactive (vc-diff-build-argument-list-internal)) ; TODO
   ;; This is a mix of `vc-root-diff' and `vc-version-diff'
   (when (and (not rev1) rev2)
     (error "Not a valid revision range"))
