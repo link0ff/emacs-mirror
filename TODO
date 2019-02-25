@@ -104,3 +104,11 @@ https://github.com/magit/magit/commit/512790bb7119dabcd90a0695a0b506e315d72c2e
 https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-section-without-character/36090#36090
 
 
+Tramp: Timeout session /sudo:root@localhost:
+Cleaning up the recentf list...done (0 removed)
+Cleaning up the recentf list...done (0 removed)
+Cleaning up the recentf list...done (0 removed)
+Tramp: Checking ‘vc-registered’ for /sudo:root@localhost:/etc/systemd/system/...failed
+Use M-x make-directory RET RET to create the directory and its parents
+
+
