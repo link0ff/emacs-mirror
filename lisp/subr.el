@@ -2357,7 +2357,8 @@ by doing (clear-string STRING)."
                                      beg)))
              (dotimes (i (- end beg))
                (put-text-property (+ i beg) (+ 1 i beg)
-                                  'display (string (or read-hide-char ?*))))))
+                                  'display (make-string (1+ (random 3))
+                                                        (or read-hide-char ?*))))))
           minibuf)
       (minibuffer-with-setup-hook
           (lambda ()

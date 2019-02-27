@@ -21,7 +21,6 @@ Garbage is displayed instead of ungzipped file content.
     "^[ 	]*(archive-try-jka-compr)     ;Pretty ugly hack :-($")
 
 It still doesn't support Unicode.
-
 
 Subject: flymake-start-on-save-buffer has no effect
 
@@ -35,7 +34,6 @@ and flymake-start-on-flymake-mode are nil.
 
 It still starts flymake on yanking text that contains newlines.
 I had to reset also flymake-start-syntax-check-on-newline to nil.
-
 
 C-x v g
 a
@@ -51,7 +49,6 @@ Debugger entered--Lisp error: (error "Invalid argument to vc-annotate-warp-revis
   funcall-interactively(vc-annotate-revision-previous-to-line)
   call-interactively(vc-annotate-revision-previous-to-line nil nil)
   command-execute(vc-annotate-revision-previous-to-line)
-
 
 It seems ~/.emacs.d/elpa/yaml-mode-20180409.607 font-lock is broken
 tested on /home/juri/gitlab/harid/harid/config/locales/et.yml
@@ -89,5 +86,20 @@ Debugger entered--Lisp error: (error "No match 1 in highlight (1 font-lock-varia
 ;; (setq frame-geometry '((height . (text-pixels . 1080)) (width . (text-pixels . 1920)) (top . 0) (left . 0)))
 ;; (undecorated . t)
 ;; (fullscreen . maximized)
+
+FIXED in master
+(progn
+  (man "aliases(5)")
+  (forward-button 2)
+  (push-button))
 
+Can’t find the 1 agentnewaliases manpage
+SHOULD BE
+"1 agent newaliases"
+
+IMPLEMENTED IN .emacs
+read-password hide input char after delay (default 1 sec)
+
+IMPLEMENTED IN .emacs
+wrgrep - word rgrep
 

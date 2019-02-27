@@ -2071,7 +2071,7 @@ properties.  */);
   Vminibuffer_prompt_properties = list2 (Qread_only, Qt);
 
   DEFVAR_LISP ("read-hide-char", Vread_hide_char,
-	       doc: /* Whether to hide input characters in noninteractive mode.
+	       doc: /* Whether to hide input characters in noninteractive mode. ???
 If non-nil, it must be a character, which will be used to mask the
 input characters.  This variable should never be set globally.
 

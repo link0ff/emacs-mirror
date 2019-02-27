@@ -16,18 +16,6 @@ M-. doesn't work well with windowmove, e.g.
 but RET still displayed in the original window
 
 
-(progn
-  (man "aliases(5)")
-  (forward-button 2)
-  (push-button))
-
-Can’t find the 1 agentnewaliases manpage
-
-SHOULD BE
-
-"1 agent newaliases"
-
-
 Escape sequences for bottom progress bar are unhandled in shell:
 
 sudo apt install jq
@@ -86,12 +74,6 @@ Debugger entered--Lisp error: (wrong-type-argument number-or-marker-p nil)
 
 display-monitor-attributes-list in frame-monitor-attributes
 sometimes returns nil
-
-
-read-password hide input char after delay (default 1 sec)
-
-
-wrgrep - word rgrep
 
 
 Add support for --color-moved
