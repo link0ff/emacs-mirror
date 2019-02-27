@@ -761,7 +761,7 @@ When `windmove-wrap-around' is non-nil, takes the window
 from the opposite side of the frame."
   (let ((other-window (window-in-direction dir nil nil nil
                                            windmove-wrap-around t)))
-    (cond ((null other-window)
+    (cond ((or (null other-window) (window-minibuffer-p other-window))
            (user-error "No window %s from selected window" dir))
           (t
            (window-swap-states nil other-window)))))

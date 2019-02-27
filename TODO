@@ -86,11 +86,15 @@ https://github.com/magit/magit/commit/512790bb7119dabcd90a0695a0b506e315d72c2e
 https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-section-without-character/36090#36090
 
 
-Tramp: Timeout session /sudo:root@localhost:
-Cleaning up the recentf list...done (0 removed)
-Cleaning up the recentf list...done (0 removed)
-Cleaning up the recentf list...done (0 removed)
-Tramp: Checking ‘vc-registered’ for /sudo:root@localhost:/etc/systemd/system/...failed
-Use M-x make-directory RET RET to create the directory and its parents
+Debugger entered--Lisp error: (error "Window #<window 4 on  *Minibuf-0*> too small to accommodate state")
+  signal(error ("Window #<window 4 on  *Minibuf-0*> too small to ac..."))
+  error("Window %s too small to accommodate state" #<window 4 on  *Minibuf-0*>)
+  window-state-put((((min-height . 4) (min-width . 10) (min-height-ignore . 2) (min-width-ignore . 4) (min-height-safe . 1) (min-width-safe . 2) (min-pixel-height . 68) (min-pixel-width . 80) (min-pixel-height-ignore . 34) (min-pixel-width-ignore . 32) (min-pixel-height-safe . 17) (min-pixel-width-safe . 16)) leaf (pixel-width . 1280) (pixel-height . 1396) (total-width . 160) (total-height . 82) (normal-height . 1.0) (normal-width . 0.5) (parameters (clone-of . #<window 257 on windmove.el>)) (buffer #<buffer windmove.el> (selected . t) (hscroll . 0) (fringes 8 8 nil) (margins nil) (scroll-bars nil 0 t nil 0 t) (vscroll . 0) (dedicated) (point . #<marker at 33716 in windmove.el>) (start . #<marker at 32675 in windmove.el>)) (prev-buffers (#<buffer windmove.el> #<marker at 32675 in windmove.el> #<marker at 33716 in windmove.el>))) #<window 4 on  *Minibuf-0*> t)
+  window-swap-states(nil #<window 4 on  *Minibuf-0*>)
+  windmove-swap-states-in-direction(down)
+  windmove-swap-states-down()
+  funcall-interactively(windmove-swap-states-down)
+  call-interactively(windmove-swap-states-down nil nil)
+  command-execute(windmove-swap-states-down)
 
 
