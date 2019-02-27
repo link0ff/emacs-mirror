@@ -664,7 +664,7 @@ argument PARAMETERS specifies additional frame parameters."
   (let* ((monitor-geometry
           (car (delq nil (mapcar (lambda (a)
                                    (when (equal (cdr (assq 'name a)) monitor)
-                                     (cdr (assq 'geometry a))))
+                                     (cdr (assq 'workarea a))))
                                  (display-monitor-attributes-list display)))))
          (frame-geometry
           (when monitor-geometry
