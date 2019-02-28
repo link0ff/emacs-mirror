@@ -791,8 +791,6 @@ from the opposite side of the frame."
   (windmove-swap-states-in-direction 'right))
 
 ;;;###autoload
-
-;;;###autoload
 (defun windmove-swap-states-default-keybindings (&optional modifiers)
   "Set up keybindings for directional window swap states.
 Keys are bound to commands that swap the states of the selected window
