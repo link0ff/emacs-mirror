@@ -662,6 +662,10 @@ argument PARAMETERS specifies additional frame parameters."
                                 (cdr (assq 'name a)))
                               (display-monitor-attributes-list)))))
   (let* ((monitor-geometry
+          ;; (catch 'done
+          ;;   (dolist (frame (frame-list))
+          ;;     (when (equal (frame-parameter frame 'name) name)
+          ;;       (throw 'done frame))))
           (car (delq nil (mapcar (lambda (a)
                                    (when (equal (cdr (assq 'name a)) monitor)
                                      (cdr (assq 'workarea a))))
@@ -677,8 +681,9 @@ argument PARAMETERS specifies additional frame parameters."
           (when frame-geometry
             `((top . ,(cdr (assq 'top frame-geometry)))
               (left . ,(cdr (assq 'left frame-geometry)))
-              (height . (text-pixels . ,(cdr (assq 'height frame-geometry))))
-              (width . (text-pixels . ,(cdr (assq 'width frame-geometry))))))))
+              ;; (height . (text-pixels . ,(cdr (assq 'height frame-geometry))))
+              ;; (width . (text-pixels . ,(cdr (assq 'width frame-geometry))))
+              ))))
     (make-frame (append frame-geometry-in-pixels parameters))))
 
 (declare-function x-close-connection "xfns.c" (terminal))

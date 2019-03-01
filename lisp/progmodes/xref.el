@@ -479,6 +479,7 @@ and finally return the window."
                  t)
                 ((eq xref--original-window-intent 'window)
                  '(display-buffer-same-window))
+                ('(display-buffer-same-window))
                 ((and
                   (window-live-p xref--original-window)
                   (or (not (window-dedicated-p xref--original-window))
@@ -766,16 +767,31 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
                     (xref-location-group (xref-item-location x)))
                   #'equal))
 
+(defcustom xref-buffer-display-action nil
+  "Display actions for xref buffer."
+  :type 'alist)
+
 (defun xref--show-xref-buffer (xrefs alist)
   (let ((xref-alist (xref--analyze xrefs)))
     (with-current-buffer (get-buffer-create xref-buffer-name)
       (setq buffer-undo-list nil)
       (let ((inhibit-read-only t)
-            (buffer-undo-list t))
+            (buffer-undo-list t)
+            (pop-up-frames
+             (or (eq (assoc-default 'display-action alist) 'frame)
+                 pop-up-frames))
+            (action
+             (cond ((memq (assoc-default 'display-action alist) '(window frame))
+                    t)
+                   (t
+                    '(display-buffer-same-window)))))
         (erase-buffer)
         (xref--insert-xrefs xref-alist)
         (xref--xref-buffer-mode)
-        (pop-to-buffer (current-buffer))
+        ;; (pop-to-buffer (current-buffer) (assoc-default 'xref-buffer-display-action alist))
+        ;; (pop-to-buffer (current-buffer) xref-buffer-display-action)
+        ;; (pop-to-buffer-same-window (current-buffer) action)
+        (pop-to-buffer (current-buffer) action)
         (goto-char (point-min))
         (setq xref--original-window (assoc-default 'window alist)
               xref--original-window-intent (assoc-default 'display-action alist))
