@@ -850,7 +850,6 @@ If nil, uses `regexp-history'."
 (defalias 'delete-matching-lines 'flush-lines)
 (defalias 'count-matches 'how-many)
 
-
 (defun keep-lines-read-args (prompt)
   "Read arguments for `keep-lines' and friends.
 Prompt for a regexp with PROMPT.
@@ -930,7 +929,6 @@ a previously found match."
   (set-marker rend nil)
   nil)
 
-
 (defun flush-lines (regexp &optional rstart rend interactive)
   "Delete lines containing matches for REGEXP.
 When called from Lisp (and usually when called interactively as
@@ -955,7 +953,7 @@ If a match is split across lines, all the lines it lies in are deleted.
 They are deleted _before_ looking for the next match.  Hence, a match
 starting on the same line at which another match ended is ignored.
 
-Return the number of deleted lines.  When called interactively,
+Return the number of deleted matching lines.  When called interactively,
 also print the number."
   (interactive
    (progn
@@ -985,11 +983,8 @@ also print the number."
 		       (progn (forward-line 1) (point)))
         (setq count (1+ count))))
     (set-marker rend nil)
-    (when interactive (message "Deleted %d line%s"
-			       count
-			       (if (= count 1) "" "s")))
+    (when interactive (message "Deleted %d matching lines" count))
     count))
-
 
 (defun how-many (regexp &optional rstart rend interactive)
   "Print and return number of matches for REGEXP following point.
