@@ -163,10 +163,8 @@ frame_size_history_add (struct frame *f, Lisp_Object fun_symbol,
 	     Fcons (list4
 		    (frame, fun_symbol,
 		     ((width > 0)
-		      ? list4 (make_fixnum (FRAME_TEXT_WIDTH (f)),
-			       make_fixnum (FRAME_TEXT_HEIGHT (f)),
-			       make_fixnum (width),
-			       make_fixnum (height))
+		      ? list4i (FRAME_TEXT_WIDTH (f), FRAME_TEXT_HEIGHT (f),
+				width, height)
 		      : Qnil),
 		     rest),
 		    XCDR (frame_size_history)));
@@ -744,8 +742,8 @@ adjust_frame_size (struct frame *f, int new_width, int new_height, int inhibit,
 
   frame_size_history_add
     (f, Qadjust_frame_size_3, new_text_width, new_text_height,
-     list4 (make_fixnum (old_pixel_width), make_fixnum (old_pixel_height),
-	    make_fixnum (new_pixel_width), make_fixnum (new_pixel_height)));
+     list4i (old_pixel_width, old_pixel_height,
+	     new_pixel_width, new_pixel_height));
 
   /* Assign new sizes.  */
   FRAME_TEXT_WIDTH (f) = new_text_width;
@@ -2975,6 +2973,13 @@ store_frame_param (struct frame *f, Lisp_Object prop, Lisp_Object val)
       fset_buried_buffer_list (f, Fnreverse (list));
       return;
     }
+  else if ((EQ (prop, Qscroll_bar_width) || EQ (prop, Qscroll_bar_height))
+	   && !NILP (val) && !RANGED_FIXNUMP (1, val, INT_MAX))
+    {
+      Lisp_Object old_val = Fcdr (Fassq (prop, f->param_alist));
+
+      val = old_val;
+    }
 
   /* The tty color needed to be set before the frame's parameter
      alist was updated with the new value.  This is not true any more,
@@ -4119,18 +4124,14 @@ x_report_frame_params (struct frame *f, Lisp_Object *alistptr)
   store_in_alist (alistptr, Qright_fringe,
 		  make_fixnum (FRAME_RIGHT_FRINGE_WIDTH (f)));
   store_in_alist (alistptr, Qscroll_bar_width,
-		  (! FRAME_HAS_VERTICAL_SCROLL_BARS (f)
-		   ? make_fixnum (0)
-		   : FRAME_CONFIG_SCROLL_BAR_WIDTH (f) > 0
+		  (FRAME_CONFIG_SCROLL_BAR_WIDTH (f) > 0
 		   ? make_fixnum (FRAME_CONFIG_SCROLL_BAR_WIDTH (f))
 		   /* nil means "use default width"
 		      for non-toolkit scroll bar.
 		      ruler-mode.el depends on this.  */
 		   : Qnil));
   store_in_alist (alistptr, Qscroll_bar_height,
-		  (! FRAME_HAS_HORIZONTAL_SCROLL_BARS (f)
-		   ? make_fixnum (0)
-		   : FRAME_CONFIG_SCROLL_BAR_HEIGHT (f) > 0
+		  (FRAME_CONFIG_SCROLL_BAR_HEIGHT (f) > 0
 		   ? make_fixnum (FRAME_CONFIG_SCROLL_BAR_HEIGHT (f))
 		   /* nil means "use default height"
 		      for non-toolkit scroll bar.  */
@@ -4600,20 +4601,20 @@ x_set_scroll_bar_width (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 {
   int unit = FRAME_COLUMN_WIDTH (f);
 
-  if (NILP (arg))
+  if (RANGED_FIXNUMP (1, arg, INT_MAX)
+      && XFIXNAT (arg) != FRAME_CONFIG_SCROLL_BAR_WIDTH (f))
     {
-      x_set_scroll_bar_default_width (f);
-
+      FRAME_CONFIG_SCROLL_BAR_WIDTH (f) = XFIXNAT (arg);
+      FRAME_CONFIG_SCROLL_BAR_COLS (f) = (XFIXNAT (arg) + unit - 1) / unit;
       if (FRAME_X_WINDOW (f))
 	adjust_frame_size (f, -1, -1, 3, 0, Qscroll_bar_width);
 
       SET_FRAME_GARBAGED (f);
     }
-  else if (RANGED_FIXNUMP (1, arg, INT_MAX)
-	   && XFIXNAT (arg) != FRAME_CONFIG_SCROLL_BAR_WIDTH (f))
+  else
     {
-      FRAME_CONFIG_SCROLL_BAR_WIDTH (f) = XFIXNAT (arg);
-      FRAME_CONFIG_SCROLL_BAR_COLS (f) = (XFIXNAT (arg) + unit - 1) / unit;
+      x_set_scroll_bar_default_width (f);
+
       if (FRAME_X_WINDOW (f))
 	adjust_frame_size (f, -1, -1, 3, 0, Qscroll_bar_width);
 
@@ -4630,20 +4631,20 @@ x_set_scroll_bar_height (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 #if USE_HORIZONTAL_SCROLL_BARS
   int unit = FRAME_LINE_HEIGHT (f);
 
-  if (NILP (arg))
+  if (RANGED_FIXNUMP (1, arg, INT_MAX)
+      && XFIXNAT (arg) != FRAME_CONFIG_SCROLL_BAR_HEIGHT (f))
     {
-      x_set_scroll_bar_default_height (f);
-
+      FRAME_CONFIG_SCROLL_BAR_HEIGHT (f) = XFIXNAT (arg);
+      FRAME_CONFIG_SCROLL_BAR_LINES (f) = (XFIXNAT (arg) + unit - 1) / unit;
       if (FRAME_X_WINDOW (f))
 	adjust_frame_size (f, -1, -1, 3, 0, Qscroll_bar_height);
 
       SET_FRAME_GARBAGED (f);
     }
-  else if (RANGED_FIXNUMP (1, arg, INT_MAX)
-	   && XFIXNAT (arg) != FRAME_CONFIG_SCROLL_BAR_HEIGHT (f))
+  else
     {
-      FRAME_CONFIG_SCROLL_BAR_HEIGHT (f) = XFIXNAT (arg);
-      FRAME_CONFIG_SCROLL_BAR_LINES (f) = (XFIXNAT (arg) + unit - 1) / unit;
+      x_set_scroll_bar_default_height (f);
+
       if (FRAME_X_WINDOW (f))
 	adjust_frame_size (f, -1, -1, 3, 0, Qscroll_bar_height);
 
