@@ -879,15 +879,7 @@ For the description of FORCE-ONSCREEN, see `frameset-restore'.
 When forced onscreen, frames wider than the monitor's workarea are converted
 to fullwidth, and frames taller than the workarea are converted to fullheight.
 NOTE: This only works for non-iconified frames."
-  ;; (redisplay)
-  ;; (redraw-display)
-  ;; (redraw-frame)
-  (display-monitor-attributes-list frame)
-  (pcase-let* (;; (bak1 (display-monitor-attributes-list frame))
-               ;; (bak2 (display-monitor-attributes-list frame))
-               (`(,left ,top ,width ,height) (cl-cdadr (frame-monitor-attributes frame)))
-               ;; (_ (message "!1. frameset-move-onscreen: %S %S" frame bak1))
-               ;; (_ (message "!2. frameset-move-onscreen: %S %S" frame bak2))
+  (pcase-let* ((`(,left ,top ,width ,height) (cl-cdadr (frame-monitor-attributes frame)))
 	       (right (+ left width -1))
 	       (bottom (+ top height -1))
 	       (fr-left (frameset-compute-pos (frame-parameter frame 'left) left right))
@@ -1063,7 +1055,6 @@ Internal use only."
     ;; Time to find or create a frame and apply the big bunch of parameters.
     (setq frame (and frameset--reuse-list
 		     (frameset--reuse-frame display filtered-cfg)))
-    ;; (message "frameset--restore-frame: %S" (list frame))
     (if frame
 	(puthash frame :reused frameset--action-map)
       ;; If a frame needs to be created and it falls partially or fully offscreen,

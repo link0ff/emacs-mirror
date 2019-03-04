@@ -1691,7 +1691,7 @@ mail status in mode line"))
       '(menu-item "Compile..." compile
                   :help "Invoke compiler or Make, view compilation errors"))
     (bindings--define-key menu [grep]
-      '(menu-item "Search Files (Grep)..." rgrep
+      '(menu-item "Search Files (Grep)..." grep
                   :help "Search files for strings or regexps (with Grep)"))
     menu))
 

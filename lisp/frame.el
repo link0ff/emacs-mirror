@@ -1644,7 +1644,6 @@ physical monitors.
 See `display-monitor-attributes-list' for the list of attribute
 keys and their meanings."
   (or frame (setq frame (selected-frame)))
-  ;; (message "frame-monitor-attributes: %S" (list frame (display-monitor-attributes-list frame)))
   (cl-loop for attributes in (display-monitor-attributes-list frame)
 	   for frames = (cdr (assq 'frames attributes))
 	   if (memq frame frames) return attributes))

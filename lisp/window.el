@@ -6018,12 +6018,7 @@ not resized by this function."
   (if window-2
       (unless (window-live-p window-2)
         (error "%s is not a live window" window-2))
-    ;; TODO: better to do window directional swap-states
-    ;; Like `compare-windows-get-recent-window'
-    (setq window-2 (or (get-mru-window 'visible t t)
-                       (get-mru-window 0 t t)
-                       (get-mru-window t t t)
-                       (next-window window-1 'nomini 'visible))))
+    (setq window-2 (next-window window-1 'nomini 'visible)))
   (unless (eq window-1 window-2)
     (let* ((height (memq size '(t height)))
            (width (memq size '(t width)))

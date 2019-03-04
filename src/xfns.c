@@ -4943,6 +4943,7 @@ Internal use only, use `display-monitor-attributes-list' instead.  */)
 	  && !FRAME_TOOLTIP_P (f))
 	{
 	  GdkWindow *gwin = gtk_widget_get_window (FRAME_GTK_WIDGET (f));
+	  gdk_display_get_monitor_at_window (gdpy, gwin);
 
 #if GTK_CHECK_VERSION (3, 22, 0)
           for (i = 0; i < n_monitors; i++)
