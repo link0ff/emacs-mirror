@@ -74,6 +74,8 @@ Debugger entered--Lisp error: (error "No match 1 in highlight (1 font-lock-varia
   command-execute(isearch-occur)
 
 
+~/.config/monitors.xml
+
 ;; xrandr -q
 ;; Screen 0: minimum 320 x 200, current 4480 x 1456, maximum 8192 x 8192
 ;; eDP-1 connected primary 1920x1080+0+0 (normal left inverted right x axis y axis) 309mm x 174mm
