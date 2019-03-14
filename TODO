@@ -1,4 +1,21 @@
 
+* gettext i18n
+
+gettextize --dry-run
+
+cd lisp
+
+xgettext --keyword=message *.el **/*.el
+
+  xgettext: Non-ASCII string at calendar/cal-bahai.el:149.
+            Please specify the source encoding through --from-code.
+       (message "Date is pre-Bahá’í")
+     (message "Bahá’í date: %s" s)
+
+xgettext --from-code=UTF-8 -kformat-message -kmessage -kerror -ktramp-message -ktramp-error *.el **/*.el
+xgettext --from-code=UTF-8 -kmenu-item *.el **/*.el -o menus.po
+
+
 FIXED:
 in single-window frame eval shows Local Variables in right-hand window!
 
@@ -14,6 +31,8 @@ M-. doesn't work well with windowmove, e.g.
 
 <H-M-right> M-. displays xref in the specified window
 but RET still displayed in the original window
+
+The problem occurs only when *xref* appears whem unasked for.
 
 
 Escape sequences for bottom progress bar are unhandled in shell:
@@ -66,8 +85,5 @@ https://github.blog/2018-04-05-git-217-released/#coloring-moved-code
 https://github.com/magit/magit/issues/3716
 https://github.com/magit/magit/commit/512790bb7119dabcd90a0695a0b506e315d72c2e
 https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-section-without-character/36090#36090
-
-
-The problem occurs only when *xref* appears whem unasked for.
 
 

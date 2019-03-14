@@ -1,0 +1,3393 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+#
+#: mouse.el:512 shell.el:1286 simple.el:4162 emulation/viper.el:868
+#: org/ob-sql.el:256
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-03-14 13:11+0200\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=CHARSET\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: arc-mode.el:429
+msgid "Alternate Display"
+msgstr ""
+
+#: arc-mode.el:433 dired.el:1833
+msgid "View This File"
+msgstr ""
+
+#: arc-mode.el:436 dired.el:1836 vc/vc-dir.el:173
+msgid "Display in Other Window"
+msgstr ""
+
+#: arc-mode.el:439 dired.el:1839
+msgid "Find in Other Window"
+msgstr ""
+
+#: arc-mode.el:442 dired.el:1842
+msgid "Find This File"
+msgstr ""
+
+#: arc-mode.el:448 dired.el:1915 ibuffer.el:807 vc/vc-dir.el:140
+msgid "Unmark All"
+msgstr ""
+
+#: arc-mode.el:451 dired.el:1939
+msgid "Flag"
+msgstr ""
+
+#: arc-mode.el:454
+msgid "Unflag"
+msgstr ""
+
+#: arc-mode.el:457 buff-menu.el:212 dired.el:1945 ibuffer.el:770
+#: vc/vc-dir.el:156
+msgid "Mark"
+msgstr ""
+
+#: arc-mode.el:463 dired.el:2010
+msgid "Change Owner..."
+msgstr ""
+
+#: arc-mode.el:467 dired.el:2014
+msgid "Change Group..."
+msgstr ""
+
+#: arc-mode.el:471 dired.el:2018
+msgid "Change Mode..."
+msgstr ""
+
+#: arc-mode.el:475 dired.el:2052
+msgid "Rename to..."
+msgstr ""
+
+#: arc-mode.el:481
+msgid "Expunge Marked Files"
+msgstr ""
+
+#: bindings.el:340 menu-bar.el:1238
+msgid "Menu Bar"
+msgstr ""
+
+#: bindings.el:389
+msgid "Display Size Indication"
+msgstr ""
+
+#: bindings.el:393
+msgid "Display Line Numbers"
+msgstr ""
+
+#: bindings.el:397
+msgid "Display Column Numbers"
+msgstr ""
+
+#: bindings.el:595
+msgid "Overwrite (Ovwrt)"
+msgstr ""
+
+#: bindings.el:599
+msgid "Outline (Outl)"
+msgstr ""
+
+#: bindings.el:604
+msgid "Highlight changes (Chg)"
+msgstr ""
+
+#: bindings.el:608
+msgid "Hide ifdef (Ifdef)"
+msgstr ""
+
+#: bindings.el:612
+msgid "Glasses (o^o)"
+msgstr ""
+
+#: bindings.el:616
+msgid "Font Lock"
+msgstr ""
+
+#: bindings.el:620
+msgid "Flyspell (Fly)"
+msgstr ""
+
+#: bindings.el:624
+msgid "Auto revert tail (Tail)"
+msgstr ""
+
+#: bindings.el:629
+msgid "Auto revert (ARev)"
+msgstr ""
+
+#: bindings.el:633
+msgid "Auto fill (Fill)"
+msgstr ""
+
+#: bindings.el:637
+msgid "Abbrev (Abbrev)"
+msgstr ""
+
+#: bookmark.el:2227 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Load a Bookmark File..."
+msgstr ""
+
+#: bookmark.el:2230 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Save Bookmarks As..."
+msgstr ""
+
+#: bookmark.el:2233 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Save Bookmarks"
+msgstr ""
+
+#: bookmark.el:2236 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Edit Bookmark List"
+msgstr ""
+
+#: bookmark.el:2239 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Delete Bookmark..."
+msgstr ""
+
+#: bookmark.el:2242 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Rename Bookmark..."
+msgstr ""
+
+#: bookmark.el:2245 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Insert Location..."
+msgstr ""
+
+#: bookmark.el:2248 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Insert Contents..."
+msgstr ""
+
+#: bookmark.el:2251 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Set Bookmark..."
+msgstr ""
+
+#: bookmark.el:2254 ldefs-boot.el:2508 loaddefs.el:2508
+msgid "Jump to Bookmark..."
+msgstr ""
+
+#: buff-menu.el:144 finder.el:97 menu-bar.el:60 menu-bar.el:2276
+#: emacs-lisp/re-builder.el:241 term/ns-win.el:847 vc/ediff-mult.el:399
+#: vc/vc-dir.el:116
+msgid "Quit"
+msgstr ""
+
+#: buff-menu.el:147 dired.el:1811 vc/vc-dir.el:123
+msgid "Refresh"
+msgstr ""
+
+#: buff-menu.el:151
+msgid "Show Only File Buffers"
+msgstr ""
+
+#: buff-menu.el:157
+msgid "Select Marked"
+msgstr ""
+
+#: buff-menu.el:160
+msgid "Select Two"
+msgstr ""
+
+#: buff-menu.el:163
+msgid "Select Current"
+msgstr ""
+
+#: buff-menu.el:166
+msgid "Select in Other Window"
+msgstr ""
+
+#: buff-menu.el:169
+msgid "Select in Current Window"
+msgstr ""
+
+#: buff-menu.el:173
+msgid "Regexp Isearch Marked Buffers..."
+msgstr ""
+
+#: buff-menu.el:176
+msgid "Isearch Marked Buffers..."
+msgstr ""
+
+#: buff-menu.el:179
+msgid "Multi Occur Marked Buffers..."
+msgstr ""
+
+#: buff-menu.el:183
+msgid "Bury"
+msgstr ""
+
+#: buff-menu.el:186
+msgid "Set Unmodified"
+msgstr ""
+
+#: buff-menu.el:189
+msgid "Execute"
+msgstr ""
+
+#: buff-menu.el:193
+msgid "Mark for Delete and Move Backwards"
+msgstr ""
+
+#: buff-menu.el:196
+msgid "Mark for Delete"
+msgstr ""
+
+#: buff-menu.el:200
+msgid "Mark for Save"
+msgstr ""
+
+#: buff-menu.el:203 dired.el:1942 ibuffer.el:773 vc/vc-dir.el:152
+msgid "Unmark"
+msgstr ""
+
+#: buff-menu.el:206
+msgid "Remove marks..."
+msgstr ""
+
+#: buff-menu.el:209
+msgid "Unmark all"
+msgstr ""
+
+#: dired.el:1759
+msgid "Hide All"
+msgstr ""
+
+#: dired.el:1762
+msgid "Hide/UnHide Subdir"
+msgstr ""
+
+#: dired.el:1765
+msgid "Tree Down"
+msgstr ""
+
+#: dired.el:1768
+msgid "Tree Up"
+msgstr ""
+
+#: dired.el:1771
+msgid "Up Directory"
+msgstr ""
+
+#: dired.el:1774
+msgid "Prev Subdir"
+msgstr ""
+
+#: dired.el:1777
+msgid "Next Subdir"
+msgstr ""
+
+#: dired.el:1780
+msgid "Prev Dirline"
+msgstr ""
+
+#: dired.el:1783
+msgid "Next Dirline"
+msgstr ""
+
+#: dired.el:1786
+msgid "Insert This Subdir"
+msgstr ""
+
+#: dired.el:1795
+msgid "Display Image Externally"
+msgstr ""
+
+#: dired.el:1799
+msgid "Display Image"
+msgstr ""
+
+#: dired.el:1803
+msgid "Toggle Image Thumbnails in This Buffer"
+msgstr ""
+
+#: dired.el:1807
+msgid "Hide Details"
+msgstr ""
+
+#: dired.el:1818
+msgid "Isearch Regexp in File Names..."
+msgstr ""
+
+#: dired.el:1821
+msgid "Isearch in File Names..."
+msgstr ""
+
+#: dired.el:1824
+msgid "Compare Directories..."
+msgstr ""
+
+#: dired.el:1827
+msgid "Compare with Backup"
+msgstr ""
+
+#: dired.el:1830
+msgid "Diff..."
+msgstr ""
+
+#: dired.el:1845
+msgid "Create Directory..."
+msgstr ""
+
+#: dired.el:1848
+msgid "Create Empty file..."
+msgstr ""
+
+#: dired.el:1851
+msgid "Edit File Names"
+msgstr ""
+
+#: dired.el:1861
+msgid "Mark From Image Tag..."
+msgstr ""
+
+#: dired.el:1868
+msgid "Downcase"
+msgstr ""
+
+#: dired.el:1875
+msgid "Upcase"
+msgstr ""
+
+#: dired.el:1880
+msgid "Hardlink..."
+msgstr ""
+
+#: dired.el:1883
+msgid "Symlink..."
+msgstr ""
+
+#: dired.el:1887
+msgid "Rename..."
+msgstr ""
+
+#: dired.el:1890
+msgid "Copy..."
+msgstr ""
+
+#: dired.el:1893
+msgid "Flag..."
+msgstr ""
+
+#: dired.el:1896
+msgid "Mark..."
+msgstr ""
+
+#: dired.el:1899
+msgid "Mark Containing..."
+msgstr ""
+
+#: dired.el:1906
+msgid "Previous Marked"
+msgstr ""
+
+#: dired.el:1909
+msgid "Next Marked"
+msgstr ""
+
+#: dired.el:1912
+msgid "Change Marks..."
+msgstr ""
+
+#: dired.el:1917
+msgid "Mark Symlinks"
+msgstr ""
+
+#: dired.el:1921
+msgid "Mark Directories"
+msgstr ""
+
+#: dired.el:1924
+msgid "Mark Old Backups"
+msgstr ""
+
+#: dired.el:1927
+msgid "Mark Executables"
+msgstr ""
+
+#: dired.el:1930
+msgid "Flag Garbage Files"
+msgstr ""
+
+#: dired.el:1933
+msgid "Flag Backup Files"
+msgstr ""
+
+#: dired.el:1936
+msgid "Flag Auto-save Files"
+msgstr ""
+
+#: dired.el:1948
+msgid "Toggle Marks"
+msgstr ""
+
+#: dired.el:1956
+msgid "Delete Image Tag..."
+msgstr ""
+
+#: dired.el:1960
+msgid "Add Image Tags..."
+msgstr ""
+
+#: dired.el:1964
+msgid "Add Image Comment..."
+msgstr ""
+
+#: dired.el:1968
+msgid "Display Image Thumbnails"
+msgstr ""
+
+#: dired.el:1976
+msgid "Decrypt..."
+msgstr ""
+
+#: dired.el:1981
+msgid "Verify"
+msgstr ""
+
+#: dired.el:1986
+msgid "Sign..."
+msgstr ""
+
+#: dired.el:1991
+msgid "Encrypt..."
+msgstr ""
+
+#: dired.el:1998 vc/vc-dir.el:161
+msgid "Query Replace in Files..."
+msgstr ""
+
+#: dired.el:2001 vc/vc-dir.el:164
+msgid "Search Files..."
+msgstr ""
+
+#: dired.el:2004 vc/vc-dir.el:167
+msgid "Isearch Regexp Files..."
+msgstr ""
+
+#: dired.el:2007 vc/vc-dir.el:170
+msgid "Isearch Files..."
+msgstr ""
+
+#: dired.el:2021
+msgid "Change Timestamp..."
+msgstr ""
+
+#: dired.el:2024
+msgid "Load"
+msgstr ""
+
+#: dired.el:2027
+msgid "Byte-compile"
+msgstr ""
+
+#: dired.el:2030
+msgid "Compress"
+msgstr ""
+
+#: dired.el:2033
+msgid "Print..."
+msgstr ""
+
+#: dired.el:2036
+msgid "Hardlink to..."
+msgstr ""
+
+#: dired.el:2039
+msgid "Symlink to..."
+msgstr ""
+
+#: dired.el:2043
+msgid "Asynchronous Shell Command..."
+msgstr ""
+
+#: dired.el:2046 menu-bar.el:1688
+msgid "Shell Command..."
+msgstr ""
+
+#: dired.el:2049
+msgid "Delete"
+msgstr ""
+
+#: dired.el:2055
+msgid "Copy to..."
+msgstr ""
+
+#: epa.el:205
+msgid "Unmark Key"
+msgstr ""
+
+#: epa.el:208
+msgid "Mark Key"
+msgstr ""
+
+#: epa.el:210 epa.el:223 isearch.el:534 isearch.el:549 isearch.el:558
+#: isearch.el:566 isearch.el:601 menu-bar.el:389 progmodes/gdb-mi.el:4503
+#: progmodes/gdb-mi.el:4519 textmodes/artist.el:530 textmodes/bibtex.el:3528
+#: textmodes/bibtex.el:3533 vc/cvs-status.el:405
+msgid "--"
+msgstr ""
+
+#: epa.el:212 menu-bar.el:1579
+msgid "Verify File..."
+msgstr ""
+
+#: epa.el:215 menu-bar.el:1575
+msgid "Sign File..."
+msgstr ""
+
+#: epa.el:218 menu-bar.el:1587
+msgid "Decrypt File..."
+msgstr ""
+
+#: epa.el:221 menu-bar.el:1583
+msgid "Encrypt File..."
+msgstr ""
+
+#: epa.el:225
+msgid "Delete Keys"
+msgstr ""
+
+#: epa.el:228
+msgid "Import Keys"
+msgstr ""
+
+#: epa.el:231 menu-bar.el:1537
+msgid "Export Keys"
+msgstr ""
+
+#: epa.el:606
+#, elisp-format
+msgid ""
+"Error while executing \"%s\":\n"
+"\n"
+msgstr ""
+
+#: finder.el:100
+msgid "Summary"
+msgstr ""
+
+#: finder.el:103
+msgid "List keywords"
+msgstr ""
+
+#: finder.el:106
+msgid "Select"
+msgstr ""
+
+#: hi-lock.el:264
+msgid "Highlight Regexp..."
+msgstr ""
+
+#: hi-lock.el:268
+msgid "Highlight Phrase..."
+msgstr ""
+
+#: hi-lock.el:272
+msgid "Highlight Lines..."
+msgstr ""
+
+#: hi-lock.el:276
+msgid "Highlight Symbol at Point"
+msgstr ""
+
+#: hi-lock.el:280
+msgid "Remove Highlighting..."
+msgstr ""
+
+#: hi-lock.el:285
+msgid "Patterns to Buffer"
+msgstr ""
+
+#: hi-lock.el:290
+msgid "Patterns from Buffer"
+msgstr ""
+
+#: ibuffer.el:393
+msgid "Create filter group from current filters..."
+msgstr ""
+
+#: ibuffer.el:397
+msgid "Move point to the next filter group"
+msgstr ""
+
+#: ibuffer.el:400
+msgid "Move point to the previous filter group"
+msgstr ""
+
+#: ibuffer.el:403
+msgid "Move point to a specific filter group..."
+msgstr ""
+
+#: ibuffer.el:406
+msgid "Kill filter group named..."
+msgstr ""
+
+#: ibuffer.el:410
+msgid "Yank last killed filter group before..."
+msgstr ""
+
+#: ibuffer.el:414
+msgid "Remove top filter group"
+msgstr ""
+
+#: ibuffer.el:418
+msgid "Remove all filter groups"
+msgstr ""
+
+#: ibuffer.el:422
+msgid "Decompose filter group..."
+msgstr ""
+
+#: ibuffer.el:427
+msgid "Save current filter groups permanently..."
+msgstr ""
+
+#: ibuffer.el:432 ibuffer.el:736
+msgid "Restore permanently saved filters..."
+msgstr ""
+
+#: ibuffer.el:437
+msgid "Delete permanently saved filter groups..."
+msgstr ""
+
+#: ibuffer.el:441
+msgid "Set current filter groups to filter by mode"
+msgstr ""
+
+#: ibuffer.el:609
+msgid "View this buffer"
+msgstr ""
+
+#: ibuffer.el:611
+msgid "View (other window)"
+msgstr ""
+
+#: ibuffer.el:613
+msgid "View (other frame)"
+msgstr ""
+
+#: ibuffer.el:615
+msgid "Update"
+msgstr ""
+
+#: ibuffer.el:618
+msgid "Switch display format"
+msgstr ""
+
+#: ibuffer.el:628
+msgid "Sort by major mode"
+msgstr ""
+
+#: ibuffer.el:630
+msgid "Sort by buffer size"
+msgstr ""
+
+#: ibuffer.el:632
+msgid "Sort lexicographically"
+msgstr ""
+
+#: ibuffer.el:635
+msgid "Sort by view time"
+msgstr ""
+
+#: ibuffer.el:640
+msgid "Reverse sorting order"
+msgstr ""
+
+#: ibuffer.el:642
+msgid "Switch sorting mode"
+msgstr ""
+
+#: ibuffer.el:649
+msgid "Disable all filtering"
+msgstr ""
+
+#: ibuffer.el:652
+msgid "Add filter by any major mode..."
+msgstr ""
+
+#: ibuffer.el:654
+msgid "Add filter by a major mode in use..."
+msgstr ""
+
+#: ibuffer.el:657
+msgid "Add filter by derived mode..."
+msgstr ""
+
+#: ibuffer.el:660
+msgid "Add filter by buffer name..."
+msgstr ""
+
+#: ibuffer.el:662
+msgid "Add filter by starred buffer name..."
+msgstr ""
+
+#: ibuffer.el:666
+msgid "Add filter by full filename..."
+msgstr ""
+
+#: ibuffer.el:671
+msgid "Add filter by file basename..."
+msgstr ""
+
+#: ibuffer.el:676
+msgid "Add filter by file name extension..."
+msgstr ""
+
+#: ibuffer.el:681
+msgid "Add filter by filename's directory..."
+msgstr ""
+
+#: ibuffer.el:687
+msgid "Add filter by size less than..."
+msgstr ""
+
+#: ibuffer.el:689
+msgid "Add filter by size greater than..."
+msgstr ""
+
+#: ibuffer.el:692
+msgid "Add filter by modified buffer"
+msgstr ""
+
+#: ibuffer.el:695
+msgid "Add filter by buffer visiting a file"
+msgstr ""
+
+#: ibuffer.el:699
+msgid "Add filter by content (regexp)..."
+msgstr ""
+
+#: ibuffer.el:702
+msgid "Add filter by Lisp predicate..."
+msgstr ""
+
+#: ibuffer.el:705
+msgid "Remove top filter"
+msgstr ""
+
+#: ibuffer.el:708
+msgid "AND top two filters"
+msgstr ""
+
+#: ibuffer.el:714
+msgid "OR top two filters"
+msgstr ""
+
+#: ibuffer.el:720
+msgid "Negate top filter"
+msgstr ""
+
+#: ibuffer.el:723
+msgid "Decompose top filter"
+msgstr ""
+
+#: ibuffer.el:728
+msgid "Swap top two filters"
+msgstr ""
+
+#: ibuffer.el:732
+msgid "Save current filters permanently..."
+msgstr ""
+
+#: ibuffer.el:741
+msgid "Add to permanently saved filters..."
+msgstr ""
+
+#: ibuffer.el:746
+msgid "Delete permanently saved filters..."
+msgstr ""
+
+#: ibuffer.el:756
+msgid "Auto Mode"
+msgstr ""
+
+#: ibuffer.el:764
+msgid "Toggle marks"
+msgstr ""
+
+#: ibuffer.el:767
+msgid "Change marks"
+msgstr ""
+
+#: ibuffer.el:776
+msgid "Mark by mode..."
+msgstr ""
+
+#: ibuffer.el:779
+msgid "Mark modified buffers"
+msgstr ""
+
+#: ibuffer.el:782
+msgid "Mark unsaved buffers"
+msgstr ""
+
+#: ibuffer.el:785
+msgid "Mark read-only buffers"
+msgstr ""
+
+#: ibuffer.el:788
+msgid "Mark special buffers"
+msgstr ""
+
+#: ibuffer.el:791
+msgid "Mark dired buffers"
+msgstr ""
+
+#: ibuffer.el:794
+msgid "Mark dissociated buffers"
+msgstr ""
+
+#: ibuffer.el:797
+msgid "Mark help buffers"
+msgstr ""
+
+#: ibuffer.el:800
+msgid "Mark compressed file buffers"
+msgstr ""
+
+#: ibuffer.el:804
+msgid "Mark old buffers"
+msgstr ""
+
+#: ibuffer.el:809
+msgid "Unmark All buffers"
+msgstr ""
+
+#: ibuffer.el:815
+msgid "Mark by buffer name (regexp)..."
+msgstr ""
+
+#: ibuffer.el:818
+msgid "Mark by major mode (regexp)..."
+msgstr ""
+
+#: ibuffer.el:821
+msgid "Mark by file name (regexp)..."
+msgstr ""
+
+#: ibuffer.el:825
+msgid "Mark by content (regexp)..."
+msgstr ""
+
+#: ibuffer.el:829
+msgid "Mark by locked buffers..."
+msgstr ""
+
+#: ibuffer.el:837
+msgid "View"
+msgstr ""
+
+#: ibuffer.el:839
+msgid "View (separate frame)"
+msgstr ""
+
+#: ibuffer.el:841 menu-bar.el:168
+msgid "Save"
+msgstr ""
+
+#: ibuffer.el:843
+msgid "Replace (regexp)..."
+msgstr ""
+
+#: ibuffer.el:846
+msgid "Query Replace..."
+msgstr ""
+
+#: ibuffer.el:849
+msgid "Query Replace (regexp)..."
+msgstr ""
+
+#: ibuffer.el:852
+msgid "Print"
+msgstr ""
+
+#: ibuffer.el:854
+msgid "Toggle modification flag"
+msgstr ""
+
+#: ibuffer.el:856
+msgid "Toggle read-only flag"
+msgstr ""
+
+#: ibuffer.el:858
+msgid "Toggle lock flag"
+msgstr ""
+
+#: ibuffer.el:860
+msgid "Revert"
+msgstr ""
+
+#: ibuffer.el:863
+msgid "Rename Uniquely"
+msgstr ""
+
+#: ibuffer.el:866
+msgid "Kill"
+msgstr ""
+
+#: ibuffer.el:868
+msgid "List lines matching..."
+msgstr ""
+
+#: ibuffer.el:871
+msgid "Pipe to shell command..."
+msgstr ""
+
+#: ibuffer.el:874
+msgid "Pipe to shell command (replace)..."
+msgstr ""
+
+#: ibuffer.el:877
+msgid "Shell command on buffer's file..."
+msgstr ""
+
+#: ibuffer.el:880
+msgid "Eval..."
+msgstr ""
+
+#: ibuffer.el:883
+msgid "Eval (viewing buffer)..."
+msgstr ""
+
+#: ibuffer.el:886
+msgid "Diff with file"
+msgstr ""
+
+#: ibuffer.el:892
+msgid "Kill filter group"
+msgstr ""
+
+#: ibuffer.el:897
+msgid "Yank last killed filter group"
+msgstr ""
+
+#: isearch.el:507
+msgid "Previous kill"
+msgstr ""
+
+#: isearch.el:510
+msgid "Current kill"
+msgstr ""
+
+#: isearch.el:513
+msgid "Rest of line"
+msgstr ""
+
+#: isearch.el:516
+msgid "Symbol/char"
+msgstr ""
+
+#: isearch.el:520
+msgid "Word/char"
+msgstr ""
+
+#: isearch.el:524
+msgid "Char"
+msgstr ""
+
+#: isearch.el:531
+msgid "Complete current search string"
+msgstr ""
+
+#: isearch.el:536
+msgid "Replace search string as regexp"
+msgstr ""
+
+#: isearch.el:539
+msgid "Replace search string"
+msgstr ""
+
+#: isearch.el:542
+msgid "Show all matches for search string"
+msgstr ""
+
+#: isearch.el:545
+msgid "Highlight all matches for search string"
+msgstr ""
+
+#: isearch.el:551
+msgid "Turn on specific input method"
+msgstr ""
+
+#: isearch.el:555
+msgid "Toggle input method"
+msgstr ""
+
+#: isearch.el:560
+msgid "Search for char by name"
+msgstr ""
+
+#: isearch.el:563
+msgid "Search for literal char"
+msgstr ""
+
+#: isearch.el:568
+msgid "Word matching"
+msgstr ""
+
+#: isearch.el:573
+msgid "Symbol matching"
+msgstr ""
+
+#: isearch.el:579
+msgid "Regexp matching"
+msgstr ""
+
+#: isearch.el:583
+msgid "Invisible text matching"
+msgstr ""
+
+#: isearch.el:587
+msgid "Character folding matching"
+msgstr ""
+
+#: isearch.el:593
+msgid "Case folding matching"
+msgstr ""
+
+#: isearch.el:597
+msgid "Lax whitespace matching"
+msgstr ""
+
+#: isearch.el:603
+msgid "Yank on search string"
+msgstr ""
+
+#: isearch.el:605
+msgid "Edit current search string"
+msgstr ""
+
+#: isearch.el:608
+msgid "Edit previous search string"
+msgstr ""
+
+#: isearch.el:611
+msgid "Edit next search string"
+msgstr ""
+
+#: isearch.el:614
+msgid "Delete last char from search string"
+msgstr ""
+
+#: isearch.el:617
+msgid "Undo last input item"
+msgstr ""
+
+#: isearch.el:620
+msgid "Go to last match"
+msgstr ""
+
+#: isearch.el:623
+msgid "Go to first match"
+msgstr ""
+
+#: isearch.el:626
+msgid "Repeat search backward"
+msgstr ""
+
+#: isearch.el:629
+msgid "Repeat search forward"
+msgstr ""
+
+#: isearch.el:632
+msgid "Nonincremental search"
+msgstr ""
+
+#: isearch.el:636
+msgid "Finish search"
+msgstr ""
+
+#: isearch.el:640
+msgid "Remove characters not found"
+msgstr ""
+
+#: isearch.el:644
+msgid "Cancel search"
+msgstr ""
+
+#: isearch.el:3162
+msgid "failing "
+msgstr ""
+
+#: isearch.el:3163
+msgid "pending "
+msgstr ""
+
+#: isearch.el:3169
+msgid "over"
+msgstr ""
+
+#: isearch.el:3170
+msgid "wrapped "
+msgstr ""
+
+#: isearch.el:3172
+msgid "case-sensitive "
+msgstr ""
+
+#: isearch.el:3186
+msgid "search"
+msgstr ""
+
+#: isearch.el:3186
+msgid "I-search"
+msgstr ""
+
+#: isearch.el:3187
+msgid " backward"
+msgstr ""
+
+#: lpr.el:293
+msgid ":\n"
+msgstr ""
+
+#: menu-bar.el:69
+msgid "Delete Frame"
+msgstr ""
+
+#: menu-bar.el:74
+msgid "New Frame on Display..."
+msgstr ""
+
+#: menu-bar.el:78
+msgid "New Frame"
+msgstr ""
+
+#: menu-bar.el:86
+msgid "Remove Other Windows"
+msgstr ""
+
+#: menu-bar.el:91
+msgid "New Window on Right"
+msgstr ""
+
+#: menu-bar.el:97
+msgid "New Window Below"
+msgstr ""
+
+#: menu-bar.el:106
+msgid "PostScript Print Region (B+W)"
+msgstr ""
+
+#: menu-bar.el:110
+msgid "PostScript Print Buffer (B+W)"
+msgstr ""
+
+#: menu-bar.el:114
+msgid "PostScript Print Region"
+msgstr ""
+
+#: menu-bar.el:119
+msgid "PostScript Print Buffer"
+msgstr ""
+
+#: menu-bar.el:124
+msgid "Print Region"
+msgstr ""
+
+#: menu-bar.el:128
+msgid "Print Buffer"
+msgstr ""
+
+#: menu-bar.el:136
+msgid "Recover Crashed Session"
+msgstr ""
+
+#: menu-bar.el:151
+msgid "Revert Buffer"
+msgstr ""
+
+#: menu-bar.el:163
+msgid "Save As..."
+msgstr ""
+
+#: menu-bar.el:179
+msgid "Close"
+msgstr ""
+
+#: menu-bar.el:183
+msgid "Insert File..."
+msgstr ""
+
+#: menu-bar.el:187
+msgid "Open Directory..."
+msgstr ""
+
+#: menu-bar.el:191
+msgid "Open File..."
+msgstr ""
+
+#: menu-bar.el:195
+msgid "Visit New File..."
+msgstr ""
+
+#: menu-bar.el:281
+msgid "Forward Symbol at Point..."
+msgstr ""
+
+#: menu-bar.el:284
+msgid "Forward Symbol..."
+msgstr ""
+
+#: menu-bar.el:287
+msgid "Forward Word..."
+msgstr ""
+
+#: menu-bar.el:290
+msgid "Backward Regexp..."
+msgstr ""
+
+#: menu-bar.el:293
+msgid "Forward Regexp..."
+msgstr ""
+
+#: menu-bar.el:296
+msgid "Backward String..."
+msgstr ""
+
+#: menu-bar.el:299
+msgid "Forward String..."
+msgstr ""
+
+#: menu-bar.el:307
+msgid "Incremental Search"
+msgstr ""
+
+#: menu-bar.el:312
+msgid "Continue Tags Search"
+msgstr ""
+
+#: menu-bar.el:315
+msgid "Search Tagged Files..."
+msgstr ""
+
+#: menu-bar.el:320
+msgid "Repeat Backwards"
+msgstr ""
+
+#: menu-bar.el:328
+msgid "Repeat Forward"
+msgstr ""
+
+#: menu-bar.el:339
+msgid "Regexp Backwards..."
+msgstr ""
+
+#: menu-bar.el:343
+msgid "Regexp Forward..."
+msgstr ""
+
+#: menu-bar.el:348
+msgid "String Backwards..."
+msgstr ""
+
+#: menu-bar.el:352
+msgid "String Forward..."
+msgstr ""
+
+#: menu-bar.el:361
+msgid "Continue Replace"
+msgstr ""
+
+#: menu-bar.el:364
+msgid "Replace in Tagged Files..."
+msgstr ""
+
+#: menu-bar.el:370
+msgid "Replace Regexp..."
+msgstr ""
+
+#: menu-bar.el:374
+msgid "Replace String..."
+msgstr ""
+
+#: menu-bar.el:384
+msgid "Set Tags File Name..."
+msgstr ""
+
+#: menu-bar.el:392
+msgid "Back"
+msgstr ""
+
+#: menu-bar.el:398
+msgid "Find Apropos..."
+msgstr ""
+
+#: menu-bar.el:402
+msgid "Find Definition in Other Window..."
+msgstr ""
+
+#: menu-bar.el:406
+msgid "Find Definition..."
+msgstr ""
+
+#: menu-bar.el:413
+msgid "Goto End of Buffer"
+msgstr ""
+
+#: menu-bar.el:415
+msgid "Goto Beginning of Buffer"
+msgstr ""
+
+#: menu-bar.el:417
+msgid "Goto Buffer Position..."
+msgstr ""
+
+#: menu-bar.el:420
+msgid "Goto Line..."
+msgstr ""
+
+#: menu-bar.el:435
+msgid "Text Properties"
+msgstr ""
+
+#: menu-bar.el:440
+msgid "Spell"
+msgstr ""
+
+#: menu-bar.el:443
+msgid "Fill"
+msgstr ""
+
+#: menu-bar.el:452
+msgid "Bookmarks"
+msgstr ""
+
+#: menu-bar.el:455
+msgid "Go To"
+msgstr ""
+
+#: menu-bar.el:458
+msgid "Replace"
+msgstr ""
+
+#: menu-bar.el:461
+msgid "Search"
+msgstr ""
+
+#: menu-bar.el:467
+msgid "Select All"
+msgstr ""
+
+#: menu-bar.el:470
+msgid "Clear"
+msgstr ""
+
+#: menu-bar.el:486
+msgid "Paste"
+msgstr ""
+
+#: menu-bar.el:499
+msgid "Copy"
+msgstr ""
+
+#: menu-bar.el:508
+msgid "Cut"
+msgstr ""
+
+#: menu-bar.el:517
+msgid "Undo"
+msgstr ""
+
+#: menu-bar.el:584
+msgid "Faces Matching..."
+msgstr ""
+
+#: menu-bar.el:587
+msgid "Options Matching..."
+msgstr ""
+
+#: menu-bar.el:590
+msgid "All Settings Matching..."
+msgstr ""
+
+#: menu-bar.el:595
+msgid "Specific Group..."
+msgstr ""
+
+#: menu-bar.el:598
+msgid "Specific Face..."
+msgstr ""
+
+#: menu-bar.el:601
+msgid "Specific Option..."
+msgstr ""
+
+#: menu-bar.el:606
+msgid "New Options..."
+msgstr ""
+
+#: menu-bar.el:609
+msgid "Saved Options"
+msgstr ""
+
+#: menu-bar.el:614
+msgid "Browse Customization Groups"
+msgstr ""
+
+#: menu-bar.el:617
+msgid "Top-level Customization Group"
+msgstr ""
+
+#: menu-bar.el:620
+msgid "Custom Themes"
+msgstr ""
+
+#: menu-bar.el:763 progmodes/gdb-mi.el:4493
+msgid "Customize"
+msgstr ""
+
+#: menu-bar.el:768
+msgid "Bottom and Right"
+msgstr ""
+
+#: menu-bar.el:780
+msgid "Right Only"
+msgstr ""
+
+#: menu-bar.el:792
+msgid "Bottom Only"
+msgstr ""
+
+#: menu-bar.el:804 menu-bar.el:962 menu-bar.el:1107
+msgid "None"
+msgstr ""
+
+#: menu-bar.el:853
+msgid "Other (Customize)"
+msgstr ""
+
+#: menu-bar.el:863
+msgid "Opposite, Arrows Right"
+msgstr ""
+
+#: menu-bar.el:871
+msgid "Opposite, No Arrows"
+msgstr ""
+
+#: menu-bar.el:878
+msgid "In Right Fringe"
+msgstr ""
+
+#: menu-bar.el:884
+msgid "In Left Fringe"
+msgstr ""
+
+#: menu-bar.el:890
+msgid "No Indicators"
+msgstr ""
+
+#: menu-bar.el:928
+msgid "Buffer Boundaries"
+msgstr ""
+
+#: menu-bar.el:939
+msgid "Customize Fringe"
+msgstr ""
+
+#: menu-bar.el:944 international/mule-cmds.el:62 international/mule-cmds.el:68
+msgid "Default"
+msgstr ""
+
+#: menu-bar.el:950 menu-bar.el:995 menu-bar.el:1071
+msgid "On the Right"
+msgstr ""
+
+#: menu-bar.el:956 menu-bar.el:1004 menu-bar.el:1059
+msgid "On the Left"
+msgstr ""
+
+#: menu-bar.el:1013
+msgid "No Vertical Scroll Bar"
+msgstr ""
+
+#: menu-bar.el:1083
+msgid "On the Bottom"
+msgstr ""
+
+#: menu-bar.el:1095
+msgid "On the Top"
+msgstr ""
+
+#: menu-bar.el:1125
+msgid "Visual Line Numbers"
+msgstr ""
+
+#: menu-bar.el:1135
+msgid "Relative Line Numbers"
+msgstr ""
+
+#: menu-bar.el:1145
+msgid "Absolute Line Numbers"
+msgstr ""
+
+#: menu-bar.el:1156
+msgid "No Line Numbers"
+msgstr ""
+
+#: menu-bar.el:1175
+msgid "Line Numbers for All Lines"
+msgstr ""
+
+#: menu-bar.el:1211
+msgid "Speedbar"
+msgstr ""
+
+#: menu-bar.el:1220
+msgid "Window Divider"
+msgstr ""
+
+#: menu-bar.el:1224
+msgid "Fringe"
+msgstr ""
+
+#: menu-bar.el:1228
+msgid "Scroll Bar"
+msgstr ""
+
+#: menu-bar.el:1232
+msgid "Tooltips"
+msgstr ""
+
+#: menu-bar.el:1248 menu-bar.el:1252
+msgid "Tool Bar"
+msgstr ""
+
+#: menu-bar.el:1265
+msgid "Word Wrap (Visual Line mode)"
+msgstr ""
+
+#: menu-bar.el:1279
+msgid "Truncate Long Lines"
+msgstr ""
+
+#: menu-bar.el:1292
+msgid "Wrap at Window Edge"
+msgstr ""
+
+#: menu-bar.el:1322
+msgid "Regular Expression"
+msgstr ""
+
+#: menu-bar.el:1331
+msgid "Literal Search"
+msgstr ""
+
+#: menu-bar.el:1355
+msgid "Customize Emacs"
+msgstr ""
+
+#: menu-bar.el:1358
+msgid "Manage Emacs Packages"
+msgstr ""
+
+#: menu-bar.el:1362
+msgid "Save Options"
+msgstr ""
+
+#: menu-bar.el:1369
+msgid "Set Default Font..."
+msgstr ""
+
+#: menu-bar.el:1382
+msgid "Show/Hide"
+msgstr ""
+
+#: menu-bar.el:1391
+msgid "Multilingual Environment"
+msgstr ""
+
+#: menu-bar.el:1460
+msgid "Default Search Options"
+msgstr ""
+
+#: menu-bar.el:1464
+msgid "Line Wrapping in This Buffer"
+msgstr ""
+
+#: menu-bar.el:1490
+msgid "Zone Out"
+msgstr ""
+
+#: menu-bar.el:1493
+msgid "Tetris"
+msgstr ""
+
+#: menu-bar.el:1496
+msgid "Solitaire"
+msgstr ""
+
+#: menu-bar.el:1499
+msgid "Snake"
+msgstr ""
+
+#: menu-bar.el:1502
+msgid "Pong"
+msgstr ""
+
+#: menu-bar.el:1505
+msgid "Multiplication Puzzle"
+msgstr ""
+
+#: menu-bar.el:1508
+msgid "Life"
+msgstr ""
+
+#: menu-bar.el:1511
+msgid "Towers of Hanoi"
+msgstr ""
+
+#: menu-bar.el:1514
+msgid "Gomoku"
+msgstr ""
+
+#: menu-bar.el:1517
+msgid "Bubbles"
+msgstr ""
+
+#: menu-bar.el:1520
+msgid "Blackbox"
+msgstr ""
+
+#: menu-bar.el:1523
+msgid "Adventure"
+msgstr ""
+
+#: menu-bar.el:1526
+msgid "5x5"
+msgstr ""
+
+#: menu-bar.el:1533
+msgid "Insert Keys"
+msgstr ""
+
+#: menu-bar.el:1541
+msgid "Import Keys from Region"
+msgstr ""
+
+#: menu-bar.el:1545
+msgid "Import Keys from File..."
+msgstr ""
+
+#: menu-bar.el:1549
+msgid "List Keys"
+msgstr ""
+
+#: menu-bar.el:1556
+msgid "Sign Region"
+msgstr ""
+
+#: menu-bar.el:1560
+msgid "Verify Region"
+msgstr ""
+
+#: menu-bar.el:1564
+msgid "Encrypt Region"
+msgstr ""
+
+#: menu-bar.el:1568
+msgid "Decrypt Region"
+msgstr ""
+
+#: menu-bar.el:1601
+msgid "Games"
+msgstr ""
+
+#: menu-bar.el:1607
+msgid "Encryption/Decryption"
+msgstr ""
+
+#: menu-bar.el:1614
+msgid "Simple Calculator"
+msgstr ""
+
+#: menu-bar.el:1617
+msgid "Programmable Calculator"
+msgstr ""
+
+#: menu-bar.el:1620
+msgid "Calendar"
+msgstr ""
+
+#: menu-bar.el:1627
+msgid "Browse the Web..."
+msgstr ""
+
+#: menu-bar.el:1629
+msgid "Directory Servers"
+msgstr ""
+
+#: menu-bar.el:1631
+msgid "Compose New Mail"
+msgstr ""
+
+#: menu-bar.el:1635
+msgid "Read Mail"
+msgstr ""
+
+#: menu-bar.el:1641
+msgid "Read Net News"
+msgstr ""
+
+#: menu-bar.el:1653
+msgid "Apply Patch"
+msgstr ""
+
+#: menu-bar.el:1655
+msgid "Merge"
+msgstr ""
+
+#: menu-bar.el:1657
+msgid "Compare (Ediff)"
+msgstr ""
+
+#: menu-bar.el:1663
+msgid "Spell Checking"
+msgstr ""
+
+#: menu-bar.el:1669
+msgid "Source Code Parsers (Semantic)"
+msgstr ""
+
+#: menu-bar.el:1675
+msgid "Project Support (EDE)"
+msgstr ""
+
+#: menu-bar.el:1681
+msgid "Debugger (GDB)..."
+msgstr ""
+
+#: menu-bar.el:1684
+msgid "Shell Command on Region..."
+msgstr ""
+
+#: menu-bar.el:1691 progmodes/compile.el:1980 progmodes/grep.el:300
+msgid "Compile..."
+msgstr ""
+
+#: menu-bar.el:1694
+msgid "Search Files (Grep)..."
+msgstr ""
+
+#: menu-bar.el:1704
+msgid "Show All of Mule Status"
+msgstr ""
+
+#: menu-bar.el:1707
+msgid "Describe Coding System (Briefly)"
+msgstr ""
+
+#: menu-bar.el:1710 international/mule-cmds.el:123
+msgid "Describe Coding System..."
+msgstr ""
+
+#: menu-bar.el:1712 international/mule-cmds.el:125
+msgid "Describe Input Method..."
+msgstr ""
+
+#: menu-bar.el:1715 international/mule-cmds.el:128
+msgid "Describe Language Environment"
+msgstr ""
+
+#: menu-bar.el:1722
+msgid "List Key Bindings"
+msgstr ""
+
+#: menu-bar.el:1725
+msgid "Describe Display Table"
+msgstr ""
+
+#: menu-bar.el:1728
+msgid "Describe Package..."
+msgstr ""
+
+#: menu-bar.el:1731
+msgid "Describe Face..."
+msgstr ""
+
+#: menu-bar.el:1734
+msgid "Describe Variable..."
+msgstr ""
+
+#: menu-bar.el:1737
+msgid "Describe Function..."
+msgstr ""
+
+#: menu-bar.el:1740
+msgid "Describe Key or Mouse Operation..."
+msgstr ""
+
+#: menu-bar.el:1745
+msgid "Describe Buffer Modes"
+msgstr ""
+
+#: menu-bar.el:1780
+msgid "Search Documentation Strings..."
+msgstr ""
+
+#: menu-bar.el:1784
+msgid "Find Any Object by Name..."
+msgstr ""
+
+#: menu-bar.el:1787
+msgid "Find Options by Value..."
+msgstr ""
+
+#: menu-bar.el:1790
+msgid "Find Options by Name..."
+msgstr ""
+
+#: menu-bar.el:1793
+msgid "Find Commands by Name..."
+msgstr ""
+
+#: menu-bar.el:1798
+msgid "Look Up Command in User Manual..."
+msgstr ""
+
+#: menu-bar.el:1801
+msgid "Look Up Key in User Manual..."
+msgstr ""
+
+#: menu-bar.el:1804
+msgid "Look Up Subject in ELisp Manual..."
+msgstr ""
+
+#: menu-bar.el:1807
+msgid "Look Up Subject in User Manual..."
+msgstr ""
+
+#: menu-bar.el:1810
+msgid "Emacs Terminology"
+msgstr ""
+
+#: menu-bar.el:1818
+msgid "Read Man Page..."
+msgstr ""
+
+#: menu-bar.el:1823
+msgid "Ordering Manuals"
+msgstr ""
+
+#: menu-bar.el:1826
+msgid "Lookup Subject in all Manuals..."
+msgstr ""
+
+#: menu-bar.el:1829
+msgid "All Other Manuals (Info)"
+msgstr ""
+
+#: menu-bar.el:1832
+msgid "Emacs Lisp Reference"
+msgstr ""
+
+#: menu-bar.el:1835
+msgid "Introduction to Emacs Lisp"
+msgstr ""
+
+#: menu-bar.el:1847
+msgid "About GNU"
+msgstr ""
+
+#: menu-bar.el:1850
+msgid "About Emacs"
+msgstr ""
+
+#: menu-bar.el:1855
+msgid "(Non)Warranty"
+msgstr ""
+
+#: menu-bar.el:1858
+msgid "Copying Conditions"
+msgstr ""
+
+#: menu-bar.el:1861
+msgid "Getting New Versions"
+msgstr ""
+
+#: menu-bar.el:1866
+msgid "Finding Extra Packages"
+msgstr ""
+
+#: menu-bar.el:1869
+msgid "Search Built-in Packages"
+msgstr ""
+
+#: menu-bar.el:1872
+msgid "More Manuals"
+msgstr ""
+
+#: menu-bar.el:1874
+msgid "Read the Emacs Manual"
+msgstr ""
+
+#: menu-bar.el:1877
+msgid "Describe"
+msgstr ""
+
+#: menu-bar.el:1879
+msgid "Search Documentation"
+msgstr ""
+
+#: menu-bar.el:1883
+msgid "Emacs Psychotherapist"
+msgstr ""
+
+#: menu-bar.el:1886
+msgid "Send Bug Report..."
+msgstr ""
+
+#: menu-bar.el:1889
+msgid "How to Report a Bug"
+msgstr ""
+
+#: menu-bar.el:1892
+msgid "Emacs Known Problems"
+msgstr ""
+
+#: menu-bar.el:1895
+msgid "Emacs News"
+msgstr ""
+
+#: menu-bar.el:1898
+msgid "Emacs FAQ"
+msgstr ""
+
+#: menu-bar.el:1902
+msgid "Emacs Tutorial (choose language)..."
+msgstr ""
+
+#: menu-bar.el:1906
+msgid "Emacs Tutorial"
+msgstr ""
+
+#: menu-bar.el:1914
+msgid "About Emacs..."
+msgstr ""
+
+#: menu-bar.el:2265 cedet/semantic.el:908
+msgid "List Completions"
+msgstr ""
+
+#: menu-bar.el:2268
+msgid "Complete Word"
+msgstr ""
+
+#: menu-bar.el:2271
+msgid "Complete"
+msgstr ""
+
+#: menu-bar.el:2279
+msgid "Enter"
+msgstr ""
+
+#: menu-bar.el:2283
+msgid "Isearch History Forward"
+msgstr ""
+
+#: menu-bar.el:2286
+msgid "Isearch History Backward"
+msgstr ""
+
+#: menu-bar.el:2289
+msgid "Next History Item"
+msgstr ""
+
+#: menu-bar.el:2292
+msgid "Previous History Item"
+msgstr ""
+
+#: mouse.el:2297
+msgid "Reset to Default"
+msgstr ""
+
+#: mouse.el:2299
+msgid "Decrease Buffer Text Size"
+msgstr ""
+
+#: mouse.el:2301
+msgid "Increase Buffer Text Size"
+msgstr ""
+
+#: mouse.el:2307
+msgid "Change Buffer Font..."
+msgstr ""
+
+#: outline.el:90
+msgid "Hide Other"
+msgstr ""
+
+#: outline.el:93
+msgid "Hide Sublevels"
+msgstr ""
+
+#: outline.el:96
+msgid "Hide Subtree"
+msgstr ""
+
+#: outline.el:99
+msgid "Hide Entry"
+msgstr ""
+
+#: outline.el:102
+msgid "Hide Body"
+msgstr ""
+
+#: outline.el:105
+msgid "Hide Leaves"
+msgstr ""
+
+#: outline.el:109
+msgid "Show Subtree"
+msgstr ""
+
+#: outline.el:112
+msgid "Show Children"
+msgstr ""
+
+#: outline.el:115
+msgid "Show Branches"
+msgstr ""
+
+#: outline.el:118
+msgid "Show Entry"
+msgstr ""
+
+#: outline.el:121
+msgid "Show All"
+msgstr ""
+
+#: outline.el:126
+msgid "Demote Subtree"
+msgstr ""
+
+#: outline.el:129
+msgid "Promote Subtree"
+msgstr ""
+
+#: outline.el:132
+msgid "Move Subtree Down"
+msgstr ""
+
+#: outline.el:135
+msgid "Move Subtree Up"
+msgstr ""
+
+#: outline.el:138
+msgid "Copy to Kill Ring"
+msgstr ""
+
+#: outline.el:142
+msgid "New Heading"
+msgstr ""
+
+#: outline.el:145
+msgid "Previous Same Level"
+msgstr ""
+
+#: outline.el:148
+msgid "Next Same Level"
+msgstr ""
+
+#: outline.el:151 vc/ediff-mult.el:424
+msgid "Previous"
+msgstr ""
+
+#: outline.el:154 vc/ediff-mult.el:421
+msgid "Next"
+msgstr ""
+
+#: outline.el:157
+msgid "Up"
+msgstr ""
+
+#: replace.el:1044
+msgid "Auto Occurrence Display"
+msgstr ""
+
+#: replace.el:1051
+msgid "Kill Occur Buffer"
+msgstr ""
+
+#: replace.el:1054
+msgid "Quit Occur Window"
+msgstr ""
+
+#: replace.el:1057
+msgid "Revert Occur Buffer"
+msgstr ""
+
+#: replace.el:1060
+msgid "Clone Occur Buffer"
+msgstr ""
+
+#: replace.el:1063
+msgid "Rename Occur Buffer"
+msgstr ""
+
+#: replace.el:1066
+msgid "Edit Occur Buffer"
+msgstr ""
+
+#: replace.el:1070
+msgid "Go To Occurrence Other Window"
+msgstr ""
+
+#: replace.el:1073
+msgid "Go To Occurrence"
+msgstr ""
+
+#: replace.el:1076
+msgid "Display Occurrence"
+msgstr ""
+
+#: replace.el:1079
+msgid "Move to Next Match"
+msgstr ""
+
+#: replace.el:1082
+msgid "Move to Previous Match"
+msgstr ""
+
+#: ruler-mode.el:616
+msgid "Ruler"
+msgstr ""
+
+#: server.el:517
+msgid " "
+msgstr ""
+
+#: term.el:4435
+msgid "Other..."
+msgstr ""
+
+#: wdired.el:187
+msgid "Abort Changes"
+msgstr ""
+
+#: woman.el:1181
+msgid "Read Man Page (WoMan)..."
+msgstr ""
+
+#: cedet/ede.el:222
+msgid "Find File in Project..."
+msgstr ""
+
+#: cedet/ede.el:225
+msgid "View Project Tree"
+msgstr ""
+
+#: cedet/ede.el:228
+msgid "Load Project"
+msgstr ""
+
+#: cedet/ede.el:231
+msgid "Create Project"
+msgstr ""
+
+#: cedet/ede.el:235
+msgid "Target Options"
+msgstr ""
+
+#: cedet/ede.el:239
+msgid "Project Options"
+msgstr ""
+
+#: cedet/ede.el:243
+msgid "Build Project"
+msgstr ""
+
+#: cedet/semantic.el:912
+msgid "Complete Tag Inline"
+msgstr ""
+
+#: cedet/semantic.el:918
+msgid "Transpose Tags Down"
+msgstr ""
+
+#: cedet/semantic.el:923
+msgid "Transpose Tags Up"
+msgstr ""
+
+#: cedet/semantic.el:930
+msgid "Yank Tag"
+msgstr ""
+
+#: cedet/semantic.el:935
+msgid "Copy Tag To Register"
+msgstr ""
+
+#: cedet/semantic.el:940
+msgid "Copy Tag"
+msgstr ""
+
+#: cedet/semantic.el:945
+msgid "Kill Tag"
+msgstr ""
+
+#: cedet/semantic.el:952
+msgid "Narrow to Tag"
+msgstr ""
+
+#: cedet/semantic.el:959
+msgid "Find Tag References..."
+msgstr ""
+
+#: cedet/semantic.el:963
+msgid "Find Tag Globally..."
+msgstr ""
+
+#: cedet/semantic.el:967
+msgid "Find Local Members ..."
+msgstr ""
+
+#: cedet/semantic.el:971
+msgid "Find Tag in This Buffer..."
+msgstr ""
+
+#: cedet/semantic.el:977
+msgid "Parent Tag"
+msgstr ""
+
+#: cedet/semantic.el:981
+msgid "Next Tag"
+msgstr ""
+
+#: cedet/semantic.el:985
+msgid "Previous Tag"
+msgstr ""
+
+#: cedet/semantic.el:991
+msgid "Reparse Buffer"
+msgstr ""
+
+#: cedet/semantic.el:996
+msgid "Edit Tags"
+msgstr ""
+
+#: cedet/semantic.el:999
+msgid "Navigate Tags"
+msgstr ""
+
+#: cedet/semantic.el:1004
+msgid "Highlight Current Function"
+msgstr ""
+
+#: cedet/semantic.el:1009
+msgid "Stick Top Tag to Headerline"
+msgstr ""
+
+#: cedet/semantic.el:1015
+msgid "Decorate Tags"
+msgstr ""
+
+#: cedet/semantic.el:1021
+msgid "Show Tag Completions"
+msgstr ""
+
+#: cedet/semantic.el:1027
+msgid "Show Tag Summaries"
+msgstr ""
+
+#: cedet/semantic.el:1033
+msgid "Reparse When Idle"
+msgstr ""
+
+#: cedet/semantic.el:1038
+msgid "Semantic Database"
+msgstr ""
+
+#: emacs-lisp/lisp-mode.el:712
+msgid "Run inferior Lisp"
+msgstr ""
+
+#: emacs-lisp/lisp-mode.el:715
+msgid "Eval defun"
+msgstr ""
+
+#: emacs-lisp/lisp-mode.el:718
+msgid "Indent sexp"
+msgstr ""
+
+#: emacs-lisp/re-builder.el:244
+msgid "Case sensitive"
+msgstr ""
+
+#: emacs-lisp/re-builder.el:250
+msgid "Change target buffer..."
+msgstr ""
+
+#: emacs-lisp/re-builder.el:253
+msgid "Change syntax..."
+msgstr ""
+
+#: emacs-lisp/re-builder.el:256
+msgid "Enter subexpression mode"
+msgstr ""
+
+#: emacs-lisp/re-builder.el:259
+msgid "Force update"
+msgstr ""
+
+#: emacs-lisp/re-builder.el:262
+msgid "Go to next match"
+msgstr ""
+
+#: emacs-lisp/re-builder.el:265
+msgid "Go to previous match"
+msgstr ""
+
+#: emacs-lisp/re-builder.el:268
+msgid "Copy current RE"
+msgstr ""
+
+#: emulation/cua-gmrk.el:368 emulation/cua-rect.el:1485
+msgid "sic"
+msgstr ""
+
+#: international/mule-cmds.el:74
+msgid "For I/O with Subprocess"
+msgstr ""
+
+#: international/mule-cmds.el:79
+msgid "For Next X Selection"
+msgstr ""
+
+#: international/mule-cmds.el:83
+msgid "For X Selections/Clipboard"
+msgstr ""
+
+#: international/mule-cmds.el:89
+msgid "For Terminal"
+msgstr ""
+
+#: international/mule-cmds.el:93
+msgid "For Keyboard"
+msgstr ""
+
+#: international/mule-cmds.el:98
+msgid "For File Name"
+msgstr ""
+
+#: international/mule-cmds.el:101
+msgid "For Reverting This File Now"
+msgstr ""
+
+#: international/mule-cmds.el:106
+msgid "For Saving This Buffer"
+msgstr ""
+
+#: international/mule-cmds.el:110
+msgid "For Next Command"
+msgstr ""
+
+#: international/mule-cmds.el:117
+msgid "Show All Multilingual Settings"
+msgstr ""
+
+#: international/mule-cmds.el:120
+msgid "List Character Sets"
+msgstr ""
+
+#: international/mule-cmds.el:134
+msgid "Show Multilingual Sample Text"
+msgstr ""
+
+#: international/mule-cmds.el:139
+msgid "Set Coding Systems"
+msgstr ""
+
+#: international/mule-cmds.el:143
+msgid "Describe Input Method"
+msgstr ""
+
+#: international/mule-cmds.el:145
+msgid "Select Input Method..."
+msgstr ""
+
+#: international/mule-cmds.el:147
+msgid "Toggle Input Method"
+msgstr ""
+
+#: international/mule-cmds.el:151
+msgid "Set Language Environment"
+msgstr ""
+
+#: mail/rmail.el:1176
+msgid "Resend..."
+msgstr ""
+
+#: mail/sendmail.el:314
+msgid "Cite Original"
+msgstr ""
+
+#: obsolete/vc-arch.el:624
+msgid "Add tagline"
+msgstr ""
+
+#: org/org-element.el:123
+msgid "[.)]"
+msgstr ""
+
+#: org/org-lint.el:402
+msgid "NAME"
+msgstr ""
+
+#: org/org-mouse.el:469
+msgid "Agenda command ???"
+msgstr ""
+
+#: org/ox-ascii.el:1603
+msgid "???"
+msgstr ""
+
+#: play/handwrite.el:88
+msgid "Page numbering"
+msgstr ""
+
+#: play/handwrite.el:91
+msgid "10 pt"
+msgstr ""
+
+#: play/handwrite.el:93
+msgid "11 pt"
+msgstr ""
+
+#: play/handwrite.el:95
+msgid "12 pt"
+msgstr ""
+
+#: play/handwrite.el:97
+msgid "13 pt"
+msgstr ""
+
+#: progmodes/asm-mode.el:81 progmodes/m4-mode.el:113
+msgid "Comment Region"
+msgstr ""
+
+#: progmodes/asm-mode.el:84
+msgid "Insert Newline and Indent"
+msgstr ""
+
+#: progmodes/asm-mode.el:87
+msgid "Insert Colon"
+msgstr ""
+
+#: progmodes/compile.el:1857
+msgid "Stop Compilation"
+msgstr ""
+
+#: progmodes/compile.el:1863
+msgid "Auto Error Display"
+msgstr ""
+
+#: progmodes/compile.el:1869
+msgid "Don't Skip Any Messages"
+msgstr ""
+
+#: progmodes/compile.el:1876
+msgid "Skip Info"
+msgstr ""
+
+#: progmodes/compile.el:1883
+msgid "Skip Warnings and Info"
+msgstr ""
+
+#: progmodes/compile.el:1892
+msgid "First Error"
+msgstr ""
+
+#: progmodes/compile.el:1895
+msgid "Previous Error"
+msgstr ""
+
+#: progmodes/compile.el:1898
+msgid "Next Error"
+msgstr ""
+
+#: progmodes/compile.el:1974
+msgid "Search Files (grep)..."
+msgstr ""
+
+#: progmodes/compile.el:1977
+msgid "Recompile"
+msgstr ""
+
+#: progmodes/ebrowse.el:3531
+msgid "unknown"
+msgstr ""
+
+#: progmodes/elisp-mode.el:60
+msgid "Auto-Display Documentation Strings"
+msgstr ""
+
+#: progmodes/elisp-mode.el:64
+msgid "Check Documentation Strings"
+msgstr ""
+
+#: progmodes/elisp-mode.el:67
+msgid "Construct Regexp"
+msgstr ""
+
+#: progmodes/elisp-mode.el:71
+msgid "Untrace All"
+msgstr ""
+
+#: progmodes/elisp-mode.el:74
+msgid "Untrace Function..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:78
+msgid "Trace Function Quietly..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:81
+msgid "Trace Function..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:85
+msgid "Remove Instrumentation for All Functions"
+msgstr ""
+
+#: progmodes/elisp-mode.el:88
+msgid "Remove Instrumentation for Function..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:93
+msgid "Reset Counters for All Functions"
+msgstr ""
+
+#: progmodes/elisp-mode.el:96
+msgid "Reset Counters for Function..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:99
+msgid "Show Profiling Results"
+msgstr ""
+
+#: progmodes/elisp-mode.el:102
+msgid "Instrument Package..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:105
+msgid "Instrument Function..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:110
+msgid "Stop Native Profiler"
+msgstr ""
+
+#: progmodes/elisp-mode.el:115
+msgid "Show Profiler Report"
+msgstr ""
+
+#: progmodes/elisp-mode.el:120
+msgid "Start Native Profiler..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:125
+msgid "Lint Directory..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:128
+msgid "Lint File..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:131
+msgid "Lint Buffer"
+msgstr ""
+
+#: progmodes/elisp-mode.el:134
+msgid "Lint Defun"
+msgstr ""
+
+#: progmodes/elisp-mode.el:137 progmodes/elisp-mode.el:873
+msgid "Instrument Function for Debugging"
+msgstr ""
+
+#: progmodes/elisp-mode.el:142
+msgid "Disassemble Byte Compiled Object..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:145
+msgid "Byte-recompile Directory..."
+msgstr ""
+
+#: progmodes/elisp-mode.el:148
+msgid "Byte-compile and Load"
+msgstr ""
+
+#: progmodes/elisp-mode.el:151
+msgid "Byte-compile This File"
+msgstr ""
+
+#: progmodes/elisp-mode.el:155
+msgid "Interactive Expression Evaluation"
+msgstr ""
+
+#: progmodes/elisp-mode.el:158
+msgid "Evaluate Buffer"
+msgstr ""
+
+#: progmodes/elisp-mode.el:161
+msgid "Evaluate Region"
+msgstr ""
+
+#: progmodes/elisp-mode.el:165
+msgid "Evaluate Last S-expression"
+msgstr ""
+
+#: progmodes/elisp-mode.el:169
+msgid "Comment Out Region"
+msgstr ""
+
+#: progmodes/elisp-mode.el:173
+msgid "Indent Region"
+msgstr ""
+
+#: progmodes/elisp-mode.el:177
+msgid "Indent Line"
+msgstr ""
+
+#: progmodes/elisp-mode.el:867
+msgid "Evaluate Defun"
+msgstr ""
+
+#: progmodes/elisp-mode.el:870
+msgid "Evaluate and Print"
+msgstr ""
+
+#: progmodes/elisp-mode.el:877
+msgid "Indent or Pretty-Print"
+msgstr ""
+
+#: progmodes/elisp-mode.el:880
+msgid "Complete Lisp Symbol"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3605
+msgid "Binary"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3608
+msgid "Octal"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3611
+msgid "Unsigned Decimal"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3614
+msgid "Signed Decimal"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3617
+msgid "Hexadecimal"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3684
+msgid "Giant words"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3687
+msgid "Words"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3690
+msgid "Halfwords"
+msgstr ""
+
+#: progmodes/gdb-mi.el:3693
+msgid "Bytes"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4459
+msgid "GDB-Windows"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4476
+msgid "GDB-Frames"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4496
+msgid "Display Other Windows"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4500
+msgid "Restore Window Layout"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4505
+msgid "GUD controls all threads"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4512
+msgid "GUD controls current thread"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4521
+msgid "Customize switching..."
+msgstr ""
+
+#: progmodes/gdb-mi.el:4532
+msgid "GDB-MI"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4540
+msgid "Switch to non-stop/A mode"
+msgstr ""
+
+#: progmodes/gdb-mi.el:4548
+msgid "Switch to non-stop/T mode"
+msgstr ""
+
+#: progmodes/grep.el:291
+msgid "Toggle command abbreviation"
+msgstr ""
+
+#: progmodes/grep.el:296
+msgid "Kill Grep"
+msgstr ""
+
+#: progmodes/grep.el:303
+msgid "Recursive grep..."
+msgstr ""
+
+#: progmodes/grep.el:306
+msgid "Local grep..."
+msgstr ""
+
+#: progmodes/grep.el:309
+msgid "Grep via Find..."
+msgstr ""
+
+#: progmodes/grep.el:312
+msgid "Another grep..."
+msgstr ""
+
+#: progmodes/grep.el:315
+msgid "Repeat grep"
+msgstr ""
+
+#: progmodes/grep.el:319
+msgid "First Match"
+msgstr ""
+
+#: progmodes/grep.el:322
+msgid "Previous Match"
+msgstr ""
+
+#: progmodes/grep.el:325
+msgid "Next Match"
+msgstr ""
+
+#: progmodes/m4-mode.el:116
+msgid "M4 Buffer"
+msgstr ""
+
+#: progmodes/m4-mode.el:119
+msgid "M4 Region"
+msgstr ""
+
+#: progmodes/make-mode.el:626
+msgid "Makepp"
+msgstr ""
+
+#: progmodes/make-mode.el:630
+msgid "Imake"
+msgstr ""
+
+#: progmodes/make-mode.el:634
+msgid "Classic"
+msgstr ""
+
+#: progmodes/make-mode.el:638
+msgid "BSD"
+msgstr ""
+
+#: progmodes/make-mode.el:642
+msgid "Automake"
+msgstr ""
+
+#: progmodes/make-mode.el:646
+msgid "GNU make"
+msgstr ""
+
+#: progmodes/make-mode.el:650
+msgid "Pop up Makefile Browser"
+msgstr ""
+
+#: progmodes/make-mode.el:654
+msgid "Up To Date Overview"
+msgstr ""
+
+#: progmodes/make-mode.el:659
+msgid "Pick File Name as Target"
+msgstr ""
+
+#: progmodes/make-mode.el:662
+msgid "Insert GNU make function"
+msgstr ""
+
+#: progmodes/make-mode.el:665
+msgid "Find Targets and Macros"
+msgstr ""
+
+#: progmodes/make-mode.el:668
+msgid "Complete Target or Macro"
+msgstr ""
+
+#: progmodes/make-mode.el:671
+msgid "Backslash Region"
+msgstr ""
+
+#: progmodes/make-mode.el:676
+msgid "Move to Previous Dependency"
+msgstr ""
+
+#: progmodes/make-mode.el:679
+msgid "Move to Next Dependency"
+msgstr ""
+
+#: progmodes/sh-script.el:498
+msgid "Learn buffer indentation"
+msgstr ""
+
+#: progmodes/sh-script.el:501
+msgid "Learn line indentation"
+msgstr ""
+
+#: progmodes/sh-script.el:504
+msgid "Show indentation"
+msgstr ""
+
+#: progmodes/sh-script.el:507
+msgid "Set indentation"
+msgstr ""
+
+#: progmodes/sh-script.el:511
+msgid "Insert braces and quotes in pairs"
+msgstr ""
+
+#: progmodes/sh-script.el:519
+msgid "Function..."
+msgstr ""
+
+#: progmodes/sh-script.el:522
+msgid "Addition..."
+msgstr ""
+
+#: progmodes/sh-script.el:525
+msgid "Until Loop"
+msgstr ""
+
+#: progmodes/sh-script.el:528
+msgid "Repeat Loop"
+msgstr ""
+
+#: progmodes/sh-script.el:531
+msgid "While Loop"
+msgstr ""
+
+#: progmodes/sh-script.el:534
+msgid "Options Loop"
+msgstr ""
+
+#: progmodes/sh-script.el:537
+msgid "Indexed Loop"
+msgstr ""
+
+#: progmodes/sh-script.el:540
+msgid "Select Statement"
+msgstr ""
+
+#: progmodes/sh-script.el:543
+msgid "If Statement"
+msgstr ""
+
+#: progmodes/sh-script.el:546
+msgid "For Loop"
+msgstr ""
+
+#: progmodes/sh-script.el:549
+msgid "Case Statement"
+msgstr ""
+
+#: progmodes/sh-script.el:553
+msgid "Execute region"
+msgstr ""
+
+#: progmodes/sh-script.el:556
+msgid "Execute script..."
+msgstr ""
+
+#: progmodes/sh-script.el:559
+msgid "Set shell type..."
+msgstr ""
+
+#: progmodes/sh-script.el:562
+msgid "Backslash region"
+msgstr ""
+
+#: term/ns-win.el:850
+msgid "Hide"
+msgstr ""
+
+#: textmodes/artist.el:507
+msgid "Characters for Spray"
+msgstr ""
+
+#: textmodes/artist.el:510
+msgid "Draw Shape Borders"
+msgstr ""
+
+#: textmodes/artist.el:514
+msgid "Trim Line Endings"
+msgstr ""
+
+#: textmodes/artist.el:518
+msgid "Rubber-banding"
+msgstr ""
+
+#: textmodes/artist.el:522
+msgid "Character to Erase..."
+msgstr ""
+
+#: textmodes/artist.el:525
+msgid "Character for Line..."
+msgstr ""
+
+#: textmodes/artist.el:528
+msgid "Character for Fill..."
+msgstr ""
+
+#: textmodes/bibtex.el:3527
+msgid "BibTeX dialect"
+msgstr ""
+
+#: textmodes/bibtex.el:3530
+msgid "Preamble"
+msgstr ""
+
+#: textmodes/bibtex.el:3532
+msgid "String"
+msgstr ""
+
+#: textmodes/bibtex.el:3549
+msgid "Entry-Types"
+msgstr ""
+
+#: textmodes/conf-mode.el:88
+msgid "Windows mode"
+msgstr ""
+
+#: textmodes/conf-mode.el:93
+msgid "Java properties mode"
+msgstr ""
+
+#: textmodes/conf-mode.el:98
+msgid "Space keywords mode..."
+msgstr ""
+
+#: textmodes/conf-mode.el:103
+msgid "PPD mode"
+msgstr ""
+
+#: textmodes/conf-mode.el:108
+msgid "Colon mode"
+msgstr ""
+
+#: textmodes/conf-mode.el:113
+msgid "Unix mode"
+msgstr ""
+
+#: textmodes/conf-mode.el:118
+msgid "Xdefaults mode"
+msgstr ""
+
+#: textmodes/conf-mode.el:124
+msgid "Set quote syntax normal"
+msgstr ""
+
+#: textmodes/conf-mode.el:127
+msgid "Align assignments"
+msgstr ""
+
+#: textmodes/nroff-mode.el:61
+msgid "Newline"
+msgstr ""
+
+#: textmodes/nroff-mode.el:64
+msgid "Count text lines"
+msgstr ""
+
+#: textmodes/nroff-mode.el:67
+msgid "Forward text line"
+msgstr ""
+
+#: textmodes/nroff-mode.el:70
+msgid "Backward text line"
+msgstr ""
+
+#: textmodes/nroff-mode.el:73
+msgid "Electric newline mode"
+msgstr ""
+
+#: textmodes/nroff-mode.el:78
+msgid "Preview as man page"
+msgstr ""
+
+#: textmodes/tex-mode.el:867
+msgid "Tex Kill"
+msgstr ""
+
+#: textmodes/tex-mode.el:869
+msgid "Tex Recenter"
+msgstr ""
+
+#: textmodes/tex-mode.el:874
+msgid "Tex Print (alt printer)"
+msgstr ""
+
+#: textmodes/tex-mode.el:877
+msgid "Tex Print"
+msgstr ""
+
+#: textmodes/tex-mode.el:879
+msgid "Tex View"
+msgstr ""
+
+#: textmodes/tex-mode.el:909
+msgid "Validate Region"
+msgstr ""
+
+#: textmodes/tex-mode.el:913
+msgid "TeX Region"
+msgstr ""
+
+#: textmodes/text-mode.el:76
+msgid "Auto Fill"
+msgstr ""
+
+#: textmodes/text-mode.el:80
+msgid "Paragraph Indent"
+msgstr ""
+
+#: textmodes/text-mode.el:85
+msgid "Center Region"
+msgstr ""
+
+#: textmodes/text-mode.el:89
+msgid "Center Paragraph"
+msgstr ""
+
+#: textmodes/text-mode.el:92
+msgid "Center Line"
+msgstr ""
+
+#: vc/add-log.el:561
+msgid "Go To Source"
+msgstr ""
+
+#: vc/add-log.el:564
+msgid "Find File"
+msgstr ""
+
+#: vc/add-log.el:568
+msgid "Next Log-Edit Comment"
+msgstr ""
+
+#: vc/add-log.el:571
+msgid "Previous Log-Edit Comment"
+msgstr ""
+
+#: vc/cvs-status.el:400
+msgid "  "
+msgstr ""
+
+#: vc/cvs-status.el:410
+msgid "| "
+msgstr ""
+
+#: vc/cvs-status.el:415 vc/cvs-status.el:425
+msgid "+-"
+msgstr ""
+
+#: vc/cvs-status.el:420
+msgid "`-"
+msgstr ""
+
+#: vc/diff-mode.el:538
+msgid "^[^-+#!<> \\]"
+msgstr ""
+
+#: vc/diff-mode.el:1990
+msgid "-b"
+msgstr ""
+
+#: vc/ediff-mult.el:402
+msgid "Truncate filenames"
+msgstr ""
+
+#: vc/ediff-mult.el:406
+msgid "Display Ediff Registry"
+msgstr ""
+
+#: vc/ediff-mult.el:409
+msgid "Show Manual"
+msgstr ""
+
+#: vc/ediff-mult.el:871
+msgid "Hide marked"
+msgstr ""
+
+#: vc/ediff-mult.el:876
+msgid "Mark for hiding"
+msgstr ""
+
+#: vc/ediff-mult.el:881
+msgid "Mark for group operation"
+msgstr ""
+
+#: vc/ediff-mult.el:886
+msgid "Unmark all for hiding"
+msgstr ""
+
+#: vc/ediff-mult.el:891
+msgid "Unmark all for group operation"
+msgstr ""
+
+#: vc/ediff-mult.el:897
+msgid "Collect diffs"
+msgstr ""
+
+#: vc/ediff-mult.el:904
+msgid "Show multi-file patch"
+msgstr ""
+
+#: vc/ediff-mult.el:913
+msgid "Go to parent session"
+msgstr ""
+
+#: vc/ediff-mult.el:918
+msgid "Diff directories"
+msgstr ""
+
+#: vc/emerge.el:403
+msgid "Skip Prefers"
+msgstr ""
+
+#: vc/emerge.el:406
+msgid "Auto Advance"
+msgstr ""
+
+#: vc/emerge.el:409
+msgid "Edit Mode"
+msgstr ""
+
+#: vc/emerge.el:411
+msgid "Fast Mode"
+msgstr ""
+
+#: vc/vc-bzr.el:1063
+msgid "Delete Shelf"
+msgstr ""
+
+#: vc/vc-bzr.el:1066
+msgid "Apply and Keep Shelf"
+msgstr ""
+
+#: vc/vc-bzr.el:1069
+msgid "Apply and Remove Shelf (Pop)"
+msgstr ""
+
+#: vc/vc-bzr.el:1072
+msgid "Show Shelve"
+msgstr ""
+
+#: vc/vc-bzr.el:1079
+msgid "Shelve a Snapshot"
+msgstr ""
+
+#: vc/vc-bzr.el:1082
+msgid "Shelve..."
+msgstr ""
+
+#: vc/vc-dir.el:119
+msgid "Kill Update Command"
+msgstr ""
+
+#: vc/vc-dir.el:127
+msgid "Hide Up-to-date"
+msgstr ""
+
+#: vc/vc-dir.el:132
+msgid "Next Line"
+msgstr ""
+
+#: vc/vc-dir.el:135
+msgid "Previous Line"
+msgstr ""
+
+#: vc/vc-dir.el:144
+msgid "Unmark Previous "
+msgstr ""
+
+#: vc/vc-dir.el:148
+msgid "Mark All"
+msgstr ""
+
+#: vc/vc-dir.el:176
+msgid "Open in Other Window"
+msgstr ""
+
+#: vc/vc-dir.el:179
+msgid "Open File"
+msgstr ""
+
+#: vc/vc-dir.el:185
+msgid "Show File"
+msgstr ""
+
+#: vc/vc-dir.el:188 vc/vc-hooks.el:921
+msgid "Annotate"
+msgstr ""
+
+#: vc/vc-dir.el:191 vc/vc-hooks.el:930
+msgid "Compare with Base Version"
+msgstr ""
+
+#: vc/vc-dir.el:194 vc/vc-hooks.el:939
+msgid "Show Outgoing Log"
+msgstr ""
+
+#: vc/vc-dir.el:197 vc/vc-hooks.el:942
+msgid "Show Incoming Log"
+msgstr ""
+
+#: vc/vc-dir.el:200 vc/vc-hooks.el:945
+msgid "Show History"
+msgstr ""
+
+#: vc/vc-dir.el:203 vc/vc-hooks.el:948
+msgid "Show Top of the Tree History "
+msgstr ""
+
+#: vc/vc-dir.el:208 vc/vc-hooks.el:959
+msgid "Push Changes"
+msgstr ""
+
+#: vc/vc-dir.el:212 vc/vc-hooks.el:962
+msgid "Update to Latest Version"
+msgstr ""
+
+#: vc/vc-dir.el:215 vc/vc-hooks.el:955
+msgid "Revert to Base Version"
+msgstr ""
+
+#: vc/vc-dir.el:220 vc/vc-hooks.el:965
+msgid "Check In/Out"
+msgstr ""
+
+#: vc/vc-dir.el:223 vc/vc-hooks.el:968
+msgid "Register"
+msgstr ""
+
+#: vc/vc-dir.el:226
+msgid "Ignore Current File"
+msgstr ""
+
+#: vc/vc-dir.el:311
+msgid "VC-Dir"
+msgstr ""
+
+#: vc/vc-git.el:390
+msgid "   (symlink)"
+msgstr ""
+
+#: vc/vc-git.el:395
+msgid "   (subproject)"
+msgstr ""
+
+#: vc/vc-git.el:636
+msgid "Delete Stash"
+msgstr ""
+
+#: vc/vc-git.el:639
+msgid "Apply Stash"
+msgstr ""
+
+#: vc/vc-git.el:642
+msgid "Apply and Remove Stash (Pop)"
+msgstr ""
+
+#: vc/vc-git.el:645
+msgid "Show Stash"
+msgstr ""
+
+#: vc/vc-git.el:1394
+msgid "Git grep..."
+msgstr ""
+
+#: vc/vc-git.el:1397
+msgid "Delete Stash..."
+msgstr ""
+
+#: vc/vc-git.el:1400
+msgid "Stash a Snapshot"
+msgstr ""
+
+#: vc/vc-git.el:1403
+msgid "Create Stash..."
+msgstr ""
+
+#: vc/vc-git.el:1406
+msgid "Show Stash..."
+msgstr ""
+
+#: vc/vc-hooks.el:914
+msgid "Retrieve Tag"
+msgstr ""
+
+#: vc/vc-hooks.el:917
+msgid "Create Tag"
+msgstr ""
+
+#: vc/vc-hooks.el:924
+msgid "Rename File"
+msgstr ""
+
+#: vc/vc-hooks.el:927
+msgid "Show Other Version"
+msgstr ""
+
+#: vc/vc-hooks.el:933
+msgid "Compare Tree with Base Version"
+msgstr ""
+
+#: vc/vc-hooks.el:936
+msgid "Update ChangeLog"
+msgstr ""
+
+#: vc/vc-hooks.el:952
+msgid "Insert Header"
+msgstr ""
+
+#: vc/vc-hooks.el:971
+msgid "Ignore File..."
+msgstr ""
+
+#: vc/vc-hooks.el:974
+msgid "VC Dir"
+msgstr ""

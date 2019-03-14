@@ -3146,6 +3146,8 @@ the word mode."
 (define-obsolete-function-alias 'isearch--describe-word-mode
   'isearch--describe-regexp-mode "25.1")
 
+(defun _ (string) string)
+
 (defun isearch-message-prefix (&optional ellipsis nonincremental)
   ;; If about to search, and previous search regexp was invalid,
   ;; check that it still is.  If it is valid now,
@@ -3157,17 +3159,17 @@ the word mode."
 	 (error nil)))
   ;; If currently failing, display no ellipsis.
   (or isearch-success (setq ellipsis nil))
-  (let ((m (concat (if isearch-success "" "failing ")
-		   (if isearch-adjusted "pending " "")
+  (let ((m (concat (if isearch-success "" (_ "failing "))
+		   (if isearch-adjusted (_ "pending ") "")
 		   (if (and isearch-wrapped
 			    (not isearch-wrap-function)
 			    (if isearch-forward
 				(> (point) isearch-opoint)
 			      (< (point) isearch-opoint)))
-		       "over")
-		   (if isearch-wrapped "wrapped ")
+		       (_ "over"))
+		   (if isearch-wrapped (_ "wrapped "))
                    (if (and (not isearch-success) (not isearch-case-fold-search))
-                       "case-sensitive ")
+                       (_ "case-sensitive "))
                    (let ((prefix ""))
                      (advice-function-mapc
                       (lambda (_ props)
@@ -3181,8 +3183,8 @@ the word mode."
 		    (multi-isearch-buffer-list "multi-buffer ")
 		    (t ""))
 		   (or isearch-message-prefix-add "")
-		   (if nonincremental "search" "I-search")
-		   (if isearch-forward "" " backward")
+		   (if nonincremental (_ "search") (_ "I-search"))
+		   (if isearch-forward "" (_ " backward"))
 		   (if current-input-method
 		       ;; Input methods for RTL languages use RTL
 		       ;; characters for their title, and that messes

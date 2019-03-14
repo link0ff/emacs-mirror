@@ -2866,18 +2866,18 @@ characters."
 			   skip-filtered-count
 			   skip-invisible-count)
                         0)
-		     (format " (skipped %s)"
+		     (format-message " (skipped %s)"
 			     (mapconcat
 			      #'identity
 			      (delq nil (list
 					 (if (> skip-read-only-count 0)
-					     (format "%s read-only"
+					     (format-message "%s read-only"
 						     skip-read-only-count))
 					 (if (> skip-invisible-count 0)
-					     (format "%s invisible"
+					     (format-message "%s invisible"
 						     skip-invisible-count))
 					 (if (> skip-filtered-count 0)
-					     (format "%s filtered out"
+					     (format-message "%s filtered out"
 						     skip-filtered-count))))
 			      ", "))
 		   "")))
