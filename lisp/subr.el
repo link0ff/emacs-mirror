@@ -3192,11 +3192,12 @@ discouraged."
   "Start a program in a subprocess.  Return the process object for it.
 Similar to `start-process-shell-command', but calls `start-file-process'."
   (declare (advertised-calling-convention (name buffer command) "23.1"))
-  (start-file-process
-   name buffer
-   (if (file-remote-p default-directory) "/bin/sh" shell-file-name)
-   (if (file-remote-p default-directory) "-c" shell-command-switch)
-   (mapconcat 'identity args " ")))
+  ;; On remote hosts, the local `shell-file-name' might be useless.
+  (with-connection-local-variables
+   (start-file-process
+    name buffer
+    shell-file-name shell-command-switch
+    (mapconcat 'identity args " "))))
 
 (defun call-process-shell-command (command &optional infile buffer display
 					   &rest args)
@@ -3692,7 +3693,7 @@ the specified region.  It must not change
 `before-change-functions' or `after-change-functions'.
 
 Additionally, the buffer modifications of BODY are recorded on
-the buffer's undo list as a single \(apply ...) entry containing
+the buffer's undo list as a single (apply ...) entry containing
 the function `undo--wrap-and-run-primitive-undo'."
   (let ((old-bul buffer-undo-list)
 	(end-marker (copy-marker end t))
@@ -3705,7 +3706,14 @@ the function `undo--wrap-and-run-primitive-undo'."
 	(if (eq buffer-undo-list t)
 	    (setq result (funcall body))
 	  (let (;; (inhibit-modification-hooks t)
-                before-change-functions after-change-functions)
+                (before-change-functions
+                 ;; Ugly Hack: if the body uses syntax-ppss/syntax-propertize
+                 ;; (e.g. via a regexp-search or sexp-movement trigerring
+                 ;; on-the-fly syntax-propertize), make sure that this gets
+                 ;; properly refreshed after subsequent changes.
+                 (if (memq #'syntax-ppss-flush-cache before-change-functions)
+                     '(syntax-ppss-flush-cache)))
+                after-change-functions)
 	    (setq result (funcall body)))
 	  (let ((ap-elt
 		 (list 'apply

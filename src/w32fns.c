@@ -48,6 +48,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #ifdef WINDOWSNT
 #include <mbstring.h>
+#include <mbctype.h>	/* for _getmbcp */
 #endif /* WINDOWSNT */
 
 #if CYGWIN
@@ -1650,12 +1651,16 @@ x_clear_under_internal_border (struct frame *f)
   /* Clear border if it's larger than before.  */
   if (border != 0)
     {
-      HDC hdc = get_frame_dc (f);
       int width = FRAME_PIXEL_WIDTH (f);
       int height = FRAME_PIXEL_HEIGHT (f);
-      struct face *face = FACE_FROM_ID_OR_NULL (f, INTERNAL_BORDER_FACE_ID);
+      int face_id =
+	!NILP (Vface_remapping_alist)
+	? lookup_basic_face (NULL, f, INTERNAL_BORDER_FACE_ID)
+	: INTERNAL_BORDER_FACE_ID;
+      struct face *face = FACE_FROM_ID_OR_NULL (f, face_id);
 
       block_input ();
+      HDC hdc = get_frame_dc (f);
       if (face)
 	{
 	  /* Fill border with internal border face.  */
@@ -10903,6 +10908,15 @@ globals_of_w32fns (void)
 	      w32_ansi_code_page,
 	      doc: /* The ANSI code page used by the system.  */);
   w32_ansi_code_page = GetACP ();
+
+#ifndef CYGWIN
+  DEFVAR_INT ("w32-multibyte-code-page",
+	      w32_multibyte_code_page,
+	      doc: /* The current multibyte code page used by the system.
+A value of zero indicates that the single-byte code page is in use,
+see `w32-ansi-code-page'.  */);
+  w32_multibyte_code_page = _getmbcp ();
+#endif
 
   if (os_subtype == OS_NT)
     w32_unicode_gui = 1;
