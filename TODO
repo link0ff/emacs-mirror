@@ -12,10 +12,30 @@ xgettext --keyword=message *.el **/*.el
        (message "Date is pre-Bahá’í")
      (message "Bahá’í date: %s" s)
 
-xgettext --from-code=UTF-8 -kformat-message -kmessage -kerror -ktramp-message -ktramp-error *.el **/*.el
+xgettext --from-code=UTF-8 -kformat-message -kmessage -kerror -ktramp-message -ktramp-error -kngettext:1,2 *.el **/*.el
+
+ #: replace.el:986
+ #, elisp-format
+-msgid "Deleted %d matching lines"
+-msgstr ""
++msgid "Deleted %d matching line"
++msgid_plural "Deleted %d matching lines"
++msgstr[0] ""
++msgstr[1] ""
+
 xgettext --from-code=UTF-8 -kformat-message -kmessage -kerror -ktramp-message -ktramp-error gnus/*.el -o gnus_messages.po
+
 xgettext --from-code=UTF-8 -kmenu-item *.el **/*.el -o menus.po
+
+ #: menu-bar.el:91
+ msgid "New Window on Right"
+ msgstr ""
+
 xgettext --from-code=UTF-8 -kdefcustom:3 -kdefvar:3 -kdefun:3 *.el **/*.el -o docstrings.po
+
+ #: isearch.el:178
+ msgid "Function(s) to call after isearch has found matches in the buffer."
+ msgstr ""
 
 
 FIXED:

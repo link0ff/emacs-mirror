@@ -983,7 +983,10 @@ also print the number."
 		       (progn (forward-line 1) (point)))
         (setq count (1+ count))))
     (set-marker rend nil)
-    (when interactive (message "Deleted %d matching lines" count))
+    (when interactive (message (ngettext "Deleted %d matching line"
+					 "Deleted %d matching lines"
+					 count)
+			       count))
     count))
 
 (defun how-many (regexp &optional rstart rend interactive)
