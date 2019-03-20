@@ -985,6 +985,11 @@ default, and not just the opening element.
 
 ** Eshell
 
+*** TAB completion uses the standard completion-at-point rather than pcomplete
+Its UI is slightly different but can be customized to behave similarly,
+e.g. Pcomplete's default cycling can be obtained with
+(setq completion-cycle-threshold 5).
+
 ---
 *** Expansion of history event designators is disabled by default.
 To restore the old behavior, use
@@ -1335,6 +1340,13 @@ they are now allocated like any other pseudovector.  As a result, the
 'garbage-collect' and 'memory-use-count' functions no longer return a
 'misc' component, and the 'misc-objects-consed' variable has been
 removed.
+
++++
+** Reversed character ranges are no longer permitted in rx.
+Previously, ranges where the starting character is greater than the
+ending character were silently omitted.
+For example, '(rx (any "@z-a" (?9 . ?0)))' would match '@' only.
+Now, such rx expressions generate an error.
 
 
 * Lisp Changes in Emacs 27.1

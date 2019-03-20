@@ -513,11 +513,11 @@ Return the number of characters removed."
   (url-http-debug "url-http-parse-response called in (%s)" (buffer-name))
   (goto-char (point-min))
   (skip-chars-forward " \t\n")		; Skip any blank crap
-  (skip-chars-forward "HTTP/")		; Skip HTTP Version
+  (skip-chars-forward "/HPT")		; Skip HTTP Version "HTTP/".
   (setq url-http-response-version
 	(buffer-substring (point)
 			  (progn
-			    (skip-chars-forward "[0-9].")
+			    (skip-chars-forward "0-9.")
 			    (point))))
   (setq url-http-response-status (read (current-buffer))))
 

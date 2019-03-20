@@ -1697,8 +1697,8 @@ keys and their meanings."
   (cl-loop for attributes in (display-monitor-attributes-list frame)
 	   for frames = (cdr (assq 'frames attributes))
 	   if (memq frame frames) return attributes
-           ;; On broken frames monitor attributes,
-           ;; fall back to the last monitor.
+	   ;; On broken frames monitor attributes,
+	   ;; fall back to the last monitor.
 	   finally return attributes))
 
 (defun frame-monitor-attribute (attribute &optional frame x y)
