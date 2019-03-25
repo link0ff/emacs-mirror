@@ -342,13 +342,6 @@ Defaults to `error'."
          (delete-dups (copy-sequence (cons name conditions))))
     (when message (put name 'error-message message))))
 
-(defun ngettext (msgid msgid_plural n &optional _domain _category)
-  "Return the plural form of the translation for of MSGID and N.
-In the given DOMAIN, depending on the given CATEGORY.  MSGID and
-MSGID_PLURAL should be ASCII strings, and are normally the English singular
-and English plural variant of the message, respectively."
-  (propertize (if (/= n 1) msgid_plural msgid) 'translated t))
-
 ;; We put this here instead of in frame.el so that it's defined even on
 ;; systems where frame.el isn't loaded.
 (defun frame-configuration-p (object)

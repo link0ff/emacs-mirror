@@ -63,6 +63,14 @@ but RET still displayed in the original window
 
 The problem occurs only when *xref* appears whem unasked for.
 
+M-? xref-find-references RET pops up a large buffer
+
+C-M-. xref-find-apropos RET jumps immediately
+C-M-. apropos RET pops up a large buffer
+
+
+Chrome clones the frame, not makes the frame
+
 
 Escape sequences for bottom progress bar are unhandled in shell:
 
