@@ -370,6 +370,12 @@ region using a given replacement-function in a non-destructive manner
 arguments mitigating performance issues when operating on huge
 buffers.
 
+** The command 'delete-indentation' now operates on the active region.
+If the region is active, the command joins all the lines in the
+region.  When there's no active region, the command works on the
+current and the previous or the next line, as before.
+
++++
 
 * Changes in Specialized Modes and Packages in Emacs 27.1
 
@@ -389,6 +395,9 @@ buffers.
 ** seq.el
 New convenience functions 'seq-first' and 'seq-rest' give easy access
 to respectively the first and all but the first elements of sequences.
+
+The new predicate function 'seq-contains-p' should be used instead of
+the now obsolete 'seq-contains'.
 
 ---
 ** Follow mode
@@ -661,6 +670,10 @@ mouse click event, and is intended to be bound to a mouse event.
 *** Changing 'xref-marker-ring-length' works after 'xref.el' is loaded.
 Previously, setting 'xref-marker-ring-length' would only take effect
 if set before 'xref.el' was loaded.
+
+---
+*** xref-find-definitions now sets the mark at the buffer position
+where it was invoked
 
 ** Ecomplete
 
@@ -1350,6 +1363,14 @@ Now, such rx expressions generate an error.
 
 
 * Lisp Changes in Emacs 27.1
+
+** i18n (internationalization)
+
+*** ngettext can be used now to return the right plural form
+according to the given numeric value.
+
++++
+** inhibit-null-byte-detection is renamed to inhibit-nul-byte-detection
 
 +++
 ** 'self-insert-command' takes the char to insert as (optional) argument.
