@@ -38,6 +38,15 @@ xgettext --from-code=UTF-8 -kdefcustom:3 -kdefvar:3 -kdefun:3 *.el **/*.el -o do
  msgstr ""
 
 
+(replace-regexp-in-string
+ "%d" "\\\\([0-9]+\\\\)"
+ (regexp-opt '("finished with %d match found"
+               "finished with %d matches found"
+               "finished with no matches found")))
+"\\(?:finished with \\(?:\\(?:\\([0-9]+\\) match\\(?:es\\)?\\|no matches\\) found\\)\\)"
+
+
+
 need new display action (direction . right)
 with optional parameter (create-window . t)
 like windmove-create-window
