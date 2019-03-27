@@ -904,7 +904,7 @@ Interactively, with a prefix arg, FORCE is t."
              (add-hook 'window-configuration-change-hook
                        #'start-on-display
                        'append 'local))
-            (t
+            (flymake-mode
              (setq flymake-check-start-time (float-time))
              (let ((backend-args
                     (and
