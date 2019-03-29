@@ -46,6 +46,23 @@ xgettext --from-code=UTF-8 -kdefcustom:3 -kdefvar:3 -kdefun:3 *.el **/*.el -o do
 "\\(?:finished with \\(?:\\(?:\\([0-9]+\\) match\\(?:es\\)?\\|no matches\\) found\\)\\)"
 
 
+(info "(gettext) gettext grok")
+     What happens now when the value for, say, ‘LANGUAGE’ changes?
+     According to the process explained above the new value of this
+     variable is found as soon as the ‘dcgettext’ function is called.
+     But this also means the (perhaps) different message catalog file is
+     loaded.  In other words: the used language is changed.
+
+
+dpkg -L 'xemacs21-mulesupport'
+/etc/X11/de/app-defaults/XEmacs
+! *XlwMenu.file.labelString:               %_File
+*XlwMenu.file.labelString:                 Datei (%_F)
+
+sudo locale-gen de_DE.utf8
+??? LANG=de_DE xemacs -q
+
+
 
 need new display action (direction . right)
 with optional parameter (create-window . t)
@@ -79,6 +96,16 @@ C-M-. apropos RET pops up a large buffer
 
 
 Chrome clones the frame, not makes the frame
+
+
+async-shell-command truncates output lines
+bug: M-& ps aux RET
+ok:  M-! ps aux RET
+another example: dpkg -l '*emacs*'
+So the question is: why async-shell-command limits COLUMNS to 80, even on wide frames,
+whereas M-! has no limitation.
+
+M-x shell limits COLUMNS to window-width
 
 
 Escape sequences for bottom progress bar are unhandled in shell:
