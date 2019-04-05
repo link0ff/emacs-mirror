@@ -95,6 +95,11 @@ C-M-. xref-find-apropos RET jumps immediately
 C-M-. apropos RET pops up a large buffer
 
 
+M-x project-search - can't use M-n to get default value - a word under point like in project-find-regexp
+M-x fileloop-continue - inconsistent name prefix, no keybinding
+M-x project-find-regexp - maybe allow grep-like output layout as well?
+
+
 Chrome clones the frame, not makes the frame
 
 
