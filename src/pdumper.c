@@ -46,8 +46,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "thread.h"
 #include "bignum.h"
 
-#include "dmpstruct.h"
-
 /*
   TODO:
 
@@ -67,16 +65,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 */
 
 #ifdef HAVE_PDUMPER
-
-/* CHECK_STRUCTS being true makes the build break if we notice
-   changes to the source defining certain Lisp structures we dump. If
-   you change one of these structures, check that the pdumper code is
-   still valid, and update the pertinent hash lower down in this file
-   (pdumper.c) by manually copying the value from the dmpstruct.h
-   generated from your new code.  */
-#ifndef CHECK_STRUCTS
-# define CHECK_STRUCTS 1
-#endif
 
 #if __GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ >= 7)
 # pragma GCC diagnostic error "-Wconversion"
@@ -135,8 +123,6 @@ verify (sizeof (intptr_t) == sizeof (ptrdiff_t));
 verify (sizeof (void (*)(void)) == sizeof (void *));
 verify (sizeof (ptrdiff_t) <= sizeof (Lisp_Object));
 verify (sizeof (ptrdiff_t) <= sizeof (EMACS_INT));
-verify (sizeof (off_t) == sizeof (int32_t)
-	|| sizeof (off_t) == sizeof (int64_t));
 verify (CHAR_BIT == 8);
 
 #define DIVIDE_ROUND_UP(x, y) (((x) + (y) - 1) / (y))
@@ -157,9 +143,9 @@ static struct
 } remembered_data[32];
 static int nr_remembered_data = 0;
 
-typedef int32_t dump_off;
-#define DUMP_OFF_MIN INT32_MIN
-#define DUMP_OFF_MAX INT32_MAX
+typedef int_least32_t dump_off;
+#define DUMP_OFF_MIN INT_LEAST32_MIN
+#define DUMP_OFF_MAX INT_LEAST32_MAX
 
 __attribute__((format (printf,1,2)))
 static void
@@ -302,10 +288,10 @@ verify (DUMP_ALIGNMENT >= GCALIGNMENT);
 
 struct dump_reloc
 {
-  uint32_t raw_offset : DUMP_RELOC_OFFSET_BITS;
+  unsigned int raw_offset : DUMP_RELOC_OFFSET_BITS;
   ENUM_BF (dump_reloc_type) type : DUMP_RELOC_TYPE_BITS;
 };
-verify (sizeof (struct dump_reloc) == sizeof (int32_t));
+verify (sizeof (struct dump_reloc) == sizeof (dump_off));
 
 /* Set the type of a dump relocation.
 
@@ -335,7 +321,7 @@ dump_reloc_set_offset (struct dump_reloc *reloc, dump_off offset)
 }
 
 static void
-dump_fingerprint (const char *label, const uint8_t *xfingerprint)
+dump_fingerprint (const char *label, unsigned char const *xfingerprint)
 {
   fprintf (stderr, "%s: ", label);
   for (int i = 0; i < 32; ++i)
@@ -366,7 +352,7 @@ struct dump_header
   char magic[sizeof (dump_magic)];
 
   /* Associated Emacs binary.  */
-  uint8_t fingerprint[32];
+  unsigned char fingerprint[32];
 
   /* Relocation table for the dump file; each entry is a
      struct dump_reloc.  */
@@ -495,6 +481,7 @@ struct dump_context
 
   Lisp_Object old_purify_flag;
   Lisp_Object old_post_gc_hook;
+  Lisp_Object old_process_environment;
 
 #ifdef REL_ALLOC
   bool blocked_ralloc;
@@ -1776,6 +1763,8 @@ dump_roots (struct dump_context *ctx)
   visit_static_gc_roots (visitor);
 }
 
+#define PDUMPER_MAX_OBJECT_SIZE 2048
+
 static dump_off
 field_relpos (const void *in_start, const void *in_field)
 {
@@ -1783,7 +1772,15 @@ field_relpos (const void *in_start, const void *in_field)
   ptrdiff_t in_field_val = (ptrdiff_t) in_field;
   eassert (in_start_val <= in_field_val);
   ptrdiff_t relpos = in_field_val - in_start_val;
-  eassert (relpos < 1024); /* Sanity check.  */
+  /* The following assertion attempts to detect bugs whereby IN_START
+     and IN_FIELD don't point to the same object/structure, on the
+     assumption that a too-large difference between them is
+     suspicious.  As of Apr 2019 the largest object we dump -- 'struct
+     buffer' -- is slightly smaller than 1KB, and we want to leave
+     some margin for future extensions.  If the assertion below is
+     ever violated, make sure the two pointers indeed point into the
+     same object, and if so, enlarge the value of PDUMPER_MAX_OBJECT_SIZE.  */
+  eassert (relpos < PDUMPER_MAX_OBJECT_SIZE);
   return (dump_off) relpos;
 }
 
@@ -2032,9 +2029,6 @@ dump_pseudovector_lisp_fields (struct dump_context *ctx,
 static dump_off
 dump_cons (struct dump_context *ctx, const struct Lisp_Cons *cons)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Cons_00EEE63F67)
-# error "Lisp_Cons changed. See CHECK_STRUCTS comment."
-#endif
   struct Lisp_Cons out;
   dump_object_start (ctx, &out, sizeof (out));
   dump_field_lv (ctx, &out, cons, &cons->u.s.car, WEIGHT_STRONG);
@@ -2047,9 +2041,6 @@ dump_interval_tree (struct dump_context *ctx,
                     INTERVAL tree,
                     dump_off parent_offset)
 {
-#if CHECK_STRUCTS && !defined (HASH_interval_1B38941C37)
-# error "interval changed. See CHECK_STRUCTS comment."
-#endif
   /* TODO: output tree breadth-first?  */
   struct interval out;
   dump_object_start (ctx, &out, sizeof (out));
@@ -2091,9 +2082,6 @@ dump_interval_tree (struct dump_context *ctx,
 static dump_off
 dump_string (struct dump_context *ctx, const struct Lisp_String *string)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_String_86FEA6EC7C)
-# error "Lisp_String changed. See CHECK_STRUCTS comment."
-#endif
   /* If we have text properties, write them _after_ the string so that
      at runtime, the prefetcher and cache will DTRT. (We access the
      string before its properties.).
@@ -2137,10 +2125,6 @@ dump_string (struct dump_context *ctx, const struct Lisp_String *string)
 static dump_off
 dump_marker (struct dump_context *ctx, const struct Lisp_Marker *marker)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Marker_642DBAF866)
-# error "Lisp_Marker changed. See CHECK_STRUCTS comment."
-#endif
-
   START_DUMP_PVEC (ctx, &marker->header, struct Lisp_Marker, out);
   dump_pseudovector_lisp_fields (ctx, &out->header, &marker->header);
   DUMP_FIELD_COPY (out, marker, need_adjustment);
@@ -2160,9 +2144,6 @@ dump_marker (struct dump_context *ctx, const struct Lisp_Marker *marker)
 static dump_off
 dump_overlay (struct dump_context *ctx, const struct Lisp_Overlay *overlay)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Overlay_72EADA9882)
-# error "Lisp_Overlay changed. See CHECK_STRUCTS comment."
-#endif
   START_DUMP_PVEC (ctx, &overlay->header, struct Lisp_Overlay, out);
   dump_pseudovector_lisp_fields (ctx, &out->header, &overlay->header);
   dump_field_lv_rawptr (ctx, out, overlay, &overlay->next,
@@ -2188,9 +2169,6 @@ static dump_off
 dump_finalizer (struct dump_context *ctx,
                 const struct Lisp_Finalizer *finalizer)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Finalizer_D58E647CB8)
-# error "Lisp_Finalizer changed. See CHECK_STRUCTS comment."
-#endif
   START_DUMP_PVEC (ctx, &finalizer->header, struct Lisp_Finalizer, out);
   /* Do _not_ call dump_pseudovector_lisp_fields here: we dump the
      only Lisp field, finalizer->function, manually, so we can give it
@@ -2210,9 +2188,6 @@ struct bignum_reload_info
 static dump_off
 dump_bignum (struct dump_context *ctx, Lisp_Object object)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Bignum_661945DE2B)
-# error "Lisp_Bignum changed. See CHECK_STRUCTS comment."
-#endif
   const struct Lisp_Bignum *bignum = XBIGNUM (object);
   START_DUMP_PVEC (ctx, &bignum->header, struct Lisp_Bignum, out);
   verify (sizeof (out->value) >= sizeof (struct bignum_reload_info));
@@ -2248,9 +2223,6 @@ dump_bignum (struct dump_context *ctx, Lisp_Object object)
 static dump_off
 dump_float (struct dump_context *ctx, const struct Lisp_Float *lfloat)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Float_50A7B216D9)
-# error "Lisp_Float changed. See CHECK_STRUCTS comment."
-#endif
   eassert (ctx->header.cold_start);
   struct Lisp_Float out;
   dump_object_start (ctx, &out, sizeof (out));
@@ -2261,9 +2233,6 @@ dump_float (struct dump_context *ctx, const struct Lisp_Float *lfloat)
 static dump_off
 dump_fwd_int (struct dump_context *ctx, const struct Lisp_Intfwd *intfwd)
 {
-#if CHECK_STRUCTS && !defined HASH_Lisp_Intfwd_4D887A7387
-# error "Lisp_Intfwd changed. See CHECK_STRUCTS comment."
-#endif
   dump_emacs_reloc_immediate_intmax_t (ctx, intfwd->intvar, *intfwd->intvar);
   struct Lisp_Intfwd out;
   dump_object_start (ctx, &out, sizeof (out));
@@ -2275,9 +2244,6 @@ dump_fwd_int (struct dump_context *ctx, const struct Lisp_Intfwd *intfwd)
 static dump_off
 dump_fwd_bool (struct dump_context *ctx, const struct Lisp_Boolfwd *boolfwd)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Boolfwd_0EA1C7ADCC)
-# error "Lisp_Boolfwd changed. See CHECK_STRUCTS comment."
-#endif
   dump_emacs_reloc_immediate_bool (ctx, boolfwd->boolvar, *boolfwd->boolvar);
   struct Lisp_Boolfwd out;
   dump_object_start (ctx, &out, sizeof (out));
@@ -2289,9 +2255,6 @@ dump_fwd_bool (struct dump_context *ctx, const struct Lisp_Boolfwd *boolfwd)
 static dump_off
 dump_fwd_obj (struct dump_context *ctx, const struct Lisp_Objfwd *objfwd)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Objfwd_45D3E513DC)
-# error "Lisp_Objfwd changed. See CHECK_STRUCTS comment."
-#endif
   if (NILP (Fgethash (dump_off_to_lisp (emacs_offset (objfwd->objvar)),
                       ctx->staticpro_table,
                       Qnil)))
@@ -2307,9 +2270,6 @@ static dump_off
 dump_fwd_buffer_obj (struct dump_context *ctx,
                      const struct Lisp_Buffer_Objfwd *buffer_objfwd)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Buffer_Objfwd_13CA6B04FC)
-# error "Lisp_Buffer_Objfwd changed. See CHECK_STRUCTS comment."
-#endif
   struct Lisp_Buffer_Objfwd out;
   dump_object_start (ctx, &out, sizeof (out));
   DUMP_FIELD_COPY (&out, buffer_objfwd, type);
@@ -2323,9 +2283,6 @@ static dump_off
 dump_fwd_kboard_obj (struct dump_context *ctx,
                      const struct Lisp_Kboard_Objfwd *kboard_objfwd)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Kboard_Objfwd_CAA7E71069)
-# error "Lisp_Intfwd changed. See CHECK_STRUCTS comment."
-#endif
   struct Lisp_Kboard_Objfwd out;
   dump_object_start (ctx, &out, sizeof (out));
   DUMP_FIELD_COPY (&out, kboard_objfwd, type);
@@ -2334,32 +2291,27 @@ dump_fwd_kboard_obj (struct dump_context *ctx,
 }
 
 static dump_off
-dump_fwd (struct dump_context *ctx, union Lisp_Fwd *fwd)
+dump_fwd (struct dump_context *ctx, lispfwd fwd)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Fwd_5227B18E87)
-# error "Lisp_Fwd changed. See CHECK_STRUCTS comment."
-#endif
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Fwd_Type_9CBA6EE55E)
-# error "Lisp_Fwd_Type changed. See CHECK_STRUCTS comment."
-#endif
+  void const *p = fwd.fwdptr;
   dump_off offset;
 
   switch (XFWDTYPE (fwd))
     {
     case Lisp_Fwd_Int:
-      offset = dump_fwd_int (ctx, &fwd->u_intfwd);
+      offset = dump_fwd_int (ctx, p);
       break;
     case Lisp_Fwd_Bool:
-      offset = dump_fwd_bool (ctx, &fwd->u_boolfwd);
+      offset = dump_fwd_bool (ctx, p);
       break;
     case Lisp_Fwd_Obj:
-      offset = dump_fwd_obj (ctx, &fwd->u_objfwd);
+      offset = dump_fwd_obj (ctx, p);
       break;
     case Lisp_Fwd_Buffer_Obj:
-      offset = dump_fwd_buffer_obj (ctx, &fwd->u_buffer_objfwd);
+      offset = dump_fwd_buffer_obj (ctx, p);
       break;
     case Lisp_Fwd_Kboard_Obj:
-      offset = dump_fwd_kboard_obj (ctx, &fwd->u_kboard_objfwd);
+      offset = dump_fwd_kboard_obj (ctx, p);
       break;
     default:
       emacs_abort ();
@@ -2372,20 +2324,17 @@ static dump_off
 dump_blv (struct dump_context *ctx,
           const struct Lisp_Buffer_Local_Value *blv)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Buffer_Local_Value_066F33A92E)
-# error "Lisp_Buffer_Local_Value changed. See CHECK_STRUCTS comment."
-#endif
   struct Lisp_Buffer_Local_Value out;
   dump_object_start (ctx, &out, sizeof (out));
   DUMP_FIELD_COPY (&out, blv, local_if_set);
   DUMP_FIELD_COPY (&out, blv, found);
-  if (blv->fwd)
-    dump_field_fixup_later (ctx, &out, blv, &blv->fwd);
+  if (blv->fwd.fwdptr)
+    dump_field_fixup_later (ctx, &out, blv, &blv->fwd.fwdptr);
   dump_field_lv (ctx, &out, blv, &blv->where, WEIGHT_NORMAL);
   dump_field_lv (ctx, &out, blv, &blv->defcell, WEIGHT_STRONG);
   dump_field_lv (ctx, &out, blv, &blv->valcell, WEIGHT_STRONG);
   dump_off offset = dump_object_finish (ctx, &out, sizeof (out));
-  if (blv->fwd)
+  if (blv->fwd.fwdptr)
     dump_remember_fixup_ptr_raw
       (ctx,
        offset + dump_offsetof (struct Lisp_Buffer_Local_Value, fwd),
@@ -2437,13 +2386,6 @@ dump_symbol (struct dump_context *ctx,
              Lisp_Object object,
              dump_off offset)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Symbol_60EA1E748E)
-# error "Lisp_Symbol changed. See CHECK_STRUCTS comment."
-#endif
-#if CHECK_STRUCTS && !defined (HASH_symbol_redirect_ADB4F5B113)
-# error "symbol_redirect changed. See CHECK_STRUCTS comment."
-#endif
-
   if (ctx->flags.defer_symbols)
     {
       if (offset != DUMP_OBJECT_ON_SYMBOL_QUEUE)
@@ -2533,9 +2475,6 @@ static dump_off
 dump_vectorlike_generic (struct dump_context *ctx,
 			 const union vectorlike_header *header)
 {
-#if CHECK_STRUCTS && !defined (HASH_vectorlike_header_00A5A4BFB2)
-# error "vectorlike_header changed. See CHECK_STRUCTS comment."
-#endif
   const struct Lisp_Vector *v = (const struct Lisp_Vector *) header;
   ptrdiff_t size = header->size;
   enum pvec_type pvectype = PSEUDOVECTOR_TYPE (v);
@@ -2693,9 +2632,6 @@ dump_hash_table (struct dump_context *ctx,
                  Lisp_Object object,
                  dump_off offset)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Hash_Table_73C9BFB7D1)
-# error "Lisp_Hash_Table changed. See CHECK_STRUCTS comment."
-#endif
   const struct Lisp_Hash_Table *hash_in = XHASH_TABLE (object);
   bool is_stable = dump_hash_table_stable_p (hash_in);
   /* If the hash table is likely to be modified in memory (either
@@ -2761,9 +2697,6 @@ dump_hash_table (struct dump_context *ctx,
 static dump_off
 dump_buffer (struct dump_context *ctx, const struct buffer *in_buffer)
 {
-#if CHECK_STRUCTS && !defined HASH_buffer_AE2C8CE357
-# error "buffer changed. See CHECK_STRUCTS comment."
-#endif
   struct buffer munged_buffer = *in_buffer;
   struct buffer *buffer = &munged_buffer;
 
@@ -2873,6 +2806,7 @@ dump_buffer (struct dump_context *ctx, const struct buffer *in_buffer)
 
   DUMP_FIELD_COPY (out, buffer, prevent_redisplay_optimizations_p);
   DUMP_FIELD_COPY (out, buffer, clip_changed);
+  DUMP_FIELD_COPY (out, buffer, inhibit_buffer_hooks);
 
   dump_field_lv_rawptr (ctx, out, buffer, &buffer->overlays_before,
                         Lisp_Vectorlike, WEIGHT_NORMAL);
@@ -2896,9 +2830,6 @@ dump_buffer (struct dump_context *ctx, const struct buffer *in_buffer)
 static dump_off
 dump_bool_vector (struct dump_context *ctx, const struct Lisp_Vector *v)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Vector_3091289B35)
-# error "Lisp_Vector changed. See CHECK_STRUCTS comment."
-#endif
   /* No relocation needed, so we don't need dump_object_start.  */
   dump_align_output (ctx, DUMP_ALIGNMENT);
   eassert (ctx->offset >= ctx->header.cold_start);
@@ -2913,9 +2844,6 @@ dump_bool_vector (struct dump_context *ctx, const struct Lisp_Vector *v)
 static dump_off
 dump_subr (struct dump_context *ctx, const struct Lisp_Subr *subr)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Subr_594AB72B54)
-# error "Lisp_Subr changed. See CHECK_STRUCTS comment."
-#endif
   struct Lisp_Subr out;
   dump_object_start (ctx, &out, sizeof (out));
   DUMP_FIELD_COPY (&out, subr, header.size);
@@ -2952,9 +2880,6 @@ dump_vectorlike (struct dump_context *ctx,
                  Lisp_Object lv,
                  dump_off offset)
 {
-#if CHECK_STRUCTS && !defined (HASH_pvec_type_549C833A54)
-# error "pvec_type changed. See CHECK_STRUCTS comment."
-#endif
   const struct Lisp_Vector *v = XVECTOR (lv);
   switch (PSEUDOVECTOR_TYPE (v))
     {
@@ -3062,9 +2987,6 @@ dump_vectorlike (struct dump_context *ctx,
 static dump_off
 dump_object (struct dump_context *ctx, Lisp_Object object)
 {
-#if CHECK_STRUCTS && !defined (HASH_Lisp_Type_E2AD97D3F7)
-# error "Lisp_Type changed. See CHECK_STRUCTS comment."
-#endif
 #ifdef ENABLE_CHECKING
   /* Vdead is extern only when ENABLE_CHECKING.  */
   eassert (!EQ (object, Vdead));
@@ -3167,9 +3089,6 @@ dump_object_for_offset (struct dump_context *ctx, Lisp_Object object)
 static dump_off
 dump_charset (struct dump_context *ctx, int cs_i)
 {
-#if CHECK_STRUCTS && !defined (HASH_charset_317C49E291)
-# error "charset changed. See CHECK_STRUCTS comment."
-#endif
   dump_align_output (ctx, alignof (int));
   const struct charset *cs = charset_table + cs_i;
   struct charset out;
@@ -3594,6 +3513,8 @@ dump_unwind_cleanup (void *data)
     r_alloc_inhibit_buffer_relocation (0);
 #endif
   Vpurify_flag = ctx->old_purify_flag;
+  Vpost_gc_hook = ctx->old_post_gc_hook;
+  Vprocess_environment = ctx->old_process_environment;
 }
 
 /* Return DUMP_OFFSET, making sure it is within the heap.  */
@@ -4025,12 +3946,6 @@ types.  */)
   Lisp_Object symbol = intern ("command-line-processed");
   specbind (symbol, Qnil);
 
-  /* Reset process-environment -- this is for when they re-dump a
-     pdump-restored emacs, since set_initial_environment wants always
-     to cons it from scratch.  */
-  Vprocess_environment = Qnil;
-  garbage_collect ();
-
   CHECK_STRING (filename);
   filename = Fexpand_file_name (filename, Qnil);
   filename = ENCODE_FILE (filename);
@@ -4091,6 +4006,12 @@ types.  */)
   /* Make sure various weird things are less likely to happen.  */
   ctx->old_post_gc_hook = Vpost_gc_hook;
   Vpost_gc_hook = Qnil;
+
+  /* Reset process-environment -- this is for when they re-dump a
+     pdump-restored emacs, since set_initial_environment wants always
+     to cons it from scratch.  */
+  ctx->old_process_environment = Vprocess_environment;
+  Vprocess_environment = Qnil;
 
   ctx->fd = emacs_open (SSDATA (filename),
                         O_RDWR | O_TRUNC | O_CREAT, 0666);
@@ -4307,17 +4228,12 @@ enum dump_memory_protection
   DUMP_MEMORY_ACCESS_READWRITE = 3,
 };
 
+#if VM_SUPPORTED == VM_MS_WINDOWS
 static void *
 dump_anonymous_allocate_w32 (void *base,
                              size_t size,
                              enum dump_memory_protection protection)
 {
-#if VM_SUPPORTED != VM_MS_WINDOWS
-  (void) base;
-  (void) size;
-  (void) protection;
-  emacs_abort ();
-#else
   void *ret;
   DWORD mem_type;
   DWORD mem_prot;
@@ -4346,26 +4262,22 @@ dump_anonymous_allocate_w32 (void *base,
       ? EBUSY
       : EPERM;
   return ret;
-#endif
 }
+#endif
+
+#if VM_SUPPORTED == VM_POSIX
 
 /* Old versions of macOS only define MAP_ANON, not MAP_ANONYMOUS.
    FIXME: This probably belongs elsewhere (gnulib/autoconf?)  */
-#ifndef MAP_ANONYMOUS
-#define MAP_ANONYMOUS MAP_ANON
-#endif
+# ifndef MAP_ANONYMOUS
+#  define MAP_ANONYMOUS MAP_ANON
+# endif
 
 static void *
 dump_anonymous_allocate_posix (void *base,
                                size_t size,
                                enum dump_memory_protection protection)
 {
-#if VM_SUPPORTED != VM_POSIX
-  (void) base;
-  (void) size;
-  (void) protection;
-  emacs_abort ();
-#else
   void *ret;
   int mem_prot;
 
@@ -4410,8 +4322,8 @@ dump_anonymous_allocate_posix (void *base,
   if (ret == MAP_FAILED)
     ret = NULL;
   return ret;
-#endif
 }
+#endif
 
 /* Perform anonymous memory allocation.  */
 static void *
@@ -4419,14 +4331,14 @@ dump_anonymous_allocate (void *base,
                          const size_t size,
                          enum dump_memory_protection protection)
 {
-  void *ret = NULL;
-  if (VM_SUPPORTED == VM_MS_WINDOWS)
-    ret = dump_anonymous_allocate_w32 (base, size, protection);
-  else if (VM_SUPPORTED == VM_POSIX)
-    ret = dump_anonymous_allocate_posix (base, size, protection);
-  else
-    errno = ENOSYS;
-  return ret;
+#if VM_SUPPORTED == VM_POSIX
+  return dump_anonymous_allocate_posix (base, size, protection);
+#elif VM_SUPPORTED == VM_MS_WINDOWS
+  return dump_anonymous_allocate_w32 (base, size, protection);
+#else
+  errno = ENOSYS;
+  return NULL;
+#endif
 }
 
 /* Undo the effect of dump_reserve_address_space().  */
@@ -4448,18 +4360,11 @@ dump_anonymous_release (void *addr, size_t size)
 #endif
 }
 
+#if VM_SUPPORTED == VM_MS_WINDOWS
 static void *
 dump_map_file_w32 (void *base, int fd, off_t offset, size_t size,
 		   enum dump_memory_protection protection)
 {
-#if VM_SUPPORTED != VM_MS_WINDOWS
-  (void) base;
-  (void) fd;
-  (void) offset;
-  (void) size;
-  (void) protection;
-  emacs_abort ();
-#else
   void *ret = NULL;
   HANDLE section = NULL;
   HANDLE file;
@@ -4514,21 +4419,14 @@ dump_map_file_w32 (void *base, int fd, off_t offset, size_t size,
   if (section && !CloseHandle (section))
     emacs_abort ();
   return ret;
-#endif
 }
+#endif
 
+#if VM_SUPPORTED == VM_POSIX
 static void *
 dump_map_file_posix (void *base, int fd, off_t offset, size_t size,
 		     enum dump_memory_protection protection)
 {
-#if VM_SUPPORTED != VM_POSIX
-  (void) base;
-  (void) fd;
-  (void) offset;
-  (void) size;
-  (void) protection;
-  emacs_abort ();
-#else
   void *ret;
   int mem_prot;
   int mem_flags;
@@ -4558,22 +4456,22 @@ dump_map_file_posix (void *base, int fd, off_t offset, size_t size,
   if (ret == MAP_FAILED)
     ret = NULL;
   return ret;
-#endif
 }
+#endif
 
 /* Map a file into memory.  */
 static void *
 dump_map_file (void *base, int fd, off_t offset, size_t size,
 	       enum dump_memory_protection protection)
 {
-  void *ret = NULL;
-  if (VM_SUPPORTED == VM_MS_WINDOWS)
-    ret = dump_map_file_w32 (base, fd, offset, size, protection);
-  else if (VM_SUPPORTED == VM_POSIX)
-    ret = dump_map_file_posix (base, fd, offset, size, protection);
-  else
-    errno = ENOSYS;
+#if VM_SUPPORTED == VM_POSIX
+  return dump_map_file_posix (base, fd, offset, size, protection);
+#elif VM_SUPPORTED == VM_MS_WINDOWS
+  return dump_map_file_w32 (base, fd, offset, size, protection);
+#else
+  errno = ENOSYS;
   return ret;
+#endif
 }
 
 /* Remove a virtual memory mapping.

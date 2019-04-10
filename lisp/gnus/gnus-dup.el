@@ -1,4 +1,4 @@
-;;; gnus-dup.el --- suppression of duplicate articles in Gnus
+;;; gnus-dup.el --- suppression of duplicate articles in Gnus  -*- lexical-binding: t -*-
 
 ;; Copyright (C) 1996-2019 Free Software Foundation, Inc.
 
@@ -57,10 +57,12 @@ seen in the same session."
 
 (defvar gnus-dup-list nil
   "List of seen message IDs, as strings.")
+
 (defvar gnus-dup-hashtb nil
   "Hash table of seen message IDs, for fast lookup.")
 
-(defvar gnus-dup-list-dirty nil)
+(defvar gnus-dup-list-dirty nil
+  "Non-nil if `gnus-dup-list' needs to be saved.")
 
 ;;;
 ;;; Starting and stopping
@@ -80,7 +82,7 @@ seen in the same session."
   (if gnus-save-duplicate-list
       (gnus-dup-read)
     (setq gnus-dup-list nil))
-  (setq gnus-dup-hashtb (gnus-make-hashtable gnus-duplicate-list-length))
+  (setq gnus-dup-hashtb (gnus-make-hashtable))
   ;; Enter all Message-IDs into the hash table.
   (dolist (g gnus-dup-list)
     (puthash g t gnus-dup-hashtb)))
@@ -105,7 +107,7 @@ seen in the same session."
 
 (defun gnus-dup-enter-articles ()
   "Enter articles from the current group for future duplicate suppression."
-  (unless gnus-dup-list
+  (unless gnus-dup-hashtb
     (gnus-dup-open))
   (setq gnus-dup-list-dirty t)		; mark list for saving
   (let (msgid)
@@ -121,15 +123,17 @@ seen in the same session."
 		 (not (gethash msgid gnus-dup-hashtb)))
 	(push msgid gnus-dup-list)
 	(puthash msgid t gnus-dup-hashtb))))
-  ;; Chop off excess Message-IDs from the list.
-  (let ((end (nthcdr gnus-duplicate-list-length gnus-dup-list)))
+  ;; Remove excess Message-IDs from the list and hash table.
+  (let* ((dups (cons nil gnus-dup-list))
+         (end  (nthcdr gnus-duplicate-list-length dups)))
     (when end
       (mapc (lambda (id) (remhash id gnus-dup-hashtb)) (cdr end))
-      (setcdr end nil))))
+      (setcdr end nil))
+    (setq gnus-dup-list (cdr dups))))
 
 (defun gnus-dup-suppress-articles ()
   "Mark duplicate articles as read."
-  (unless gnus-dup-list
+  (unless gnus-dup-hashtb
     (gnus-dup-open))
   (gnus-message 8 "Suppressing duplicates...")
   (let ((auto (and gnus-newsgroup-auto-expire
@@ -137,10 +141,9 @@ seen in the same session."
 	number)
     (dolist (header gnus-newsgroup-headers)
       (when (and (gethash (mail-header-id header) gnus-dup-hashtb)
-		 (gnus-summary-article-unread-p (mail-header-number header)))
-	(setq gnus-newsgroup-unreads
-	      (delq (setq number (mail-header-number header))
-		    gnus-newsgroup-unreads))
+                 (setq number (mail-header-number header))
+                 (gnus-summary-article-unread-p number))
+        (setq gnus-newsgroup-unreads (delq number gnus-newsgroup-unreads))
 	(if (not auto)
 	    (push (cons number gnus-duplicate-mark) gnus-newsgroup-reads)
 	  (push number gnus-newsgroup-expirable)
@@ -149,9 +152,10 @@ seen in the same session."
 
 (defun gnus-dup-unsuppress-article (article)
   "Stop suppression of ARTICLE."
-  (let* ((header (gnus-data-header (gnus-data-find article)))
-	 (id     (when header (mail-header-id header))))
-    (when id
+  (let (header id)
+    (when (and gnus-dup-hashtb
+               (setq header (gnus-data-header (gnus-data-find article)))
+               (setq id (mail-header-id header)))
       (setq gnus-dup-list-dirty t)
       (setq gnus-dup-list (delete id gnus-dup-list))
       (remhash id gnus-dup-hashtb))))

@@ -598,30 +598,38 @@ When called from Lisp code, ARG may be a prefix string to copy."
 If there is a fill prefix, delete it from the beginning of this
 line.
 With prefix ARG, join the current line to the following line.
-If the region is active, join all the lines in the region.  (The
-region is ignored if prefix argument is given.)"
-  (interactive "*P\nr")
-  (if arg (forward-line 1)
-    (if (use-region-p)
-	(goto-char end)))
-  (beginning-of-line)
-  (while (eq (preceding-char) ?\n)
-    (progn
-      (delete-region (point) (1- (point)))
-      ;; If the second line started with the fill prefix,
+When BEG and END are non-nil, join all lines in the region they
+define.  Interactively, BEG and END are, respectively, the start
+and end of the region if it is active, else nil.  (The region is
+ignored if prefix ARG is given.)"
+  (interactive
+   (progn (barf-if-buffer-read-only)
+          (cons current-prefix-arg
+                (and (use-region-p)
+                     (list (region-beginning) (region-end))))))
+  ;; Consistently deactivate mark even when no text is changed.
+  (setq deactivate-mark t)
+  (if (and beg (not arg))
+      ;; Region is active.  Go to END, but only if region spans
+      ;; multiple lines.
+      (and (goto-char beg)
+           (> end (line-end-position))
+           (goto-char end))
+    ;; Region is inactive.  Set a loop sentinel
+    ;; (subtracting 1 in order to compare less than BOB).
+    (setq beg (1- (line-beginning-position (and arg 2))))
+    (when arg (forward-line)))
+  (let ((prefix (and (> (length fill-prefix) 0)
+                     (regexp-quote fill-prefix))))
+    (while (and (> (line-beginning-position) beg)
+                (forward-line 0)
+                (= (preceding-char) ?\n))
+      (delete-char -1)
+      ;; If the appended line started with the fill prefix,
       ;; delete the prefix.
-      (if (and fill-prefix
-	       (<= (+ (point) (length fill-prefix)) (point-max))
-	       (string= fill-prefix
-			(buffer-substring (point)
-					  (+ (point) (length fill-prefix)))))
-	  (delete-region (point) (+ (point) (length fill-prefix))))
-      (fixup-whitespace)
-      (if (and (use-region-p)
-               beg
-               (not arg)
-	       (< beg (point-at-bol)))
-	  (beginning-of-line)))))
+      (if (and prefix (looking-at prefix))
+          (replace-match "" t t))
+      (fixup-whitespace))))
 
 (defalias 'join-line #'delete-indentation) ; easier to find
 
@@ -8682,7 +8690,7 @@ call `normal-erase-is-backspace-mode' (which see) instead."
                (and (not noninteractive)
                     (or (memq system-type '(ms-dos windows-nt))
 			(memq window-system '(w32 ns))
-                        (and (memq window-system '(x))
+                        (and (eq window-system 'x)
                              (fboundp 'x-backspace-delete-keys-p)
                              (x-backspace-delete-keys-p))
                         ;; If the terminal Emacs is running on has erase char
@@ -8692,6 +8700,8 @@ call `normal-erase-is-backspace-mode' (which see) instead."
                              (eq tty-erase-char ?\^H))))
              normal-erase-is-backspace)
            1 0)))))
+
+(declare-function display-symbol-keys-p "frame" (&optional display))
 
 (define-minor-mode normal-erase-is-backspace-mode
   "Toggle the Erase and Delete mode of the Backspace and Delete keys.
@@ -8728,8 +8738,7 @@ See also `normal-erase-is-backspace'."
   (let ((enabled (eq 1 (terminal-parameter
                         nil 'normal-erase-is-backspace))))
 
-    (cond ((or (memq window-system '(x w32 ns pc))
-	       (memq system-type '(ms-dos windows-nt)))
+    (cond ((display-symbol-keys-p)
 	   (let ((bindings
 		  '(([M-delete] [M-backspace])
 		    ([C-M-delete] [C-M-backspace])
