@@ -2544,6 +2544,7 @@ lines in the hunk.
 When HUNK-ONLY is non-nil, then don't verify the existence of the
 hunk text in the source file.  Otherwise, don't highlight the hunk if the
 hunk text is not found in the source file."
+;; NO-INIT means no initialization is needed to set major mode.
   (when file
     ;; When initialization is requested, we should be in a brand new
     ;; temp buffer.
@@ -2551,6 +2552,12 @@ hunk text is not found in the source file."
     (let ((enable-local-variables :safe) ;; to find `mode:'
           (buffer-file-name file))
       (set-auto-mode)
+
+      (message "(default-value 'find-file-hook)=%S" (default-value 'find-file-hook))
+      (message "find-file-hook=%S" find-file-hook)
+      ;; (default-value ’find-file-hook)=(global-diff-hl-mode-check-buffers generic-mode-find-file-hook ...)
+      ;; find-file-hook=(t diff-hl-update)
+
       ;; FIXME: Is this really worth the trouble?
       (when (and (fboundp 'generic-mode-find-file-hook)
                  (memq #'generic-mode-find-file-hook
