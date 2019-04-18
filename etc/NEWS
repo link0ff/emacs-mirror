@@ -89,6 +89,10 @@ Options" in the Emacs manual for more information.
 check that the portable dumper code has been updated to match the last
 change to one of the data structures that it relies on.
 
+---
+** Emacs now requires GTK 2.24 and GTK 3.10 for the GTK 2 and GTK 3
+builds respectively.
+
 
 * Startup Changes in Emacs 27.1
 
@@ -309,7 +313,7 @@ and directory-local variables.
 longer.
 
 ---
-** next-error-verbosity controls when `next-error' outputs a message
+** next-error-verbose controls when `next-error' outputs a message
    about the error locus.
 
 
@@ -702,6 +706,9 @@ if set before 'xref.el' was loaded.
 *** xref-find-definitions now sets the mark at the buffer position
 where it was invoked
 
+---
+*** New xref faces 'xref-file-header', 'xref-line-number', 'xref-match'
+
 ** Ecomplete
 
 *** The ecomplete sorting has changed to a decay-based algorithm.
@@ -845,6 +852,9 @@ The maximum level is used by default; customize
 directories in the destination.
 
 ** Help
+
+---
+*** Description of variables and functions give an estimated first release
 
 ---
 *** Output format of 'C-h l' ('view-lossage') has changed.
@@ -1060,6 +1070,12 @@ followed when Emacs writes the relevant history variables to the disk.
 +++
 *** The variable 'shell-file-name' can be set now as connection-local
 variable for remote shells.  It still defaults to "/bin/sh".
+
+** Single shell commands
+
+---
+*** 'shell-command-width' defines the number of display columns
+available for output of asynchronous or remote shell commands.
 
 ** Pcomplete
 
@@ -1496,6 +1512,9 @@ performs (setq-local indent-line-function #'indent-relative).
 
 
 * Lisp Changes in Emacs 27.1
+
+** New 'help-fns-describe-variable-functions' hook.
+Makes it possible to add metadata information to describe-variable.
 
 ** i18n (internationalization)
 

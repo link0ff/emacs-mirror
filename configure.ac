@@ -379,8 +379,12 @@ if test "$with_dumping" = "unexec" && test "$with_unexec" = "no"; then
 fi
 
 if test "$with_pdumper" = "yes"; then
-    AC_DEFINE(HAVE_PDUMPER, 1, [Define to build with portable dumper support])
+  AC_DEFINE([HAVE_PDUMPER], 1, [Define to build with portable dumper support])
+  HAVE_PDUMPER=yes
+else
+  HAVE_PDUMPER=no
 fi
+AC_SUBST([HAVE_PDUMPER])
 
 DUMPING=$with_dumping
 AC_SUBST(DUMPING)
@@ -1063,6 +1067,9 @@ AS_IF([test $gl_gcc_warnings = no],
 
   # Emacs's use of alloca inhibits protecting the stack.
   nw="$nw -Wstack-protector"
+
+  # Emacs's use of __attribute__ ((cold)) causes false alarms with this option.
+  nw="$nw -Wsuggest-attribute=cold"
 
   # Emacs's use of partly-const functions such as Fgnutls_available_p
   # make this option problematic.
@@ -2684,8 +2691,8 @@ check_gtk2=no
 gtk3_pkg_errors=
 if test "${opsys}" != "mingw32"; then
   if test "${with_gtk3}" = "yes" || test "${with_gtk}" = "yes" || test "$USE_X_TOOLKIT" = "maybe"; then
-    GLIB_REQUIRED=2.28
-    GTK_REQUIRED=3.0
+    GLIB_REQUIRED=2.37.5
+    GTK_REQUIRED=3.10
     GTK_MODULES="gtk+-3.0 >= $GTK_REQUIRED glib-2.0 >= $GLIB_REQUIRED"
 
     dnl Checks for libraries.
@@ -2712,8 +2719,8 @@ if test "${opsys}" != "mingw32"; then
   fi
 
   if test "${with_gtk2}" = "yes" || test "$check_gtk2" = "yes"; then
-    GLIB_REQUIRED=2.10
-    GTK_REQUIRED=2.10
+    GLIB_REQUIRED=2.28
+    GTK_REQUIRED=2.24
     GTK_MODULES="gtk+-2.0 >= $GTK_REQUIRED glib-2.0 >= $GLIB_REQUIRED"
 
     dnl Checks for libraries.
@@ -2800,30 +2807,8 @@ if test "${HAVE_GTK}" = "yes"; then
     AC_CHECK_FUNCS(gtk_file_selection_new)
   fi
 
-  dnl Same as above for gtk_handle_box.
-  HAVE_GTK_HANDLE_BOX=no
-  AC_CHECK_DECL(GTK_TYPE_HANDLE_BOX, HAVE_GTK_HANDLE_BOX=yes,
-                   HAVE_GTK_HANDLE_BOX=no, [AC_INCLUDES_DEFAULT
-#include <gtk/gtk.h>])
-  if test "$HAVE_GTK_HANDLE_BOX" = yes; then
-    AC_CHECK_FUNCS(gtk_handle_box_new)
-  fi
-
-  dnl Same as above for gtk_tearoff_menu_item.
-  HAVE_GTK_TEAROFF_MENU_ITEM=no
-  AC_CHECK_DECL(GTK_TYPE_TEAROFF_MENU_ITEM, HAVE_GTK_TEAROFF_MENU_ITEM=yes,
-                   HAVE_GTK_TEAROFF_MENU_ITEM=no, [AC_INCLUDES_DEFAULT
-#include <gtk/gtk.h>])
-  if test "$HAVE_GTK_TEAROFF_MENU_ITEM" = yes; then
-    AC_CHECK_FUNCS(gtk_tearoff_menu_item_new)
-  fi
-
-  dnl Check for functions introduced in 2.14 and later.
-  AC_CHECK_FUNCS(gtk_widget_get_window gtk_widget_set_has_window \
-                 gtk_dialog_get_action_area gtk_widget_get_sensitive \
-                 gtk_widget_get_mapped gtk_adjustment_get_page_size \
-                 gtk_orientable_set_orientation \
-		 gtk_window_set_has_resize_grip)
+  dnl This procedure causes a bug on certain Ubuntu GTK+2 builds
+  AC_CHECK_FUNCS(gtk_window_set_has_resize_grip)
 
  term_header=gtkutil.h
 fi
