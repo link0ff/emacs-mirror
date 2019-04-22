@@ -413,27 +413,11 @@ typedef EMACS_INT Lisp_Word;
 #define lisp_h_XCONS(a) \
    (eassert (CONSP (a)), XUNTAG (a, Lisp_Cons, struct Lisp_Cons))
 #define lisp_h_XHASH(a) XUFIXNUM (a)
-#ifndef GC_CHECK_CONS_LIST
-# define lisp_h_check_cons_list() ((void) 0)
-#endif
 #if USE_LSB_TAG
 # define lisp_h_make_fixnum(n) \
     XIL ((EMACS_INT) (((EMACS_UINT) (n) << INTTYPEBITS) + Lisp_Int0))
 # define lisp_h_XFIXNAT(a) XFIXNUM (a)
 # define lisp_h_XFIXNUM(a) (XLI (a) >> INTTYPEBITS)
-# ifdef __CHKP__
-#  define lisp_h_XSYMBOL(a) \
-    (eassert (SYMBOLP (a)), \
-     (struct Lisp_Symbol *) ((char *) XUNTAG (a, Lisp_Symbol, \
-					      struct Lisp_Symbol) \
-			     + (intptr_t) lispsym))
-# else
-   /* If !__CHKP__ this is equivalent, and is a bit faster as of GCC 7.  */
-#  define lisp_h_XSYMBOL(a) \
-    (eassert (SYMBOLP (a)), \
-     (struct Lisp_Symbol *) ((intptr_t) XLI (a) - Lisp_Symbol \
-			     + (char *) lispsym))
-# endif
 # define lisp_h_XTYPE(a) ((enum Lisp_Type) (XLI (a) & ~VALMASK))
 #endif
 
@@ -472,14 +456,10 @@ typedef EMACS_INT Lisp_Word;
 # define XCDR(c) lisp_h_XCDR (c)
 # define XCONS(a) lisp_h_XCONS (a)
 # define XHASH(a) lisp_h_XHASH (a)
-# ifndef GC_CHECK_CONS_LIST
-#  define check_cons_list() lisp_h_check_cons_list ()
-# endif
 # if USE_LSB_TAG
 #  define make_fixnum(n) lisp_h_make_fixnum (n)
 #  define XFIXNAT(a) lisp_h_XFIXNAT (a)
 #  define XFIXNUM(a) lisp_h_XFIXNUM (a)
-#  define XSYMBOL(a) lisp_h_XSYMBOL (a)
 #  define XTYPE(a) lisp_h_XTYPE (a)
 # endif
 #endif
@@ -1023,21 +1003,17 @@ INLINE bool
 }
 
 INLINE struct Lisp_Symbol * ATTRIBUTE_NO_SANITIZE_UNDEFINED
-(XSYMBOL) (Lisp_Object a)
+XSYMBOL (Lisp_Object a)
 {
-#if USE_LSB_TAG
-  return lisp_h_XSYMBOL (a);
-#else
   eassert (SYMBOLP (a));
   intptr_t i = (intptr_t) XUNTAG (a, Lisp_Symbol, struct Lisp_Symbol);
   void *p = (char *) lispsym + i;
-# ifdef __CHKP__
+#ifdef __CHKP__
   /* Bypass pointer checking.  Although this could be improved it is
      probably not worth the trouble.  */
   p = __builtin___bnd_set_ptr_bounds (p, sizeof (struct Lisp_Symbol));
-# endif
-  return p;
 #endif
+  return p;
 }
 
 INLINE Lisp_Object
@@ -1097,9 +1073,7 @@ enum pvec_type
   PVEC_OVERLAY,
   PVEC_FINALIZER,
   PVEC_MISC_PTR,
-#ifdef HAVE_MODULES
   PVEC_USER_PTR,
-#endif
   PVEC_PROCESS,
   PVEC_FRAME,
   PVEC_WINDOW,
@@ -2561,14 +2535,12 @@ xmint_pointer (Lisp_Object a)
   return XUNTAG (a, Lisp_Vectorlike, struct Lisp_Misc_Ptr)->pointer;
 }
 
-#ifdef HAVE_MODULES
 struct Lisp_User_Ptr
 {
   union vectorlike_header header;
   void (*finalizer) (void *);
   void *p;
 } GCALIGNED_STRUCT;
-#endif
 
 /* A finalizer sentinel.  */
 struct Lisp_Finalizer
@@ -2627,7 +2599,6 @@ XOVERLAY (Lisp_Object a)
   return XUNTAG (a, Lisp_Vectorlike, struct Lisp_Overlay);
 }
 
-#ifdef HAVE_MODULES
 INLINE bool
 USER_PTRP (Lisp_Object x)
 {
@@ -2640,7 +2611,6 @@ XUSER_PTR (Lisp_Object a)
   eassert (USER_PTRP (a));
   return XUNTAG (a, Lisp_Vectorlike, struct Lisp_User_Ptr);
 }
-#endif
 
 INLINE bool
 BIGNUMP (Lisp_Object x)
@@ -3262,8 +3232,10 @@ SPECPDL_INDEX (void)
    member is TAG, and then unbinds to it.  The `val' member is used to
    hold VAL while the stack is unwound; `val' is returned as the value
    of the catch form.  If there is a handler of type CATCHER_ALL, it will
-   be treated as a handler for all invocations of `throw'; in this case
-   `val' will be set to (TAG . VAL).
+   be treated as a handler for all invocations of `signal' and `throw';
+   in this case `val' will be set to (ERROR-SYMBOL . DATA) or (TAG . VAL),
+   respectively.  During stack unwinding, `nonlocal_exit' is set to
+   specify the type of nonlocal exit that caused the stack unwinding.
 
    All the other members are concerned with restoring the interpreter
    state.
@@ -3273,11 +3245,21 @@ SPECPDL_INDEX (void)
 
 enum handlertype { CATCHER, CONDITION_CASE, CATCHER_ALL };
 
+enum nonlocal_exit
+{
+  NONLOCAL_EXIT_SIGNAL,
+  NONLOCAL_EXIT_THROW,
+};
+
 struct handler
 {
   enum handlertype type;
   Lisp_Object tag_or_ch;
+
+  /* The next two are set by unwind_to_catch.  */
+  enum nonlocal_exit nonlocal_exit;
   Lisp_Object val;
+
   struct handler *next;
   struct handler *nextfree;
 
@@ -3475,7 +3457,7 @@ extern Lisp_Object make_bignum_str (char const *, int);
 extern Lisp_Object make_neg_biguint (uintmax_t);
 extern Lisp_Object double_to_integer (double);
 
-/* Converthe integer NUM to *N.  Return true if successful, false
+/* Convert the integer NUM to *N.  Return true if successful, false
    (possibly setting *N) otherwise.  */
 INLINE bool
 integer_to_intmax (Lisp_Object num, intmax_t *n)
@@ -3977,11 +3959,6 @@ extern void init_alloc (void);
 extern void syms_of_alloc (void);
 extern struct buffer * allocate_buffer (void);
 extern int valid_lisp_object_p (Lisp_Object);
-#ifdef GC_CHECK_CONS_LIST
-extern void check_cons_list (void);
-#else
-INLINE void (check_cons_list) (void) { lisp_h_check_cons_list (); }
-#endif
 
 /* Defined in gmalloc.c.  */
 #if !defined DOUG_LEA_MALLOC && !defined HYBRID_MALLOC && !defined SYSTEM_MALLOC
@@ -4129,7 +4106,7 @@ extern Lisp_Object internal_condition_case_2 (Lisp_Object (*) (Lisp_Object, Lisp
 extern Lisp_Object internal_condition_case_n
     (Lisp_Object (*) (ptrdiff_t, Lisp_Object *), ptrdiff_t, Lisp_Object *,
      Lisp_Object, Lisp_Object (*) (Lisp_Object, ptrdiff_t, Lisp_Object *));
-extern Lisp_Object internal_catch_all (Lisp_Object (*) (void *), void *, Lisp_Object (*) (Lisp_Object));
+extern Lisp_Object internal_catch_all (Lisp_Object (*) (void *), void *, Lisp_Object (*) (enum nonlocal_exit, Lisp_Object));
 extern struct handler *push_handler (Lisp_Object, enum handlertype);
 extern struct handler *push_handler_nosignal (Lisp_Object, enum handlertype);
 extern void specbind (Lisp_Object, Lisp_Object);

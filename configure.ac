@@ -545,7 +545,7 @@ AC_ARG_ENABLE(checking,
 		 enable only specific categories of checks.
 		 Categories are: all,yes,no.
 		 Flags are: stringbytes, stringoverrun, stringfreelist,
-		 structs, xmallocoverrun, conslist, glyphs])],
+		 structs, glyphs])],
 [ac_checking_flags="${enableval}"],[])
 IFS="${IFS= 	}"; ac_save_IFS="$IFS"; IFS="$IFS,"
 CHECK_STRUCTS=false
@@ -559,24 +559,18 @@ do
 			ac_gc_check_stringbytes= ;
 	                ac_gc_check_string_overrun= ;
 	                ac_gc_check_string_free_list= ;
-	                ac_xmalloc_overrun= ;
-	                ac_gc_check_cons_list= ;
 			ac_glyphs_debug= ;;
 	all)		ac_enable_checking=1 ;
 			CHECK_STRUCTS=true
 			ac_gc_check_stringbytes=1 ;
 	                ac_gc_check_string_overrun=1 ;
 	                ac_gc_check_string_free_list=1 ;
-	                ac_xmalloc_overrun=1 ;
-	                ac_gc_check_cons_list=1 ;
 			ac_glyphs_debug=1 ;;
 	# these enable particular checks
 	stringbytes)	ac_gc_check_stringbytes=1 ;;
 	stringoverrun)	ac_gc_check_string_overrun=1 ;;
 	stringfreelist) ac_gc_check_string_free_list=1 ;;
 	structs)	CHECK_STRUCTS=true ;;
-	xmallocoverrun)	ac_xmalloc_overrun=1 ;;
-	conslist)	ac_gc_check_cons_list=1 ;;
 	glyphs)		ac_glyphs_debug=1 ;;
 	*)	AC_MSG_ERROR(unknown check category $check) ;;
 	esac
@@ -609,14 +603,6 @@ fi
 if test x$ac_gc_check_string_free_list != x ; then
   AC_DEFINE(GC_CHECK_STRING_FREE_LIST, 1,
 [Define this to check the string free list.])
-fi
-if test x$ac_xmalloc_overrun != x ; then
-  AC_DEFINE(XMALLOC_OVERRUN_CHECK, 1,
-[Define this to check for malloc buffer overrun.])
-fi
-if test x$ac_gc_check_cons_list != x ; then
-  AC_DEFINE(GC_CHECK_CONS_LIST, 1,
-[Define this to check for errors in cons list.])
 fi
 if test x$ac_glyphs_debug != x ; then
   AC_DEFINE(GLYPH_DEBUG, 1,
@@ -2795,22 +2781,25 @@ if test "${HAVE_GTK}" = "yes"; then
     with_toolkit_scroll_bars=yes
   fi
 
-  dnl  Check if we have the old file selection dialog declared and
-  dnl  in the link library.  In 2.x it may be in the library,
-  dnl  but not declared if deprecated featured has been selected out.
-  dnl  AC_CHECK_DECL checks for a macro, so check for GTK_TYPE_FILE_SELECTION.
-  HAVE_GTK_FILE_SELECTION=no
-  AC_CHECK_DECL(GTK_TYPE_FILE_SELECTION, HAVE_GTK_FILE_SELECTION=yes,
-                   HAVE_GTK_FILE_SELECTION=no, [AC_INCLUDES_DEFAULT
+  term_header=gtkutil.h
+
+  if test "${USE_GTK_TOOLKIT}" = GTK2; then
+
+    dnl  Check if we have the old file selection dialog declared and
+    dnl  in the link library.  In 2.x it may be in the library,
+    dnl  but not declared if deprecated featured has been selected out.
+    dnl  AC_CHECK_DECL checks for a macro, so check for GTK_TYPE_FILE_SELECTION.
+    HAVE_GTK_FILE_SELECTION=no
+    AC_CHECK_DECL(GTK_TYPE_FILE_SELECTION, HAVE_GTK_FILE_SELECTION=yes,
+                     HAVE_GTK_FILE_SELECTION=no, [AC_INCLUDES_DEFAULT
 #include <gtk/gtk.h>])
-  if test "$HAVE_GTK_FILE_SELECTION" = yes; then
-    AC_CHECK_FUNCS(gtk_file_selection_new)
+    if test "$HAVE_GTK_FILE_SELECTION" = yes; then
+      AC_CHECK_FUNCS(gtk_file_selection_new)
+    fi
+
+    dnl This procedure causes a bug on certain Ubuntu GTK+2 builds
+    AC_CHECK_FUNCS(gtk_window_set_has_resize_grip)
   fi
-
-  dnl This procedure causes a bug on certain Ubuntu GTK+2 builds
-  AC_CHECK_FUNCS(gtk_window_set_has_resize_grip)
-
- term_header=gtkutil.h
 fi
 
 
