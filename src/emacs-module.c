@@ -223,8 +223,6 @@ static void module_reset_handlerlist (struct handler **);
 static bool value_storage_contains_p (const struct emacs_value_storage *,
                                       emacs_value, ptrdiff_t *);
 static Lisp_Object module_encode (Lisp_Object);
-static Lisp_Object module_decode (Lisp_Object);
-static Lisp_Object module_decode_copy (Lisp_Object);
 
 static bool module_assertions = false;
 
@@ -532,10 +530,7 @@ module_make_function (emacs_env *env, ptrdiff_t min_arity, ptrdiff_t max_arity,
   function->data = data;
 
   if (documentation)
-    {
-      AUTO_STRING (unibyte_doc, documentation);
-      function->documentation = module_decode_copy (unibyte_doc);
-    }
+    function->documentation = build_string_from_utf8 (documentation);
 
   Lisp_Object result;
   XSET_MODULE_FUNCTION (result, function);
@@ -668,8 +663,8 @@ module_make_string (emacs_env *env, const char *str, ptrdiff_t length)
   MODULE_FUNCTION_BEGIN (NULL);
   if (! (0 <= length && length <= STRING_BYTES_BOUND))
     overflow_error ();
-  Lisp_Object lstr = make_unibyte_string (str, length);
-  return lisp_to_value (env, module_decode (lstr));
+  Lisp_Object lstr = make_string_from_utf8 (str, length);
+  return lisp_to_value (env, lstr);
 }
 
 static emacs_value
@@ -907,6 +902,11 @@ funcall_module (Lisp_Object function, ptrdiff_t nargs, Lisp_Object *arglist)
 	memory_full (sizeof *args[i]);
     }
 
+  /* The only possibility of getting an error until here is failure to
+     allocate memory for the arguments, but then we already should
+     have signaled an error before.  */
+  eassert (priv.pending_non_local_exit == emacs_funcall_exit_return);
+
   emacs_value ret = func->subr (env, nargs, args, func->data);
 
   eassert (&priv == env->private_members);
@@ -934,10 +934,10 @@ module_function_documentation (const struct Lisp_Module_Function *function)
   return function->documentation;
 }
 
-void *
+module_funcptr
 module_function_address (const struct Lisp_Module_Function *function)
 {
-  return function->subr;
+  return (module_funcptr) function->subr;
 }
 
 
@@ -1028,18 +1028,6 @@ static Lisp_Object
 module_encode (Lisp_Object string)
 {
   return code_convert_string (string, Qutf_8_unix, Qt, true, true, true);
-}
-
-static Lisp_Object
-module_decode (Lisp_Object string)
-{
-  return code_convert_string (string, Qutf_8_unix, Qt, false, true, true);
-}
-
-static Lisp_Object
-module_decode_copy (Lisp_Object string)
-{
-  return code_convert_string (string, Qutf_8_unix, Qt, false, false, true);
 }
 
 
