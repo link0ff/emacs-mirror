@@ -860,6 +860,7 @@ with a report function."
 
 (defvar-local flymake--recent-changes nil
   "Recent changes collected by `flymake-after-change-function'.")
+(defvar flymake-mode)
 
 (defun flymake-start (&optional deferred force)
   "Start a syntax check for the current buffer.

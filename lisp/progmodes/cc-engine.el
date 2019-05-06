@@ -287,7 +287,8 @@ otherwise return nil and leave point unchanged.
 
 Note that this function might do hidden buffer changes.  See the
 comment at the start of cc-engine.el for more info."
-  (let ((here (point)))
+  (let ((here (point))
+	(pause (c-point 'eol)))
     (when c-opt-cpp-prefix
       (if (and (car c-macro-cache)
 	       (>= (point) (car c-macro-cache))
@@ -307,8 +308,23 @@ comment at the start of cc-engine.el for more info."
 	(save-restriction
 	  (if lim (narrow-to-region lim (point-max)))
 	  (beginning-of-line)
-	  (while (eq (char-before (1- (point))) ?\\)
-	    (forward-line -1))
+	  (when (or (null lim)
+		    (>= here lim))
+	    (while
+		(progn
+		  (while (eq (char-before (1- (point))) ?\\)
+		    (forward-line -1))
+		  (when (and c-last-c-comment-end-on-line-re
+			     (re-search-forward
+			      c-last-c-comment-end-on-line-re pause t))
+		    (goto-char (match-end 1))
+		    (if (c-backward-single-comment)
+			(progn
+			  (beginning-of-line)
+			  (setq pause (point)))
+		      (goto-char pause)
+		      nil)))))
+
 	  (back-to-indentation)
 	  (if (and (<= (point) here)
 		   (save-match-data (looking-at c-opt-cpp-start))
@@ -345,12 +361,23 @@ comment at the start of cc-engine.el for more info."
 	      c-macro-cache-start-pos nil
 	      c-macro-cache-syntactic nil
 	      c-macro-cache-no-comment nil))
-      (while (progn
-	       (end-of-line)
-	       (when (and (eq (char-before) ?\\)
-			  (not (eobp)))
-		 (forward-char)
-		 t)))
+      (while
+	  (progn
+	    (while (progn
+		     (end-of-line)
+		     (when (and (eq (char-before) ?\\)
+				(not (eobp)))
+		       (forward-char)
+		       t)))
+	    (if (and c-last-open-c-comment-start-on-line-re
+		     (re-search-backward
+		      c-last-open-c-comment-start-on-line-re
+		      (c-point 'bol) t))
+		(progn
+		  (goto-char (match-beginning 1))
+		  (c-forward-single-comment))
+	      nil)))
+
       (when (and (car c-macro-cache)
 		 (bolp)
 		 (not (eq (char-before (1- (point))) ?\\)))
@@ -1812,7 +1839,7 @@ comment at the start of cc-engine.el for more info."
 	  (setcar c-sws-lit-limits (match-beginning 1))
 	(setq c-sws-lit-limits (cons (match-beginning 1) (match-end 1)))))))
 
-(defun c-invalidate-sws-region-after-del (beg end old-len)
+(defun c-invalidate-sws-region-after-del (beg end _old-len)
   ;; Text has been deleted, OLD-LEN characters of it starting from position
   ;; BEG.  END is typically eq to BEG.  Should there have been a comment or
   ;; CPP construct open at END before the deletion, check whether this
@@ -2007,6 +2034,10 @@ comment at the start of cc-engine.el for more info."
 	    ;; Take elaborate precautions to detect an open block comment at
 	    ;; the end of a macro.  If we find one, we set `safe-start' to nil
 	    ;; and break off any further scanning of comments.
+	    ;;
+	    ;; (2019-05-02): `c-end-of-macro' now moves completely over block
+	    ;; comments, even multiline ones lacking \s at their EOLs.  So a
+	    ;; lot of the following is probably redundant now.
 	    (let ((com-begin (point)) com-end in-macro)
 	      (when (and (c-forward-single-comment)
 			 (setq com-end (point))
@@ -5475,6 +5506,9 @@ comment at the start of cc-engine.el for more info."
   (setq c-bs-cache-limit
 	(min c-bs-cache-limit pos)))
 
+(defvar c-restricted-<>-arglists)	;FIXME: Move definition here?
+(defvar c-parse-and-markup-<>-arglists)	;FIXME: Move definition here?
+
 (defun c-update-brace-stack (stack from to)
   ;; Given a brace-stack which has the value STACK at position FROM, update it
   ;; to its value at position TO, where TO is after (or equal to) FROM.
@@ -5658,7 +5692,10 @@ comment at the start of cc-engine.el for more info."
 	       (setq cfd-re-match cfd-limit)
 	       nil)
 	      ((c-got-face-at
-		(if (setq cfd-re-match (match-end 1))
+		(if (setq cfd-re-match
+			  (or (match-end 1)
+			      (and c-dposr-cpp-macro-depth
+				   (match-end (1+ c-dposr-cpp-macro-depth)))))
 		    ;; Matched the end of a token preceding a decl spot.
 		    (progn
 		      (goto-char cfd-re-match)
@@ -5669,15 +5706,19 @@ comment at the start of cc-engine.el for more info."
 		c-literal-faces)
 	       ;; Pseudo match inside a comment or string literal.  Skip out
 	       ;; of comments and string literals.
-	       (while (progn
-			(unless
-			    (and (match-end 1)
-				 (c-got-face-at (1- (point)) c-literal-faces)
-				 (not (c-got-face-at (point) c-literal-faces)))
-			  (goto-char (c-next-single-property-change
-				      (point) 'face nil cfd-limit)))
-			(and (< (point) cfd-limit)
-			     (c-got-face-at (point) c-literal-faces))))
+	       (while
+		   (progn
+		     (unless
+			 (and
+			  (or (match-end 1)
+			      (and c-dposr-cpp-macro-depth
+				   (match-end (1+ c-dposr-cpp-macro-depth))))
+			  (c-got-face-at (1- (point)) c-literal-faces)
+			  (not (c-got-face-at (point) c-literal-faces)))
+		       (goto-char (c-next-single-property-change
+				   (point) 'face nil cfd-limit)))
+		     (and (< (point) cfd-limit)
+			  (c-got-face-at (point) c-literal-faces))))
 	       t)		      ; Continue the loop over pseudo matches.
 	      ((and c-opt-identifier-concat-key
 		    (match-string 1)
@@ -5829,7 +5870,7 @@ comment at the start of cc-engine.el for more info."
     ;; before the point, and do the first `c-decl-prefix-or-start-re'
     ;; search unless we're at bob.
 
-    (let (start-in-literal start-in-macro syntactic-pos)
+    (let (start-in-literal start-in-macro syntactic-pos hash-define-pos)
       ;; Must back up a bit since we look for the end of the previous
       ;; statement or declaration, which is earlier than the first
       ;; returned match.
@@ -5984,7 +6025,21 @@ comment at the start of cc-engine.el for more info."
 	  ;; The only syntactic ws in macros are comments.
 	  (c-backward-comments)
 	  (or (bobp) (backward-char))
-	  (c-beginning-of-current-token))
+	  (c-beginning-of-current-token)
+	  ;; If we're in a macro without argument parentheses, we could have
+	  ;; now ended up at the macro's identifier.  We need to be at #define
+	  ;; for `c-find-decl-prefix-search' to find the first token of the
+	  ;; macro's expansion.
+	  (when (and (c-on-identifier)
+		     (setq hash-define-pos
+			   (save-excursion
+			     (and
+			      (zerop (c-backward-token-2 2)) ; over define, #
+			      (save-excursion
+				(beginning-of-line)
+				(looking-at c-opt-cpp-macro-define-id))
+			      (point)))))
+	    (goto-char hash-define-pos)))
 
 	 (start-in-literal
 	  ;; If we're in a comment it can only be the closest
@@ -6488,9 +6543,6 @@ comment at the start of cc-engine.el for more info."
 	    (c-clear-<>-pair-props)
 	    (forward-char)))))))
 
-(defvar c-restricted-<>-arglists)	;FIXME: Move definition here?
-(defvar c-parse-and-markup-<>-arglists)	;FIXME: Move definition here?
-
 (defun c-restore-<>-properties (_beg _end _old-len)
   ;; This function is called as an after-change function.  It restores the
   ;; category/syntax-table properties on template/generic <..> pairs between
@@ -6927,7 +6979,7 @@ comment at the start of cc-engine.el for more info."
   ;; This functions is called as an after-change function by virtue of its
   ;; membership of the C++ value of `c-before-font-lock-functions'.
   ;; (when (< beg end)
-    (c-save-buffer-state (found eoll state id found-beg found-end)
+    (c-save-buffer-state (found eoll state id found-beg)
       ;; Has an inserted " swallowed up a R"(, turning it into "...R"(?
       (goto-char end)
       (setq eoll (c-point 'eoll))

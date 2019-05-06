@@ -340,6 +340,22 @@ longer.
 ** Multicolor fonts such as "Noto Color Emoji" can be displayed on
 Emacs configured with Cairo drawing and linked with cairo >= 1.16.0.
 
++++
+** Emacs now optionally displays a fill column indicator.
+
+This is similar to what 'fill-column-indicator' package provides, but
+much faster and compatible with show-trailing-whitespace.
+
+Customize the buffer-local variables 'display-fill-column-indicator'
+and 'display-fill-column-indicator-character' to activate the
+indicator.
+
+The indicator is not displayed at all in minibuffer windows and
+in tooltips, as it is not useful there.
+
+There are 2 new buffer local variables and 1 face to customize this
+mode they are described in the manual "(emacs) Display".
+
 
 * Editing Changes in Emacs 27.1
 
@@ -413,12 +429,12 @@ region using a given replacement-function in a non-destructive manner
 arguments mitigating performance issues when operating on huge
 buffers.
 
++++
 ** The command 'delete-indentation' now operates on the active region.
 If the region is active, the command joins all the lines in the
 region.  When there's no active region, the command works on the
 current and the previous or the next line, as before.
 
-+++
 
 * Changes in Specialized Modes and Packages in Emacs 27.1
 
@@ -687,6 +703,10 @@ Control whether Flymake starts checking the buffer on save.
 *** Flymake and backend functions may exchange hints about buffer changes.
 This enables more efficient backends.  See the docstring of
 'flymake-diagnostic-functions' or the Flymake manual for details.
+
++++
+*** The variable 'flymake-start-syntax-check-on-newline' is obsolete
+and renamed to 'flymake-start-on-newline'.
 
 ** Ruby
 
@@ -1103,8 +1123,8 @@ variable for remote shells.  It still defaults to "/bin/sh".
 ** Single shell commands
 
 ---
-*** 'shell-command-width' defines the number of display columns
-available for output of asynchronous or remote shell commands.
+*** 'async-shell-command-width' defines the number of display columns
+available for output of asynchronous shell commands.
 
 ** Pcomplete
 
@@ -1388,6 +1408,16 @@ Set this variable to nil to disable the new behavior.
 Packages deriving from 'js-mode' with 'define-derived-mode' should
 call this function to add enabled syntax extensions to their mode
 name, too.
+
+** Autorevert
+
+*** New variable 'auto-revert-avoid-polling' for saving power.
+When set to a non-nil value, buffers in Auto-Revert mode are no longer
+polled for changes periodically.  This reduces the power consumption
+of an idle Emacs, but may fail on some network file systems; set
+'auto-revert-notify-exclude-dir-regexp' to match files where
+notification is not supported.  The new variable currently has no
+effect in 'global-auto-revert-mode'.  The default value is nil.
 
 
 * New Modes and Packages in Emacs 27.1
