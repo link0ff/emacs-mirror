@@ -24,6 +24,20 @@
 
 (eval-and-compile (put 'char-fold-table 'char-table-extra-slots 1))
 
+(defcustom char-fold-exclude-pairs
+  '((?и . ?й))
+  "")
+
+;; 1. Й->("И" "̆")
+;; 1. й->("и" "̆")
+;; 1. Ё->("Е" "̈")
+;; 1. ё->("е" "̈")
+
+(defcustom char-fold-include-pairs
+  '((?ё . ?е))
+  "")
+
+
 (defconst char-fold-table
   (eval-when-compile
     (let ((equiv (make-char-table 'char-fold-table))
@@ -58,10 +72,12 @@
                ;; If there's no formatting tag, ensure that char matches
                ;; its decomp exactly.  This is because we want 'ä' to
                ;; match 'ä', but we don't want '¹' to match '1'.
+               ;; (message "1. %c->%S" char (if (consp decomp) (mapcar #'string decomp) decomp))
                (aset equiv char
                      (cons (apply #'string decomp)
                            (aref equiv char))))
 
+             ;; TODO: support lax search for “ff”
              ;; Allow the entire decomp to match char.  If decomp has
              ;; multiple characters, this is done by adding an entry
              ;; to the alist of the first character in decomp.  This
@@ -69,6 +85,7 @@
              ;; match '¹'.
              (let ((make-decomp-match-char
                     (lambda (decomp char)
+                      ;; (message "2. %c->%S" char decomp)
                       (if (cdr decomp)
                           (aset equiv-multi (car decomp)
                                 (cons (cons (apply #'string (cdr decomp))
@@ -92,23 +109,27 @@
                    ;; character, we allow this character to match the
                    ;; decomp.  This is to let 'a' match 'ä'.
                    (unless (cdr simpler-decomp)
+                     ;; (message "3. %S->%S" char simpler-decomp)
                      (aset equiv (car simpler-decomp)
                            (cons (apply #'string decomp)
                                  (aref equiv (car simpler-decomp)))))))))))
        table)
 
+      ;; TODO: move to defcustom
       ;; Add some manual entries.
       (dolist (it '((?\" "＂" "“" "”" "”" "„" "⹂" "〞" "‟" "‟" "❞" "❝" "❠" "“" "„" "〝" "〟" "🙷" "🙶" "🙸" "«" "»")
                     (?' "❟" "❛" "❜" "‘" "’" "‚" "‛" "‚" "󠀢" "❮" "❯" "‹" "›")
                     (?` "❛" "‘" "‛" "󠀢" "❮" "‹")))
         (let ((idx (car it))
               (chars (cdr it)))
+          ;; (message "4. %S->%S" idx chars)
           (aset equiv idx (append chars (aref equiv idx)))))
 
       ;; Convert the lists of characters we compiled into regexps.
       (map-char-table
        (lambda (char dec-list)
          (let ((re (regexp-opt (cons (char-to-string char) dec-list))))
+           ;; (message "5. %S->%S" char dec-list)
            (if (consp char)
                (set-char-table-range equiv char re)
              (aset equiv char re))))

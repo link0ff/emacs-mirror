@@ -95,6 +95,18 @@ C-M-. xref-find-apropos RET jumps immediately
 C-M-. apropos RET pops up a large buffer
 
 
+'g' in *xref* buffer:
+
+Debugger entered--Lisp error: (error "Buffer does not seem to be associated with any file")
+  signal(error ("Buffer does not seem to be associated with any file"))
+  error("Buffer does not seem to be associated with any file")
+  revert-buffer--default(t nil)
+  revert-buffer(t)
+  funcall-interactively(revert-buffer t)
+  call-interactively(revert-buffer nil nil)
+  command-execute(revert-buffer)
+
+
 M-x project-search - can't use M-n to get default value - a word under point like in project-find-regexp
 M-x fileloop-continue - inconsistent name prefix, no keybinding
 M-x project-find-regexp - maybe allow grep-like output layout as well?
