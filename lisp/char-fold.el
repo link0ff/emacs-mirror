@@ -25,54 +25,33 @@
 (eval-and-compile (put 'char-fold-table 'char-table-extra-slots 1))
 
 (defcustom char-fold-include-base nil
-  "Include mapping from base letter to composition."
+  "Include mappings from composite character to base letter."
   :type 'boolean
   :group 'matching
   :version "27.1")
 
-(defcustom char-fold-include
+(defcustom char-fold-include-alist
   '((?\" "＂" "“" "”" "”" "„" "⹂" "〞" "‟" "‟" "❞" "❝" "❠" "“" "„" "〝" "〟" "🙷" "🙶" "🙸" "«" "»")
     (?' "❟" "❛" "❜" "‘" "’" "‚" "‛" "‚" "󠀢" "❮" "❯" "‹" "›")
-    (?` "❛" "‘" "‛" "󠀢" "❮" "‹"))
+    (?` "❛" "‘" "‛" "󠀢" "❮" "‹")
+    ;; (?\t " ")
+    )
   "Additional character mappings to include."
   :type '(alist :key-type (character :tag "From")
                 :value-type (repeat (string :tag "To")))
   :group 'lisp
   :version "27.1")
 
-(defcustom char-fold-exclude
+(defcustom char-fold-exclude-alist
   '((?и . ?й)
     (?й . ?и)
     (?И . ?Й)
     (?Й . ?И))
-  "Character mappings to exclude."
+  "Character mappings to exclude from default setting."
   :type '(alist :key-type (character :tag "From")
                 :value-type (character :tag "To"))
   :group 'lisp
   :version "27.1")
-
-;; 1. Ё->("Е" "̈")
-;; 1. ё->("е" "̈")
-;; 1. Й->("И" "̆")
-;; 1. й->("и" "̆")
-
-;; 2. Ё->("Е" "̈")
-;; 2. Ё->("Е")
-;; 2. ё->("е" "̈")
-;; 2. ё->("е")
-;; 2. Й->("И" "̆")
-;; 2. Й->("И")
-;; 2. й->("и" "̆")
-;; 2. й->("и")
-
-;; 5. Ё, ("Ё") -> "\\(?:Ё\\|Ё\\)"
-;; 5. Е, ("Ӗ" "Ӗ" "Ё" "Ё" "Ѐ" "Ѐ") -> "\\(?:Е[̀̆̈]\\|[ЀЁЕӖ]\\)"
-;; 5. е, ("ӗ" "ӗ" "ё" "ё" "ѐ" "ѐ") -> "\\(?:е[̀̆̈]\\|[еѐёӗ]\\)"
-;; 5. ё, ("ё") -> "\\(?:ё\\|ё\\)"
-;; 5. И, ("Ӥ" "Ӥ" "Ӣ" "Ӣ" "Й" "Й" "Ѝ" "Ѝ") -> "\\(?:И[̀̄̆̈]\\|[ЍИЙӢӤ]\\)"
-;; 5. Й, ("Й") -> "\\(?:Й\\|Й\\)"
-;; 5. и, ("ӥ" "ӥ" "ӣ" "ӣ" "ѝ" "ѝ" "й" "й") -> "\\(?:и[̀̄̆̈]\\|[ийѝӣӥ]\\)"
-;; 5. й, ("й") -> "\\(?:й\\|й\\)"
 
 
 (defconst char-fold-table
@@ -109,12 +88,10 @@
                ;; If there's no formatting tag, ensure that char matches
                ;; its decomp exactly.  This is because we want 'ä' to
                ;; match 'ä', but we don't want '¹' to match '1'.
-               ;; (message "1. %c->%S" char (if (consp decomp) (mapcar #'string decomp) decomp))
                (aset equiv char
                      (cons (apply #'string decomp)
                            (aref equiv char))))
 
-             ;; TODO: support lax search for “ff”
              ;; Allow the entire decomp to match char.  If decomp has
              ;; multiple characters, this is done by adding an entry
              ;; to the alist of the first character in decomp.  This
@@ -122,23 +99,18 @@
              ;; match '¹'.
              (let ((make-decomp-match-char
                     (lambda (decomp char)
-                      ;; (message "2. %c->%S" char (if (consp decomp) (mapcar #'string decomp) decomp))
                       (if (cdr decomp)
-                          (progn
-                            ;; (message "multi. %c->%S" (car decomp) (cons (apply #'string (cdr decomp)) (regexp-quote (string char))))
-                            (aset equiv-multi (car decomp)
-                                  (cons (cons (apply #'string (cdr decomp))
-                                              (regexp-quote (string char)))
-                                        (aref equiv-multi (car decomp)))))
-                        (progn
-                          ;; (message "equiv. %c->%S" (car decomp) (char-to-string char))
-                          (aset equiv (car decomp)
-                                (cons (char-to-string char)
-                                      (aref equiv (car decomp))))
-                          (when char-fold-include-base
-                            (aset equiv char
-                                  (cons (char-to-string (car decomp))
-                                        (aref equiv (car decomp))))))))))
+                          (aset equiv-multi (car decomp)
+                                (cons (cons (apply #'string (cdr decomp))
+                                            (regexp-quote (string char)))
+                                      (aref equiv-multi (car decomp))))
+                        (aset equiv (car decomp)
+                              (cons (char-to-string char)
+                                    (aref equiv (car decomp))))
+                        (when char-fold-include-base
+                          (aset equiv char
+                                (cons (char-to-string (car decomp))
+                                      (aref equiv (car decomp)))))))))
                (funcall make-decomp-match-char decomp char)
                ;; Do it again, without the non-spacing characters.
                ;; This allows 'a' to match 'ä'.
@@ -154,32 +126,28 @@
                    ;; character, we allow this character to match the
                    ;; decomp.  This is to let 'a' match 'ä'.
                    (unless (cdr simpler-decomp)
-                     ;; (message "3. %c->%S" char (if (consp simpler-decomp) (mapcar #'string simpler-decomp) simpler-decomp))
                      (aset equiv (car simpler-decomp)
                            (cons (apply #'string decomp)
                                  (aref equiv (car simpler-decomp)))))))))))
        table)
 
       ;; Add some manual entries.
-      (dolist (it char-fold-include)
+      (dolist (it char-fold-include-alist)
         (let ((idx (car it))
               (chars (cdr it)))
-          ;; (message "4. %c->%S" idx chars)
           (aset equiv idx (append chars (aref equiv idx)))))
 
       ;; Remove some entries.
-      (dolist (it char-fold-exclude)
+      (dolist (it char-fold-exclude-alist)
         (let ((idx (car it))
               (char (cdr it)))
           (when (aref equiv idx)
-            ;; (message "4. %c->%S" idx (remove (char-to-string char) (aref equiv idx)))
             (aset equiv idx (remove (char-to-string char) (aref equiv idx))))))
 
       ;; Convert the lists of characters we compiled into regexps.
       (map-char-table
        (lambda (char dec-list)
          (let ((re (regexp-opt (cons (char-to-string char) dec-list))))
-           ;; (message "5. %c, %S -> %S" char dec-list re)
            (if (consp char)
                (set-char-table-range equiv char re)
              (aset equiv char re))))
