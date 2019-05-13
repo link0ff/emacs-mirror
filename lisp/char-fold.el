@@ -24,38 +24,8 @@
 
 (eval-and-compile (put 'char-fold-table 'char-table-extra-slots 1))
 
-(defcustom char-fold-include-base nil
-  "Include mappings from composite character to base letter."
-  :type 'boolean
-  :group 'matching
-  :version "27.1")
-
-(defcustom char-fold-include-alist
-  '((?\" "＂" "“" "”" "”" "„" "⹂" "〞" "‟" "‟" "❞" "❝" "❠" "“" "„" "〝" "〟" "🙷" "🙶" "🙸" "«" "»")
-    (?' "❟" "❛" "❜" "‘" "’" "‚" "‛" "‚" "󠀢" "❮" "❯" "‹" "›")
-    (?` "❛" "‘" "‛" "󠀢" "❮" "‹")
-    ;; (?\t " ")
-    )
-  "Additional character mappings to include."
-  :type '(alist :key-type (character :tag "From")
-                :value-type (repeat (string :tag "To")))
-  :group 'lisp
-  :version "27.1")
-
-(defcustom char-fold-exclude-alist
-  '((?и . ?й)
-    (?й . ?и)
-    (?И . ?Й)
-    (?Й . ?И))
-  "Character mappings to exclude from default setting."
-  :type '(alist :key-type (character :tag "From")
-                :value-type (character :tag "To"))
-  :group 'lisp
-  :version "27.1")
-
-
-(defconst char-fold-table
-  (eval-when-compile
+(eval-and-compile
+  (defun char-fold-make-table ()
     (let ((equiv (make-char-table 'char-fold-table))
           (equiv-multi (make-char-table 'char-fold-table))
           (table (unicode-property-table-internal 'decomposition)))
@@ -152,7 +122,11 @@
                (set-char-table-range equiv char re)
              (aset equiv char re))))
        equiv)
-      equiv))
+      equiv)))
+
+(defconst char-fold-table
+  (eval-when-compile
+    (char-fold-make-table))
   "Used for folding characters of the same group during search.
 This is a char-table with the `char-fold-table' subtype.
 
@@ -174,6 +148,54 @@ For instance, the default alist for ?f includes:
      (\"i\" . \"ﬁ\") (\"f\" . \"ﬀ\"))
 
 Exceptionally for the space character (32), ALIST is ignored.")
+
+;; (eval-and-compile
+;;   (defun char-fold-make-table ()
+;;     (message "!!! %S" (let (funcs)
+;;                         (mapbacktrace (lambda (_evald func _args _flags)
+;;                                         (push func funcs)))
+;;                         (nreverse funcs)))))
+
+(eval-and-compile (defcustom char-fold-include-base nil
+  "Include mappings from composite character to base letter."
+  :type 'boolean
+  :initialize 'custom-initialize-default
+  :set (lambda (sym val)
+         (set sym val)
+         (setq char-fold-table (char-fold-make-table)))
+  :group 'matching
+  :version "27.1"))
+
+(eval-and-compile (defcustom char-fold-include-alist
+  '((?\" "＂" "“" "”" "”" "„" "⹂" "〞" "‟" "‟" "❞" "❝" "❠" "“" "„" "〝" "〟" "🙷" "🙶" "🙸" "«" "»")
+    (?' "❟" "❛" "❜" "‘" "’" "‚" "‛" "‚" "󠀢" "❮" "❯" "‹" "›")
+    (?` "❛" "‘" "‛" "󠀢" "❮" "‹")
+    ;; (?\t " ")
+    )
+  "Additional character mappings to include."
+  :type '(alist :key-type (character :tag "From")
+                :value-type (repeat (string :tag "To")))
+  :initialize 'custom-initialize-default
+  :set (lambda (sym val)
+         (set sym val)
+         (setq char-fold-table (char-fold-make-table)))
+  :group 'lisp
+  :version "27.1"))
+
+(eval-and-compile (defcustom char-fold-exclude-alist
+  '((?и . ?й)
+    (?й . ?и)
+    (?И . ?Й)
+    (?Й . ?И))
+  "Character mappings to exclude from default setting."
+  :type '(alist :key-type (character :tag "From")
+                :value-type (character :tag "To"))
+  :initialize 'custom-initialize-default
+  :set (lambda (sym val)
+         (set sym val)
+         (setq char-fold-table (char-fold-make-table)))
+  :group 'lisp
+  :version "27.1"))
 
 (defun char-fold--make-space-string (n)
   "Return a string that matches N spaces."
