@@ -477,6 +477,16 @@ If SELECT is non-nil, select the target window."
 (defvar-local xref--original-window nil
   "The original window this xref buffer was created from.")
 
+(defvar-local xref--original-command nil
+  "The original command that created this xref buffer.")
+
+;; (define-key xref--button-map [(control ?m)]
+;;   (lambda ()
+;;     (interactive)
+;;     (if (memq xref--original-command '(xref-find-definitions))
+;;         (call-interactively 'xref-quit-and-goto-xref)
+;;       (call-interactively 'xref-goto-xref))))
+
 (defun xref--show-pos-in-buf (pos buf)
   "Goto and display position POS of buffer BUF in a window.
 Honor `xref--original-window-intent', run `xref-after-jump-hook'
@@ -807,7 +817,8 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
         (pop-to-buffer (current-buffer))
         (goto-char (point-min))
         (setq xref--original-window (assoc-default 'window alist)
-              xref--original-window-intent (assoc-default 'display-action alist))
+              xref--original-window-intent (assoc-default 'display-action alist)
+              xref--original-command this-command)
         (current-buffer)))))
 
 
