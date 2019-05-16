@@ -1101,39 +1101,36 @@ WIDTH and HEIGHT are the sizes given in the HTML data, if any.
 The size of the displayed image will not exceed
 MAX-WIDTH/MAX-HEIGHT.  If not given, use the current window
 width/height instead."
-  (if (or (not (fboundp 'imagemagick-types))
-          (not (get-buffer-window (current-buffer))))
-      (create-image data nil t :ascent 100)
-    (let* ((edges (window-inside-pixel-edges
-                   (get-buffer-window (current-buffer))))
-           (max-width (truncate (* shr-max-image-proportion
-                                   (or max-width
-                                       (- (nth 2 edges) (nth 0 edges))))))
-           (max-height (truncate (* shr-max-image-proportion
-                                    (or max-height
-                                        (- (nth 3 edges) (nth 1 edges))))))
-           (scaling (image-compute-scaling-factor image-scaling-factor)))
-      (when (or (and width
-                     (> width max-width))
-                (and height
-                     (> height max-height)))
-        (setq width nil
-              height nil))
-      (if (and width height
-               (< (* width scaling) max-width)
-               (< (* height scaling) max-height))
-          (create-image
-           data 'imagemagick t
-           :ascent 100
-           :width width
-           :height height
-           :format content-type)
+  (let* ((edges (window-inside-pixel-edges
+                 (get-buffer-window (current-buffer))))
+         (max-width (truncate (* shr-max-image-proportion
+                                 (or max-width
+                                     (- (nth 2 edges) (nth 0 edges))))))
+         (max-height (truncate (* shr-max-image-proportion
+                                  (or max-height
+                                      (- (nth 3 edges) (nth 1 edges))))))
+         (scaling (image-compute-scaling-factor image-scaling-factor)))
+    (when (or (and width
+                   (> width max-width))
+              (and height
+                   (> height max-height)))
+      (setq width nil
+            height nil))
+    (if (and width height
+             (< (* width scaling) max-width)
+             (< (* height scaling) max-height))
         (create-image
-         data 'imagemagick t
+         data nil t
          :ascent 100
-         :max-width max-width
-         :max-height max-height
-         :format content-type)))))
+         :width width
+         :height height
+         :format content-type)
+      (create-image
+       data nil t
+       :ascent 100
+       :max-width max-width
+       :max-height max-height
+       :format content-type))))
 
 ;; url-cache-extract autoloads url-cache.
 (declare-function url-cache-create-filename "url-cache" (url))
@@ -1790,7 +1787,10 @@ The preference is a float determined from `shr-prefer-media-type'."
 
 (defun shr-mark-fill (start)
   ;; We may not have inserted any text to fill.
-  (unless (= start (point))
+  (when (and (/= start (point))
+             ;; Tables insert themselves with the correct indentation,
+             ;; so don't do anything if we're at the start of a table.
+             (not (get-text-property start 'shr-table-id)))
     (put-text-property start (1+ start)
 		       'shr-indentation shr-indentation)))
 
@@ -2087,7 +2087,8 @@ flags that control whether to collect or render objects."
 			(setq max (max max (nth 2 column))))
 		      max)))
 	(dotimes (_ (max height 1))
-	  (shr-indent)
+          (when (bolp)
+	    (shr-indent))
 	  (insert shr-table-vertical-line "\n"))
 	(dolist (column row)
 	  (when (> (nth 2 column) -1)
