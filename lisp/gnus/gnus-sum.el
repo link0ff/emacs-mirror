@@ -42,6 +42,7 @@
 (defvar gnus-tmp-indentation)
 (defvar gnus-tmp-level)
 (defvar gnus-tmp-lines)
+(defvar gnus-tmp-name)
 (defvar gnus-tmp-number)
 (defvar gnus-tmp-opening-bracket)
 (defvar gnus-tmp-process)
@@ -50,6 +51,7 @@
 (defvar gnus-tmp-score-char)
 (defvar gnus-tmp-subject)
 (defvar gnus-tmp-subject-or-nil)
+(defvar gnus-tmp-thread)
 (defvar gnus-tmp-unread)
 (defvar gnus-tmp-unread-and-unselected)
 (defvar gnus-tmp-unread-and-unticked)
@@ -1014,10 +1016,9 @@ following hook:
  (add-hook gnus-select-group-hook
 	   (lambda ()
 	     (mapcar (lambda (header)
-		       (mail-header-set-subject
-			header
-			(gnus-simplify-subject
-			 (mail-header-subject header) \\='re-only)))
+		       (setf (mail-header-subject header)
+		             (gnus-simplify-subject
+		              (mail-header-subject header) \\='re-only)))
 		     gnus-newsgroup-headers)))"
   :group 'gnus-group-select
   :type 'hook)
@@ -1444,15 +1445,17 @@ the normal Gnus MIME machinery."
     (?\< (make-string (max 0 (- 20 gnus-tmp-level)) ? ) ?s)
     (?i gnus-tmp-score ?d)
     (?z gnus-tmp-score-char ?c)
-    (?V (gnus-thread-total-score (and (boundp 'thread) (car thread))) ?d)
+    (?V (gnus-thread-total-score
+         (and (boundp 'gnus-tmp-thread) (car gnus-tmp-thread)))
+        ?d)
     (?U gnus-tmp-unread ?c)
     (?f (gnus-summary-from-or-to-or-newsgroups gnus-tmp-header gnus-tmp-from)
 	?s)
     (?t (gnus-summary-number-of-articles-in-thread
-	 (and (boundp 'thread) (car thread)) gnus-tmp-level)
+	 (and (boundp 'gnus-tmp-thread) (car gnus-tmp-thread)) gnus-tmp-level)
 	?d)
     (?e (gnus-summary-number-of-articles-in-thread
-	 (and (boundp 'thread) (car thread)) gnus-tmp-level t)
+	 (and (boundp 'gnus-tmp-thread) (car gnus-tmp-thread)) gnus-tmp-level t)
 	?c)
     (?u gnus-tmp-user-defined ?s)
     (?P (gnus-pick-line-number) ?d)
@@ -3268,7 +3271,7 @@ The following commands are available:
 
 (defun gnus-summary-article-pseudo-p (article)
   "Say whether this article is a pseudo article or not."
-  (not (vectorp (gnus-data-header (gnus-data-find article)))))
+  (not (mail-header-p (gnus-data-header (gnus-data-find article)))))
 
 (defmacro gnus-summary-article-sparse-p (article)
   "Say whether this article is a sparse article or not."
@@ -3344,7 +3347,7 @@ article number."
 	     '(gnus-data-header (assq (gnus-summary-article-number)
 				      gnus-newsgroup-data)))))
      (and headers
-	  (vectorp headers)
+	  (mail-header-p headers)
 	  (mail-header-subject headers))))
 
 (defmacro gnus-summary-article-score (&optional number)
@@ -3601,6 +3604,9 @@ buffer that was in action when the last article was fetched."
       t
     (not (cdr (gnus-data-find-list article)))))
 
+(defconst gnus--dummy-mail-header
+  (make-full-mail-header 0 "" "" "05 Apr 2001 23:33:09 +0400" "" "" 0 0 "" nil))
+
 (defun gnus-make-thread-indent-array (&optional n)
   (when (or n
 	    (progn (setq n 200) nil)
@@ -3629,10 +3635,9 @@ buffer that was in action when the last article was fetched."
 	      (gnus-undownloaded-mark ?Z)
 	      (gnus-summary-line-format-spec spec)
 	      (gnus-newsgroup-downloadable '(0))
-	      (header [0 "" "" "05 Apr 2001 23:33:09 +0400" "" "" 0 0 "" nil])
 	      case-fold-search ignores)
 	  ;; Here, all marks are bound to Z.
-	  (gnus-summary-insert-line header
+	  (gnus-summary-insert-line gnus--dummy-mail-header
 				    0 nil t gnus-tmp-unread t nil "" nil 1)
 	  (goto-char (point-min))
 	  ;; Memorize the positions of the same characters as dummy marks.
@@ -3646,7 +3651,7 @@ buffer that was in action when the last article was fetched."
 		gnus-score-below-mark ?C
 		gnus-score-over-mark ?C
 		gnus-undownloaded-mark ?D)
-	  (gnus-summary-insert-line header
+	  (gnus-summary-insert-line gnus--dummy-mail-header
 				    0 nil t gnus-tmp-unread t nil "" nil 1)
 	  ;; Ignore characters which aren't dummy marks.
 	  (dolist (p ignores)
@@ -3785,9 +3790,9 @@ buffer that was in action when the last article was fetched."
       (setq gnus-tmp-name gnus-tmp-from))
     (unless (numberp gnus-tmp-lines)
       (setq gnus-tmp-lines -1))
-    (if (= gnus-tmp-lines -1)
-	(setq gnus-tmp-lines "?")
-      (setq gnus-tmp-lines (number-to-string gnus-tmp-lines)))
+    (setq gnus-tmp-lines (if (= gnus-tmp-lines -1)
+	                     "?"
+                           (number-to-string gnus-tmp-lines)))
     (condition-case ()
 	(put-text-property
 	 (point)
@@ -4401,7 +4406,7 @@ Returns HEADER if it was entered in the DEPENDENCIES.  Returns nil otherwise."
       (setq id-dep (puthash (setq id (nnmail-message-id))
 			    (list header)
 			    dependencies))
-      (mail-header-set-id header id))
+      (setf (mail-header-id header) id))
 
      ;; The last case ignores an existing entry, except it adds any
      ;; additional Xrefs (in case the two articles came from different
@@ -4409,11 +4414,10 @@ Returns HEADER if it was entered in the DEPENDENCIES.  Returns nil otherwise."
      ;; Also sets `header' to nil meaning that the `dependencies'
      ;; table was *not* modified.
      (t
-      (mail-header-set-xref
-       (car id-dep)
-       (concat (or (mail-header-xref (car id-dep))
-		   "")
-	       (or (mail-header-xref header) "")))
+      (setf (mail-header-xref (car id-dep))
+            (concat (or (mail-header-xref (car id-dep))
+		        "")
+	            (or (mail-header-xref header) "")))
       (setq header nil)))
 
     (when (and header (not replaced))
@@ -4427,7 +4431,7 @@ Returns HEADER if it was entered in the DEPENDENCIES.  Returns nil otherwise."
 	    ;; Yuk!  This is a reference loop.  Make the article be a
 	    ;; root article.
 	    (progn
-	      (mail-header-set-references (car id-dep) "none")
+	      (setf (mail-header-references (car id-dep)) "none")
 	      (setq ref nil)
 	      (setq parent-id nil))
 	  (setq ref (gnus-parent-id (mail-header-references ref-header)))))
@@ -4565,8 +4569,8 @@ Returns HEADER if it was entered in the DEPENDENCIES.  Returns nil otherwise."
     (when (and (string= references "")
 	       (setq in-reply-to (mail-header-extra header))
 	       (setq in-reply-to (cdr (assq 'In-Reply-To in-reply-to))))
-      (mail-header-set-references
-       header (gnus-extract-message-id-from-in-reply-to in-reply-to)))
+      (setf (mail-header-references header)
+            (gnus-extract-message-id-from-in-reply-to in-reply-to)))
 
     (when gnus-alter-header-function
       (funcall gnus-alter-header-function header))
@@ -5265,7 +5269,7 @@ or a straight list of headers."
 	gnus-tmp-header gnus-tmp-unread gnus-tmp-downloaded
 	gnus-tmp-replied gnus-tmp-subject-or-nil
 	gnus-tmp-dummy gnus-tmp-indentation gnus-tmp-lines gnus-tmp-score
-	gnus-tmp-score-char gnus-tmp-from gnus-tmp-name
+	gnus-tmp-score-char gnus-tmp-from gnus-tmp-name gnus-tmp-thread
 	gnus-tmp-number gnus-tmp-opening-bracket gnus-tmp-closing-bracket
 	tree-stack)
 
@@ -5516,9 +5520,10 @@ or a straight list of headers."
 	      (setq gnus-tmp-name gnus-tmp-from))
 	    (unless (numberp gnus-tmp-lines)
 	      (setq gnus-tmp-lines -1))
-	    (if (= gnus-tmp-lines -1)
-		(setq gnus-tmp-lines "?")
-	      (setq gnus-tmp-lines (number-to-string gnus-tmp-lines)))
+	    (setq gnus-tmp-lines (if (= gnus-tmp-lines -1)
+		                     "?"
+                                   (number-to-string gnus-tmp-lines)))
+            (setq gnus-tmp-thread thread)
 	    (put-text-property
 	     (point)
 	     (progn (eval gnus-summary-line-format-spec) (point))
@@ -5619,7 +5624,7 @@ or a straight list of headers."
 	    (setq subject
 		  (concat (substring subject 0 (match-beginning 1))
 			  (substring subject (match-end 1)))))
-	  (mail-header-set-subject header subject))))))
+	  (setf (mail-header-subject header) subject))))))
 
 (defun gnus-fetch-headers (articles &optional limit force-new dependencies)
   "Fetch headers of ARTICLES."
@@ -5775,8 +5780,7 @@ If SELECT-ARTICLES, only select those articles from GROUP."
       (setq gnus-newsgroup-limit (copy-sequence articles))
       ;; Remove canceled articles from the list of unread articles.
       (setq fetched-articles
-	    (mapcar (lambda (headers) (mail-header-number headers))
-		    gnus-newsgroup-headers))
+	    (mapcar #'mail-header-number gnus-newsgroup-headers))
       (setq gnus-newsgroup-articles fetched-articles)
       (setq gnus-newsgroup-unreads
 	    (gnus-sorted-nintersection
@@ -6222,7 +6226,7 @@ If WHERE is `summary', the summary mode line format will be used."
 				 gnus-tmp-unselected))))
 	       (gnus-tmp-subject
 		(if (and gnus-current-headers
-			 (vectorp gnus-current-headers))
+			 (mail-header-p gnus-current-headers))
 		    (gnus-mode-string-quote
 		     (mail-header-subject gnus-current-headers))
 		  ""))
@@ -6439,7 +6443,7 @@ The resulting hash table is returned, or nil if no Xrefs were found."
 	  ;; doesn't always go hand in hand.
 	  (setq
 	   header
-	   (vector
+	   (make-full-mail-header
 	    ;; Number.
 	    (prog1
 		(setq number (read cur))
@@ -6642,7 +6646,7 @@ This is meant to be called in `gnus-article-internal-prepare-hook'."
 		      (search-forward "\nXref:" nil t))
 	      (goto-char (1+ (match-end 0)))
 	      (setq xref (buffer-substring (point) (point-at-eol)))
-	      (mail-header-set-xref headers xref)))))))
+	      (setf (mail-header-xref headers) xref)))))))
 
 (defun gnus-summary-insert-subject (id &optional old-header use-old-header)
   "Find article ID and insert the summary line for that article.
@@ -6652,7 +6656,7 @@ If USE-OLD-HEADER is non-nil, then OLD-HEADER should be a header,
 and OLD-HEADER will be used when the summary line is inserted,
 too, instead of trying to fetch new headers."
   (let* ((line (and (numberp old-header) old-header))
-	 (old-header (and (vectorp old-header) old-header))
+	 (old-header (and (mail-header-p old-header) old-header))
 	 (header (cond ((and old-header use-old-header)
 			old-header)
 		       ((and (numberp id)
@@ -6680,7 +6684,7 @@ too, instead of trying to fetch new headers."
       (let ((gnus-newsgroup-headers (list header)))
         (gnus-summary-remove-list-identifiers))
       (when old-header
-	(mail-header-set-number header (mail-header-number old-header)))
+	(setf (mail-header-number header) (mail-header-number old-header)))
       (setq gnus-newsgroup-sparse
 	    (delq (setq number (mail-header-number header))
 		  gnus-newsgroup-sparse))
@@ -6890,7 +6894,7 @@ If EXCLUDE-GROUP, do not go to this group."
     (while arts
       (and (or (not unread)
 	       (gnus-data-unread-p (car arts)))
-	   (vectorp (gnus-data-header (car arts)))
+	   (mail-header-p (gnus-data-header (car arts)))
 	   (gnus-subject-equal
 	    simp-subject (mail-header-subject (gnus-data-header (car arts))) t)
 	   (setq result (car arts)
@@ -7727,7 +7731,7 @@ If FORCE, also allow jumping to articles not currently shown."
 	 force
 	 (gnus-summary-insert-subject
 	  article
-	  (if (or (numberp force) (vectorp force)) force)
+	  (if (or (numberp force) (mail-header-p force)) force)
 	  t)
 	 (setq data (gnus-data-find article)))
     (goto-char b)
@@ -8281,8 +8285,7 @@ If given a prefix, remove all limits."
   (interactive "P")
   (when total
     (setq gnus-newsgroup-limits
-	  (list (mapcar (lambda (h) (mail-header-number h))
-			gnus-newsgroup-headers))))
+	  (list (mapcar #'mail-header-number gnus-newsgroup-headers))))
   (unless gnus-newsgroup-limits
     (error "No limit to pop"))
   (prog1
@@ -8473,7 +8476,7 @@ articles that are younger than AGE days."
 	    (cutoff (days-to-time age))
 	    articles d date is-younger)
 	(while (setq d (pop data))
-	  (when (and (vectorp (gnus-data-header d))
+	  (when (and (mail-header-p (gnus-data-header d))
 		     (setq date (mail-header-date (gnus-data-header d))))
 	    (setq is-younger (time-less-p
 			      (time-since (gnus-date-get-time date))
@@ -8790,8 +8793,7 @@ If ALL, mark even excluded ticked and dormants as read."
   (setq gnus-newsgroup-limit (sort gnus-newsgroup-limit #'<))
   (let ((articles (gnus-sorted-ndifference
 		   (sort
-		    (mapcar (lambda (h) (mail-header-number h))
-			    gnus-newsgroup-headers)
+		    (mapcar #'mail-header-number gnus-newsgroup-headers)
 		    #'<)
 		   gnus-newsgroup-limit))
 	article)
@@ -9580,8 +9582,7 @@ Optional argument BACKWARD means do search for backward.
 This search includes all articles in the current group that Gnus has
 fetched headers for, whether they are displayed or not."
   (let ((articles nil)
-	;; FIXME: Can't η-reduce because it's a macro (make it define-inline)
-	(func `(lambda (h) (,(intern (concat "mail-header-" header)) h)))
+	(func (intern (concat "mail-header-" header)))
 	(case-fold-search t))
     (dolist (header gnus-newsgroup-headers)
       ;; FIXME: when called from gnus-summary-limit-include-thread via
@@ -9612,8 +9613,7 @@ not match REGEXP on HEADER."
 	  (error "%s is an invalid header" header))
       (unless (fboundp (intern (concat "mail-header-" header)))
 	(error "%s is not a valid header" header))
-      ;; FIXME: eta-reduce!
-      (setq func `(lambda (h) (,(intern (concat "mail-header-" header)) h))))
+      (setq func (intern (concat "mail-header-" header))))
     (dolist (d (if (eq backward 'all)
 		   gnus-newsgroup-data
 		 (gnus-data-find-list
@@ -9621,7 +9621,7 @@ not match REGEXP on HEADER."
 		  (gnus-data-list backward))))
       (when (and (or (not unread)	; We want all articles...
 		     (gnus-data-unread-p d)) ; Or just unreads.
-		 (vectorp (gnus-data-header d)) ; It's not a pseudo.
+		 (mail-header-p (gnus-data-header d)) ; It's not a pseudo.
 		 (if not-matching
 		     (not (string-match
 			   regexp
@@ -11158,7 +11158,7 @@ If NO-EXPIRE, auto-expiry will be inhibited."
 
 	;; See whether the article is to be put in the cache.
 	(and gnus-use-cache
-	     (vectorp (gnus-summary-article-header article))
+	     (mail-header-p (gnus-summary-article-header article))
 	     (save-excursion
 	       (gnus-cache-possibly-enter-article
 		gnus-newsgroup-name article
@@ -11205,7 +11205,7 @@ If NO-EXPIRE, auto-expiry will be inhibited."
 	;; See whether the article is to be put in the cache.
 	(and gnus-use-cache
 	     (not (= mark gnus-canceled-mark))
-	     (vectorp (gnus-summary-article-header article))
+	     (mail-header-p (gnus-summary-article-header article))
 	     (save-excursion
 	       (gnus-cache-possibly-enter-article
 		gnus-newsgroup-name article
@@ -12154,7 +12154,7 @@ performed."
 	 header file)
     (dolist (article articles)
       (setq header (gnus-summary-article-header article))
-      (if (not (vectorp header))
+      (if (not (mail-header-p header))
 	  ;; This is a pseudo-article.
 	  (if (assq 'name header)
 	      (gnus-copy-file (cdr (assq 'name header)))
@@ -12650,7 +12650,7 @@ If REVERSE, save parts that do not match TYPE."
 	      ;; If we fetched by Message-ID and the article came from
 	      ;; a different group (or server), we fudge some bogus
 	      ;; article numbers for this article.
-	      (mail-header-set-number header gnus-reffed-article-number))
+	      (setf (mail-header-number header) gnus-reffed-article-number))
 	    (with-current-buffer gnus-summary-buffer
 	      (cl-decf gnus-reffed-article-number)
 	      (gnus-remove-header (mail-header-number header))
