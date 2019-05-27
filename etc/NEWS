@@ -153,6 +153,12 @@ after Emacs has finished initialization and is ready for use.
 emacs.service file to eg "~/.config/systemd/user/", you will need to copy
 the new version of the file again.)
 
++++
+** New option 'help-enable-completion-auto-load'.
+This allows disabling the new feature introduced in Emacs 26.1 which
+loads files during completion of 'C-h f' and 'C-h v' according to
+'definition-prefixes'.
+
 
 * Changes in Emacs 27.1
 
@@ -777,6 +783,20 @@ where it was invoked.
 ---
 *** New xref faces 'xref-file-header', 'xref-line-number', 'xref-match'.
 
+*** New variable 'xref-show-definitions-function'.
+It encapsulates the logic pertinent to showing the result of
+'xref-find-definitions'.  The user can change it to customize its
+behavior and the display of results.
+
+*** Search results show the buffer even for one hit.
+The search-type Xref commands (e.g. 'xref-find-references' or
+'project-find-regexp') now show the results buffer even when there is
+only one hit.  This can be altered by changing
+'xref-show-xrefs-function'.
+
+*** Xref buffers support refreshing the search results.
+A new command 'xref-refresh-results' is bound to 'g'.
+
 ** Ecomplete
 
 *** The ecomplete sorting has changed to a decay-based algorithm.
@@ -1321,6 +1341,12 @@ when given in a string.  Previously, '(any "\x80-\xff")' would match
 characters U+0080...U+00FF.  Now the expression matches raw bytes in
 the 128...255 range, as expected.
 
+*** The rx 'or' and 'seq' forms no longer require any arguments.
+(or) produces a regexp that never matches anything, while (seq)
+matches the empty string, each being an identity for the operation.
+This also works for their aliases: '|' for 'or'; ':', 'and' and
+'sequence' for 'seq'.
+
 ** Frames
 
 +++
@@ -1443,8 +1469,7 @@ When set to a non-nil value, buffers in Auto Revert mode are no longer
 polled for changes periodically.  This reduces the power consumption
 of an idle Emacs, but may fail on some network file systems; set
 'auto-revert-notify-exclude-dir-regexp' to match files where
-notification is not supported.  The new variable currently has no
-effect in 'global-auto-revert-mode'.  The default value is nil.
+notification is not supported.  The default value is nil.
 
 *** New variable 'buffer-auto-revert-by-notification'
 A major mode can declare that notification on the buffer's default

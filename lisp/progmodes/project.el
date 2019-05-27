@@ -351,7 +351,9 @@ requires quoting, e.g. `\\[quoted-insert]<space>'."
               (project--files-in-directory dir
                                            nil
                                            (grep-read-files regexp))))))
-    (project--find-regexp-in-files regexp files)))
+    (xref--show-xrefs
+     (apply-partially #'project--find-regexp-in-files regexp files)
+     nil)))
 
 (defun project--dir-ignores (project dir)
   (let* ((roots (project-roots project))
@@ -376,7 +378,9 @@ pattern to search for."
           (project-files pr (append
                              (project-roots pr)
                              (project-external-roots pr)))))
-    (project--find-regexp-in-files regexp files)))
+    (xref--show-xrefs
+     (apply-partially #'project--find-regexp-in-files regexp files)
+     nil)))
 
 (defun project--find-regexp-in-files (regexp files)
   (pcase-let*
@@ -418,7 +422,7 @@ pattern to search for."
     (setq xrefs (xref--convert-hits (nreverse hits) regexp))
     (unless xrefs
       (user-error "No matches for: %s" regexp))
-    (xref--show-xrefs xrefs nil)))
+    xrefs))
 
 (defun project--process-file-region (start end program
                                      &optional buffer display
@@ -443,14 +447,14 @@ pattern to search for."
     (read-regexp "Find regexp" (and id (regexp-quote id)))))
 
 ;;;###autoload
-(defun project-find-file (&optional filename)
+(defun project-find-file ()
   "Visit a file (with completion) in the current project's roots.
 The completion default is the filename at point, if one is
 recognized."
   (interactive)
   (let* ((pr (project-current t))
          (dirs (project-roots pr)))
-    (project-find-file-in (or filename (thing-at-point 'filename)) dirs pr)))
+    (project-find-file-in (thing-at-point 'filename) dirs pr)))
 
 ;;;###autoload
 (defun project-or-external-find-file ()

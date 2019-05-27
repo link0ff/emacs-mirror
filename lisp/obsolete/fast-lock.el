@@ -3,6 +3,7 @@
 ;; Copyright (C) 1994-1998, 2001-2019 Free Software Foundation, Inc.
 
 ;; Author: Simon Marshall <simon@gnu.org>
+;; Maintainer: emacs-devel@gnu.org
 ;; Keywords: faces files
 ;; Version: 3.14
 ;; Obsolete-since: 22.1
@@ -160,7 +161,7 @@
 ;; - XEmacs: Add `font-lock-value-in-major-mode' if necessary
 ;; - Removed `fast-lock-submit-bug-report' and bade farewell
 ;; 3.11--3.12:
-;; - Added Custom support (Hrvoje Niksic help)
+;; - Added Custom support (Hrvoje Nikšić help)
 ;; - Made `save-buffer-state' wrap `inhibit-point-motion-hooks'
 ;; - Made `fast-lock-cache-data' simplify calls of `font-lock-compile-keywords'
 ;; 3.12--3.13:

@@ -969,8 +969,9 @@ See `find-file-noselect' for the arguments."
   "Strip all \r's from the current buffer."
   (nnheader-skeleton-replace "\r"))
 
-(defalias 'nnheader-cancel-timer 'cancel-timer)
-(defalias 'nnheader-cancel-function-timers 'cancel-function-timers)
+(define-obsolete-function-alias 'nnheader-cancel-timer 'cancel-timer "27.1")
+(define-obsolete-function-alias 'nnheader-cancel-function-timers
+  'cancel-function-timers "27.1")
 
 ;; When changing this function, consider changing `pop3-accept-process-output'
 ;; as well.
