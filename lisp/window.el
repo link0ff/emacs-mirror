@@ -6795,6 +6795,22 @@ window is larger than WINDOW."
            (/ (- (window-total-height window) (window-total-height)) 2))
         (error nil))))))
 
+(defvar window-point nil
+  "Marker to override default `window-point' in help windows.
+`window-point' is a buffer-local marker you can move to a valid position of
+the buffer shown in the window in order to override the standard
+positioning mechanism (`point-min') chosen by window displaying functions.")
+(make-variable-buffer-local 'window-point)
+(put 'window-point 'permanent-local t)
+
+(defvar window-start nil
+  "Marker to override default `window-start' in help windows.
+`window-start' is a buffer-local marker you can move to a valid position of
+the buffer shown in the window in order to override the standard
+positioning mechanism (`point-min') chosen by window displaying functions.")
+(make-variable-buffer-local 'window-start)
+(put 'window-start 'permanent-local t)
+
 (defun window--display-buffer (buffer window type &optional alist)
   "Display BUFFER in WINDOW.
 WINDOW must be a live window chosen by a buffer display action
@@ -6913,6 +6929,15 @@ Return WINDOW if BUFFER and WINDOW are live."
 	(when (consp preserve-size)
 	  (window-preserve-size window t (car preserve-size))
 	  (window-preserve-size window nil (cdr preserve-size)))))
+
+      (when window-start
+        (set-window-start window window-start)
+	(setq window-start nil))
+
+      (when window-point
+        (set-window-point window window-point)
+	(setq window-point nil))
+
       ;; Assign any window parameters specified.
       (let ((parameters (cdr (assq 'window-parameters alist))))
         (dolist (parameter parameters)
