@@ -4,7 +4,7 @@
 ;;
 ;; Authors: JD Smith <jd.smith@utoledo.edu>
 ;;          Carsten Dominik <dominik@science.uva.nl>
-;; Maintainer: JD Smith <jd.smith@utoledo.edu>
+;; Maintainer: emacs-devel@gnu.org
 ;; Package: idlwave
 
 ;; This file is part of GNU Emacs.

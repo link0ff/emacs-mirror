@@ -135,8 +135,10 @@ This setting has precedence over `auto-save-file-name-transforms'."
   :type '(choice (const :tag "Use default" nil)
 		 (directory :tag "Auto save directory name")))
 
+;; Suppress `shell-file-name' for w32 systems.
 (defcustom tramp-encoding-shell
-  (or (tramp-compat-funcall 'w32-shell-name) "/bin/sh")
+  (let (shell-file-name)
+    (or (tramp-compat-funcall 'w32-shell-name) "/bin/sh"))
   "Use this program for encoding and decoding commands on the local host.
 This shell is used to execute the encoding and decoding command on the
 local host, so if you want to use `~' in those commands, you should
@@ -159,15 +161,19 @@ use for the remote host."
   :group 'tramp
   :type '(file :must-match t))
 
+;; Suppress `shell-file-name' for w32 systems.
 (defcustom tramp-encoding-command-switch
-  (if (tramp-compat-funcall 'w32-shell-dos-semantics) "/c" "-c")
+  (let (shell-file-name)
+    (if (tramp-compat-funcall 'w32-shell-dos-semantics) "/c" "-c"))
   "Use this switch together with `tramp-encoding-shell' for local commands.
 See the variable `tramp-encoding-shell' for more information."
   :group 'tramp
   :type 'string)
 
+;; Suppress `shell-file-name' for w32 systems.
 (defcustom tramp-encoding-command-interactive
-  (unless (tramp-compat-funcall 'w32-shell-dos-semantics) "-i")
+  (let (shell-file-name)
+    (unless (tramp-compat-funcall 'w32-shell-dos-semantics) "-i"))
   "Use this switch together with `tramp-encoding-shell' for interactive shells.
 See the variable `tramp-encoding-shell' for more information."
   :version "24.1"
@@ -1435,6 +1441,12 @@ default values are used."
 	    (setq v (make-tramp-file-name
 		     :method method :user user :domain domain :host host
 		     :port port :localname localname :hop hop))
+	  ;; The method must be known.
+	  (unless (or (tramp-completion-mode-p)
+		      (string-equal method tramp-default-method-marker)
+		      (assoc method tramp-methods))
+	    (tramp-user-error
+	     v "Method `%s' is not known." method))
 	  ;; Only some methods from tramp-sh.el do support multi-hops.
 	  (when (and
 		 hop
@@ -2175,17 +2187,16 @@ Must be handled by the callers."
     (if (file-name-absolute-p (nth 0 args))
 	(nth 0 args)
       default-directory))
+   ;; STRING FILE.
+   ;; Starting with Emacs 26.1, just the 2nd argument of
+   ;; `make-symbolic-link' matters.
+   ((eq operation 'make-symbolic-link) (nth 1 args))
    ;; FILE DIRECTORY resp FILE1 FILE2.
    ((member operation
 	    '(add-name-to-file copy-directory copy-file
 	      file-equal-p file-in-directory-p
 	      file-name-all-completions file-name-completion
-	      ;; Starting with Emacs 26.1, just the 2nd argument of
-	      ;; `make-symbolic-link' matters.  For backward
-	      ;; compatibility, we still accept the first argument as
-	      ;; file name to be checked.  Handled properly in
-	      ;; `tramp-handle-*-make-symbolic-link'.
-	      file-newer-than-file-p make-symbolic-link rename-file))
+	      file-newer-than-file-p rename-file))
     (cond
      ((tramp-tramp-file-p (nth 0 args)) (nth 0 args))
      ((tramp-tramp-file-p (nth 1 args)) (nth 1 args))
@@ -2280,7 +2291,10 @@ preventing reentrant calls of Tramp.")
 (defun tramp-file-name-handler (operation &rest args)
   "Invoke Tramp file name handler.
 Falls back to normal file name handler if no Tramp file name handler exists."
-  (let ((filename (apply #'tramp-file-name-for-operation operation args)))
+  (let ((filename (apply #'tramp-file-name-for-operation operation args))
+	;; `file-remote-p' is called for everything, even for symbolic
+	;; links which look remote.  We don't want to get an error.
+	(non-essential (or non-essential (eq operation 'file-remote-p))))
     (if (tramp-tramp-file-p filename)
 	(save-match-data
           (setq filename (tramp-replace-environment-variables filename))
@@ -4383,13 +4397,13 @@ If FILENAME is remote, a file name handler is called."
   (let ((handler (find-file-name-handler filename 'tramp-set-file-uid-gid)))
     (if handler
 	(funcall handler #'tramp-set-file-uid-gid filename uid gid)
-      ;; On W32 "chown" does not work.
+      ;; On W32 systems, "chown" does not work.
       (unless (memq system-type '(ms-dos windows-nt))
 	(let ((uid (or (and (natnump uid) uid) (tramp-get-local-uid 'integer)))
 	      (gid (or (and (natnump gid) gid) (tramp-get-local-gid 'integer))))
 	  (tramp-call-process
-	   nil "chown" nil nil nil
-	   (format "%d:%d" uid gid) (shell-quote-argument filename)))))))
+	   nil "chown" nil nil nil (format "%d:%d" uid gid)
+	   (tramp-unquote-shell-quote-argument filename)))))))
 
 (defun tramp-get-local-uid (id-format)
   "The uid of the local user, in ID-FORMAT.
@@ -4807,8 +4821,11 @@ T1 and T2 are time values (as returned by `current-time' for example)."
   (float-time (time-subtract t1 t2)))
 
 (defun tramp-unquote-shell-quote-argument (s)
-  "Remove quotation prefix \"/:\" from string S, and quote it then for shell."
-  (shell-quote-argument (tramp-compat-file-name-unquote s)))
+  "Remove quotation prefix \"/:\" from string S, and quote it then for shell.
+Suppress `shell-file-name'.  This is needed on w32 systems, which
+would use a wrong quoting for local file names.  See `w32-shell-name'."
+  (let (shell-file-name)
+    (shell-quote-argument (tramp-compat-file-name-unquote s))))
 
 ;; Currently (as of Emacs 20.5), the function `shell-quote-argument'
 ;; does not deal well with newline characters.  Newline is replaced by

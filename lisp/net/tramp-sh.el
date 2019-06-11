@@ -1027,11 +1027,13 @@ component is used as the target of the symlink."
 
     (with-parsed-tramp-file-name linkname nil
       ;; If TARGET is a Tramp name, use just the localname component.
-      (when (and (tramp-tramp-file-p target)
-		 (tramp-file-name-equal-p v (tramp-dissect-file-name target)))
-	(setq target
-	      (tramp-file-name-localname
-	       (tramp-dissect-file-name (expand-file-name target)))))
+      ;; Don't check for a proper method.
+      (let ((non-essential t))
+	(when (and (tramp-tramp-file-p target)
+		   (tramp-file-name-equal-p v (tramp-dissect-file-name target)))
+	  (setq target
+		(tramp-file-name-localname
+		 (tramp-dissect-file-name (expand-file-name target))))))
 
       ;; If TARGET is still remote, quote it.
       (if (tramp-tramp-file-p target)
@@ -4576,9 +4578,11 @@ Goes through the list `tramp-inline-compress-commands'."
 		 ;; the pipe symbol be quoted if they use forward
 		 ;; slashes as directory separators.
 		 (mapconcat
-		  #'shell-quote-argument (split-string compress) " ")
+		  #'tramp-unquote-shell-quote-argument
+		  (split-string compress) " ")
 		 (mapconcat
-		  #'shell-quote-argument (split-string decompress) " "))
+		  #'tramp-unquote-shell-quote-argument
+		  (split-string decompress) " "))
 		nil nil))
 	    (throw 'next nil))
 	  (tramp-message
@@ -5280,8 +5284,9 @@ Return ATTR."
      ((tramp-get-method-parameter vec 'tramp-remote-copy-program)
       localname)
      ((not (zerop (length user)))
-      (format "%s@%s:%s" user host (shell-quote-argument localname)))
-     (t (format "%s:%s" host (shell-quote-argument localname))))))
+      (format
+       "%s@%s:%s" user host (tramp-unquote-shell-quote-argument localname)))
+     (t (format "%s:%s" host (tramp-unquote-shell-quote-argument localname))))))
 
 (defun tramp-method-out-of-band-p (vec size)
   "Return t if this is an out-of-band method, nil otherwise."

@@ -73,8 +73,9 @@
                         (mapbacktrace (lambda (_evald func _args _flags)
                                         (push func funcs)))
                         (nreverse funcs)))
-    (let ((equiv (make-char-table 'char-fold-table))
+    (let* ((equiv (make-char-table 'char-fold-table))
           (equiv-multi (make-char-table 'char-fold-table))
+           (search-spaces-regexp nil)   ; workaround for bug#35802
           (table (unicode-property-table-internal 'decomposition)))
       (set-char-table-extra-slot equiv 0 equiv-multi)
 
@@ -163,9 +164,9 @@
 
       ;; Convert the lists of characters we compiled into regexps.
       (map-char-table
-       (lambda (char dec-list)
-         (let ((re (regexp-opt (cons (char-to-string char) dec-list))))
-           (if (consp char)
+       (lambda (char decomp-list)
+         (let ((re (regexp-opt (cons (char-to-string char) decomp-list))))
+           (if (consp char) ; FIXME: char never is consp?
                (set-char-table-range equiv char re)
              (aset equiv char re))))
        equiv)

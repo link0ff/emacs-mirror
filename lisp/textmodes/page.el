@@ -1,4 +1,4 @@
-;;; page.el --- page motion commands for Emacs
+;;; page.el --- page motion commands for Emacs  -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 1985, 2001-2019 Free Software Foundation, Inc.
 
@@ -38,8 +38,7 @@ A page boundary is any line whose beginning matches the regexp
     ;; In case the page-delimiter matches the null string,
     ;; don't find a match without moving.
     (if (bolp) (forward-char 1))
-    (if (re-search-forward page-delimiter nil t)
-	nil
+    (unless (re-search-forward page-delimiter nil t)
       (goto-char (point-max)))
     (setq count (1- count)))
   (while (and (< count 0) (not (bobp)))
@@ -142,7 +141,9 @@ thus showing a page other than the one point was originally in."
       (setq total (count-lines beg end)
 	    before (count-lines beg opoint)
 	    after (count-lines opoint end))
-      (message "Page has %d lines (%d + %d)" total before after))))
+      (message (ngettext "Page has %d line (%d + %d)"
+			 "Page has %d lines (%d + %d)" total)
+	       total before after))))
 
 (defun what-page ()
   "Print page and line number of point."

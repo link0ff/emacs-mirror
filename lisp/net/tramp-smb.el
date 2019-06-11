@@ -468,7 +468,8 @@ pass to the OPERATION."
 			(append args
 				(list "-D" (tramp-unquote-shell-quote-argument
 					    localname)
-				      "-c" (shell-quote-argument "tar qc - *")
+				      "-c" (tramp-unquote-shell-quote-argument
+					    "tar qc - *")
 				      "|" "tar" "xfC" "-"
 				      (tramp-unquote-shell-quote-argument
 				       tmpdir)))
@@ -479,7 +480,8 @@ pass to the OPERATION."
 			      args
 			      (list "-D" (tramp-unquote-shell-quote-argument
 					  localname)
-				    "-c" (shell-quote-argument "tar qx -")))))
+				    "-c" (tramp-unquote-shell-quote-argument
+					  "tar qx -")))))
 
 	      (unwind-protect
 		  (with-temp-buffer
@@ -1161,11 +1163,13 @@ component is used as the target of the symlink."
 
     (with-parsed-tramp-file-name linkname nil
       ;; If TARGET is a Tramp name, use just the localname component.
-      (when (and (tramp-tramp-file-p target)
-		 (tramp-file-name-equal-p v (tramp-dissect-file-name target)))
-	(setq target
-	      (tramp-file-name-localname
-	       (tramp-dissect-file-name (expand-file-name target)))))
+      ;; Don't check for a proper method.
+      (let ((non-essential t))
+	(when (and (tramp-tramp-file-p target)
+		   (tramp-file-name-equal-p v (tramp-dissect-file-name target)))
+	  (setq target
+		(tramp-file-name-localname
+		 (tramp-dissect-file-name (expand-file-name target))))))
 
       ;; If TARGET is still remote, quote it.
       (if (tramp-tramp-file-p target)

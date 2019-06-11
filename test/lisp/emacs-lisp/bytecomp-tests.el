@@ -456,6 +456,20 @@ Subtests signal errors if something goes wrong."
     ;; Should not warn that mt--test2 is not known to be defined.
     (should-not (re-search-forward "my--test2" nil t))))
 
+(ert-deftest bytecomp-warn-wrong-args ()
+  (with-current-buffer (get-buffer-create "*Compile-Log*")
+    (let ((inhibit-read-only t)) (erase-buffer))
+    (byte-compile '(remq 1 2 3))
+    (ert-info ((buffer-string) :prefix "buffer: ")
+      (should (re-search-forward "remq.*3.*2")))))
+
+(ert-deftest bytecomp-warn-wrong-args-subr ()
+  (with-current-buffer (get-buffer-create "*Compile-Log*")
+    (let ((inhibit-read-only t)) (erase-buffer))
+    (byte-compile '(safe-length 1 2 3))
+    (ert-info ((buffer-string) :prefix "buffer: ")
+      (should (re-search-forward "safe-length.*3.*1")))))
+
 (ert-deftest test-eager-load-macro-expansion ()
   (test-byte-comp-compile-and-load nil
     '(progn (defmacro abc (arg) 1) (defun def () (abc 2))))
@@ -545,19 +559,25 @@ bytecompiled code, and their results compared.")
   "Check that byte compiling warns about unescaped character
 literals (Bug#20852)."
   (should (boundp 'lread--unescaped-character-literals))
-  (bytecomp-tests--with-temp-file source
-    (write-region "(list ?) ?( ?; ?\" ?[ ?])" nil source)
-    (bytecomp-tests--with-temp-file destination
-      (let* ((byte-compile-dest-file-function (lambda (_) destination))
-            (byte-compile-error-on-warn t)
-            (byte-compile-debug t)
-            (err (should-error (byte-compile-file source))))
-        (should (equal (cdr err)
-                       (list (concat "unescaped character literals "
-                                     "`?\"', `?(', `?)', `?;', `?[', `?]' "
-                                     "detected, "
-                                     "`?\\\"', `?\\(', `?\\)', `?\\;', `?\\[', "
-                                     "`?\\]' expected!"))))))))
+  (let ((byte-compile-error-on-warn t)
+        (byte-compile-debug t))
+    (bytecomp-tests--with-temp-file source
+      (write-region "(list ?) ?( ?; ?\" ?[ ?])" nil source)
+      (bytecomp-tests--with-temp-file destination
+        (let* ((byte-compile-dest-file-function (lambda (_) destination))
+               (err (should-error (byte-compile-file source))))
+          (should (equal (cdr err)
+                         `(,(concat "unescaped character literals "
+                                    "`?\"', `?(', `?)', `?;', `?[', `?]' "
+                                    "detected, "
+                                    "`?\\\"', `?\\(', `?\\)', `?\\;', `?\\[', "
+                                    "`?\\]' expected!")))))))
+    ;; But don't warn in subsequent compilations (Bug#36068).
+    (bytecomp-tests--with-temp-file source
+      (write-region "(list 1 2 3)" nil source)
+      (bytecomp-tests--with-temp-file destination
+        (let ((byte-compile-dest-file-function (lambda (_) destination)))
+          (should (byte-compile-file source)))))))
 
 (ert-deftest bytecomp-tests--old-style-backquotes ()
   "Check that byte compiling warns about old-style backquotes."

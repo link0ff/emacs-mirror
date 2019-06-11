@@ -181,7 +181,7 @@ This construct is similar to `with-output-to-temp-buffer' but,
 neither runs `temp-buffer-setup-hook' which usually puts the
 buffer in Help mode, nor `temp-buffer-show-function' (the ACTION
 argument replaces this)."
-  (declare (debug t))
+  (declare (debug t) (indent 3))
   (let ((buffer (make-symbol "buffer"))
 	(window (make-symbol "window"))
 	(value (make-symbol "value")))
@@ -204,7 +204,7 @@ argument replaces this)."
 This construct is like `with-temp-buffer-window' but unlike that,
 makes the buffer specified by BUFFER-OR-NAME current for running
 BODY."
-  (declare (debug t))
+  (declare (debug t) (indent 3))
   (let ((buffer (make-symbol "buffer"))
 	(window (make-symbol "window"))
 	(value (make-symbol "value")))
@@ -226,7 +226,7 @@ BODY."
   "Show a buffer BUFFER-OR-NAME and evaluate BODY in that buffer.
 This construct is like `with-current-buffer-window' but unlike that,
 displays the buffer specified by BUFFER-OR-NAME before running BODY."
-  (declare (debug t))
+  (declare (debug t) (indent 3))
   (let ((buffer (make-symbol "buffer"))
 	(window (make-symbol "window"))
 	(value (make-symbol "value")))
@@ -9573,10 +9573,12 @@ a two-argument function used to combine the widths and heights of
 the given windows."
   (when windows
     (let ((width (window-max-chars-per-line (car windows)))
-          (height (window-body-height (car windows))))
+          (height (with-selected-window (car windows)
+                    (floor (window-screen-lines)))))
       (dolist (window (cdr windows))
         (setf width (funcall reducer width (window-max-chars-per-line window)))
-        (setf height (funcall reducer height (window-body-height window))))
+        (setf height (funcall reducer height (with-selected-window window
+                                               (floor (window-screen-lines))))))
       (cons width height))))
 
 (defun window-adjust-process-window-size-smallest (_process windows)
