@@ -62,7 +62,7 @@
       tramp-verbose 0
       tramp-message-show-message nil)
 
-(defconst auto-revert--timeout 10
+(defconst auto-revert--timeout (1+ auto-revert-interval)
   "Time to wait for a message.")
 
 (defvar auto-revert--messages nil
@@ -140,7 +140,7 @@ This expects `auto-revert--messages' to be bound by
   (declare (indent 1))
   `(ert-deftest ,(intern (concat (symbol-name test) "-remote")) ()
      ,docstring
-     :tags '(:expensive-test)
+     :tags '(:expensive-test :unstable)
      (let ((temporary-file-directory
 	    auto-revert-test-remote-temporary-file-directory)
            (auto-revert-remote-files t)
@@ -471,7 +471,7 @@ This expects `auto-revert--messages' to be bound by
          (file-2 (make-temp-file "global-auto-revert-test-2"))
          (file-3 (make-temp-file "global-auto-revert-test-3"))
          (file-2b (concat file-2 "-b"))
-         buf-1 buf-2 buf-3)
+         require-final-newline buf-1 buf-2 buf-3)
     (unwind-protect
         (progn
           (setq buf-1 (find-file-noselect file-1))
@@ -503,7 +503,7 @@ This expects `auto-revert--messages' to be bound by
           (auto-revert-test--wait-for
            (lambda () (buffer-local-value
                        'auto-revert-notify-watch-descriptor buf-3))
-           (+ auto-revert-interval 1))
+           auto-revert--timeout)
           (should (buffer-local-value
                    'auto-revert-notify-watch-descriptor buf-3))
           (auto-revert-test--write-file "3-a" file-3)
@@ -515,8 +515,8 @@ This expects `auto-revert--messages' to be bound by
           (sleep-for 0.5)
           (should (equal (auto-revert-test--buffer-string buf-1) "1-a"))
           (auto-revert-test--write-file "1-b" file-1)
-          (auto-revert-test--wait-for-buffer-text buf-1 "1-b"
-           (+ auto-revert-interval 1))
+          (auto-revert-test--wait-for-buffer-text
+           buf-1 "1-b" auto-revert--timeout)
           (should (buffer-local-value
                    'auto-revert-notify-watch-descriptor buf-1))
 
@@ -525,8 +525,8 @@ This expects `auto-revert--messages' to be bound by
             (write-file file-2b))
           (should (equal (auto-revert-test--buffer-string buf-2) "2-a"))
           (auto-revert-test--write-file "2-b" file-2b)
-          (auto-revert-test--wait-for-buffer-text buf-2 "2-b"
-           (+ auto-revert-interval 1))
+          (auto-revert-test--wait-for-buffer-text
+           buf-2 "2-b" auto-revert--timeout)
           (should (buffer-local-value
                    'auto-revert-notify-watch-descriptor buf-2)))
 
@@ -541,6 +541,40 @@ This expects `auto-revert--messages' to be bound by
 
 (auto-revert--deftest-remote auto-revert-test05-global-notify
   "Test `global-auto-revert-mode' without polling for remote buffers.")
+
+(ert-deftest auto-revert-test06-write-file ()
+  "Verify that notification follows `write-file' correctly."
+  :tags '(:expensive-test)
+  (skip-unless (or file-notify--library
+                   (file-remote-p temporary-file-directory)))
+  (let* ((auto-revert-use-notify t)
+         (file-1 (make-temp-file "auto-revert-test"))
+         (file-2 (concat file-1 "-2"))
+         require-final-newline buf)
+    (unwind-protect
+        (progn
+          (setq buf (find-file-noselect file-1))
+          (with-current-buffer buf
+            (insert "A")
+            (save-buffer)
+
+            (auto-revert-mode 1)
+
+            (insert "B")
+            (write-file file-2)
+
+            (auto-revert-test--write-file "C" file-2)
+            (auto-revert-test--wait-for-buffer-text
+             buf "C" auto-revert--timeout)
+            (should (equal (buffer-string) "C"))))
+
+      ;; Clean up.
+      (ignore-errors (kill-buffer buf))
+      (ignore-errors (delete-file file-1))
+      (ignore-errors (delete-file file-2)))))
+
+(auto-revert--deftest-remote auto-revert-test06-write-file
+  "Test `write-file' in `auto-revert-mode' for remote buffers.")
 
 (defun auto-revert-test-all (&optional interactive)
   "Run all tests for \\[auto-revert]."

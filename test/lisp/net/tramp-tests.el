@@ -2346,6 +2346,7 @@ This checks also `file-name-as-directory', `file-name-directory',
           ;; Run the test.
           (advice-add 'write-region :before advice)
           (setq-local file-precious-flag t)
+          (setq-local backup-inhibited t)
           (insert "bar")
           (should (null (save-buffer)))
           (should-not (cl-member tmp-name written-files :test #'string=)))
@@ -4172,7 +4173,8 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 	  (should (numberp (process-get proc 'remote-pid)))
 	  (should (interrupt-process proc))
 	  ;; Let the process accept the interrupt.
-	  (while (accept-process-output proc nil nil 0))
+	  (with-timeout (10 (tramp--test-timeout-handler))
+	    (while (accept-process-output proc nil nil 0)))
 	  (should-not (process-live-p proc))
 	  ;; An interrupted process cannot be interrupted, again.
 	  (should-error (interrupt-process proc) :type 'error))
@@ -4287,9 +4289,10 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 	(ignore-errors (delete-file tmp-name)))
 
       ;; Test `async-shell-command-width'.  Since Emacs 27.1.
-      (when (and (boundp 'async-shell-command-width)
-		 (zerop (call-process "tput" nil nil nil "cols"))
-                 (zerop (process-file "tput" nil nil nil "cols")))
+      (when (ignore-errors
+	      (and (boundp 'async-shell-command-width)
+		   (zerop (call-process "tput" nil nil nil "cols"))
+                   (zerop (process-file "tput" nil nil nil "cols"))))
 	(let (async-shell-command-width)
 	  (should
 	   (string-equal
@@ -5535,12 +5538,14 @@ process sentinels.  They shall not disturb each other."
     (let* (;; For the watchdog.
 	   (default-directory (expand-file-name temporary-file-directory))
 	   (shell-file-name (if (tramp--test-adb-p) "/system/bin/sh" "/bin/sh"))
+	   ;; It doesn't work on w32 systems.
 	   (watchdog
-            (start-process-shell-command
-             "*watchdog*" nil
-             (format
-	      "sleep %d; kill -USR1 %d"
-	      tramp--test-asynchronous-requests-timeout (emacs-pid))))
+	    (unless (tramp--test-windows-nt)
+              (start-process-shell-command
+               "*watchdog*" nil
+               (format
+		"sleep %d; kill -USR1 %d"
+		tramp--test-asynchronous-requests-timeout (emacs-pid)))))
            (tmp-name (tramp--test-make-temp-name))
            (default-directory tmp-name)
            ;; Do not cache Tramp properties.
