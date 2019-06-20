@@ -1020,7 +1020,9 @@ If LIMIT is a revision string, use it as an end-revision."
       (with-current-buffer buffer
 	(insert (propertize "(Type 'd' here to show diffs with working version)\n"
                             'font-lock-face 'shadow))
-        (setq window-start (point))
+        ;; (setq window-start (point))
+        ;; shrink-window-if-larger-than-buffer in vc-log-internal-common
+        ;; has no effect when point-min not visible
         (apply 'vc-git-command buffer
 	       'async files
 	       (append
@@ -1145,7 +1147,7 @@ or BRANCH^ (where \"^\" can be repeated)."
 
 (defun vc-git-expanded-log-entry (revision)
   (with-temp-buffer
-    (apply 'vc-git-command t nil nil (list "log" revision "-1" "--"))
+    (apply 'vc-git-command t nil nil (list "log" revision "-1" "--pretty=fuller" "--"))
     (goto-char (point-min))
     (unless (eobp)
       ;; Indent the expanded log entry.

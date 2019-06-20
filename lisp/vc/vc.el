@@ -1658,8 +1658,9 @@ to override the value of `vc-diff-switches' and `diff-switches'."
 	       (message "%s" (cdr messages))))
 	(diff-setup-whitespace)
 	(goto-char (point-min))
-	(when window
-	  (shrink-window-if-larger-than-buffer window)))
+	;; (when window
+	;;   (shrink-window-if-larger-than-buffer window))
+        )
       (when (and messages (not emptyp))
 	(message "%sdone" (car messages))))))
 
@@ -2414,7 +2415,8 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
        (shrink-window-if-larger-than-buffer)
        (when goto-location-func
          (funcall goto-location-func backend)
-         (setq vc-sentinel-movepoint (point)))
+         (setq vc-sentinel-movepoint (point)) ; cf with annotate
+         )
        (set-buffer-modified-p nil)))))
 
 (defun vc-incoming-outgoing-internal (backend remote-location buffer-name type)
