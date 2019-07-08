@@ -19,8 +19,6 @@
 
 ;;; Commentary:
 
-;; The tests require a recent ert.el from Emacs 24.4.
-
 ;; Some of the tests require access to a remote host files.  Since
 ;; this could be problematic, a mock-up connection method "mock" is
 ;; used.  Emulating a remote connection, it simply calls "sh -i".
@@ -169,18 +167,19 @@ properly.  BODY shall not contain a timeout."
   (declare (indent 1) (debug (natnump body)))
   `(let ((tramp-verbose (max (or ,verbose 0) (or tramp-verbose 0)))
 	 (tramp-message-show-message t)
-	 (tramp-debug-on-error t)
 	 (debug-ignored-errors
-	  (cons "^make-symbolic-link not supported$" debug-ignored-errors))
+	  (append
+	   '("^make-symbolic-link not supported$"
+	     "^error with add-name-to-file")
+	   debug-ignored-errors))
 	 inhibit-message)
      (unwind-protect
 	 (let ((tramp--test-instrument-test-case-p t)) ,@body)
        ;; Unwind forms.
        (when (and (null tramp--test-instrument-test-case-p) (> tramp-verbose 3))
 	 (dolist (buf (tramp-list-tramp-buffers))
-	   (message ";; %s" buf)
 	   (with-current-buffer buf
-	     (message "%s" (buffer-string))))))))
+	     (message ";; %s\n%s" buf (buffer-string))))))))
 
 (defsubst tramp--test-message (fmt-string &rest arguments)
   "Emit a message into ERT *Messages*."
@@ -412,9 +411,6 @@ properly.  BODY shall not contain a timeout."
 
 (ert-deftest tramp-test02-file-name-dissect ()
   "Check remote file name components."
-  ;; `user-error' has appeared in Emacs 24.3.
-  (skip-unless (fboundp 'user-error))
-
   (let ((tramp-default-method "default-method")
 	(tramp-default-user "default-user")
 	(tramp-default-host "default-host")
@@ -865,9 +861,6 @@ properly.  BODY shall not contain a timeout."
 (ert-deftest tramp-test02-file-name-dissect-simplified ()
   "Check simplified file name components."
   :tags '(:expensive-test)
-  ;; `user-error' has appeared in Emacs 24.3.
-  (skip-unless (fboundp 'user-error))
-
   (let ((tramp-default-method "default-method")
 	(tramp-default-user "default-user")
 	(tramp-default-host "default-host")
@@ -1199,9 +1192,6 @@ properly.  BODY shall not contain a timeout."
 (ert-deftest tramp-test02-file-name-dissect-separate ()
   "Check separate file name components."
   :tags '(:expensive-test)
-  ;; `user-error' has appeared in Emacs 24.3.
-  (skip-unless (fboundp 'user-error))
-
   (let ((tramp-default-method "default-method")
 	(tramp-default-user "default-user")
 	(tramp-default-host "default-host")
@@ -1891,8 +1881,6 @@ properly.  BODY shall not contain a timeout."
   "Check host name rules for host-less methods."
   (skip-unless (tramp--test-enabled))
   (skip-unless (tramp--test-sh-p))
-  ;; `user-error' has appeared in Emacs 24.3.
-  (skip-unless (fboundp 'user-error))
 
   ;; Host names must match rules in case the command template of a
   ;; method doesn't use them.
@@ -1916,8 +1904,6 @@ properly.  BODY shall not contain a timeout."
 (ert-deftest tramp-test03-file-name-method-rules ()
   "Check file name rules for some methods."
   (skip-unless (tramp--test-enabled))
-  ;; `user-error' has appeared in Emacs 24.3.
-  (skip-unless (fboundp 'user-error))
 
   ;; Multi hops are allowed for inline methods only.
   (should-error
@@ -2960,17 +2946,16 @@ This tests also `file-directory-p' and `file-accessible-directory-p'."
 	(ignore-errors (delete-directory tmp-name2 'recursive))))))
 
 ;; Method "smb" supports `make-symbolic-link' only if the remote host
-;; has CIFS capabilities.  tramp-adb.el and tramp-gvfs.el do not
-;; support symbolic links at all.
+;; has CIFS capabilities.  tramp-adb.el, tramp-gvfs.el and
+;; tramp-rclone.el do not support symbolic links at all.
 (defmacro tramp--test-ignore-make-symbolic-link-error (&rest body)
   "Run BODY, ignoring \"make-symbolic-link not supported\" file error."
   (declare (indent defun) (debug (body)))
   `(condition-case err
        (progn ,@body)
-     ((error quit debug)
-      (unless (and (eq (car err) 'file-error)
-		   (string-equal (error-message-string err)
-				 "make-symbolic-link not supported"))
+     (file-error
+      (unless (string-equal (error-message-string err)
+			    "make-symbolic-link not supported")
 	(signal (car err) (cdr err))))))
 
 (ert-deftest tramp-test18-file-attributes ()
@@ -3180,10 +3165,9 @@ This tests also `file-executable-p', `file-writable-p' and `set-file-modes'."
   (declare (indent defun) (debug (body)))
   `(condition-case err
        (progn ,@body)
-     ((error quit debug)
-      (unless (and (eq (car err) 'file-error)
-		   (string-match "^error with add-name-to-file"
-				 (error-message-string err)))
+     (file-error
+      (unless (string-match "^error with add-name-to-file"
+			    (error-message-string err))
 	(signal (car err) (cdr err))))))
 
 (ert-deftest tramp-test21-file-links ()

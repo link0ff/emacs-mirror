@@ -123,6 +123,7 @@ SEVERITY-PREDICATE is used to setup
 (ert-deftest ruby-backend ()
   "Test the ruby backend"
   (skip-unless (executable-find "ruby"))
+  (skip-unless (not (getenv "EMACS_HYDRA_CI")))
   ;; Some versions of ruby fail if HOME doesn't exist (bug#29187).
   (let* ((tempdir (make-temp-file "flymake-tests-ruby" t))
          (process-environment (cons (format "HOME=%s" tempdir)
@@ -143,9 +144,6 @@ SEVERITY-PREDICATE is used to setup
 
 (ert-deftest different-diagnostic-types ()
   "Test GCC warning via function predicate."
-  ;; http://lists.gnu.org/archive/html/emacs-devel/2019-03/msg01043.html
-  :expected-result (if (or (getenv "EMACS_HYDRA_CI") (getenv "EMACS_EMBA_CI"))
-                       :failed :passed)
   (skip-unless (and (executable-find "gcc")
                     (version<=
                      "5" (string-trim

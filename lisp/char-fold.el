@@ -75,7 +75,6 @@
     ;;                     (nreverse funcs)))
     (let* ((equiv (make-char-table 'char-fold-table))
            (equiv-multi (make-char-table 'char-fold-table))
-           (search-spaces-regexp nil)   ; workaround for bug#35802
            (table (unicode-property-table-internal 'decomposition)))
       (set-char-table-extra-slot equiv 0 equiv-multi)
 
@@ -236,9 +235,9 @@ regexp) and other characters are `regexp-quote'd.
 
 When LAX is non-nil, then the final character also matches ligatures
 partially, for instance, the search string \"f\" will match \"ﬁ\",
-so while typing the search string in isearch while the cursor is
-on a ligature, the search will not try to immediately advance
-to the next complete match.
+so when typing the search string in isearch while the cursor is on
+a ligature, the search won't try to immediately advance to the next
+complete match, but will stay on the partially matched ligature.
 
 If the resulting regexp would be too long for Emacs to handle,
 just return the result of calling `regexp-quote' on STRING.

@@ -83,11 +83,12 @@
       (char-fold--test-match-exactly (car it) (cdr it)))))
 
 (ert-deftest char-fold--test-multi-lax ()
-  (dolist (it '(("f" . "ﬁ") ("f" . "ﬀ")))
-    (with-temp-buffer
-      (insert (cdr it))
-      (goto-char (point-min))
-      (should (search-forward-regexp (char-fold-to-regexp (car it) 'lax) nil 'noerror)))))
+ (dolist (it '(("f" . "ﬁ") ("f" . "ﬀ")))
+   (with-temp-buffer
+     (insert (cdr it))
+     (goto-char (point-min))
+     (should (search-forward-regexp
+              (char-fold-to-regexp (car it) 'lax) nil 'noerror)))))
 
 (ert-deftest char-fold--test-fold-to-regexp ()
   (let ((char-fold-table (make-char-table 'char-fold-table))
@@ -130,14 +131,6 @@
         (should-not (char-fold-search-forward (concat string "c") nil 'noerror))
         ;; Ensure it took less than a second.
         (should (< (- (time-to-seconds) time) 1))))))
-
-(ert-deftest char-fold--test-bug-35802 ()
-  (let* ((char-code-property-alist      ; initial value
-          (cons '(decomposition . "uni-decomposition.el")
-                char-code-property-alist))
-         (search-spaces-regexp "\\(\\s-\\|\n\\)+")
-         (char-fold-table (char-fold-make-table)))
-    (char-fold--test-match-exactly "ä" "ä")))
 
 (provide 'char-fold-tests)
 ;;; char-fold-tests.el ends here

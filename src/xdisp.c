@@ -666,23 +666,45 @@ This function may be passed to `add-variable-watcher'.  */)
   return Qnil;
 }
 
+/* redisplay_trace is for displaying traces of redisplay.
+   If Emacs was compiled with GLYPH_DEBUG defined, the variable
+   trace_redisplay_p can be set to a non-zero value in debugging
+   sessions to activate traces.  */
 #ifdef GLYPH_DEBUG
-
-/* True means print traces of redisplay if compiled with
-   GLYPH_DEBUG defined.  */
-
+extern bool trace_redisplay_p EXTERNALLY_VISIBLE;
 bool trace_redisplay_p;
-
-#endif /* GLYPH_DEBUG */
+#else
+enum { trace_redisplay_p = false };
+#endif
+static void ATTRIBUTE_FORMAT_PRINTF (1, 2)
+redisplay_trace (char const *fmt, ...)
+{
+  if (trace_redisplay_p)
+    {
+      va_list ap;
+      va_start (ap, fmt);
+      vprintf (fmt, ap);
+      va_end (ap);
+    }
+}
 
 #ifdef DEBUG_TRACE_MOVE
-/* True means trace with TRACE_MOVE to stderr.  */
-static bool trace_move;
-
-#define TRACE_MOVE(x)	if (trace_move) fprintf x; else (void) 0
+extern bool trace_move EXTERNALLY_VISIBLE;
+bool trace_move;
 #else
-#define TRACE_MOVE(x)	(void) 0
+enum { trace_move = false };
 #endif
+static void ATTRIBUTE_FORMAT_PRINTF (1, 2)
+move_trace (char const *fmt, ...)
+{
+  if (trace_move)
+    {
+      va_list ap;
+      va_start (ap, fmt);
+      vprintf (fmt, ap);
+      va_end (ap);
+    }
+}
 
 /* Buffer being redisplayed -- for redisplay_window_error.  */
 
@@ -5000,6 +5022,7 @@ handle_single_display_spec (struct it *it, Lisp_Object spec, Lisp_Object object,
   Lisp_Object form;
   Lisp_Object location, value;
   struct text_pos start_pos = *position;
+  void *itdata = NULL;
 
   /* If SPEC is a list of the form `(when FORM . VALUE)', evaluate FORM.
      If the result is non-nil, use VALUE instead of SPEC.  */
@@ -5029,7 +5052,11 @@ handle_single_display_spec (struct it *it, Lisp_Object spec, Lisp_Object object,
       specbind (Qobject, object);
       specbind (Qposition, make_fixnum (CHARPOS (*position)));
       specbind (Qbuffer_position, make_fixnum (bufpos));
+      /* Save and restore the bidi cache, since FORM could be crazy
+	 enough to re-enter redisplay, e.g., by calling 'message'.  */
+      itdata = bidi_shelve_cache ();
       form = safe_eval (form);
+      bidi_unshelve_cache (itdata, false);
       form = unbind_to (count, form);
     }
 
@@ -5069,8 +5096,10 @@ handle_single_display_spec (struct it *it, Lisp_Object spec, Lisp_Object object,
 		     Value is the new height.  */
 		  struct face *face = FACE_FROM_ID (it->f, it->face_id);
 		  Lisp_Object height;
+		  itdata = bidi_shelve_cache ();
 		  height = safe_call1 (it->font_height,
 				       face->lface[LFACE_HEIGHT_INDEX]);
+		  bidi_unshelve_cache (itdata, false);
 		  if (NUMBERP (height))
 		    new_height = XFLOATINT (height);
 		}
@@ -5092,7 +5121,9 @@ handle_single_display_spec (struct it *it, Lisp_Object spec, Lisp_Object object,
 		  struct face *face = FACE_FROM_ID (it->f, it->face_id);
 
 		  specbind (Qheight, face->lface[LFACE_HEIGHT_INDEX]);
+		  itdata = bidi_shelve_cache ();
 		  value = safe_eval (it->font_height);
+		  bidi_unshelve_cache (itdata, false);
 		  value = unbind_to (count, value);
 
 		  if (NUMBERP (value))
@@ -9203,8 +9234,8 @@ move_it_in_display_line_to (struct it *it,
 		      atx_it.sp = -1;
 		    }
 
-		  TRACE_MOVE ((stderr, "move_it_in: continued at %d\n",
-			       IT_CHARPOS (*it)));
+		  move_trace ("move_it_in: continued at %td\n",
+			      IT_CHARPOS (*it));
 		  result = MOVE_LINE_CONTINUED;
 		  break;
 		}
@@ -9568,12 +9599,12 @@ move_it_to (struct it *it, ptrdiff_t to_charpos, int to_x, int to_y, int to_vpos
 		  break;
 		}
 	      SAVE_IT (it_backup, *it, backup_data);
-	      TRACE_MOVE ((stderr, "move_it: from %d\n", IT_CHARPOS (*it)));
+	      move_trace ("move_it: from %td\n", IT_CHARPOS (*it));
 	      skip2 = move_it_in_display_line_to (it, to_charpos, -1,
 						  op & MOVE_TO_POS);
-	      TRACE_MOVE ((stderr, "move_it: to %d\n", IT_CHARPOS (*it)));
+	      move_trace ("move_it: to %td\n", IT_CHARPOS (*it));
 	      line_height = it->max_ascent + it->max_descent;
-	      TRACE_MOVE ((stderr, "move_it: line_height = %d\n", line_height));
+	      move_trace ("move_it: line_height = %d\n", line_height);
 
 	      if (to_y >= it->current_y
 		  && to_y < it->current_y + line_height)
@@ -9605,7 +9636,7 @@ move_it_to (struct it *it, ptrdiff_t to_charpos, int to_x, int to_y, int to_vpos
 	    {
 	      /* Check whether TO_Y is in this line.  */
 	      line_height = it->max_ascent + it->max_descent;
-	      TRACE_MOVE ((stderr, "move_it: line_height = %d\n", line_height));
+	      move_trace ("move_it: line_height = %d\n", line_height);
 
 	      if (to_y >= it->current_y
 		  && to_y < it->current_y + line_height)
@@ -9765,7 +9796,7 @@ move_it_to (struct it *it, ptrdiff_t to_charpos, int to_x, int to_y, int to_vpos
   if (backup_data)
     bidi_unshelve_cache (backup_data, true);
 
-  TRACE_MOVE ((stderr, "move_it_to: reached %d\n", reached));
+  move_trace ("move_it_to: reached %d\n", reached);
 
   return max_current_x;
 }
@@ -9908,8 +9939,8 @@ move_it_vertically_backward (struct it *it, int dy)
 	      > min (window_box_height (it->w), line_height * 2 / 3))
 	  && IT_CHARPOS (*it) > BEGV)
 	{
-	  TRACE_MOVE ((stderr, "  not far enough -> move_vert %d\n",
-		       target_y - it->current_y));
+	  move_trace ("  not far enough -> move_vert %d\n",
+		      target_y - it->current_y);
 	  dy = it->current_y - target_y;
 	  goto move_further_back;
 	}
@@ -9950,10 +9981,10 @@ move_it_vertically (struct it *it, int dy)
     move_it_vertically_backward (it, -dy);
   else
     {
-      TRACE_MOVE ((stderr, "move_it_v: from %d, %d\n", IT_CHARPOS (*it), dy));
+      move_trace ("move_it_v: from %td, %d\n", IT_CHARPOS (*it), dy);
       move_it_to (it, ZV, -1, it->current_y + dy, -1,
 		  MOVE_TO_POS | MOVE_TO_Y);
-      TRACE_MOVE ((stderr, "move_it_v: to %d\n", IT_CHARPOS (*it)));
+      move_trace ("move_it_v: to %td\n", IT_CHARPOS (*it));
 
       /* If buffer ends in ZV without a newline, move to the start of
 	 the line to satisfy the post-condition.  */
@@ -10509,7 +10540,7 @@ message_dolog (const char *m, ptrdiff_t nbytes, bool nlflag, bool multibyte)
       if (nlflag)
 	{
 	  ptrdiff_t this_bol, this_bol_byte, prev_bol, prev_bol_byte;
-	  printmax_t dups;
+	  intmax_t dups;
 
           /* Since we call del_range_both passing false for PREPARE,
              we aren't prepared to run modification hooks (we could
@@ -10541,11 +10572,12 @@ message_dolog (const char *m, ptrdiff_t nbytes, bool nlflag, bool multibyte)
 		  if (dups > 1)
 		    {
 		      char dupstr[sizeof " [ times]"
-				  + INT_STRLEN_BOUND (printmax_t)];
+				  + INT_STRLEN_BOUND (dups)];
 
 		      /* If you change this format, don't forget to also
 			 change message_log_check_duplicate.  */
-		      int duplen = sprintf (dupstr, " [%"pMd" times]", dups);
+		      int duplen = sprintf (dupstr, " [%"PRIdMAX" times]",
+					    dups);
 		      TEMP_SET_PT_BOTH (Z - 1, Z_BYTE - 1);
 		      insert_1_both (dupstr, duplen, duplen,
 				     true, false, true);
@@ -10696,10 +10728,22 @@ message_to_stderr (Lisp_Object m)
       else
 	s = m;
 
-      fwrite (SDATA (s), SBYTES (s), 1, stderr);
+      /* We want to write this out with a single fwrite call so that
+	 output doesn't interleave with other processes writing to
+	 stderr at the same time. */
+      {
+	int length = min (INT_MAX, SBYTES (s) + 1);
+	char *string = xmalloc (length);
+
+	memcpy (string, SSDATA (s), length - 1);
+	string[length - 1] = '\n';
+	fwrite (string, 1, length, stderr);
+	xfree (string);
+      }
     }
-  if (!cursor_in_echo_area)
+  else if (!cursor_in_echo_area)
     fputc ('\n', stderr);
+
   fflush (stderr);
 }
 
@@ -14027,7 +14071,7 @@ redisplay_internal (void)
   /* True means redisplay has to redisplay the miniwindow.  */
   bool update_miniwindow_p = false;
 
-  TRACE ((stderr, "redisplay_internal %d\n", redisplaying_p));
+  redisplay_trace ("redisplay_internal %d\n", redisplaying_p);
 
   /* No redisplay if running in batch mode or frame is not yet fully
      initialized, or redisplay is explicitly turned off by setting
@@ -14300,7 +14344,7 @@ redisplay_internal (void)
 	  if (it.current_x != this_line_start_x)
 	    goto cancel;
 
-	  TRACE ((stderr, "trying display optimization 1\n"));
+	  redisplay_trace ("trying display optimization 1\n");
 	  w->cursor.vpos = -1;
 	  overlay_arrow_seen = false;
 	  it.vpos = this_line_vpos;
@@ -14819,7 +14863,7 @@ unwind_redisplay_preserve_echo_area (void)
 void
 redisplay_preserve_echo_area (int from_where)
 {
-  TRACE ((stderr, "redisplay_preserve_echo_area (%d)\n", from_where));
+  redisplay_trace ("redisplay_preserve_echo_area (%d)\n", from_where);
 
   block_input ();
   ptrdiff_t count = SPECPDL_INDEX ();
@@ -18732,7 +18776,7 @@ try_window_id (struct window *w)
 #if false
 #define GIVE_UP(X)						\
   do {								\
-    TRACE ((stderr, "try_window_id give up %d\n", (X)));	\
+    redisplay_trace ("try_window_id give up %d\n", X);		\
     return 0;							\
   } while (false)
 #else
@@ -19574,7 +19618,7 @@ dump_glyph (struct glyph_row *row, struct glyph *glyph, int area)
       eassume (false);
 #else
       fprintf (stderr,
-	       "  %5d %4c %6d %c %3d 0x%05x %c %4d %1.1d%1.1d\n",
+	       "  %5td %4c %6td %c %3d %7p %c %4d %1.1d%1.1d\n",
 	       glyph - row->glyphs[TEXT_AREA],
 	       'X',
 	       glyph->charpos,
@@ -20185,6 +20229,7 @@ compute_line_metrics (struct it *it)
 static bool
 append_space_for_newline (struct it *it, bool default_face_p)
 {
+#ifdef HAVE_WINDOW_SYSTEM
   if (FRAME_WINDOW_P (it->f))
     {
       int n = it->glyph_row->used[TEXT_AREA];
@@ -20225,27 +20270,27 @@ append_space_for_newline (struct it *it, bool default_face_p)
 	  int indicator_column = (it->w->pseudo_window_p == 0
 				  ? fill_column_indicator_column (it)
 				  : -1);
-	  if (0 <= indicator_column)
+	  if (indicator_column >= 0)
 	    {
-	       struct font *font =
-	         default_face->font ?
-		   default_face->font : FRAME_FONT (it->f);
-	       const int char_width =
-	         font->average_width ?
-		   font->average_width : font->space_width;
-
+	       struct font *font = (default_face->font
+				    ? default_face->font
+				    : FRAME_FONT (it->f));
+	       const int char_width = (font->average_width
+				       ? font->average_width
+				       : font->space_width);
 	       int column_x;
+
 	       if (!INT_MULTIPLY_WRAPV (indicator_column, char_width,
 					&column_x)
 		   && !INT_ADD_WRAPV (it->lnum_pixel_width, column_x,
 				      &column_x)
 		   && it->current_x == column_x)
 	         {
-	           it->c = it->char_to_display =
-		     XFIXNAT (Vdisplay_fill_column_indicator_character);
-	           it->face_id =
-		     merge_faces (it->w, Qfill_column_indicator,
-		                  0, saved_face_id);
+	           it->c = it->char_to_display
+		     = XFIXNAT (Vdisplay_fill_column_indicator_character);
+	           it->face_id
+		     = merge_faces (it->w, Qfill_column_indicator,
+				    0, saved_face_id);
 	           face = FACE_FROM_ID (it->f, it->face_id);
 	           goto produce_glyphs;
 	         }
@@ -20275,7 +20320,6 @@ append_space_for_newline (struct it *it, bool default_face_p)
 	produce_glyphs:
 	  PRODUCE_GLYPHS (it);
 
-#ifdef HAVE_WINDOW_SYSTEM
 	  /* Make sure this space glyph has the right ascent and
 	     descent values, or else cursor at end of line will look
 	     funny, and height of empty lines will be incorrect.  */
@@ -20354,7 +20398,6 @@ append_space_for_newline (struct it *it, bool default_face_p)
 
 	  g->ascent = it->max_ascent;
 	  g->descent = it->max_descent;
-#endif
 
 	  it->override_ascent = -1;
 	  it->constrain_row_ascent_descent_p = false;
@@ -20370,6 +20413,7 @@ append_space_for_newline (struct it *it, bool default_face_p)
 	  return true;
 	}
     }
+#endif
 
   return false;
 }
@@ -20439,6 +20483,7 @@ extend_face_to_end_of_line (struct it *it)
       it->face_id = FACE_FOR_CHAR (f, face, 0, -1, Qnil);
     }
 
+#ifdef HAVE_WINDOW_SYSTEM
   if (FRAME_WINDOW_P (f))
     {
       /* If the row is empty, add a space with the current face of IT,
@@ -20452,7 +20497,7 @@ extend_face_to_end_of_line (struct it *it)
       /* Mode line and the header line don't have margins, and
 	 likewise the frame's tool-bar window, if there is any.  */
       if (!(it->glyph_row->mode_line_p
-#if defined (HAVE_WINDOW_SYSTEM) && ! defined (HAVE_EXT_TOOL_BAR)
+#ifndef HAVE_EXT_TOOL_BAR
 	    || (WINDOWP (f->tool_bar_window)
 		&& it->w == XWINDOW (f->tool_bar_window))
 #endif
@@ -20481,18 +20526,19 @@ extend_face_to_end_of_line (struct it *it)
 	  int indicator_column = (it->w->pseudo_window_p == 0
 				  ? fill_column_indicator_column (it)
 				  : -1);
-	  if (0 <= indicator_column)
+	  if (indicator_column >= 0)
             {
-	      struct font *font =
-	        default_face->font ? default_face->font : FRAME_FONT (f);
-	      const int char_width =
-	        font->average_width ?
-		  font->average_width : font->space_width;
-
+	      struct font *font = (default_face->font
+				   ? default_face->font
+				   : FRAME_FONT (f));
+	      const int char_width = (font->average_width
+				      ? font->average_width
+				      : font->space_width);
 	      int column_x;
+
 	      if (!INT_MULTIPLY_WRAPV (indicator_column, char_width, &column_x)
 		  && !INT_ADD_WRAPV (it->lnum_pixel_width, column_x, &column_x)
-		  && it->current_x <= column_x
+		  && column_x >= it->current_x
 		  && column_x <= it->last_visible_x)
 	        {
 	          const char saved_char = it->char_to_display;
@@ -20504,8 +20550,8 @@ extend_face_to_end_of_line (struct it *it)
 
 	          /* The stretch width needs to considet the latter
 	             added glyph.  */
-	          const int stretch_width =
-	            column_x - it->current_x - char_width;
+	          const int stretch_width
+		    = column_x - it->current_x - char_width;
 
 	          memset (&it->position, 0, sizeof it->position);
 	          it->avoid_cursor_p = true;
@@ -20526,11 +20572,11 @@ extend_face_to_end_of_line (struct it *it)
 	             append_space_for_newline didn't already.  */
 	          if (it->current_x < column_x)
 	            {
-		      it->char_to_display =
-	                XFIXNAT (Vdisplay_fill_column_indicator_character);
-	              it->face_id =
-	                merge_faces (it->w, Qfill_column_indicator,
-	                             0, saved_face_id);
+		      it->char_to_display
+			= XFIXNAT (Vdisplay_fill_column_indicator_character);
+	              it->face_id
+			= merge_faces (it->w, Qfill_column_indicator,
+				       0, saved_face_id);
 	              PRODUCE_GLYPHS (it);
 	            }
 
@@ -20551,7 +20597,6 @@ extend_face_to_end_of_line (struct it *it)
 	        }
             }
 	}
-#ifdef HAVE_WINDOW_SYSTEM
       if (it->glyph_row->reversed_p)
 	{
 	  /* Prepend a stretch glyph to the row, such that the
@@ -20615,9 +20660,9 @@ extend_face_to_end_of_line (struct it *it)
 	  if (stretch_width < 0)
 	    it->glyph_row->x = stretch_width;
 	}
-#endif	/* HAVE_WINDOW_SYSTEM */
     }
   else
+#endif	/* HAVE_WINDOW_SYSTEM */
     {
       /* Save some values that must not be changed.  */
       int saved_x = it->current_x;
@@ -20674,7 +20719,7 @@ extend_face_to_end_of_line (struct it *it)
 
       /* Display fill-column indicator if needed.  */
       int indicator_column = fill_column_indicator_column (it);
-      if (0 <= indicator_column
+      if (indicator_column >= 0
 	  && INT_ADD_WRAPV (it->lnum_pixel_width, indicator_column,
 			    &indicator_column))
 	indicator_column = -1;
@@ -20685,10 +20730,10 @@ extend_face_to_end_of_line (struct it *it)
 	  if (indicate)
 	    {
 	      saved_face_id = it->face_id;
-	      it->face_id =
-		merge_faces (it->w, Qfill_column_indicator, 0, saved_face_id);
-	      it->c = it->char_to_display =
-		XFIXNAT (Vdisplay_fill_column_indicator_character);
+	      it->face_id
+		= merge_faces (it->w, Qfill_column_indicator, 0, saved_face_id);
+	      it->c = it->char_to_display
+		= XFIXNAT (Vdisplay_fill_column_indicator_character);
 	    }
 
 	  PRODUCE_GLYPHS (it);
@@ -22507,6 +22552,15 @@ display_line (struct it *it, int cursor_vpos)
   it->right_user_fringe_bitmap = 0;
   it->right_user_fringe_face_id = 0;
 
+  /* When they turn off tooltip-mode on a GUI frame, we call 'message'
+     with message-truncate-lines bound to non-nil, which produces
+     truncation bitmaps on the fringe.  Force redrawing of the fringes
+     in that case, to make sure the fringe bitmaps are removed when a
+     shorter message is displayed.  */
+  if (MINI_WINDOW_P (it->w) && it->line_wrap == TRUNCATE
+      && FRAME_WINDOW_P (it->f) && !cursor_in_echo_area)
+    row->redraw_fringe_bitmaps_p = true;
+
   /* Maybe set the cursor.  */
   cvpos = it->w->cursor.vpos;
   if ((cvpos < 0
@@ -24320,9 +24374,7 @@ store_mode_line_string (const char *string, Lisp_Object lisp_string,
 
   if (string != NULL)
     {
-      len = strlen (string);
-      if (precision > 0 && len > precision)
-	len = precision;
+      len = strnlen (string, precision <= 0 ? SIZE_MAX : precision);
       lisp_string = make_string (string, len);
       if (NILP (props))
 	props = mode_line_string_face_prop;
@@ -25918,6 +25970,7 @@ get_font_ascent_descent (struct font *font, int *ascent, int *descent)
 
 #ifdef GLYPH_DEBUG
 
+extern void dump_glyph_string (struct glyph_string *) EXTERNALLY_VISIBLE;
 void
 dump_glyph_string (struct glyph_string *s)
 {
@@ -32478,8 +32531,8 @@ expose_window (struct window *w, const Emacs_Rectangle *fr)
       struct glyph_row *row;
       struct glyph_row *first_overlapping_row, *last_overlapping_row;
 
-      TRACE ((stderr, "expose_window (%d, %d, %d, %d)\n",
-	      r.x, r.y, r.width, r.height));
+      redisplay_trace ("expose_window (%d, %d, %u, %u)\n",
+		       r.x, r.y, r.width, r.height);
 
       /* Convert to window coordinates.  */
       r.x -= WINDOW_LEFT_EDGE_X (w);
@@ -32637,11 +32690,9 @@ expose_frame (struct frame *f, int x, int y, int w, int h)
   Emacs_Rectangle r;
   bool mouse_face_overwritten_p = false;
 
-  TRACE ((stderr, "expose_frame "));
-
   if (FRAME_GARBAGED_P (f))
     {
-      TRACE ((stderr, " garbaged\n"));
+      redisplay_trace ("expose_frame garbaged\n");
       return;
     }
 
@@ -32651,7 +32702,7 @@ expose_frame (struct frame *f, int x, int y, int w, int h)
   if (FRAME_FACE_CACHE (f) == NULL
       || FRAME_FACE_CACHE (f)->used < BASIC_FACE_ID_SENTINEL)
     {
-      TRACE ((stderr, " no faces\n"));
+      redisplay_trace ("expose_frame no faces\n");
       return;
     }
 
@@ -32669,7 +32720,8 @@ expose_frame (struct frame *f, int x, int y, int w, int h)
       r.height = h;
     }
 
-  TRACE ((stderr, "(%d, %d, %d, %d)\n", r.x, r.y, r.width, r.height));
+  redisplay_trace ("expose_frame (%d, %d, %u, %u)\n",
+		   r.x, r.y, r.width, r.height);
   mouse_face_overwritten_p = expose_window_tree (XWINDOW (f->root_window), &r);
 
 #ifndef HAVE_EXT_TOOL_BAR
@@ -33453,8 +33505,8 @@ either `relative' or `visual'.  */);
   Fmake_variable_buffer_local (Qdisplay_fill_column_indicator);
 
   DEFVAR_LISP ("display-fill-column-indicator-column", Vdisplay_fill_column_indicator_column,
-    doc: /* Column for indicator when `display-fill-column-indicator'
-is non-nil.  The default value is t which means that the indicator
+    doc: /* Column for indicator when `display-fill-column-indicator' is non-nil.
+The default value is t which means that the indicator
 will use the `fill-column' variable.  If it is set to an integer the
 indicator will be drawn in that column.  */);
   Vdisplay_fill_column_indicator_column = Qt;
@@ -33462,10 +33514,9 @@ indicator will be drawn in that column.  */);
   Fmake_variable_buffer_local (Qdisplay_fill_column_indicator_column);
 
   DEFVAR_LISP ("display-fill-column-indicator-character", Vdisplay_fill_column_indicator_character,
-    doc: /* Character to draw the indicator when
-`display-fill-column-indicator' is non-nil.  The default is U+2502 but
-a good alternative is (ascii 124) if the font in fill-column-indicator
-face does not support Unicode characters.  */);
+    doc: /* Character to draw the indicator when `display-fill-column-indicator' is non-nil.
+The default is U+2502 but a good alternative is (ascii 124)
+if the font in fill-column-indicator face does not support Unicode characters.  */);
   Vdisplay_fill_column_indicator_character = Qnil;
   DEFSYM (Qdisplay_fill_column_indicator_character, "display-fill-column-indicator-character");
   Fmake_variable_buffer_local (Qdisplay_fill_column_indicator_character);

@@ -1316,7 +1316,7 @@ the root directory.  */)
 
   /* Now concatenate the directory and name to new space in the stack frame.  */
   tlen = length + file_name_as_directory_slop + (nmlim - nm) + 1;
-  eassert (tlen > file_name_as_directory_slop + 1);
+  eassert (tlen >= file_name_as_directory_slop + 1);
 #ifdef DOS_NT
   /* Reserve space for drive specifier and escape prefix, since either
      or both may need to be inserted.  (The Microsoft x86 compiler
@@ -2599,13 +2599,13 @@ This is what happens in interactive use with M-x.  */)
 
 DEFUN ("make-symbolic-link", Fmake_symbolic_link, Smake_symbolic_link, 2, 3,
        "FMake symbolic link to file: \nGMake symbolic link to file %s: \np",
-       doc: /* Make a symbolic link to TARGET, named NEWNAME.
-If NEWNAME is a directory name, make a like-named symbolic link under
-NEWNAME.
+       doc: /* Make a symbolic link to TARGET, named LINKNAME.
+If LINKNAME is a directory name, make a like-named symbolic link under
+LINKNAME.
 
-Signal a `file-already-exists' error if a file NEWNAME already exists
+Signal a `file-already-exists' error if a file LINKNAME already exists
 unless optional third argument OK-IF-ALREADY-EXISTS is non-nil.
-An integer third arg means request confirmation if NEWNAME already
+An integer third arg means request confirmation if LINKNAME already
 exists, and expand leading "~" or strip leading "/:" in TARGET.
 This happens for interactive use with M-x.  */)
   (Lisp_Object target, Lisp_Object linkname, Lisp_Object ok_if_already_exists)
@@ -2666,7 +2666,7 @@ On Unix, absolute file names start with `/'.  */)
 }
 
 DEFUN ("file-exists-p", Ffile_exists_p, Sfile_exists_p, 1, 1, 0,
-       doc: /* Return t if file FILENAME exists (whether or not you can read it.)
+       doc: /* Return t if file FILENAME exists (whether or not you can read it).
 See also `file-readable-p' and `file-attributes'.
 This returns nil for a symlink to a nonexistent file.
 Use `file-symlink-p' to test for such links.  */)
@@ -3458,42 +3458,6 @@ otherwise, if FILE2 does not exist, the answer is t.  */)
 }
 
 enum { READ_BUF_SIZE = MAX_ALLOCA };
-
-/* This function is called after Lisp functions to decide a coding
-   system are called, or when they cause an error.  Before they are
-   called, the current buffer is set unibyte and it contains only a
-   newly inserted text (thus the buffer was empty before the
-   insertion).
-
-   The functions may set markers, overlays, text properties, or even
-   alter the buffer contents, change the current buffer.
-
-   Here, we reset all those changes by:
-	o set back the current buffer.
-	o move all markers and overlays to BEG.
-	o remove all text properties.
-	o set back the buffer multibyteness.  */
-
-static void
-decide_coding_unwind (Lisp_Object unwind_data)
-{
-  Lisp_Object multibyte, undo_list, buffer;
-
-  multibyte = XCAR (unwind_data);
-  unwind_data = XCDR (unwind_data);
-  undo_list = XCAR (unwind_data);
-  buffer = XCDR (unwind_data);
-
-  set_buffer_internal (XBUFFER (buffer));
-  adjust_markers_for_delete (BEG, BEG_BYTE, Z, Z_BYTE);
-  adjust_overlays_for_delete (BEG, Z - BEG);
-  set_buffer_intervals (current_buffer, NULL);
-  TEMP_SET_PT_BOTH (BEG, BEG_BYTE);
-
-  /* Now we are safe to change the buffer's multibyteness directly.  */
-  bset_enable_multibyte_characters (current_buffer, multibyte);
-  bset_undo_list (current_buffer, undo_list);
-}
 
 /* Read from a non-regular file.  Return the number of bytes read.  */
 
@@ -4436,17 +4400,7 @@ by calling `format-decode', which see.  */)
     report_file_error ("Read error", orig_filename);
 
   /* Make the text read part of the buffer.  */
-  GAP_SIZE -= inserted;
-  GPT      += inserted;
-  GPT_BYTE += inserted;
-  ZV       += inserted;
-  ZV_BYTE  += inserted;
-  Z        += inserted;
-  Z_BYTE   += inserted;
-
-  if (GAP_SIZE > 0)
-    /* Put an anchor to ensure multi-byte form ends at gap.  */
-    *GPT_ADDR = 0;
+  insert_from_gap_1 (inserted, inserted, false);
 
  notfound:
 
@@ -4467,15 +4421,14 @@ by calling `format-decode', which see.  */)
 	     enable-multibyte-characters directly here without taking
 	     care of marker adjustment.  By this way, we can run Lisp
 	     program safely before decoding the inserted text.  */
-	  Lisp_Object unwind_data;
+          Lisp_Object multibyte
+            = BVAR (current_buffer, enable_multibyte_characters);
+          Lisp_Object undo_list = BVAR (current_buffer, undo_list);
 	  ptrdiff_t count1 = SPECPDL_INDEX ();
 
-	  unwind_data = Fcons (BVAR (current_buffer, enable_multibyte_characters),
-			       Fcons (BVAR (current_buffer, undo_list),
-				      Fcurrent_buffer ()));
 	  bset_enable_multibyte_characters (current_buffer, Qnil);
 	  bset_undo_list (current_buffer, Qt);
-	  record_unwind_protect (decide_coding_unwind, unwind_data);
+	  record_unwind_protect (restore_buffer, Fcurrent_buffer ());
 
 	  if (inserted > 0 && ! NILP (Vset_auto_coding_function))
 	    {
@@ -4494,8 +4447,24 @@ by calling `format-decode', which see.  */)
 		coding_system = XCAR (coding_system);
 	    }
 	  unbind_to (count1, Qnil);
-	  inserted = Z_BYTE - BEG_BYTE;
-	}
+          /* We're about to "delete" the text by moving it back into the gap
+             (right before calling decode_coding_gap).
+             So move markers that set-auto-coding might have created to BEG,
+             just in case.  */
+          adjust_markers_for_delete (BEG, BEG_BYTE, Z, Z_BYTE);
+          adjust_overlays_for_delete (BEG, Z - BEG);
+          set_buffer_intervals (current_buffer, NULL);
+          TEMP_SET_PT_BOTH (BEG, BEG_BYTE);
+
+          /* Change the buffer's multibyteness directly.  We used to do this
+             from within unbind_to, but it was unsafe since the bytes
+             may contain invalid sequences for a multibyte buffer (which is OK
+             here since we'll decode them before anyone else gets to see
+             them, but is dangerous when we're doing a non-local exit).  */
+          bset_enable_multibyte_characters (current_buffer, multibyte);
+          bset_undo_list (current_buffer, undo_list);
+          inserted = Z_BYTE - BEG_BYTE;
+        }
 
       if (NILP (coding_system))
 	coding_system = Qundecided;
@@ -4538,7 +4507,7 @@ by calling `format-decode', which see.  */)
       Z_BYTE -= inserted;
       ZV -= inserted;
       Z -= inserted;
-      decode_coding_gap (&coding, inserted, inserted);
+      decode_coding_gap (&coding, inserted);
       inserted = coding.produced_char;
       coding_system = CODING_ID_NAME (coding.id);
     }
@@ -4720,7 +4689,7 @@ by calling `format-decode', which see.  */)
 	      Lisp_Object tem = XCAR (old_undo);
 	      if (CONSP (tem) && FIXNUMP (XCAR (tem))
 		  && FIXNUMP (XCDR (tem))
-		  && XFIXNAT (XCDR (tem)) == PT + old_inserted)
+		  && XFIXNUM (XCDR (tem)) == PT + old_inserted)
 		XSETCDR (tem, make_fixnum (PT + inserted));
 	    }
 	}
@@ -5392,7 +5361,7 @@ a_write (int desc, Lisp_Object string, ptrdiff_t pos,
       tem = Fcar_safe (Fcar (*annot));
       nextpos = pos - 1;
       if (FIXNUMP (tem))
-	nextpos = XFIXNAT (tem);
+	nextpos = XFIXNUM (tem);
 
       /* If there are no more annotations in this range,
 	 output the rest of the range all at once.  */
@@ -5850,9 +5819,9 @@ A non-nil CURRENT-ONLY argument means save only current buffer.  */)
 		&& FIXNUMP (BVAR (b, save_length))
 		/* A short file is likely to change a large fraction;
 		   spare the user annoying messages.  */
-		&& XFIXNAT (BVAR (b, save_length)) > 5000
+		&& XFIXNUM (BVAR (b, save_length)) > 5000
 		&& (growth_factor * (BUF_Z (b) - BUF_BEG (b))
-		    < (growth_factor - 1) * XFIXNAT (BVAR (b, save_length)))
+		    < (growth_factor - 1) * XFIXNUM (BVAR (b, save_length)))
 		/* These messages are frequent and annoying for `*mail*'.  */
 		&& !NILP (BVAR (b, filename))
 		&& NILP (no_message))

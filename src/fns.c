@@ -2164,8 +2164,6 @@ properties on the list.  This function never signals an error.  */)
       if (EQ (prop, XCAR (tail)))
 	return XCAR (XCDR (tail));
       tail = XCDR (tail);
-      if (EQ (tail, li.tortoise))
-	break;
     }
 
   return Qnil;
@@ -2208,8 +2206,6 @@ The PLIST is modified by side effects.  */)
 
       prev = tail;
       tail = XCDR (tail);
-      if (EQ (tail, li.tortoise))
-	circular_list (plist);
     }
   CHECK_TYPE (NILP (tail), Qplistp, plist);
   Lisp_Object newcell
@@ -2247,8 +2243,6 @@ one of the properties on the list.  */)
       if (! NILP (Fequal (prop, XCAR (tail))))
 	return XCAR (XCDR (tail));
       tail = XCDR (tail);
-      if (EQ (tail, li.tortoise))
-	circular_list (plist);
     }
 
   CHECK_TYPE (NILP (tail), Qplistp, plist);
@@ -2280,8 +2274,6 @@ The PLIST is modified by side effects.  */)
 
       prev = tail;
       tail = XCDR (tail);
-      if (EQ (tail, li.tortoise))
-	circular_list (plist);
     }
   CHECK_TYPE (NILP (tail), Qplistp, plist);
   Lisp_Object newcell = list2 (prop, val);
@@ -2682,7 +2674,7 @@ DEFUN ("mapconcat", Fmapconcat, Smapconcat, 3, 3, 0,
 In between each pair of results, stick in SEPARATOR.  Thus, " " as
   SEPARATOR results in spaces between the values returned by FUNCTION.
 SEQUENCE may be a list, a vector, a bool-vector, or a string.
-SEPARATOR must be a string.
+SEPARATOR must be a string, a vector, or a list of characters.
 FUNCTION must be a function of one argument, and must return a value
   that is a sequence of characters: either a string, or a vector or
   list of numbers that are valid character codepoints.  */)
@@ -3045,8 +3037,6 @@ The value is actually the tail of PLIST whose car is PROP.  */)
       tail = XCDR (tail);
       if (! CONSP (tail))
 	break;
-      if (EQ (tail, li.tortoise))
-	circular_list (tail);
     }
   CHECK_TYPE (NILP (tail), Qplistp, plist);
   return Qnil;

@@ -345,7 +345,7 @@ x_cr_destroy_frame_context (struct frame *f)
     }
 }
 
-static void
+void
 x_cr_update_surface_desired_size (struct frame *f, int width, int height)
 {
   if (FRAME_CR_SURFACE_DESIRED_WIDTH (f) != width
@@ -1239,6 +1239,15 @@ x_update_end (struct frame *f)
 {
   /* Mouse highlight may be displayed again.  */
   MOUSE_HL_INFO (f)->mouse_face_defer = false;
+
+#ifdef USE_CAIRO
+  if (!FRAME_X_DOUBLE_BUFFERED_P (f) && FRAME_CR_CONTEXT (f))
+    {
+      block_input ();
+      cairo_surface_flush (cairo_get_target (FRAME_CR_CONTEXT (f)));
+      unblock_input ();
+    }
+#endif
 
 #ifndef XFlush
   block_input ();
@@ -3798,7 +3807,7 @@ x_draw_glyph_string (struct glyph_string *s)
 		    = buffer_local_value (Qunderline_minimum_offset,
 					  s->w->contents);
 		  if (FIXNUMP (val))
-		    minimum_offset = XFIXNAT (val);
+		    minimum_offset = max (0, XFIXNUM (val));
 		  else
 		    minimum_offset = 1;
 		  val = buffer_local_value (Qx_underline_at_descent_line,
@@ -8834,7 +8843,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       if (f && FRAME_X_DOUBLE_BUFFERED_P (f))
         font_drop_xrender_surfaces (f);
       unblock_input ();
-#ifdef USE_CAIRO
+#if defined USE_CAIRO && !defined USE_GTK
       if (f)
 	x_cr_update_surface_desired_size (f, configureEvent.xconfigure.width,
 					  configureEvent.xconfigure.height);

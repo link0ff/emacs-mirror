@@ -834,6 +834,36 @@
 		       (if (= 1 (length (cdr form))) "" "s"))
     form))
 
+(defun byte-optimize--constant-symbol-p (expr)
+  "Whether EXPR is a constant symbol."
+  (and (macroexp-const-p expr) (symbolp (eval expr))))
+
+(defun byte-optimize-equal (form)
+  ;; Replace `equal' or `eql' with `eq' if at least one arg is a symbol.
+  (byte-optimize-binary-predicate
+   (if (= (length (cdr form)) 2)
+       (if (or (byte-optimize--constant-symbol-p (nth 1 form))
+               (byte-optimize--constant-symbol-p (nth 2 form)))
+           (cons 'eq (cdr form))
+         form)
+     ;; Arity errors reported elsewhere.
+     form)))
+
+(defun byte-optimize-member (form)
+  ;; Replace `member' or `memql' with `memq' if the first arg is a symbol,
+  ;; or the second arg is a list of symbols.
+  (if (= (length (cdr form)) 2)
+      (if (or (byte-optimize--constant-symbol-p (nth 1 form))
+              (let ((arg2 (nth 2 form)))
+                (and (macroexp-const-p arg2)
+                     (let ((listval (eval arg2)))
+                       (and (listp listval)
+                            (not (memq nil (mapcar #'symbolp listval))))))))
+          (cons 'memq (cdr form))
+        form)
+    ;; Arity errors reported elsewhere.
+    form))
+
 (defun byte-optimize-memq (form)
   ;; (memq foo '(bar)) => (and (eq foo 'bar) '(bar))
   (if (/= (length (cdr form)) 2)
@@ -850,8 +880,37 @@
                           ',list)))))
     (byte-optimize-predicate form)))
 
+(defun byte-optimize-concat (form)
+  "Merge adjacent constant arguments to `concat'."
+  (let ((args (cdr form))
+        (newargs nil))
+    (while args
+      (let ((strings nil)
+            val)
+        (while (and args (macroexp-const-p (car args))
+                    (progn
+                      (setq val (eval (car args)))
+                      (and (or (stringp val)
+                               (and (or (listp val) (vectorp val))
+                                    (not (memq nil
+                                               (mapcar #'characterp val))))))))
+          (push val strings)
+          (setq args (cdr args)))
+        (when strings
+          (let ((s (apply #'concat (nreverse strings))))
+            (when (not (zerop (length s)))
+              (push s newargs)))))
+      (when args
+        (push (car args) newargs)
+        (setq args (cdr args))))
+    (if (= (length newargs) (length (cdr form)))
+        form          ; No improvement.
+      (cons 'concat (nreverse newargs)))))
+
 (put 'identity 'byte-optimizer 'byte-optimize-identity)
 (put 'memq 'byte-optimizer 'byte-optimize-memq)
+(put 'memql  'byte-optimizer 'byte-optimize-member)
+(put 'member 'byte-optimizer 'byte-optimize-member)
 
 (put '+   'byte-optimizer 'byte-optimize-plus)
 (put '*   'byte-optimizer 'byte-optimize-multiply)
@@ -862,7 +921,8 @@
 
 (put '=   'byte-optimizer 'byte-optimize-binary-predicate)
 (put 'eq  'byte-optimizer 'byte-optimize-binary-predicate)
-(put 'equal   'byte-optimizer 'byte-optimize-binary-predicate)
+(put 'eql   'byte-optimizer 'byte-optimize-equal)
+(put 'equal 'byte-optimizer 'byte-optimize-equal)
 (put 'string= 'byte-optimizer 'byte-optimize-binary-predicate)
 (put 'string-equal 'byte-optimizer 'byte-optimize-binary-predicate)
 
@@ -891,6 +951,8 @@
 (put 'cdr 'byte-optimizer 'byte-optimize-predicate)
 (put 'car-safe 'byte-optimizer 'byte-optimize-predicate)
 (put 'cdr-safe 'byte-optimizer 'byte-optimize-predicate)
+
+(put 'concat 'byte-optimizer 'byte-optimize-concat)
 
 ;; I'm not convinced that this is necessary.  Doesn't the optimizer loop
 ;; take care of this? - Jamie

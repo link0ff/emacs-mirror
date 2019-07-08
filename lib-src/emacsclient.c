@@ -74,6 +74,7 @@ char *w32_getenv (const char *);
 #include <signal.h>
 #include <stdarg.h>
 #include <stddef.h>
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
@@ -82,6 +83,7 @@ char *w32_getenv (const char *);
 #include <dosname.h>
 #include <intprops.h>
 #include <min-max.h>
+#include <pathmax.h>
 #include <unlocked-io.h>
 
 /* Work around GCC bug 88251.  */
@@ -238,22 +240,31 @@ char *get_current_dir_name (void);
 char *
 get_current_dir_name (void)
 {
+  /* The maximum size of a directory name, including the terminating NUL.
+     Leave room so that the caller can append a trailing slash.  */
+  ptrdiff_t dirsize_max = min (PTRDIFF_MAX, SIZE_MAX) - 1;
+
+  /* The maximum size of a buffer for a file name, including the
+     terminating NUL.  This is bounded by PATH_MAX, if available.  */
+  ptrdiff_t bufsize_max = dirsize_max;
+#ifdef PATH_MAX
+  bufsize_max = min (bufsize_max, PATH_MAX);
+#endif
+
   char *buf;
   struct stat dotstat, pwdstat;
+  size_t pwdlen;
   /* If PWD is accurate, use it instead of calling getcwd.  PWD is
      sometimes a nicer name, and using it may avoid a fatal error if a
      parent directory is searchable but not readable.  */
   char const *pwd = egetenv ("PWD");
   if (pwd
-      && (IS_DIRECTORY_SEP (*pwd) || (*pwd && IS_DEVICE_SEP (pwd[1])))
+      && (pwdlen = strnlen (pwd, bufsize_max)) < bufsize_max
+      && IS_DIRECTORY_SEP (pwd[pwdlen && IS_DEVICE_SEP (pwd[1]) ? 2 : 0])
       && stat (pwd, &pwdstat) == 0
       && stat (".", &dotstat) == 0
       && dotstat.st_ino == pwdstat.st_ino
-      && dotstat.st_dev == pwdstat.st_dev
-# ifdef MAXPATHLEN
-      && strlen (pwd) < MAXPATHLEN
-# endif
-      )
+      && dotstat.st_dev == pwdstat.st_dev)
     {
       buf = xmalloc (strlen (pwd) + 1);
       strcpy (buf, pwd);
@@ -689,7 +700,11 @@ fail (void)
 {
   if (alternate_editor)
     {
-      size_t extra_args_size = (main_argc - optind + 1) * sizeof (char *);
+      /* If the user has said --eval, then those aren't file name
+	 parameters, so don't put them on the alternate_editor command
+	 line. */
+      size_t extra_args_size =
+	(eval? 0: (main_argc - optind + 1) * sizeof (char *));
       size_t new_argv_size = extra_args_size;
       char **new_argv = xmalloc (new_argv_size);
       char *s = xstrdup (alternate_editor);

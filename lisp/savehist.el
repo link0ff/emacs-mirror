@@ -338,7 +338,12 @@ Does nothing if Savehist mode is off."
 	(error nil))))))
 
 (defun savehist-minibuffer-hook ()
-  (unless (memq minibuffer-history-variable savehist-ignored-variables)
+  (unless (or (eq minibuffer-history-variable t)
+	      ;; If `read-string' is called with a t HISTORY argument
+	      ;; (which `read-password' does),
+	      ;; `minibuffer-history-variable' is bound to t to mean
+	      ;; "no history is being recorded".
+	      (memq minibuffer-history-variable savehist-ignored-variables))
     (add-to-list 'savehist-minibuffer-history-variables
 		 minibuffer-history-variable)))
 

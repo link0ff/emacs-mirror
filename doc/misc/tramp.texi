@@ -402,12 +402,15 @@ $ autoconf
 @end group
 @end example
 
-
+@ifset installchapter
 @c Installation chapter is necessary only in case of standalone
 @c installation.
-@ifset installchapter
 @include trampinst.texi
 @end ifset
+@ifclear installchapter
+See the file @file{INSTALL} in that directory for further information
+how to install @value{tramp}.
+@end ifclear
 
 
 @node Quick Start Guide
@@ -3269,10 +3272,13 @@ This command flushes all connection related objects.  @option{vec} is
 the internal representation of a remote connection.  When called
 interactively, this command lists active remote connections in the
 minibuffer.  Each connection is of the format
-@file{@trampfn{method,user@@host,}}.  Flushing remote connections also
-cleans the password cache (@pxref{Password handling}), file cache,
-connection cache (@pxref{Connection caching}), recentf cache
-(@pxref{File Conveniences, , , emacs}), and connection buffers.
+@file{@trampfn{method,user@@host,}}.
+
+Flushing remote connections also cleans the password cache
+(@pxref{Password handling}), file cache, connection cache
+(@pxref{Connection caching}), and recentf cache (@pxref{File
+Conveniences, , , emacs}).  It also deletes session timers
+(@pxref{Predefined connection information}) and connection buffers.
 @end deffn
 
 @deffn Command tramp-cleanup-this-connection
@@ -3290,7 +3296,7 @@ proxy definitions (@pxref{Ad-hoc multi-hops}).
 @deffn Command tramp-cleanup-all-buffers
 Just as for @code{tramp-cleanup-all-connections}, all remote
 connections and ad-hoc proxy definition are cleaned up in addition to
-killing buffers related to that remote connection.
+killing all buffers related to remote connections.
 @end deffn
 
 
@@ -3441,18 +3447,21 @@ Shell archives
 @cindex @file{shar} file archive suffix
 @cindex file archive suffix @file{shar}
 
-@item @samp{.tar}, @samp{.tbz}, @samp{.tgz}, @samp{.tlz}, @samp{.txz} ---
+@item @samp{.tar}, @samp{.tbz}, @samp{.tgz}, @samp{.tlz}, @samp{.txz},
+@samp{.tzst} ---
 (Compressed) tape archives
 @cindex @file{tar} file archive suffix
 @cindex @file{tbz} file archive suffix
 @cindex @file{tgz} file archive suffix
 @cindex @file{tlz} file archive suffix
 @cindex @file{txz} file archive suffix
+@cindex @file{tzst} file archive suffix
 @cindex file archive suffix @file{tar}
 @cindex file archive suffix @file{tbz}
 @cindex file archive suffix @file{tgz}
 @cindex file archive suffix @file{tlz}
 @cindex file archive suffix @file{txz}
+@cindex file archive suffix @file{tzst}
 
 @item @samp{.warc} ---
 Web archives
@@ -3487,8 +3496,8 @@ File archives could also be compressed, identified by an additional
 compression suffix.  Valid compression suffixes are listed in the
 constant @code{tramp-archive-compression-suffixes}.  They are
 @samp{.bz2}, @samp{.gz}, @samp{.lrz}, @samp{.lz}, @samp{.lz4},
-@samp{.lzma}, @samp{.lzo}, @samp{.uu}, @samp{.xz} and @samp{.Z}.  A
-valid archive file name would be
+@samp{.lzma}, @samp{.lzo}, @samp{.uu}, @samp{.xz}, @samp{.Z}, and
+@samp{.zst}.  A valid archive file name would be
 @file{/path/to/dir/file.tar.gz/dir/file}.  Even several suffixes in a
 row are possible, like @file{/path/to/dir/file.tar.gz.uu/dir/file}.
 
@@ -4201,10 +4210,8 @@ directory to the cache:
 
 @lisp
 @group
-@c `with-eval-after-load' has been introduced with Emacs 24.4.  Shall
-@c be used when appropriate.
-(eval-after-load "filecache"
-  '(file-cache-add-directory
+(with-eval-after-load 'filecache
+  (file-cache-add-directory
     "@trampfn{ssh,news@@news.my.domain,/opt/news/etc/}"))
 @end group
 @end lisp

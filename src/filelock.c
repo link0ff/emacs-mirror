@@ -152,7 +152,7 @@ get_boot_time (void)
     mib[1] = KERN_BOOTTIME;
     size = sizeof (boottime_val);
 
-    if (sysctl (mib, 2, &boottime_val, &size, NULL, 0) >= 0)
+    if (sysctl (mib, 2, &boottime_val, &size, NULL, 0) >= 0 && size != 0)
       {
 	boot_time = boottime_val.tv_sec;
 	return boot_time;
@@ -429,26 +429,26 @@ static int
 lock_file_1 (char *lfname, bool force)
 {
   /* Call this first because it can GC.  */
-  printmax_t boot = get_boot_time ();
+  intmax_t boot = get_boot_time ();
 
   Lisp_Object luser_name = Fuser_login_name (Qnil);
   char const *user_name = STRINGP (luser_name) ? SSDATA (luser_name) : "";
   Lisp_Object lhost_name = Fsystem_name ();
   char const *host_name = STRINGP (lhost_name) ? SSDATA (lhost_name) : "";
   char lock_info_str[MAX_LFINFO + 1];
-  printmax_t pid = getpid ();
+  intmax_t pid = getpid ();
 
   if (boot)
     {
       if (sizeof lock_info_str
           <= snprintf (lock_info_str, sizeof lock_info_str,
-                       "%s@%s.%"pMd":%"pMd,
+		       "%s@%s.%"PRIdMAX":%"PRIdMAX,
                        user_name, host_name, pid, boot))
         return ENAMETOOLONG;
     }
   else if (sizeof lock_info_str
            <= snprintf (lock_info_str, sizeof lock_info_str,
-                        "%s@%s.%"pMd,
+			"%s@%s.%"PRIdMAX,
                         user_name, host_name, pid))
     return ENAMETOOLONG;
 
