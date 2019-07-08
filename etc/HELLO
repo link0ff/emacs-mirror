@@ -71,7 +71,7 @@ Khmer (ភាសាខ្មែរ)	ជំរាបសួរ
 </x-charset><x-charset><param>latin-iso8859-1</param>Norwegian (norsk)	Hei / God dag
 </x-charset><x-charset><param>mule-unicode-0100-24ff</param>Oriya (ଓଡ଼ିଆ)	ଶୁଣିବେ
 </x-charset><x-charset><param>latin-iso8859-2</param>Polish  (język polski)	Dzień dobry! / Cześć!
-</x-charset><x-charset><param>cyrillic-iso8859-5</param>Russian (русский)	Здра́вствуйте! ещё</x-charset> ещё ещё кий кий кий<x-charset><param>cyrillic-iso8859-5</param>
+</x-charset><x-charset><param>cyrillic-iso8859-5</param>Russian (русский)	Здра́вствуйте! еще</x-charset> ещё кии кий<x-charset><param>cyrillic-iso8859-5</param>
 </x-charset><x-charset><param>mule-unicode-0100-24ff</param>Sinhala (සිංහල)	ආයුබෝවන්
 </x-charset><x-charset><param>latin-iso8859-2</param>Slovak (slovenčina)	Dobrý deň
 Slovenian (slovenščina)	Pozdravljeni!

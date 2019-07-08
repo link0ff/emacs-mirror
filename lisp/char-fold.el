@@ -69,14 +69,14 @@
 
 (eval-and-compile
   (defun char-fold-make-table ()
-    (message "!!! %S" (let (funcs)
-                        (mapbacktrace (lambda (_evald func _args _flags)
-                                        (push func funcs)))
-                        (nreverse funcs)))
+    ;; (message "!!! %S" (let (funcs)
+    ;;                     (mapbacktrace (lambda (_evald func _args _flags)
+    ;;                                     (push func funcs)))
+    ;;                     (nreverse funcs)))
     (let* ((equiv (make-char-table 'char-fold-table))
-          (equiv-multi (make-char-table 'char-fold-table))
+           (equiv-multi (make-char-table 'char-fold-table))
            (search-spaces-regexp nil)   ; workaround for bug#35802
-          (table (unicode-property-table-internal 'decomposition)))
+           (table (unicode-property-table-internal 'decomposition)))
       (set-char-table-extra-slot equiv 0 equiv-multi)
 
       ;; Ensure the table is populated.
@@ -125,10 +125,11 @@
                         (aset equiv (car decomp)
                               (cons (char-to-string char)
                                     (aref equiv (car decomp))))
-                        (when char-fold-include-base
-                          (aset equiv char
-                                (cons (char-to-string (car decomp))
-                                      (aref equiv (car decomp)))))))))
+                        ;; (when char-fold-include-base
+                        ;;   (aset equiv char
+                        ;;         (cons (char-to-string (car decomp))
+                        ;;               (aref equiv (car decomp)))))
+                        ))))
                (funcall make-decomp-match-char decomp char)
                ;; Do it again, without the non-spacing characters.
                ;; This allows 'a' to match 'ä'.
@@ -156,11 +157,11 @@
           (aset equiv idx (append chars (aref equiv idx)))))
 
       ;; Remove some entries.
-      (dolist (it char-fold-exclude-alist)
-        (let ((idx (car it))
-              (char (cdr it)))
-          (when (aref equiv idx)
-            (aset equiv idx (remove (char-to-string char) (aref equiv idx))))))
+      ;; (dolist (it char-fold-exclude-alist)
+      ;;   (let ((idx (car it))
+      ;;         (char (cdr it)))
+      ;;     (when (aref equiv idx)
+      ;;       (aset equiv idx (remove (char-to-string char) (aref equiv idx))))))
 
       ;; Convert the lists of characters we compiled into regexps.
       (map-char-table
@@ -211,12 +212,33 @@ Exceptionally for the space character (32), ALIST is ignored.")
           (apply #'concat
                  (make-list n (or (aref char-fold-table ?\s) " ")))))
 
+;; aﬂﬁﬄ ㏛ⅸ ㏅ ㏈ ﬂ ㏊ ㏌ ⅳ ⅸ netﬂⅸ ﬁx
+
+;; (aref (char-table-extra-slot char-fold-table 0) ?f) (("fl" . "ﬄ") ("fi" . "ﬃ") ("l" . "ﬂ") ("i" . "ﬁ") ("f" . "ﬀ") ("m" . "㎙") ("̇" . "ḟ"))
+;; (char-fold-to-regexp "fi") "\\(?:\\(?:ḟ\\|[fᶠḟⓕｆ𝐟𝑓𝒇𝒻𝓯𝔣𝕗𝖋𝖿𝗳𝘧𝙛𝚏]\\)\\(?:i[̀-̨̣̰̄̆̈̉̌̏̑]\\|[iì-ïĩīĭįǐȉȋᵢḭỉịⁱℹⅈⅰⓘｉ𝐢𝑖𝒊𝒾𝓲𝔦𝕚𝖎𝗂𝗶𝘪𝙞𝚒]\\)\\|ﬁ\\)"
+;; (char-fold-to-regexp "0f") "[0⁰₀⓪０𝟎𝟘𝟢𝟬𝟶]\\(?:ḟ\\|[fᶠḟⓕｆ𝐟𝑓𝒇𝒻𝓯𝔣𝕗𝖋𝖿𝗳𝘧𝙛𝚏]\\)"
+;; (char-fold-to-regexp "0f" t) "[0⁰₀⓪０𝟎𝟘𝟢𝟬𝟶]\\(?:\\(?:ḟ\\|[fᶠḟⓕｆ𝐟𝑓𝒇𝒻𝓯𝔣𝕗𝖋𝖿𝗳𝘧𝙛𝚏]\\)\\|ﬄ\\|ﬃ\\|ﬂ\\|ﬁ\\|ﬀ\\|㎙\\|ḟ\\)"
+;; (char-fold-to-regexp "ba") "\\(?:b[̣̱̇]\\|[bᵇḃḅḇⓑｂ𝐛𝑏𝒃𝒷𝓫𝔟𝕓𝖇𝖻𝗯𝘣𝙗𝚋]\\)\\(?:a[̀-̄̆-̨̣̥̊̌̏̑]\\|[aªà-åāăąǎȁȃȧᵃḁạảₐⓐａ𝐚𝑎𝒂𝒶𝓪𝔞𝕒𝖆𝖺𝗮𝘢𝙖𝚊]\\)"
+
+;; (char-fold-to-regexp "е") "\\(?:е[̀̆̈]\\|[еѐёӗ]\\)"
+;; (char-fold-to-regexp "ра́в") "р\\(?:а[̆̈]\\|[аӑӓ]\\)[́́]в"
+;; (length "ра́в") 4
+;; (string-bytes "ра́в") 8
+;; (string-to-char "ра́в") 1088
+;; (string-to-list "ра́в") (1088 1072 769 1074)
+
 ;;;###autoload
-(defun char-fold-to-regexp (string &optional _lax from)
+(defun char-fold-to-regexp (string &optional lax from)
   "Return a regexp matching anything that char-folds into STRING.
 Any character in STRING that has an entry in
 `char-fold-table' is replaced with that entry (which is a
 regexp) and other characters are `regexp-quote'd.
+
+When LAX is non-nil, then the final character also matches ligatures
+partially, for instance, the search string \"f\" will match \"ﬁ\",
+so while typing the search string in isearch while the cursor is
+on a ligature, the search will not try to immediately advance
+to the next complete match.
 
 If the resulting regexp would be too long for Emacs to handle,
 just return the result of calling `regexp-quote' on STRING.
@@ -247,36 +269,40 @@ from which to start."
                  ;; Long string.  The regexp would probably be too long.
                  (alist (unless (> end 50)
                           (aref multi-char-table c))))
-             (push (let ((matched-entries nil)
-                         (max-length 0))
-                     (dolist (entry alist)
-                       (let* ((suffix (car entry))
-                              (len-suf (length suffix)))
-                         (when (eq (compare-strings suffix 0 nil
-                                                    string (1+ i) (+ i 1 len-suf)
-                                                    nil)
-                                   t)
-                           (push (cons len-suf (cdr entry)) matched-entries)
-                           (setq max-length (max max-length len-suf)))))
-                     ;; If no suffixes matched, just go on.
-                     (if (not matched-entries)
-                         regexp
+             (push (if (and lax alist (= (1+ i) end))
+                       (concat "\\(?:" regexp "\\|"
+                               (mapconcat (lambda (entry)
+                                            (cdr entry)) alist "\\|") "\\)")
+                     (let ((matched-entries nil)
+                           (max-length 0))
+                       (dolist (entry alist)
+                         (let* ((suffix (car entry))
+                                (len-suf (length suffix)))
+                           (when (eq (compare-strings suffix 0 nil
+                                                      string (1+ i) (+ i 1 len-suf)
+                                                      nil)
+                                     t)
+                             (push (cons len-suf (cdr entry)) matched-entries)
+                             (setq max-length (max max-length len-suf)))))
+                       ;; If no suffixes matched, just go on.
+                       (if (not matched-entries)
+                           regexp
 ;;; If N suffixes match, we "branch" out into N+1 executions for the
 ;;; length of the longest match.  This means "fix" will match "ﬁx" but
 ;;; not "fⅸ", but it's necessary to keep the regexp size from scaling
 ;;; exponentially.  See https://lists.gnu.org/r/emacs-devel/2015-11/msg02562.html
-                       (let ((subs (substring string (1+ i) (+ i 1 max-length))))
-                         ;; `i' is still going to inc by 1 below.
-                         (setq i (+ i max-length))
-                         (concat
-                          "\\(?:"
-                          (mapconcat (lambda (entry)
-                                       (let ((length (car entry))
-                                             (suffix-regexp (cdr entry)))
-                                         (concat suffix-regexp
-                                                 (char-fold-to-regexp subs nil length))))
-                                     `((0 . ,regexp) . ,matched-entries) "\\|")
-                          "\\)"))))
+                         (let ((subs (substring string (1+ i) (+ i 1 max-length))))
+                           ;; `i' is still going to inc by 1 below.
+                           (setq i (+ i max-length))
+                           (concat
+                            "\\(?:"
+                            (mapconcat (lambda (entry)
+                                         (let ((length (car entry))
+                                               (suffix-regexp (cdr entry)))
+                                           (concat suffix-regexp
+                                                   (char-fold-to-regexp subs nil length))))
+                                       `((0 . ,regexp) . ,matched-entries) "\\|")
+                            "\\)")))))
                    out))))
       (setq i (1+ i)))
     (when (> spaces 0)
