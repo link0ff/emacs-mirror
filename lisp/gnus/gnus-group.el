@@ -2528,6 +2528,7 @@ The arguments have the same meaning as those of
 
 (defvar debbugs-gnu-bug-number)		; debbugs-gnu
 
+;;;###autoload
 (defun gnus-read-ephemeral-emacs-bug-group (ids &optional window-conf)
   "Browse Emacs bug reports with IDS in an ephemeral group.
 The arguments have the same meaning as those of
@@ -4506,7 +4507,14 @@ and the second element is the address."
 	    (when (and (not (eq (car entry) t))
 		       (gnus-active (gnus-info-group info)))
 	      (setcar entry (length
-			     (gnus-list-of-unread-articles (car info))))))
+			     (gnus-list-of-unread-articles (car info)))))
+	    ;; The above `setcar' will only affect the hashtable, not
+	    ;; the alist: update the alist separately.
+	    (push info (cdr (setq gnus-newsrc-alist
+				   (remove (assoc-string
+					    (gnus-info-group info)
+					    gnus-newsrc-alist)
+					   gnus-newsrc-alist)))))
 	(error "No such group: %s" (gnus-info-group info))))))
 
 ;; Ad-hoc function for inserting data from a different newsrc.eld

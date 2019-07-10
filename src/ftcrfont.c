@@ -18,7 +18,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 
 #include <config.h>
-#include <stdio.h>
 #include <math.h>
 #include <cairo-ft.h>
 
@@ -577,8 +576,8 @@ struct font_driver const ftcrfont_driver =
   .list = ftcrfont_list,
   .match = ftcrfont_match,
   .list_family = ftfont_list_family,
-  .open = ftcrfont_open,
-  .close = ftcrfont_close,
+  .open_font = ftcrfont_open,
+  .close_font = ftcrfont_close,
   .has_char = ftcrfont_has_char,
   .encode_char = ftcrfont_encode_char,
   .text_extents = ftcrfont_text_extents,

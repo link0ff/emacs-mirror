@@ -20,7 +20,6 @@ You should have received a copy of the GNU General Public License
 along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include <config.h>
-#include <stdio.h>
 #include <fontconfig/fontconfig.h>
 #include <fontconfig/fcfreetype.h>
 
@@ -3040,8 +3039,8 @@ static struct font_driver const ftfont_driver =
   .list = ftfont_list,
   .match = ftfont_match,
   .list_family = ftfont_list_family,
-  .open = ftfont_open,
-  .close = ftfont_close,
+  .open_font = ftfont_open,
+  .close_font = ftfont_close,
   .has_char = ftfont_has_char,
   .encode_char = ftfont_encode_char,
   .text_extents = ftfont_text_extents,
