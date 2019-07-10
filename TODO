@@ -71,102 +71,6 @@ like windmove-create-window
 TRY to use it for 'C-z d' (vc-dir-in-project-root)
 
 
-FIXED:
-in single-window frame eval shows Local Variables in right-hand window!
-
-the same problem with *Marked Process*:
-in horizontall split windows
-select a process in Proced, type 'k',
-it displays *Marked Process* in adjacent window,
-not at bottom!
-
-
-xref-find-definitions
-M-. doesn't work well with windowmove, e.g.
-
-<H-M-right> M-. displays xref in the specified window
-but RET still displayed in the original window
-
-The problem occurs only when *xref* appears whem unasked for.
-
-M-? xref-find-references RET pops up a large buffer
-
-C-M-. xref-find-apropos RET jumps immediately
-C-M-. apropos RET pops up a large buffer
-
-
-'g' in *xref* buffer:
-
-Debugger entered--Lisp error: (error "Buffer does not seem to be associated with any file")
-  signal(error ("Buffer does not seem to be associated with any file"))
-  error("Buffer does not seem to be associated with any file")
-  revert-buffer--default(t nil)
-  revert-buffer(t)
-  funcall-interactively(revert-buffer t)
-  call-interactively(revert-buffer nil nil)
-  command-execute(revert-buffer)
-
-
-M-x project-search - can't use M-n to get default value - a word under point like in project-find-regexp
-M-x fileloop-continue - inconsistent name prefix, no keybinding
-M-x project-find-regexp - maybe allow grep-like output layout as well?
-
-
-Chrome clones the frame, not makes the frame
-
-
-async-shell-command truncates output lines
-bug: M-& ps aux RET
-ok:  M-! ps aux RET
-another example: dpkg -l '*emacs*'
-So the question is: why async-shell-command limits COLUMNS to 80, even on wide frames,
-whereas M-! has no limitation.
-
-M-x shell limits COLUMNS to window-width
-
-
-Escape sequences for bottom progress bar are unhandled in shell:
-
-sudo apt install jq
-[sudo] password for juri:
-Reading package lists... Done
-Building dependency tree
-Reading state information... Done
-The following additional packages will be installed:
-  libjq1 libonig4
-The following NEW packages will be installed:
-  jq libjq1 libonig4
-0 upgraded, 3 newly installed, 0 to remove and 0 not upgraded.
-Need to get 276 kB of archives.
-After this operation, 930 kB of additional disk space will be used.
-Do you want to continue? [Y/n]
-Get:1 http://archive.ubuntu.com/ubuntu bionic/universe amd64 libonig4 amd64 6.7.0-1 [119 kB]
-Get:2 http://archive.ubuntu.com/ubuntu bionic/universe amd64 libjq1 amd64 1.5+dfsg-2 [111 kB]
-Get:3 http://archive.ubuntu.com/ubuntu bionic/universe amd64 jq amd64 1.5+dfsg-2 [45,6 kB]
-Fetched 276 kB in 0s (707 kB/s)
-debconf: unable to initialize frontend: Dialog
-debconf: (Dialog frontend will not work on a dumb terminal, an emacs shell buffer, or without a controlling terminal.)
-debconf: falling back to frontend: Readline
-
-78Selecting previously unselected package libonig4:amd64.
-(Reading database ... 325210 files and directories currently installed.)
-Preparing to unpack .../libonig4_6.7.0-1_amd64.deb ...
-7Progress: [  0%] [................................................................................................] 87Progress: [  6%] [######..........................................................................................] 8Unpacking libonig4:amd64 (6.7.0-1) ...
-7Progress: [ 13%] [############....................................................................................] 87Progress: [ 19%] [##################..............................................................................] 8Selecting previously unselected package libjq1:amd64.
-Preparing to unpack .../libjq1_1.5+dfsg-2_amd64.deb ...
-7Progress: [ 25%] [########################........................................................................] 8Unpacking libjq1:amd64 (1.5+dfsg-2) ...
-7Progress: [ 31%] [##############################..................................................................] 87Progress: [ 38%] [####################################............................................................] 8Selecting previously unselected package jq.
-Preparing to unpack .../jq_1.5+dfsg-2_amd64.deb ...
-7Progress: [ 44%] [##########################################......................................................] 8Unpacking jq (1.5+dfsg-2) ...
-7Progress: [ 50%] [################################################................................................] 87Progress: [ 56%] [######################################################..........................................] 8Setting up libonig4:amd64 (6.7.0-1) ...
-7Progress: [ 63%] [############################################################....................................] 87Progress: [ 69%] [##################################################################..............................] 8Setting up libjq1:amd64 (1.5+dfsg-2) ...
-7Progress: [ 75%] [########################################################################........................] 87Progress: [ 81%] [##############################################################################..................] 8Processing triggers for libc-bin (2.27-3ubuntu1) ...
-Processing triggers for man-db (2.8.3-2ubuntu0.1) ...
-Setting up jq (1.5+dfsg-2) ...
-7Progress: [ 88%] [####################################################################################............] 87Progress: [ 94%] [##########################################################################################......] 8
-78
-
-
 Add support for --color-moved
 https://github.com/magit/magit/issues/3424
 https://github.blog/2018-04-05-git-217-released/#coloring-moved-code
