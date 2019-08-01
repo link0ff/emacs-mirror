@@ -6,11 +6,27 @@ Subject: Desktop doesn't restore selected frame
 ;; (cl-defun frameset-save
 ;; (frame-list)
 
-(setq desktop-saved-frameset ... (selected . t)
+~/.emacs.d/.emacs.desktop
+NO: (setq desktop-saved-frameset ... (buffer "README.md" (selected . t)))
+OK: (last-focus-update . t)
 
-BUT
-(qv "/home/juri/src/emacs/emacs-mirror/emacs/lisp/frameset.el"
-    "^[ 	]*;; Restore selected frame, buffer and point\\.$")
+Subject: Stability issues in frameset sorting
+Currently frameset sorting is not stable.
+It changes the order of minibuffer-owning frames.
+It seems because frameset--mini parameters are messed up
+in 'frameset--minibufferless-last-p'.
+
+! 1 frameset-restore #<frame emacs@localhost 0x55e16309a3f0>
+! 2 frameset-restore #<frame emacs@localhost 0x55e16309a3f0>
+! 1 frameset-restore #<frame emacs@localhost 0x55e16309a3f0>
+! 1 frameset--restore-frame #<frame emacs@localhost 0x55e16309a3f0>
+! 2 frameset--restore-frame #<frame emacs@t480 0x55e164b41db0>
+! 2 frameset-restore #<frame emacs@t480 0x55e164b41db0>
+! (#<frame README.rdoc 0x55e164b41db0> #<frame  *Minibuf-1* 0x55e16309a3f0>)
+
+(setq frameset '((((frameset--mini t))) (((frameset--mini t . t)))))
+(sort (copy-sequence frameset) #'frameset--minibufferless-last-p)
+((((frameset--mini t))) (((frameset--mini t . t))))
 
 
 * gettext i18n
