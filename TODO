@@ -24,7 +24,10 @@ in 'frameset--minibufferless-last-p'.
 ! 2 frameset-restore #<frame emacs@t480 0x55e164b41db0>
 ! (#<frame README.rdoc 0x55e164b41db0> #<frame  *Minibuf-1* 0x55e16309a3f0>)
 
+(sort (copy-sequence (frameset-states frameset)) #'frameset--minibufferless-last-p)
+
 (setq frameset '((((frameset--mini t))) (((frameset--mini t . t)))))
+(setq frameset '((((frameset--mini t) (last-focus-update))) (((frameset--mini t . t) (last-focus-update . t)))))
 (sort (copy-sequence frameset) #'frameset--minibufferless-last-p)
 ((((frameset--mini t))) (((frameset--mini t . t))))
 

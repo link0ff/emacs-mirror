@@ -1106,7 +1106,9 @@ It sorts minibuffer-owning frames before minibufferless ones.
 Internal use only."
   (pcase-let ((`(,hasmini1 . ,id-def1) (cdr (assq 'frameset--mini (car state1))))
 	      (`(,hasmini2 . ,id-def2) (cdr (assq 'frameset--mini (car state2)))))
-    (cond ((eq id-def1 t) t)
+    (cond ((and (eq hasmini1 t) (eq hasmini2 t) (eq (cdr (assq 'last-focus-update (car state1))) t)) nil)
+          ((and (eq hasmini1 t) (eq hasmini2 t) (eq (cdr (assq 'last-focus-update (car state2))) t)) t)
+          ((eq id-def1 t) t)
 	  ((eq id-def2 t) nil)
 	  ((not (eq hasmini1 hasmini2)) (eq hasmini1 t))
 	  ((eq hasmini1 nil) (or id-def1 id-def2))
