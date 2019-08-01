@@ -1,0 +1,44 @@
+
+# FROM https://gitlab.com/help/ssh/README#generating-a-new-ssh-key-pair
+ssh-keygen -o -t rsa -b 4096 -C "juri@gitlab.eu"
+
+/home/juri/.ssh/config
+# Host gitlab.com
+#   Preferredauthentications publickey
+#   IdentityFile ~/.ssh/gitlab/id_rsa
+
+# ssh -T git@gitlab.com
+
+
+git clone git@gitlab.com:link0ff/emacs-init.git
+git clone git@gitlab.com:link0ff/emacs-wincows.git
+git clone git@gitlab.com:link0ff/emacs-ee.git
+
+git config core.sshCommand "ssh -o IdentitiesOnly=yes -i ~/.ssh/gitlab/id_rsa -F /dev/null"
+git config user.name "Juri Linkov"
+git config user.email juri@linkov.net
+
+git checkout -b gitlab
+git branch --set-upstream-to=origin/gitlab gitlab
+
+git push origin gitlab
+
+git fetch origin
+git merge origin/master
+git commit # if conflict
+
+
+cd emacs-mirror
+git clone https://git.savannah.gnu.org/git/emacs.git
+
+git remote add gitlab git@gitlab.com:link0ff/emacs-mirror.git
+git checkout -b gitlab
+git branch --set-upstream-to=gitlab/gitlab gitlab
+
+git push gitlab gitlab
+
+git fetch origin
+git merge origin/master
+git commit # if conflict
+
+

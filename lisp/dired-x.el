@@ -909,11 +909,11 @@ Also useful for `auto-mode-alist' like this:
 	 '(concat "znew" (if dired-guess-shell-gzip-quiet " -q")
 		  " " dired-guess-shell-znew-switches))
 
-   '("\\.patch\\'" "cat * | patch")
-   (list "\\.patch\\.g?z\\'" "gunzip -qc * | patch"
+   '("\\.patch\\'" "cat * | patch" "cat * | git apply")
+   (list "\\.patch\\.g?z\\'" "gunzip -qc * | patch" "gunzip -qc * | git apply"
 	 ;; Optional decompression.
 	 '(concat "gunzip" (if dired-guess-shell-gzip-quiet " -q")))
-   (list "\\.patch\\.Z\\'" "zcat * | patch"
+   (list "\\.patch\\.Z\\'" "zcat * | patch" "zcat * | git apply"
 	 ;; Optional conversion to gzip format.
 	 '(concat "znew" (if dired-guess-shell-gzip-quiet " -q")
 		  " " dired-guess-shell-znew-switches))
