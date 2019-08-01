@@ -10714,7 +10714,7 @@ message_to_stderr (Lisp_Object m)
   if (noninteractive_need_newline)
     {
       noninteractive_need_newline = false;
-      putc ('\n', stderr);
+      errputc ('\n');
     }
   if (STRINGP (m))
     {
@@ -10728,21 +10728,10 @@ message_to_stderr (Lisp_Object m)
       else
 	s = m;
 
-      /* We want to write this out with a single call so that
-	 output doesn't interleave with other processes writing to
-	 stderr at the same time. */
-      {
-	int length = min (INT_MAX, SBYTES (s) + 1);
-	char *string = xmalloc (length);
-
-	memcpy (string, SSDATA (s), length - 1);
-	string[length - 1] = '\n';
-	fwrite (string, 1, length, stderr);
-	xfree (string);
-      }
+      errwrite (SDATA (s), SBYTES (s));
     }
-  else if (!cursor_in_echo_area)
-    putc ('\n', stderr);
+  if (STRINGP (m) || !cursor_in_echo_area)
+    errputc ('\n');
 }
 
 /* The non-logging version of message3.
@@ -11379,7 +11368,7 @@ bool
 resize_mini_window (struct window *w, bool exact_p)
 {
   struct frame *f = XFRAME (w->frame);
-  int old_height = WINDOW_PIXEL_HEIGHT (w);
+  int old_height = WINDOW_BOX_TEXT_HEIGHT (w);
 
   eassert (MINI_WINDOW_P (w));
 
@@ -11392,16 +11381,16 @@ resize_mini_window (struct window *w, bool exact_p)
   if (!NILP (Vinhibit_redisplay))
     return false;
 
+  /* By default, start display at the beginning.  */
+  set_marker_both (w->start, w->contents,
+		   BUF_BEGV (XBUFFER (w->contents)),
+		   BUF_BEGV_BYTE (XBUFFER (w->contents)));
+
   /* Nil means don't try to resize.  */
   if ((NILP (Vresize_mini_windows)
        && (NILP (resize_mini_frames) || !FRAME_MINIBUF_ONLY_P (f)))
       || (FRAME_X_P (f) && FRAME_OUTPUT_DATA (f) == NULL))
     return false;
-
-  /* By default, start display at the beginning.  */
-  set_marker_both (w->start, w->contents,
-		   BUF_BEGV (XBUFFER (w->contents)),
-		   BUF_BEGV_BYTE (XBUFFER (w->contents)));
 
   if (FRAME_MINIBUF_ONLY_P (f))
     {
@@ -11411,7 +11400,6 @@ resize_mini_window (struct window *w, bool exact_p)
   else
     {
       struct it it;
-      int old_height = WINDOW_PIXEL_HEIGHT (w);
       int unit = FRAME_LINE_HEIGHT (f);
       int height, max_height;
       struct text_pos start;
@@ -11481,7 +11469,7 @@ resize_mini_window (struct window *w, bool exact_p)
 	set_buffer_internal (old_current_buffer);
     }
 
-  return WINDOW_PIXEL_HEIGHT (w) != old_height;
+  return WINDOW_BOX_TEXT_HEIGHT (w) != old_height;
 }
 
 
@@ -16690,9 +16678,7 @@ set_horizontal_scroll_bar (struct window *w)
 {
   int start, end, whole, portion;
 
-  if (!MINI_WINDOW_P (w)
-      || (w == XWINDOW (minibuf_window)
-	  && NILP (echo_area_buffer[0])))
+  if (!MINI_WINDOW_P (w) || EQ (w->horizontal_scroll_bar_type, Qbottom))
     {
       struct buffer *b = XBUFFER (w->contents);
       struct buffer *old_buffer = NULL;

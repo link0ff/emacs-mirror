@@ -370,11 +370,6 @@ FILE's name."
 	    ";;\n"
 	    ";;; Code:\n\n"
 	    (if lp
-                ;; Use the `#$' to indicate current file, from which
-                ;; we extract the directory name.  Note that
-                ;; `package-quickstart-refresh' specifically replaces
-                ;; `#$', so any other tricks (e.g., `load-file-name')
-                ;; will not work for that case.
 		"(add-to-list 'load-path (directory-file-name
                          (or (file-name-directory #$) (car load-path))))\n\n")
 	    "\n"
@@ -1130,7 +1125,10 @@ write its autoloads into the specified file instead."
       ;; Elements remaining in FILES have no existing autoload sections yet.
       (let ((no-autoloads-time (or last-time '(0 0 0 0)))
             (progress (make-progress-reporter
-                       (byte-compile-info-string "Scraping files for autoloads")
+                       (byte-compile-info-string
+                        (concat "Scraping files for "
+                                (file-relative-name
+                                 generated-autoload-file)))
                        0 (length files) nil 10))
             (file-count 0)
             file-time)

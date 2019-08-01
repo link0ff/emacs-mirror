@@ -1351,15 +1351,13 @@ Returns the stats object."
           (let ((unexpected (ert-stats-completed-unexpected stats))
                 (skipped (ert-stats-skipped stats))
 		(expected-failures (ert--stats-failed-expected stats)))
-            (message "\n%sRan %s tests, %s results as expected%s%s (%s, %f sec)%s\n"
+            (message "\n%sRan %s tests, %s results as expected, %s unexpected%s (%s, %f sec)%s\n"
                      (if (not abortedp)
                          ""
                        "Aborted: ")
                      (ert-stats-total stats)
                      (ert-stats-completed-expected stats)
-                     (if (zerop unexpected)
-                         ""
-                       (format ", %s unexpected" unexpected))
+                     unexpected
                      (if (zerop skipped)
                          ""
                        (format ", %s skipped" skipped))
@@ -1505,9 +1503,10 @@ Ran \\([0-9]+\\) tests, \\([0-9]+\\) results as expected\
             (setq nrun (+ nrun (string-to-number (match-string 2)))
                   nexpected (+ nexpected (string-to-number (match-string 3))))
             (when (match-string 4)
-              (push logfile unexpected)
-              (setq nunexpected (+ nunexpected
-                                   (string-to-number (match-string 4)))))
+	      (let ((n (string-to-number (match-string 4))))
+		(unless (zerop n)
+		  (push logfile unexpected)
+		  (setq nunexpected (+ nunexpected n)))))
             (when (match-string 5)
               (push logfile skipped)
               (setq nskipped (+ nskipped
@@ -1524,16 +1523,10 @@ Ran \\([0-9]+\\) tests, \\([0-9]+\\) results as expected\
     (message "\nSUMMARY OF TEST RESULTS")
     (message "-----------------------")
     (message "Files examined: %d" nlogs)
-    (message "Ran %d tests%s, %d results as expected%s%s"
+    (message "Ran %d tests%s, %d results as expected, %d unexpected, %d skipped"
              nrun
              (if (zerop nnotrun) "" (format ", %d failed to run" nnotrun))
-             nexpected
-             (if (zerop nunexpected)
-                 ""
-               (format ", %d unexpected" nunexpected))
-             (if (zerop nskipped)
-                 ""
-               (format ", %d skipped" nskipped)))
+             nexpected nunexpected nskipped)
     (when notests
       (message "%d files did not contain any tests:" (length notests))
       (mapc (lambda (l) (message "  %s" l)) notests))
@@ -2098,7 +2091,9 @@ and how to display message."
 ;;; Commands and button actions for the results buffer.
 
 (define-derived-mode ert-results-mode special-mode "ERT-Results"
-  "Major mode for viewing results of ERT test runs.")
+  "Major mode for viewing results of ERT test runs."
+  (setq-local revert-buffer-function
+              (lambda (&rest _) (ert-results-rerun-all-tests))))
 
 (cl-loop for (key binding) in
          '( ;; Stuff that's not in the menu.

@@ -56,6 +56,7 @@
 
 ;;; Code:
 (require 'cl-lib)
+(eval-when-compile (require 'subr-x)) 	; when-let
 
 ;;; Compatibility.
 
@@ -831,6 +832,13 @@ button end points."
       (delete-overlay field))
     (mapc 'widget-leave-text (widget-get widget :children))))
 
+(defun widget-text (widget)
+  "Get the text representation of the widget."
+  (when-let ((from (widget-get widget :from))
+             (to (widget-get widget :to)))
+    (when (eq (marker-buffer from) (marker-buffer to)) ; is this check necessary?
+      (buffer-substring-no-properties from to))))
+
 ;;; Keymap and Commands.
 
 ;; This alias exists only so that one can choose in doc-strings (e.g.
@@ -1032,9 +1040,11 @@ POS defaults to the value of (point)."
   "If non-nil, use overlay change functions to tab around in the buffer.
 This is much faster.")
 
-(defun widget-move (arg)
+(defun widget-move (arg &optional suppress-echo)
   "Move point to the ARG next field or button.
-ARG may be negative to move backward."
+ARG may be negative to move backward.
+When the second optional argument is non-nil,
+nothing is shown in the echo area."
   (or (bobp) (> arg 0) (backward-char))
   (let ((wrapped 0)
 	(number arg)
@@ -1076,7 +1086,8 @@ ARG may be negative to move backward."
       (while (eq (widget-tabable-at) new)
 	(backward-char)))
     (forward-char))
-  (widget-echo-help (point))
+  (unless suppress-echo
+    (widget-echo-help (point)))
   (run-hooks 'widget-move-hook))
 
 (defun widget-forward (arg)
@@ -1997,6 +2008,7 @@ But if NO-TRUNCATE is non-nil, include them."
 
 (define-widget 'text 'editable-field
   "A multiline text area."
+  :format "%{%t%}: %v"
   :keymap widget-text-keymap)
 
 ;;; The `menu-choice' Widget.

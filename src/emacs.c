@@ -686,7 +686,7 @@ dump_error_to_string (enum pdumper_load_result result)
 }
 
 /* Find a path (absolute or relative) to the Emacs executable.
-   Called early in initialization by portable dump loading code, so we
+   Called early in initialization by portable dumper loading code, so we
    can't use lisp and associated machinery.  On success, *EXENAME is
    set to a heap-allocated string giving a path to the Emacs
    executable or to NULL if we can't determine the path immediately.
@@ -801,12 +801,12 @@ load_pdump (int argc, char **argv)
     ;
 
   /* TODO: maybe more thoroughly scrub process environment in order to
-     make this use case (loading a pdumper image in an unexeced emacs)
+     make this use case (loading a dump file in an unexeced emacs)
      possible?  Right now, we assume that things we don't touch are
      zero-initialized, and in an unexeced Emacs, this assumption
      doesn't hold.  */
   if (initialized)
-    fatal ("cannot load pdumper image in unexeced Emacs");
+    fatal ("cannot load dump file in unexeced Emacs");
 
   /* Look for an explicitly-specified dump file.  */
   const char *path_exec = PATH_EXEC;
@@ -2454,23 +2454,29 @@ shut_down_emacs (int sig, Lisp_Object stuff)
 
   /* If we are controlling the terminal, reset terminal modes.  */
 #ifndef DOS_NT
-  {
-    pid_t pgrp = getpgrp ();
-    pid_t tpgrp = tcgetpgrp (0);
-    if ((tpgrp != -1) && tpgrp == pgrp)
-      {
-	reset_all_sys_modes ();
-	if (sig && sig != SIGTERM)
-	  {
-	    static char const format[] = "Fatal error %d: ";
-	    char buf[sizeof format - 2 + INT_STRLEN_BOUND (int)];
-	    int buflen = sprintf (buf, format, sig);
-	    char const *sig_desc = safe_strsignal (sig);
+  pid_t tpgrp = tcgetpgrp (STDIN_FILENO);
+  if (tpgrp != -1 && tpgrp == getpgrp ())
+    {
+      reset_all_sys_modes ();
+      if (sig && sig != SIGTERM)
+	{
+	  static char const fmt[] = "Fatal error %d: %n%s\n";
+	  char buf[max ((sizeof fmt - sizeof "%d%n%s\n"
+			 + INT_STRLEN_BOUND (int) + 1),
+			min (PIPE_BUF, MAX_ALLOCA))];
+	  char const *sig_desc = safe_strsignal (sig);
+	  int nlen;
+	  int buflen = snprintf (buf, sizeof buf, fmt, sig, &nlen, sig_desc);
+	  if (0 <= buflen && buflen < sizeof buf)
 	    emacs_write (STDERR_FILENO, buf, buflen);
-	    emacs_write (STDERR_FILENO, sig_desc, strlen (sig_desc));
-	  }
-      }
-  }
+	  else
+	    {
+	      emacs_write (STDERR_FILENO, buf, nlen);
+	      emacs_write (STDERR_FILENO, sig_desc, strlen (sig_desc));
+	      emacs_write (STDERR_FILENO, fmt + sizeof fmt - 2, 1);
+	    }
+	}
+    }
 #else
   fflush (stdout);
   reset_all_sys_modes ();

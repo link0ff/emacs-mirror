@@ -279,7 +279,11 @@ The remaining columns show the buffer name, the buffer size in
 characters, its major mode, and the visited file name (if any).
 
 See `Buffer-menu-mode' for the keybindings available the Buffer
-Menu."
+Menu.
+
+The width of the various columns can be customized by changing
+the `Buffer-menu-name-width', `Buffer-menu-size-width' and
+`Buffer-menu-mode-width' variables."
   (interactive "P")
   (switch-to-buffer (list-buffers-noselect arg))
   (message
@@ -699,7 +703,8 @@ means list those buffers and no others."
 (defun Buffer-menu--pretty-file-name (file)
   (cond (file
 	 (abbreviate-file-name file))
-	((bound-and-true-p list-buffers-directory))
+	((bound-and-true-p list-buffers-directory)
+         (abbreviate-file-name list-buffers-directory))
 	(t "")))
 
 ;;; buff-menu.el ends here

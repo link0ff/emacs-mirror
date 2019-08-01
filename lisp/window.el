@@ -434,7 +434,8 @@ shorter, explicitly specify the SIZE argument of that function."
 
 (defun window-min-pixel-height (&optional window)
   "Return the minimum pixel height of window WINDOW."
-  (* (max window-min-height window-safe-min-height)
+  (* (max (if (window-minibuffer-p window) 1 window-min-height)
+          window-safe-min-height)
      (frame-char-size window)))
 
 ;; This must go to C, finally (or get removed).
@@ -1603,8 +1604,6 @@ return the minimum pixel-size of WINDOW."
 	  value)
       (with-current-buffer (window-buffer window)
 	(cond
-	 ((window-minibuffer-p window)
-	  (if pixelwise (frame-char-height (window-frame window)) 1))
 	 ((window-size-fixed-p window horizontal ignore)
 	  ;; The minimum size of a fixed size window is its size.
 	  (window-size window horizontal pixelwise))
@@ -2739,30 +2738,32 @@ windows."
   (when (window-right window)
     (window--resize-reset-1 (window-right window) horizontal)))
 
+;; The following is the internal function used when resizing mini
+;; windows "manually", for example, when dragging a divider between
+;; root and mini window.  The routines for automatic minibuffer window
+;; resizing call `window--resize-root-window-vertically' instead.
 (defun window--resize-mini-window (window delta)
-  "Resize minibuffer window WINDOW by DELTA pixels.
+  "Change height of mini window WINDOW by DELTA pixels.
 If WINDOW cannot be resized by DELTA pixels make it as large (or
 as small) as possible, but don't signal an error."
   (when (window-minibuffer-p window)
     (let* ((frame (window-frame window))
 	   (root (frame-root-window frame))
 	   (height (window-pixel-height window))
-	   (min-delta
-	    (- (window-pixel-height root)
-	       (window-min-size root nil nil t))))
-      ;; Sanitize DELTA.
-      (cond
-       ((<= (+ height delta) 0)
-	(setq delta (- (frame-char-height frame) height)))
-       ((> delta min-delta)
-	(setq delta min-delta)))
+           (min-height (+ (frame-char-height frame)
+                          (- (window-pixel-height window)
+                             (window-body-height window t))))
+           (max-delta (- (window-pixel-height root)
+	                 (window-min-size root nil nil t))))
+      ;; Don't make mini window too small.
+      (when (< (+ height delta) min-height)
+	(setq delta (- min-height height)))
+      ;; Don't make root window too small.
+      (when (> delta max-delta)
+	(setq delta max-delta))
 
       (unless (zerop delta)
-	;; Resize now.
 	(window--resize-reset frame)
-	;; Ideally we should be able to resize just the last child of root
-	;; here.  See the comment in `resize-root-window-vertically' for
-	;; why we do not do that.
 	(window--resize-this-window root (- delta) nil nil t)
 	(set-window-new-pixel window (+ height delta))
 	;; The following routine catches the case where we want to resize
@@ -5881,7 +5882,7 @@ value can be also stored on disk and read back in a new session."
 		(let ((scroll-bars (cdr (assq 'scroll-bars state))))
 		  (set-window-scroll-bars
 		   window (car scroll-bars) (nth 2 scroll-bars)
-		   (nth 3 scroll-bars) (nth 5 scroll-bars)))
+		   (nth 3 scroll-bars) (nth 5 scroll-bars) (nth 6 scroll-bars)))
 		(set-window-vscroll window (cdr (assq 'vscroll state)))
 		;; Adjust vertically.
 		(if (or (memq window-size-fixed '(t height))
@@ -7357,25 +7358,26 @@ return nil."
 
 (defun display-buffer-reuse-window (buffer alist)
   "Return a window that is already displaying BUFFER.
-Return nil if no usable window is found.
+Preferably use a window on the selected frame if such a window
+exists.  Return nil if no usable window is found.
 
-If ALIST has a non-nil `inhibit-same-window' entry, the selected
+If ALIST has a non-nil 'inhibit-same-window' entry, the selected
 window is not eligible for reuse.
 
-If ALIST contains a `reusable-frames' entry, its value determines
+If ALIST contains a 'reusable-frames' entry, its value determines
 which frames to search for a reusable window:
   nil -- the selected frame (actually the last non-minibuffer frame)
   A frame   -- just that frame
-  `visible' -- all visible frames
+  'visible' -- all visible frames
   0   -- all frames on the current terminal
   t   -- all frames.
 
-If ALIST contains no `reusable-frames' entry, search just the
+If ALIST contains no 'reusable-frames' entry, search just the
 selected frame if `display-buffer-reuse-frames' and
 `pop-up-frames' are both nil; search all frames on the current
 terminal if either of those variables is non-nil.
 
-If ALIST has a non-nil `inhibit-switch-frame' entry, then in the
+If ALIST has a non-nil 'inhibit-switch-frame' entry, then in the
 event that a window on another frame is chosen, avoid raising
 that frame."
   (let* ((alist-entry (assq 'reusable-frames alist))
@@ -7389,9 +7391,21 @@ that frame."
 	 (window (if (and (eq buffer (window-buffer))
 			  (not (cdr (assq 'inhibit-same-window alist))))
 		     (selected-window)
-		   (car (delq (selected-window)
-			      (get-buffer-window-list buffer 'nomini
-						      frames))))))
+                   ;; Preferably use a window on the selected frame,
+                   ;; if such a window exists (Bug#36680).
+                   (let* ((windows (delq (selected-window)
+                                         (get-buffer-window-list
+                                          buffer 'nomini frames)))
+                          (first (car windows))
+                          (this-frame (selected-frame)))
+                     (cond
+                      ((eq (window-frame first) this-frame)
+                       first)
+                      ((catch 'found
+                         (dolist (next (cdr windows))
+                           (when (eq (window-frame next) this-frame)
+                             (throw 'found next)))))
+                      (t first))))))
     (when (window-live-p window)
       (prog1 (window--display-buffer buffer window 'reuse alist)
 	(unless (cdr (assq 'inhibit-switch-frame alist))
@@ -8509,7 +8523,7 @@ parameters of FRAME."
             (if parent
                 (frame-native-height parent)
               (- (nth 3 geometry) (nth 1 geometry))))
-           ;; FRAME'S parent or workarea sizes.  Used when no margins
+           ;; FRAME's parent or workarea sizes.  Used when no margins
            ;; are specified.
            (parent-or-workarea
             (if parent
@@ -8696,7 +8710,7 @@ and defaults to `window-min-width'.  Both MAX-WIDTH and MIN-WIDTH
 are specified in columns and include fringes, margins, a
 scrollbar and a vertical divider, if any.
 
-If the optional argument `preserve-size' is non-nil, preserve the
+Optional argument PRESERVE-SIZE non-nil means to preserve the
 size of WINDOW (see `window-preserve-size').
 
 Fit pixelwise if the option `window-resize-pixelwise' is non-nil.

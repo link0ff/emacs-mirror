@@ -231,8 +231,9 @@ textual parts.")
     'headers))
 
 (defun nnimap-transform-headers ()
+  "Transform server's FETCH response into parseable headers."
   (goto-char (point-min))
-  (let (article lines size string labels)
+  (let (seen-articles article lines size string labels)
     (cl-block nil
       (while (not (eobp))
 	(while (not (looking-at "\\* [0-9]+ FETCH"))
@@ -261,45 +262,57 @@ textual parts.")
 	      (and (re-search-forward "UID \\([0-9]+\\)" (line-end-position)
 				      t)
 		   (match-string 1)))
-	(setq lines nil)
-	(beginning-of-line)
-	(setq size
-	      (and (re-search-forward "RFC822.SIZE \\([0-9]+\\)"
-				      (line-end-position)
-				      t)
-		   (match-string 1)))
-	(beginning-of-line)
-	(when (search-forward "X-GM-LABELS" (line-end-position) t)
-	  (setq labels (ignore-errors (read (current-buffer)))))
-	(beginning-of-line)
-	(when (search-forward "BODYSTRUCTURE" (line-end-position) t)
-	  (let ((structure (ignore-errors
-			     (read (current-buffer)))))
-	    (while (and (consp structure)
-			(not (atom (car structure))))
-	      (setq structure (car structure)))
-	    (setq lines (if (and
-			     (stringp (car structure))
-			     (equal (upcase (nth 0 structure)) "MESSAGE")
-			     (equal (upcase (nth 1 structure)) "RFC822"))
-			    (nth 9 structure)
-			  (nth 7 structure)))))
-	(delete-region (line-beginning-position) (line-end-position))
-	(insert (format "211 %s Article retrieved." article))
-	(forward-line 1)
-	(when size
-	  (insert (format "Chars: %s\n" size)))
-	(when lines
-	  (insert (format "Lines: %s\n" lines)))
-	(when labels
-	  (insert (format "X-GM-LABELS: %s\n" labels)))
-	;; Most servers have a blank line after the headers, but
-	;; Davmail doesn't.
-	(unless (re-search-forward "^\r$\\|^)\r?$" nil t)
-	  (goto-char (point-max)))
-	(delete-region (line-beginning-position) (line-end-position))
-	(insert ".")
-	(forward-line 1)))))
+	;; If we've already got headers for this article, or this
+	;; FETCH line doesn't provide headers for the article, skip
+	;; it.  See bug#35433.
+	(if (or (member article seen-articles)
+		(save-excursion
+		  (forward-line)
+		  (null (looking-at-p
+			 ;; We're expecting a mail header.
+			 "^[!-9;-~]+:[[:space:]]"))))
+	    (delete-region (line-beginning-position)
+			   (1+ (line-end-position)))
+	  (setq lines nil)
+	  (beginning-of-line)
+	  (setq size
+		(and (re-search-forward "RFC822.SIZE \\([0-9]+\\)"
+					(line-end-position)
+					t)
+		     (match-string 1)))
+	  (beginning-of-line)
+	  (when (search-forward "X-GM-LABELS" (line-end-position) t)
+	    (setq labels (ignore-errors (read (current-buffer)))))
+	  (beginning-of-line)
+	  (when (search-forward "BODYSTRUCTURE" (line-end-position) t)
+	    (let ((structure (ignore-errors
+			       (read (current-buffer)))))
+	      (while (and (consp structure)
+			  (not (atom (car structure))))
+		(setq structure (car structure)))
+	      (setq lines (if (and
+			       (stringp (car structure))
+			       (equal (upcase (nth 0 structure)) "MESSAGE")
+			       (equal (upcase (nth 1 structure)) "RFC822"))
+			      (nth 9 structure)
+			    (nth 7 structure)))))
+	  (delete-region (line-beginning-position) (line-end-position))
+	  (insert (format "211 %s Article retrieved." article))
+	  (forward-line 1)
+	  (when size
+	    (insert (format "Chars: %s\n" size)))
+	  (when lines
+	    (insert (format "Lines: %s\n" lines)))
+	  (when labels
+	    (insert (format "X-GM-LABELS: %s\n" labels)))
+	  ;; Most servers have a blank line after the headers, but
+	  ;; Davmail doesn't.
+	  (unless (re-search-forward "^\r$\\|^)\r?$" nil t)
+	    (goto-char (point-max)))
+	  (delete-region (line-beginning-position) (line-end-position))
+	  (insert ".")
+	  (forward-line 1)
+	  (push article seen-articles))))))
 
 (defun nnimap-unfold-quoted-lines ()
   ;; Unfold quoted {number} strings.
@@ -570,7 +583,8 @@ textual parts.")
 	(base64-encode-string
 	 (concat user " "
 		 (rfc2104-hash 'md5 64 16 password
-			       (base64-decode-string challenge))))
+			       (base64-decode-string challenge)))
+	 t)
 	"\r\n"))
       (nnimap-wait-for-response sequence)))
    ((and (not (nnimap-capability "LOGINDISABLED"))
@@ -586,7 +600,8 @@ textual parts.")
      (base64-encode-string
       (format "\000%s\000%s"
 	      (nnimap-quote-specials user)
-	      (nnimap-quote-specials password)))))))
+	      (nnimap-quote-specials password))
+      t)))))
 
 (defun nnimap-quote-specials (string)
   (with-temp-buffer
@@ -1085,7 +1100,7 @@ textual parts.")
 		(format-time-string
 		 (format "%%d-%s-%%Y"
 			 (upcase
-			  (car (rassoc (nth 4 (decode-time cutoff))
+			  (car (rassoc (decoded-time-month (decode-time cutoff))
 				       parse-time-months))))
 		 cutoff))))
 	  (and (car result)
@@ -1325,7 +1340,7 @@ If LIMIT, first try to limit the search to the N last articles."
 		    (progn (end-of-line)
 			   (skip-chars-backward " \r\"")
 			   (point)))))
-	(unless (member '%NoSelect flags)
+	(unless (member '%Noselect flags)
           (let* ((group (utf7-decode (if (stringp group) group
                                        (format "%s" group)) t))
                  (group (cond ((or (not prefix)
@@ -1687,18 +1702,19 @@ If LIMIT, first try to limit the search to the N last articles."
 	     (cdr (or (assoc (caddr type) flags) ; %Flagged
 		      (assoc (intern (cadr type) obarray) flags)
 		      (assoc (cadr type) flags))))) ; "\Flagged"
-	(setq marks (delq ticks marks))
-	(pop ticks)
-	;; Add the new marks we got.
-	(setq ticks (gnus-add-to-range ticks new-marks))
-	;; Remove the marks from messages that don't have them.
-	(setq ticks (gnus-remove-from-range
-		     ticks
-		     (gnus-compress-sequence
-		      (gnus-sorted-complement existing new-marks))))
-	(when ticks
-	  (push (cons (car type) ticks) marks)))
-      (gnus-info-set-marks info marks t))
+	(when new-marks
+	  (setq marks (delq ticks marks))
+	  (pop ticks)
+	  ;; Add the new marks we got.
+	  (setq ticks (gnus-add-to-range ticks new-marks))
+	  ;; Remove the marks from messages that don't have them.
+	  (setq ticks (gnus-remove-from-range
+		       ticks
+		       (gnus-compress-sequence
+			(gnus-sorted-complement existing new-marks))))
+	  (when ticks
+	    (push (cons (car type) ticks) marks))
+	  (gnus-info-set-marks info marks t))))
     ;; Add vanished to the list of unexisting articles.
     (when vanished
       (let* ((old-unexists (assq 'unexist marks))
@@ -1783,19 +1799,17 @@ If LIMIT, first try to limit the search to the N last articles."
 		 (goto-char start)
 		 (setq permanent-flags
 		       (if (equal command "SELECT")
-			   (and (search-forward "PERMANENTFLAGS "
-						(or end (point-min)) t)
+			   (and (search-forward "PERMANENTFLAGS " end t)
 				(read (current-buffer)))
 			 'not-scanned))
 		 (goto-char start)
 		 (setq uidnext
-		       (and (search-forward "UIDNEXT "
-					    (or end (point-min)) t)
+		       (and (search-forward "UIDNEXT " end t)
 			    (read (current-buffer))))
 		 (goto-char start)
 		 (setq uidvalidity
 		       (and (re-search-forward "UIDVALIDITY \\([0-9]+\\)"
-					       (or end (point-min)) t)
+					       end t)
 			    ;; Store UIDVALIDITY as a string, as it's
 			    ;; too big for 32-bit Emacsen, usually.
 			    (match-string 1)))
@@ -1803,12 +1817,12 @@ If LIMIT, first try to limit the search to the N last articles."
 		 (setq vanished
 		       (and (eq flag-sequence 'qresync)
 			    (re-search-forward "^\\* VANISHED .*? \\([0-9:,]+\\)"
-					       (or end (point-min)) t)
+					       end t)
 			    (match-string 1)))
 		 (goto-char start)
 		 (setq highestmodseq
 		       (and (re-search-forward "HIGHESTMODSEQ \\([0-9]+\\)"
-					    (or end (point-min)) t)
+					       end t)
 			    (match-string 1)))
 		 (goto-char end)
 		 (forward-line -1))

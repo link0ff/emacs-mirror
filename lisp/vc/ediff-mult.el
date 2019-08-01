@@ -230,6 +230,10 @@ This hook can be used to save the previous window config, which can be restored
 on `ediff-quit', `ediff-suspend', or `ediff-quit-session-group-hook'."
   :type 'hook
   :group 'ediff-hook)
+;; Because this variable is apparently never used, it's marked as
+;; obsolete without replacement.
+(make-obsolete-variable 'ediff-before-session-group-setup-hooks nil "27.1")
+
 (defcustom ediff-after-session-group-setup-hook nil
   "Hooks run just after a meta-buffer controlling a session group, such as
 ediff-directories, is run."
@@ -1201,13 +1205,12 @@ behavior."
 ;; TIME is like the output of decode-time
 (defun ediff-format-date (time)
   (format "%s %2d %4d %s:%s:%s"
-	  (cdr (assoc (nth 4 time) ediff-months)) ; month
-	  (nth 3 time) ; day
-	  (nth 5 time) ; year
-	  (ediff-fill-leading-zero (nth 2 time)) ; hour
-	  (ediff-fill-leading-zero (nth 1 time)) ; min
-	  (ediff-fill-leading-zero (nth 0 time)) ; sec
-	  ))
+	  (cdr (assoc (decoded-time-month time) ediff-months))
+	  (decoded-time-day time)
+	  (decoded-time-year time)
+	  (ediff-fill-leading-zero (decoded-time-hour time))
+	  (ediff-fill-leading-zero (decoded-time-minute time))
+	  (ediff-fill-leading-zero (decoded-time-second time))))
 
 ;; Draw the directories
 (defun ediff-insert-dirs-in-meta-buffer (meta-list)
