@@ -28,6 +28,7 @@
     '((?\" "＂" "“" "”" "”" "„" "⹂" "〞" "‟" "‟" "❞" "❝" "❠" "“" "„" "〝" "〟" "🙷" "🙶" "🙸" "«" "»")
       (?' "❟" "❛" "❜" "‘" "’" "‚" "‛" "‚" "󠀢" "❮" "❯" "‹" "›")
       (?` "❛" "‘" "‛" "󠀢" "❮" "‹")
+      ;; (?\t " ")
       (?ß "ss") ;; de
       (?ι "ΐ")  ;; el for (?ΐ "ΐ") decomposition
       (?υ "ΰ")  ;; el for (?ΰ "ΰ") decomposition
@@ -43,49 +44,6 @@
           char-fold--default-symmetric)))
 
 
-(eval-and-compile (defcustom char-fold-include-base nil
-  "Include mappings from composite character to base letter."
-  :type 'boolean
-  :set (lambda (sym val)
-         (set sym val)
-         (when (boundp 'char-fold-table)
-           (setq char-fold-table (char-fold-make-table))))
-  :group 'matching
-  :version "27.1"))
-
-(eval-and-compile (defcustom char-fold-include-alist
-  '((?\" "＂" "“" "”" "”" "„" "⹂" "〞" "‟" "‟" "❞" "❝" "❠" "“" "„" "〝" "〟" "🙷" "🙶" "🙸" "«" "»")
-    (?' "❟" "❛" "❜" "‘" "’" "‚" "‛" "‚" "󠀢" "❮" "❯" "‹" "›")
-    (?` "❛" "‘" "‛" "󠀢" "❮" "‹")
-    ;; (?\t " ")
-    )
-  "Additional character mappings to include."
-  :type '(alist :key-type (character :tag "From")
-                :value-type (repeat (string :tag "To")))
-  :set (lambda (sym val)
-         (set sym val)
-         (when (boundp 'char-fold-table)
-           (setq char-fold-table (char-fold-make-table))))
-  :group 'lisp
-  :version "27.1"))
-
-;; еёЕЁ
-
-(eval-and-compile (defcustom char-fold-exclude-alist
-  '((?и . ?й)
-    (?й . ?и)
-    (?И . ?Й)
-    (?Й . ?И))
-  "Character mappings to exclude from default setting."
-  :type '(alist :key-type (character :tag "From")
-                :value-type (character :tag "To"))
-  :set (lambda (sym val)
-         (set sym val)
-         (when (boundp 'char-fold-table)
-           (setq char-fold-table (char-fold-make-table))))
-  :group 'lisp
-  :version "27.1"))
-
 (eval-and-compile
   (defun char-fold--make-table ()
     (let* ((equiv (make-char-table 'char-fold-table))
@@ -138,12 +96,7 @@
                                       (aref equiv-multi (car decomp))))
                         (aset equiv (car decomp)
                               (cons (char-to-string char)
-                                    (aref equiv (car decomp))))
-                        ;; (when char-fold-include-base
-                        ;;   (aset equiv char
-                        ;;         (cons (char-to-string (car decomp))
-                        ;;               (aref equiv (car decomp)))))
-                        ))))
+                                    (aref equiv (car decomp))))))))
                (funcall make-decomp-match-char decomp char)
                ;; Check to see if the first char of the decomposition
                ;; has a further decomposition.  If so, add a mapping
@@ -337,21 +290,6 @@ is turned on."
           (make-string n ?\s)
           (apply #'concat
                  (make-list n (or (aref char-fold-table ?\s) " ")))))
-
-;; aﬂﬁﬄ ㏛ⅸ ㏅ ㏈ ﬂ ㏊ ㏌ ⅳ ⅸ netﬂⅸ ﬁx
-
-;; (aref (char-table-extra-slot char-fold-table 0) ?f) (("fl" . "ﬄ") ("fi" . "ﬃ") ("l" . "ﬂ") ("i" . "ﬁ") ("f" . "ﬀ") ("m" . "㎙") ("̇" . "ḟ"))
-;; (char-fold-to-regexp "fi") "\\(?:\\(?:ḟ\\|[fᶠḟⓕｆ𝐟𝑓𝒇𝒻𝓯𝔣𝕗𝖋𝖿𝗳𝘧𝙛𝚏]\\)\\(?:i[̀-̨̣̰̄̆̈̉̌̏̑]\\|[iì-ïĩīĭįǐȉȋᵢḭỉịⁱℹⅈⅰⓘｉ𝐢𝑖𝒊𝒾𝓲𝔦𝕚𝖎𝗂𝗶𝘪𝙞𝚒]\\)\\|ﬁ\\)"
-;; (char-fold-to-regexp "0f") "[0⁰₀⓪０𝟎𝟘𝟢𝟬𝟶]\\(?:ḟ\\|[fᶠḟⓕｆ𝐟𝑓𝒇𝒻𝓯𝔣𝕗𝖋𝖿𝗳𝘧𝙛𝚏]\\)"
-;; (char-fold-to-regexp "0f" t) "[0⁰₀⓪０𝟎𝟘𝟢𝟬𝟶]\\(?:\\(?:ḟ\\|[fᶠḟⓕｆ𝐟𝑓𝒇𝒻𝓯𝔣𝕗𝖋𝖿𝗳𝘧𝙛𝚏]\\)\\|ﬄ\\|ﬃ\\|ﬂ\\|ﬁ\\|ﬀ\\|㎙\\|ḟ\\)"
-;; (char-fold-to-regexp "ba") "\\(?:b[̣̱̇]\\|[bᵇḃḅḇⓑｂ𝐛𝑏𝒃𝒷𝓫𝔟𝕓𝖇𝖻𝗯𝘣𝙗𝚋]\\)\\(?:a[̀-̄̆-̨̣̥̊̌̏̑]\\|[aªà-åāăąǎȁȃȧᵃḁạảₐⓐａ𝐚𝑎𝒂𝒶𝓪𝔞𝕒𝖆𝖺𝗮𝘢𝙖𝚊]\\)"
-
-;; (char-fold-to-regexp "е") "\\(?:е[̀̆̈]\\|[еѐёӗ]\\)"
-;; (char-fold-to-regexp "ра́в") "р\\(?:а[̆̈]\\|[аӑӓ]\\)[́́]в"
-;; (length "ра́в") 4
-;; (string-bytes "ра́в") 8
-;; (string-to-char "ра́в") 1088
-;; (string-to-list "ра́в") (1088 1072 769 1074)
 
 ;;;###autoload
 (defun char-fold-to-regexp (string &optional lax from)

@@ -489,16 +489,6 @@ If SELECT is non-nil, select the target window."
 (defvar-local xref--original-window nil
   "The original window this xref buffer was created from.")
 
-;; (defvar-local xref--original-command nil
-;;   "The original command that created this xref buffer.")
-
-;; (define-key xref--button-map [(control ?m)]
-;;   (lambda ()
-;;     (interactive)
-;;     (if (memq xref--original-command '(xref-find-definitions))
-;;         (call-interactively 'xref-quit-and-goto-xref)
-;;       (call-interactively 'xref-goto-xref))))
-
 (defvar-local xref--fetcher nil
   "The original function to call to fetch the list of xrefs.")
 
@@ -825,10 +815,6 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
                   (lambda (x)
                     (xref-location-group (xref-item-location x)))
                   #'equal))
-
-;; (defcustom xref-buffer-display-action nil
-;;   "Display actions for xref buffer."
-;;   :type 'alist)
 
 (defun xref--show-xref-buffer (fetcher alist)
   (cl-assert (functionp fetcher))

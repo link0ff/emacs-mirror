@@ -1,4 +1,18 @@
 
+Subject: Desktop doesn't restore selected frame
+
+;; OK
+;; (defun desktop-save-frameset
+;; (cl-defun frameset-save
+;; (frame-list)
+
+(setq desktop-saved-frameset ... (selected . t)
+
+BUT
+(qv "/home/juri/src/emacs/emacs-mirror/emacs/lisp/frameset.el"
+    "^[ 	]*;; Restore selected frame, buffer and point\\.$")
+
+
 * gettext i18n
 
 gettextize --dry-run
