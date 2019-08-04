@@ -827,6 +827,7 @@ Also useful for `auto-mode-alist' like this:
 ;; install GNU zip's version of zcat.
 
 (autoload 'Man-support-local-filenames "man")
+(autoload 'vc-responsible-backend "vc")
 
 (defvar dired-guess-shell-alist-default
   (list
@@ -909,11 +910,14 @@ Also useful for `auto-mode-alist' like this:
 	 '(concat "znew" (if dired-guess-shell-gzip-quiet " -q")
 		  " " dired-guess-shell-znew-switches))
 
-   '("\\.patch\\'" "cat * | patch" "cat * | git apply")
-   (list "\\.patch\\.g?z\\'" "gunzip -qc * | patch" "gunzip -qc * | git apply"
+   (list "\\.patch\\'"
+         '(if (eq (ignore-errors (vc-responsible-backend default-directory)) 'Git)
+              "cat * | git apply"
+            "cat * | patch"))
+   (list "\\.patch\\.g?z\\'" "gunzip -qc * | patch"
 	 ;; Optional decompression.
 	 '(concat "gunzip" (if dired-guess-shell-gzip-quiet " -q")))
-   (list "\\.patch\\.Z\\'" "zcat * | patch" "zcat * | git apply"
+   (list "\\.patch\\.Z\\'" "zcat * | patch"
 	 ;; Optional conversion to gzip format.
 	 '(concat "znew" (if dired-guess-shell-gzip-quiet " -q")
 		  " " dired-guess-shell-znew-switches))
