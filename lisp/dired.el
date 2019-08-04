@@ -2560,7 +2560,7 @@ See options: `dired-hide-details-hide-symlink-targets' and
   ;; approximate ("anywhere on the line is fine").
   ;; FIXME: This also removes other invisible properties!
   (save-excursion
-    (remove-text-properties
+    (remove-list-of-text-properties
      (progn (goto-char start) (line-end-position))
      (progn (goto-char end) (line-end-position))
      '(invisible))))
@@ -3642,12 +3642,12 @@ object files--just `.o' will mark more than you might think."
                         sum (file-attribute-size (file-attributes file)))))
     (if (zerop nmarked)
         (message "No marked files"))
-    (message "%d marked file%s (%sB total size)"
+    (message "%d marked file%s (%s total size)"
              nmarked
              (if (= nmarked 1)
                  ""
                "s")
-             (file-size-human-readable size))))
+             (funcall byte-count-to-string-function size))))
 
 (defun dired-mark-files-containing-regexp (regexp &optional marker-char)
   "Mark all files with contents containing REGEXP for use in later commands.

@@ -351,7 +351,7 @@ respects display actions specified by 'display-buffer-alist' and
 'display-buffer-overriding-action'.
 
 ** New 'flex' completion style
-An implementation of popular "flx/fuzzy/scatter" completion which
+An implementation of popular "flex/fuzzy/scatter" completion which
 matches strings where the pattern appears as a subsequence.  Put
 simply, makes "foo" complete to both "barfoo" and "frodo".  Add 'flex'
 to 'completion-styles' or 'completion-category-overrides' to use it.
@@ -405,7 +405,8 @@ mode they are described in the manual "(emacs) Display".
 ** New variable 'xref-file-name-display' controls the display of file
 names in xref buffers.
 
-** New variable 'file-size-function' controls how file sizes are displayed.
+** New customizable variable 'byte-count-to-string-function'.
+It is used for displaying file sizes and disk space in some cases.
 
 +++
 ** Emacs now interprets RGB triplets like HTML, SVG, and CSS do.
@@ -672,6 +673,10 @@ The default value is 'find-dired-sort-by-filename'.
 'dired-do-compress-to'.
 
 ** Change Logs and VC
+
++++
+*** New command 'log-edit-generate-changelog', bound to C-c C-w.
+This generates ChangeLog entries from the VC fileset diff.
 
 *** Recording ChangeLog entries doesn't require an actual file.
 If a ChangeLog file doesn't exist, and if the new variable
@@ -1786,6 +1791,22 @@ particular when the end of the buffer is visible in the window.
 *** 'mwheel-install' is now obsolete.
 Use 'mouse-wheel-mode' instead.  Note that 'mouse-wheel-mode' is
 already enabled by default on most graphical displays.
+
+** Gravatar
+
++++
+*** 'gravatar-cache-ttl' is now a number of seconds.
+The previously used timestamp format of a list of integers is still
+supported, but is deprecated.  The default value has not changed.
+
++++
+*** 'gravatar-size' can now be nil.
+This results in the use of Gravatar's default size of 80 pixels.
+
++++
+*** The default fallback gravatar is now configurable.
+This is possible using the new user options 'gravatar-default-image'
+and 'gravatar-force-default'.
 
 
 * New Modes and Packages in Emacs 27.1
