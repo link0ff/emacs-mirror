@@ -256,8 +256,8 @@ Each entry is a list of a character and the strings that fold into it."
 (defcustom char-fold-exclude char-fold--default-exclude
   "Character foldings to remove from default decompisitions.
 Each entry is a list of a character and the strings to remove from folding."
-  :type '(alist :key-type (character :tag "Fold to character")
-                :value-type (repeat (string :tag "Fold from string")))
+  :type '(alist :key-type (character :tag "Unfold to character")
+                :value-type (repeat (string :tag "Unfold from string")))
   :initialize #'custom-initialize-default
   :set (lambda (sym val)
          (custom-set-default sym val)

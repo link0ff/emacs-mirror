@@ -1021,13 +1021,9 @@ If LIMIT is a revision string, use it as an end-revision."
     ;; If the buffer exists from a previous invocation it might be
     ;; read-only.
     (let ((inhibit-read-only t))
-      (with-current-buffer buffer
-	(insert (propertize "(Type 'd' here to show diffs with working version)\n"
-                            'font-lock-face 'shadow))
-        ;; (setq window-start (point))
-        ;; shrink-window-if-larger-than-buffer in vc-log-internal-common
-        ;; has no effect when point-min not visible
-        (apply 'vc-git-command buffer
+      (with-current-buffer
+          buffer
+	(apply 'vc-git-command buffer
 	       'async files
 	       (append
 		'("log" "--no-color")

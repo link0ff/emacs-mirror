@@ -37,7 +37,15 @@
 (add-hook 'temp-buffer-setup-hook 'help-mode-setup)
 (add-hook 'temp-buffer-show-hook 'help-mode-finish)
 
-(defvaralias 'help-window-point-marker 'window-point)
+;; `help-window-point-marker' is a marker you can move to a valid
+;; position of the buffer shown in the help window in order to override
+;; the standard positioning mechanism (`point-min') chosen by
+;; `with-output-to-temp-buffer' and `with-temp-buffer-window'.
+;; `with-help-window' has this point nowhere before exiting.  Currently
+;; used by `view-lossage' to assert that the last keystrokes are always
+;; visible.
+(defvar help-window-point-marker (make-marker)
+  "Marker to override default `window-point' in help windows.")
 
 (defvar help-window-old-frame nil
   "Frame selected at the time `with-help-window' is invoked.")
@@ -477,8 +485,7 @@ To record all your input, use `open-dribble-file'."
           (comment-indent)
 	  (forward-line 1)))
       ;; Show point near the end of "lossage", as we did in Emacs 24.
-      (setq window-point (point))
-      (setq window-start (save-excursion (forward-line (- 5 (window-height))) (point))))))
+      (set-marker help-window-point-marker (point)))))
 
 
 ;; Key bindings
@@ -1246,6 +1253,12 @@ Return VALUE."
 	 (frame (window-frame window)))
 
     (when help-buffer
+      ;; Handle `help-window-point-marker'.
+      (when (eq (marker-buffer help-window-point-marker) help-buffer)
+	(set-window-point window help-window-point-marker)
+	;; Reset `help-window-point-marker'.
+	(set-marker help-window-point-marker nil))
+
       ;; If the help window appears on another frame, select it if
       ;; `help-window-select' is non-nil and give that frame input focus
       ;; too.  See also Bug#19012.
@@ -1318,7 +1331,7 @@ Return VALUE."
 ;; (3) An option (customizable via `help-window-select') to select the
 ;;     help window automatically.
 
-;; (4) A marker (`window-point') to move point in the help
+;; (4) A marker (`help-window-point-marker') to move point in the help
 ;;     window to an arbitrary buffer position.
 (defmacro with-help-window (buffer-or-name &rest body)
   "Evaluate BODY, send output to BUFFER-OR-NAME and show in a help window.
@@ -1330,9 +1343,9 @@ longer needed.  The help window will be selected if
 Most of this is done by `help-window-setup', which see."
   (declare (indent 1) (debug t))
   `(progn
-     ;; Make `window-point' point nowhere.  The only place
+     ;; Make `help-window-point-marker' point nowhere.  The only place
      ;; where this should be set to a buffer position is within BODY.
-     (when window-point (setq window-point nil))
+     (set-marker help-window-point-marker nil)
      (let ((temp-buffer-window-setup-hook
 	    (cons 'help-mode-setup temp-buffer-window-setup-hook))
 	   (temp-buffer-window-show-hook

@@ -463,7 +463,6 @@ should be applied to the background or to the foreground."
        (when current-line           ;(and (bobp))
          (goto-char (point-min))
          (forward-line (1- current-line))
-         (setq window-point (point))
          (setq vc-sentinel-movepoint (point)))
        (unless (active-minibuffer-window)
          (message "Annotating... done"))))))
