@@ -5857,8 +5857,7 @@ mode temporarily."
     (goto-char omark)
     (cond (temp-highlight
 	   (setq-local transient-mark-mode (cons 'only transient-mark-mode)))
-	  ((or (and arg (region-active-p)) ; (xor arg (not (region-active-p)))
-	       (not (or arg (region-active-p))))
+	  ((xor arg (not (region-active-p)))
 	   (deactivate-mark))
 	  (t (activate-mark)))
     nil))
@@ -9089,6 +9088,9 @@ available.")
   (zone nil :documentation "\
 This is an integer indicating the UTC offset in seconds, i.e.,
 the number of seconds east of Greenwich.")
+  (subsec nil :documentation "\
+This is 0, or is an integer pair (TICKS . HZ) indicating TICKS/HZ seconds,
+where HZ is positive and TICKS is nonnegative and less than HZ.")
   )
 
 
