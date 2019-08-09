@@ -32,6 +32,10 @@ in 'frameset--minibufferless-last-p'.
 ((((frameset--mini t))) (((frameset--mini t . t))))
 
 
+maybe parse compilation on process output only when
+counters are presented in the mode-line?
+
+
 * gettext i18n
 
 gettextize --dry-run
@@ -115,7 +119,13 @@ https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-secti
 
 
 
-~/src/emacs/github/powerline
+~/emacs/tabs/awesome-tab/awesome-tab.el
+
+It has such bug that clicking on window-tabs in another window
+switches tabs in the selected window
+
+
+~/src/emacs/tabs/powerline/
 
 (setq powerline-default-separator 'rounded)
 
