@@ -1,5 +1,32 @@
 
-Subject: Desktop doesn't restore selected frame
+before my previous fix, it sorted all minibuffer-owning frames before minibufferless
+
+  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini t . t)))))
+    (list hasmini1 id-def1))
+  (frameset--mini t)
+
+  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini t)))))
+    (list hasmini1 id-def1))
+  (frameset--mini t)
+
+  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini nil)))))
+    (list hasmini1 id-def1))
+  (frameset--mini nil)
+
+  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini nil . t)))))
+    (list hasmini1 id-def1))
+  (frameset--mini nil)
+
+maybe instead of changing the sorting order,
+we restore the focus explicitly after all frames are restored
+
+
+purely aesthetic
+
+see screenshots
+
+
+* Subject: Desktop doesn't restore selected frame
 
 ;; OK
 ;; (defun desktop-save-frameset
@@ -97,6 +124,8 @@ sudo locale-gen de_DE.utf8
 
 
 
+* display-buffer actions
+
 need new display action (direction . right)
 with optional parameter (create-window . t)
 like windmove-create-window
@@ -115,7 +144,15 @@ https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-secti
 
 
 
-~/src/emacs/github/powerline
+* Tabs
+
+~/emacs/tabs/awesome-tab/awesome-tab.el
+
+It has such bug that clicking on window-tabs in another window
+switches tabs in the selected window
+
+
+~/src/emacs/tabs/powerline/
 
 (setq powerline-default-separator 'rounded)
 

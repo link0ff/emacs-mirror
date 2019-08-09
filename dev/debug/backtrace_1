@@ -1,0 +1,56 @@
+# (info "(emacs) Crashing")
+# sed -n 's/.*\[\(.*\)]$/\1/p' backtrace_1 | addr2line -C -f -i -p -e /home/juri/src/emacs/emacs-release/emacs/src/emacs
+# (desktop-read "/home/juri/.emacs.d/debug1/")
+# then replaced (font-backend xfthb x) with (font-backend xft x)
+# then the error: (wrong-number-of-arguments #<subr set-window-fringes> 5)
+# then replaced (fringes 8 8 nil nil) with (fringes 8 8 nil)
+# then it messed the monitors, restored frames in opposite monitors
+# then created new desktop (desktop-read "/home/juri/.emacs.d/debug2/")
+# and it didn't switch focus where it was previously
+# BUT I don't see how previus version could restore focus,
+# because there is no 'last-focus-update' frame parameter in previous release
+Fatal error 11: Segmentation fault
+Backtrace:
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x511e3e]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x4f77ba]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x51030e]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x510528]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x5105ac]
+/lib/x86_64-linux-gnu/libpthread.so.0(+0x12890)[0x7f81a9abb890]
+/usr/lib/x86_64-linux-gnu/libXft.so.2(XftCharIndex+0xd)[0x7f81ad0c768d]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x5d7f39]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x45f379]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x437780]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x44255d]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x44b54a]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x454dce]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x433a28]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x4597da]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x459aef]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x459c5c]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x564cad]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56e032]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x5a4dc0]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56dfad]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56fa70]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56fd5c]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56dd68]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56e631]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56e7cc]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56e7f7]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56e856]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56e8f9]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x42bc69]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x42bec4]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x42aacc]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x42b22c]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56f0ea]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56e032]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x5a4dc0]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56dfad]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x5a4dc0]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56dfad]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x5a4dc0]
+/home/juri/src/emacs/emacs-release/emacs/src/emacs[0x56dfad]
+...
+Segmentation fault (core dumped)
