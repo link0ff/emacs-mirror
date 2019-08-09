@@ -7,6 +7,8 @@
 # then it messed the monitors, restored frames in opposite monitors
 # then created new desktop (desktop-read "/home/juri/.emacs.d/debug2/")
 # and it didn't switch focus where it was previously
+# BUT I don't see how previus version could restore focus,
+# because there is no 'last-focus-update' frame parameter in previous release
 Fatal error 11: Segmentation fault
 Backtrace:
 /home/juri/src/emacs/emacs-release/emacs/src/emacs[0x511e3e]
