@@ -32,12 +32,6 @@ in 'frameset--minibufferless-last-p'.
 ((((frameset--mini t))) (((frameset--mini t . t))))
 
 
-* compilation errors in mode-line
-
-maybe parse compilation on process output only when
-counters are presented in the mode-line?
-
-
 * gettext i18n
 
 gettextize --dry-run
