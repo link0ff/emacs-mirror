@@ -1626,7 +1626,10 @@ If `ask', ask for user confirmation."
 (defun dired-rename-file (file newname ok-if-already-exists)
   (dired-handle-overwrite newname)
   (dired-maybe-create-dirs (file-name-directory newname))
-  (rename-file file newname ok-if-already-exists) ; error is caught in -create-files
+  (if (vc-backend file)
+      (vc-rename-file file newname)
+    ;; error is caught in -create-files
+    (rename-file file newname ok-if-already-exists))
   ;; Silently rename the visited file of any buffer visiting this file.
   (and (get-file-buffer file)
        (with-current-buffer (get-file-buffer file)
