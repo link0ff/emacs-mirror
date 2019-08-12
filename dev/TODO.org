@@ -1,64 +1,4 @@
 
-before my previous fix, it sorted all minibuffer-owning frames before minibufferless
-
-  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini t . t)))))
-    (list hasmini1 id-def1))
-  (frameset--mini t)
-
-  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini t)))))
-    (list hasmini1 id-def1))
-  (frameset--mini t)
-
-  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini nil)))))
-    (list hasmini1 id-def1))
-  (frameset--mini nil)
-
-  (pcase-let ((`(,hasmini1 ,id-def1) (assq 'frameset--mini (list '(frameset--mini nil . t)))))
-    (list hasmini1 id-def1))
-  (frameset--mini nil)
-
-maybe instead of changing the sorting order,
-we restore the focus explicitly after all frames are restored
-
-
-purely aesthetic
-
-see screenshots
-
-
-* Subject: Desktop doesn't restore selected frame
-
-;; OK
-;; (defun desktop-save-frameset
-;; (cl-defun frameset-save
-;; (frame-list)
-
-~/.emacs.d/.emacs.desktop
-NO: (setq desktop-saved-frameset ... (buffer "README.md" (selected . t)))
-OK: (last-focus-update . t)
-
-Subject: Stability issues in frameset sorting
-Currently frameset sorting is not stable.
-It changes the order of minibuffer-owning frames.
-It seems because frameset--mini parameters are messed up
-in 'frameset--minibufferless-last-p'.
-
-! 1 frameset-restore #<frame emacs@localhost 0x55e16309a3f0>
-! 2 frameset-restore #<frame emacs@localhost 0x55e16309a3f0>
-! 1 frameset-restore #<frame emacs@localhost 0x55e16309a3f0>
-! 1 frameset--restore-frame #<frame emacs@localhost 0x55e16309a3f0>
-! 2 frameset--restore-frame #<frame emacs@t480 0x55e164b41db0>
-! 2 frameset-restore #<frame emacs@t480 0x55e164b41db0>
-! (#<frame README.rdoc 0x55e164b41db0> #<frame  *Minibuf-1* 0x55e16309a3f0>)
-
-(sort (copy-sequence (frameset-states frameset)) #'frameset--minibufferless-last-p)
-
-(setq frameset '((((frameset--mini t))) (((frameset--mini t . t)))))
-(setq frameset '((((frameset--mini t) (last-focus-update))) (((frameset--mini t . t) (last-focus-update . t)))))
-(sort (copy-sequence frameset) #'frameset--minibufferless-last-p)
-((((frameset--mini t))) (((frameset--mini t . t))))
-
-
 * gettext i18n
 
 gettextize --dry-run
