@@ -1113,11 +1113,11 @@ Internal use only."
     ;; id-def2 is t when 2nd minibuffer-owning frame is the default-minibuffer-frame
     ;;         or frame-id of 2nd frame if it's minibufferless
     (cond ;; Sort the minibuffer-owning default-minibuffer-frame first
-          ((eq id-def1 t) t)
+	  ((eq id-def1 t) t)
 	  ((eq id-def2 t) nil)
-          ;; Sort non-default minibuffer-owning frames before minibufferless
+	  ;; Sort non-default minibuffer-owning frames before minibufferless
 	  ((not (eq hasmini1 hasmini2)) (eq hasmini1 t)) ;; boolean xor
-          ;; Sort minibufferless frames with frame-id before some remaining
+	  ;; Sort minibufferless frames with frame-id before some remaining
 	  ((eq hasmini1 nil) (or id-def1 id-def2))
 	  (t t))))
 
