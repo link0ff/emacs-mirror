@@ -1662,6 +1662,7 @@ to override the value of `vc-diff-switches' and `diff-switches'."
 	       (message "%s" (cdr messages))))
 	(diff-setup-whitespace)
 	(goto-char (point-min))
+        (message "vc-diff-finish: shrink-window-if-larger-than-buffer")
 	;; (when window
 	;;   (shrink-window-if-larger-than-buffer window))
         )
@@ -2416,7 +2417,8 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
     (vc-run-delayed
      (let ((inhibit-read-only t))
        (funcall setup-buttons-func backend files retval)
-       (shrink-window-if-larger-than-buffer)
+       (message "vc-log-internal-common: shrink-window-if-larger-than-buffer")
+       ;; (shrink-window-if-larger-than-buffer)
        (when goto-location-func
          (funcall goto-location-func backend)
          (setq vc-sentinel-movepoint (point)) ; cf with annotate
