@@ -86,45 +86,13 @@ https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-secti
 
 * Tabs
 
-frameset
+frameset like
 tabset displayed in tabbar
 
 ~/emacs/tabs/awesome-tab/awesome-tab.el
 
 It has such bug that clicking on window-tabs in another window
 switches tabs in the selected window
-
-
-** not exhaustive list of modes that use header-line thus whose buffer windows are unavailable for tabs:
-
-bookmark-bmenu-list
-diary-list-entries
-electric-buffer-list
-elp-results
-erc
-eww
-gdb-breakpoints-mode
-gdb-locals-mode
-gdb-memory-mode
-gdb-registers-mode
-gdb-threads-mode
-ibuffer
-info
-list-timers
-mpc-status-mode
-newsticker-treeview-list-mode
-org-capture-mode
-org-colview
-org-src-mode
-proced
-profiler
-rcirc
-rst-toc-mode
-ruler-mode
-semantic-idle-breadcrumbs--display-in-header-line
-ses
-tabulated-list-init-header
-url-cookie--generate-buffer
 
 
 ~/src/emacs/tabs/powerline/
