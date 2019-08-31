@@ -224,7 +224,7 @@ struct emacs_globals globals;
 
 /* maybe_gc collects garbage if this goes negative.  */
 
-object_ct consing_until_gc;
+intmax_t consing_until_gc;
 
 #ifdef HAVE_PDUMPER
 /* Number of finalizers run: used to loop over GC until we stop
@@ -236,9 +236,10 @@ int number_finalizers_run;
 
 bool gc_in_progress;
 
-/* System byte counts reported by GC.  */
+/* System byte and object counts reported by GC.  */
 
 typedef uintptr_t byte_ct;
+typedef intptr_t object_ct;
 
 /* Number of live and free conses etc.  */
 
@@ -301,15 +302,11 @@ static intptr_t garbage_collection_inhibited;
 
 const char *pending_malloc_warning;
 
-#if 0 /* Normally, pointer sanity only on request... */
+/* Pointer sanity only on request.  FIXME: Code depending on
+   SUSPICIOUS_OBJECT_CHECKING is obsolete; remove it entirely.  */
 #ifdef ENABLE_CHECKING
 #define SUSPICIOUS_OBJECT_CHECKING 1
 #endif
-#endif
-
-/* ... but unconditionally use SUSPICIOUS_OBJECT_CHECKING while the GC
-   bug is unresolved.  */
-#define SUSPICIOUS_OBJECT_CHECKING 1
 
 #ifdef SUSPICIOUS_OBJECT_CHECKING
 struct suspicious_free_record
@@ -326,8 +323,8 @@ static int suspicious_free_history_index;
 static void *find_suspicious_object_in_range (void *begin, void *end);
 static void detect_suspicious_free (void *ptr);
 #else
-# define find_suspicious_object_in_range(begin, end) NULL
-# define detect_suspicious_free(ptr) (void)
+# define find_suspicious_object_in_range(begin, end) ((void *) NULL)
+# define detect_suspicious_free(ptr) ((void) 0)
 #endif
 
 /* Maximum amount of C stack to save when a GC happens.  */
@@ -2542,11 +2539,8 @@ free_cons (struct Lisp_Cons *ptr)
   ptr->u.s.u.chain = cons_free_list;
   ptr->u.s.car = dead_object ();
   cons_free_list = ptr;
-  /* Use a temporary signed variable, since otherwise INT_ADD_WRAPV
-     might incorrectly return non-zero.  */
-  int incr = sizeof *ptr;
-  if (INT_ADD_WRAPV (consing_until_gc, incr, &consing_until_gc))
-    consing_until_gc = OBJECT_CT_MAX;
+  if (INT_ADD_WRAPV (consing_until_gc, sizeof *ptr, &consing_until_gc))
+    consing_until_gc = INTMAX_MAX;
   gcstat.total_free_conses++;
 }
 
@@ -3865,7 +3859,7 @@ memory_full (size_t nbytes)
   if (! enough_free_memory)
     {
       Vmemory_full = Qt;
-      consing_until_gc = memory_full_cons_threshold;
+      consing_until_gc = min (consing_until_gc, memory_full_cons_threshold);
 
       /* The first time we get here, free the spare memory.  */
       for (int i = 0; i < ARRAYELTS (spare_memory); i++)
@@ -5292,9 +5286,10 @@ make_pure_float (double num)
    space.  */
 
 static Lisp_Object
-make_pure_bignum (struct Lisp_Bignum *value)
+make_pure_bignum (Lisp_Object value)
 {
-  size_t i, nlimbs = mpz_size (value->value);
+  mpz_t const *n = xbignum_val (value);
+  size_t i, nlimbs = mpz_size (*n);
   size_t nbytes = nlimbs * sizeof (mp_limb_t);
   mp_limb_t *pure_limbs;
   mp_size_t new_size;
@@ -5305,10 +5300,10 @@ make_pure_bignum (struct Lisp_Bignum *value)
   int limb_alignment = alignof (mp_limb_t);
   pure_limbs = pure_alloc (nbytes, - limb_alignment);
   for (i = 0; i < nlimbs; ++i)
-    pure_limbs[i] = mpz_getlimbn (value->value, i);
+    pure_limbs[i] = mpz_getlimbn (*n, i);
 
   new_size = nlimbs;
-  if (mpz_sgn (value->value) < 0)
+  if (mpz_sgn (*n) < 0)
     new_size = -new_size;
 
   mpz_roinit_n (b->value, pure_limbs, new_size);
@@ -5458,7 +5453,7 @@ purecopy (Lisp_Object obj)
       return obj;
     }
   else if (BIGNUMP (obj))
-    obj = make_pure_bignum (XBIGNUM (obj));
+    obj = make_pure_bignum (obj);
   else
     {
       AUTO_STRING (fmt, "Don't know how to purify: %S");
@@ -5501,7 +5496,7 @@ staticpro (Lisp_Object const *varaddress)
 static void
 allow_garbage_collection (intmax_t consing)
 {
-  consing_until_gc = consing - (OBJECT_CT_MAX - consing_until_gc);
+  consing_until_gc = consing - (INTMAX_MAX - consing_until_gc);
   garbage_collection_inhibited--;
 }
 
@@ -5511,7 +5506,7 @@ inhibit_garbage_collection (void)
   ptrdiff_t count = SPECPDL_INDEX ();
   record_unwind_protect_intmax (allow_garbage_collection, consing_until_gc);
   garbage_collection_inhibited++;
-  consing_until_gc = OBJECT_CT_MAX;
+  consing_until_gc = INTMAX_MAX;
   return count;
 }
 
@@ -5817,7 +5812,7 @@ garbage_collect_1 (struct gcstat *gcst)
 
   /* In case user calls debug_print during GC,
      don't let that cause a recursive GC.  */
-  consing_until_gc = OBJECT_CT_MAX;
+  consing_until_gc = INTMAX_MAX;
 
   /* Save what's currently displayed in the echo area.  Don't do that
      if we are GC'ing because we've run out of memory, since
@@ -5932,19 +5927,17 @@ garbage_collect_1 (struct gcstat *gcst)
     consing_until_gc = memory_full_cons_threshold;
   else
     {
-      intptr_t threshold = min (max (GC_DEFAULT_THRESHOLD,
-				     gc_cons_threshold >> 3),
-				OBJECT_CT_MAX);
+      intmax_t threshold = max (gc_cons_threshold, GC_DEFAULT_THRESHOLD / 10);
       if (FLOATP (Vgc_cons_percentage))
 	{
 	  double tot = (XFLOAT_DATA (Vgc_cons_percentage)
 			* total_bytes_of_live_objects ());
 	  if (threshold < tot)
 	    {
-	      if (tot < OBJECT_CT_MAX)
+	      if (tot < INTMAX_MAX)
 		threshold = tot;
 	      else
-		threshold = OBJECT_CT_MAX;
+		threshold = INTMAX_MAX;
 	    }
 	}
       consing_until_gc = threshold;
