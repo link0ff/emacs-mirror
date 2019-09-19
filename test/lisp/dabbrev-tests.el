@@ -29,8 +29,8 @@
 
 (ert-deftest dabbrev-expand-test ()
   "Test for bug#1948.
-When DABBREV-ELIMINATE-NEWLINES is non-nil (the default),
-repeated calls to DABBREV-EXPAND can result in the source of
+When `dabbrev-eliminate-newlines' is non-nil (the default),
+repeated calls to `dabbrev-expand' can result in the source of
 first expansion being replaced rather than the destination."
   (with-temp-buffer
    (insert "ab  x\na\nab  y")
