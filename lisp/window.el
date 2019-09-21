@@ -2230,8 +2230,8 @@ windows nor the buffer list."
   ;; back to it.
   (when (window-minibuffer-p)
     (setq minibuf t))
-  ;; Use `save-selected-window' to not mess up the order
-  ;; of recently selected windows.
+  ;; Use `save-selected-window' to prevent FUN from messing up
+  ;; the order of windows when it changes the selected window.
   (save-selected-window
     (dolist (walk-windows-window
              (window-list-1 (and (framep all-frames)

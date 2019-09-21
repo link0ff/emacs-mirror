@@ -1481,12 +1481,17 @@ available for output of asynchronous shell commands.
 ---
 *** 'pcomplete/make' now completes on targets in included files, recursively.
 To recover the previous behavior, set new user option
-`pcmpl-gnu-makefile-includes' to nil.
+'pcmpl-gnu-makefile-includes' to nil.
 
 ** Auth-source
 
 ---
 *** The Secret Service backend supports the ':create' key now.
+
+*** .authinfo and .netrc files now use a new mode: 'authinfo-mode'.
+This is just like 'fundamental-mode', except that it hides passwords
+under a "****" display property.  When the cursor moves to this text,
+the real password is revealed (via 'reveal-mode').
 
 ** Tramp
 
@@ -1529,6 +1534,12 @@ names are adjusted to the host name from the previous hop.
 *** For the connection methods "sudo" and "doas" there exists a
 timeout, after which the underlying session is disabled.  This is for
 security reasons.
+
++++
+*** For some connection methods, like "sshx" or "plink", it is
+possible to configure the remote login shell.  This avoids problems
+with remote hosts, where "/bin/sh" is a link to a shell which
+cooperates badly with Tramp.
 
 ** Rcirc
 
@@ -1654,6 +1665,10 @@ backtrace with 'b'.
 *** 'thing-at-point' supports a new "thing" called 'uuid'.
 A symbol 'uuid' can be passed to 'thing-at-point' and it returns the
 UUID at point.
+
+---
+*** 'number-at-point' will now recognize hex number like 0xAb09 and #xAb09
+and return them as numbers.
 
 ---
 *** 'word-at-point' and 'sentence-at-point' accept NO-PROPERTIES.
@@ -2120,6 +2135,15 @@ valid event type.
 
 * Lisp Changes in Emacs 27.1
 
+** 'reveal-mode' can now also be used for more than to toggle between
+invisible and visible: It can also toggle 'display' properties in
+overlays.  This is only done on 'display' properties that have the
+'reveal-toggle-invisible' property set.
+
++++
+** 'process-contact' now takes an optional NO-BLOCK parameter to allow
+not waiting for a process to be set up.
+
 +++
 ** The new 'quit-window-hook' is now run first when executing the
 'quit-window' command.
@@ -2542,6 +2566,10 @@ low-level library, such decisions (if they are to be made at all) are
 left to higher-level functions.
 
 ** Image mode
+
+*** An Exif library has been added that can parse JPEG files and
+output data about creation times and orientation and the like.
+'exif-parse' is the main interface function.
 
 *** 'image-mode' started using ImageMagick by default for all images
 some years back.  It now respects 'imagemagick-types-inhibit' as a way
