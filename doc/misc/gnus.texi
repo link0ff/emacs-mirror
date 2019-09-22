@@ -16416,8 +16416,7 @@ have to set this variable to @code{t}.  The default is @code{nil}.
 
 @code{nnmaildir} stores mail in the maildir format, with each maildir
 corresponding to a group in Gnus.  This format is documented here:
-@uref{http://cr.yp.to/proto/maildir.html} and here:
-@uref{http://www.qmail.org/man/man5/maildir.html}.  @code{nnmaildir}
+@uref{http://cr.yp.to/proto/maildir.html}.  @code{nnmaildir}
 also stores extra information in the @file{.nnmaildir/} directory
 within a maildir.
 
@@ -22922,6 +22921,14 @@ If you're using tree displays (@pxref{Tree Display}), and the tree
 window is displayed vertically next to another window, you may also want
 to fiddle with @code{gnus-tree-minimize-window} to avoid having the
 windows resized.
+
+Lastly, it's possible to make Gnus window layouts ``atomic''
+(@pxref{Atomic Windows, , Atomic Windows, elisp, The GNU Emacs Lisp
+Reference Manual}) by setting @code{gnus-use-atomic-windows} to
+@code{t}.  This will ensure that pop-up buffers (e.g. help or
+completion buffers), will appear below or to the side of the entire
+Gnus window layout and not, for example, squashed between the summary
+and article buffers.
 
 @subsection Window Configuration Names
 
