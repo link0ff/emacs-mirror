@@ -510,8 +510,9 @@ DIRS are relative."
 				 "/.emacs.d/"))))
       (if (or (file-exists-p emacs-d-dir)
 	      (if (eq system-type 'windows-nt)
-		  (directory-files (concat "~" user-name) nil
-				   "\\`[._]emacs\\(\\.elc?\\)?\\'")
+                  (if (file-directory-p (concat "~" user-name))
+                      (directory-files (concat "~" user-name) nil
+                                       "\\`[._]emacs\\(\\.elc?\\)?\\'"))
 		(file-exists-p (concat "~" init-file-user
 				       (if (eq system-type 'ms-dos)
 					   "/_emacs"
@@ -1639,7 +1640,7 @@ Each element in the list should be a list of strings or pairs
      "\tMany people have contributed code included in GNU Emacs\n"
      :link ("Contributing"
 	    ,(lambda (_button) (info "(emacs)Contributing")))
-     "\tHow to contribute improvements to Emacs\n"
+     "\tHow to report bugs and contribute improvements to Emacs\n"
      "\n"
      :link ("GNU and Freedom" ,(lambda (_button) (describe-gnu-project)))
      "\tWhy we developed GNU Emacs, and the GNU operating system\n"
@@ -1681,7 +1682,9 @@ Each element in the list should be a list of strings or pairs
 	    ,(lambda (_button)
                (browse-url "https://www.gnu.org/software/emacs/tour/"))
 	    "Browse https://www.gnu.org/software/emacs/tour/")
-     "\tSee an overview of Emacs features at gnu.org"))
+     "\tSee an overview of Emacs features at gnu.org\n"
+     :link ("Emacs Manual" ,(lambda (_button) (info-emacs-manual)))
+     "\tDisplay the Emacs manual in Info mode"))
   "A list of texts to show in the middle part of the About screen.
 Each element in the list should be a list of strings or pairs
 `:face FACE', like `fancy-splash-insert' accepts them.")
@@ -1974,16 +1977,16 @@ we put it on this frame."
                  (image-type-available-p 'pbm)))
     (let ((frame (fancy-splash-frame)))
       (when frame
-	(let* ((img (create-image (fancy-splash-image-file)))
-	       (image-height (and img (cdr (image-size img nil frame))))
-	       ;; We test frame-height and not window-height so that,
-	       ;; if the frame is split by displaying a warning, that
-	       ;; doesn't cause the normal splash screen to be used.
-	       ;; We subtract 2 from frame-height to account for the
-	       ;; echo area and the mode line.
-	       (frame-height (- (frame-height frame) 2)))
-	  (> frame-height (+ image-height 19)))))))
-
+	(let ((img (create-image (fancy-splash-image-file))))
+          (when img
+            (let ((image-height (cdr (image-size img nil frame)))
+	          ;; We test frame-height and not window-height so that,
+	          ;; if the frame is split by displaying a warning, that
+	          ;; doesn't cause the normal splash screen to be used.
+	          ;; We subtract 2 from frame-height to account for the
+	          ;; echo area and the mode line.
+	          (frame-height (- (frame-height frame) 2)))
+	      (> frame-height (+ image-height 19)))))))))
 
 (defun normal-splash-screen (&optional startup concise)
   "Display non-graphic splash screen.
@@ -2218,7 +2221,7 @@ Type \\[describe-distribution] for information on "))
 		 'action
 		 (lambda (_button) (info "(emacs)Contributing"))
 		 'follow-link t)
-  (insert "\tHow to contribute improvements to Emacs\n\n")
+  (insert "\tHow to report bugs and contribute improvements to Emacs\n\n")
 
   (insert-button "GNU and Freedom"
 		 'action (lambda (_button) (describe-gnu-project))

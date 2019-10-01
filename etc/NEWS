@@ -276,6 +276,12 @@ used to remove comments before calling the libxml functions to parse
 the data.
 
 +++
+** A new DOM (the XML/HTML document structure returned by functions
+such as 'libxml-parse-html-region') traversal function has been added:
+'dom-search', which takes a DOM and a predicate and returns all nodes
+that match.
+
++++
 ** The Network Security Manager now allows more fine-grained control
 of what checks to run via the 'network-security-protocol-checks'
 variable.
@@ -542,6 +548,11 @@ network connection information (in addition to the host name).
 
 ** The 'cl' package is now officially deprecated in favor of 'cl-lib'.
 
+---
+** desktop
+*** When called interactively with a prefix arg 'C-u', 'desktop-read'
+now prompts the user for the directory containing the desktop file.
+
 +++
 ** winner
 *** A new variable, 'winner-boring-buffers-regexp', has been added.
@@ -571,6 +582,11 @@ This is because on the one hand it suffers from various misbehaviors in corner
 cases that have plagued it for years, and on the other experiments indicated
 that it doesn't bring any measurable benefit.
 
+---
+*** The 'g' keystroke in *Compile-Log* buffers has been bound to a new
+command that will recompile the file previously compiled with 'M-x
+byte-compile-file' and the like.
+
 ** compile.el
 ---
 *** In 'compilation-error-regexp-alist', 'line' (and 'end-line') can
@@ -596,12 +612,21 @@ its functions.
 *** New commands 'doc-view-presentation' and 'doc-view-fit-window-to-page'.
 *** Added support for password-protected PDF files
 
+*** A new variable 'doc-view-pdftotext-program-args' has been added to
+allow controlling how the conversion to text is done.
+
 ** Ido
 *** New user option 'ido-big-directories' to mark directories whose
 names match certain regular expressions as big.  Ido won't attempt to
 list the contents of such directories when completing file names.
 
 ** Minibuffer
+
++++
+*** A new variable, 'minibuffer-beginning-of-buffer-movement', has
+been introduced to allow controlling how the 'M-<' command works in
+the minibuffer.  If non-nil, point will move to the end of the prompt
+(if point is after the end of the prompt).
 
 ---
 *** Minibuffer now uses 'minibuffer-message' to display error messages
@@ -972,6 +997,9 @@ early init file.
 ---
 *** Imenu support has been added to 'package-menu-mode'.
 
+---
+*** The package list can now be sorted by version or description.
+
 ** Info
 
 +++
@@ -1031,6 +1059,23 @@ This can be controlled by the new 'ecomplete-sort-predicate' variable.
 Of course it will still find it if you have it in '~/.ecompleterc'.
 
 ** Gnus
+
++++
+*** Two new Gnus summary mode navigation commands have been added,
+bound to the '[' and ']' keys: `gnus-summary-prev-unseen-article' and
+`gnus-summary-next-unseen-article'.  These take you (respectively) to
+the previous unseen or next unseen article.  (These are the ones that
+are marked with "." in the summary mode lines.)
+
++++
+*** The Gnus user variable 'nnimap-expunge' supports three new values:
+'never' for never expunging messages, 'immediately' for immediately
+expunging deleted messages, and 'on-exit' to expunge deleted articles
+when exiting the group's summary buffer.  Setting 'nnimap-expunge' to
+'nil' or 't' is still supported but not recommended, since it may
+result in Gnus expunging all messages that have been flagged as
+deleted by any IMAP client (rather than just those that have been
+deleted by Gnus).
 
 +++
 *** New option 'gnus-use-atomic-windows' makes Gnus window layouts
@@ -1093,7 +1138,7 @@ This option controls whether and how to use Gnus search groups as
 'path:' search terms to 'notmuch'.
 
 ---
-+++ The buttons in the Gnus article buffer were formerly widgets
+*** The buttons in the Gnus article buffer were formerly widgets
 (i.e., buttons from widget.el).  This has now changed, and they are
 now buttons (from button.el), and commands like 'TAB' now search for
 buttons instead of widgets.  There should be no user-visible changes,
@@ -1116,6 +1161,12 @@ The variable to use instead to alter text to be sent is now
 *** XEmacs support has been removed.
 
 ** eww/shr
+
++++
+*** The new variable 'shr-cookie-policy' can be used to control when
+to use cookies when fetching embedded images.  The default is to use
+them when the images are from the same domain as the main HTML
+document.
 
 +++
 *** The 'eww' command can now create a new EWW buffer.
@@ -1497,7 +1548,8 @@ To recover the previous behavior, set new user option
 *** .authinfo and .netrc files now use a new mode: 'authinfo-mode'.
 This is just like 'fundamental-mode', except that it hides passwords
 under a "****" display property.  When the cursor moves to this text,
-the real password is revealed (via 'reveal-mode').
+the real password is revealed (via 'reveal-mode').  The
+'authinfo-hidden' variable can be used to control what to hide.
 
 ** Tramp
 
@@ -1574,6 +1626,10 @@ Use of built-in libgnutls based functionality (described in the Emacs
 GnuTLS manual) is recommended instead.
 
 ** Message
+
+*** 'message-mode' now supports highlighting citations of different
+depths.  This can be customized via 'message-cite-level-function' and
+the new 'message-cited-text-*' faces.
 
 +++
 *** Messages can now be systematically encrypted
@@ -1714,6 +1770,10 @@ This also works for their aliases: '|' for 'or'; ':', 'and' and
 In this case, 'rx' will generate code which produces a regexp string
 at run time, instead of a constant string.
 
+---
+*** New rx extension mechanism: 'rx-define', 'rx-let', 'rx-let-eval'.
+These macros add new forms to the rx notation.
+
 ** Frames
 
 +++
@@ -1745,6 +1805,11 @@ near the current column in Tabulated Lists (see variables
 *** Two new commands and keystrokes have been added to the tabulated
 list mode: 'w' (which widens the current column) and 'c' which makes
 the current column contract.
+
++++
+*** New function 'tabulated-list-clear-all-tags'.
+This function clears all tags from the padding area in the current
+buffer.  Tags are typically added by calling 'tabulated-list-put-tag'.
 
 ** Text mode
 
@@ -1941,6 +2006,27 @@ and 'gravatar-force-default'.
 *** The built-in ada-mode is now deleted.  The GNU ELPA package is a
 good replacement, even in very large source files.
 
+** Some conversions recommended for 'time-stamp-format' have changed.
+The new documented/recommended %-conversions are closer to those
+used by 'format-time-string' and are compatible at least as far back
+as Emacs 22.1 (released in 2007).
+
+Uppercase abbreviated day name of week: was %3A, now %#a
+Full day name of week: was %:a, now %:A
+Uppercase abbreviated month name: was %3B, now %#b
+Full month name: was %:b, now %:B
+Four-digit year: was %:y, now %Y
+Lowercase timezone name: was %z, now %#Z
+Fully-qualified host name: was %s, now %Q
+Unqualified host name: (was none), now %q
+Login name: was %u, now %l
+User's full name: was %U, now %L
+
+Merely having (add-hook 'before-save-hook 'time-stamp) in your
+Emacs init file does not expose you to this change.  However,
+if you set 'time-stamp-format' or 'time-stamp-pattern' with a
+file-local variable, you may need to update the value.
+
 
 * New Modes and Packages in Emacs 27.1
 
@@ -1979,6 +2065,19 @@ immediately.  Type 'M-x so-long-commentary' for full documentation.
 
 
 * Incompatible Lisp Changes in Emacs 27.1
+
+---
+** Incomplete destructive splicing support has been removed.
+Support for Common Lisp style destructive splicing (",.") was
+incomplete and broken for a long time.  It has now been removed.
+
+This means that backquote substitution now works for identifiers
+starting with a period (".").  Consider the following example:
+
+    (let ((.foo 42)) `,.foo)
+
+In the past, this would have incorrectly evaluated to '(\,\. foo)',
+but will now instead evaluate to '42'.
 
 ---
 ** The REGEXP in 'magic-mode-alist' is now matched case-sensitively.
@@ -2121,6 +2220,14 @@ ending character were silently omitted.
 For example, '(rx (any "@z-a" (?9 . ?0)))' would match '@' only.
 Now, such 'rx' expressions generate an error.
 
+---
+** Internal 'rx' functions and variables have been removed,
+as a consequence of an improved implementation.  Packages using
+these should use the public 'rx' and 'rx-to-string' instead.
+'rx-constituents' is still available for compatibility, but the new
+extension mechanism is preferred: 'rx-define', 'rx-let' and
+'rx-let-eval'.
+
 +++
 ** 'text-mode' no longer sets the value of 'indent-line-function'.
 The global value of 'indent-line-function', which defaults to
@@ -2140,6 +2247,15 @@ valid event type.
 
 ---
 ** The obsolete package xesam.el (since Emacs 24) has been removed.
+
++++
+** The XBM image handler now accepts a ':stride' argument, which should
+be specified in image specs representing the entire bitmap as a single
+bool vector.
+
++++
+** 'regexp-quote' may return its argument string.
+If the argument needs no quoting, it can be returned instead of a copy.
 
 
 * Lisp Changes in Emacs 27.1
@@ -2581,6 +2697,13 @@ An Exif library has been added that can parse JPEG files and output
 data about creation times and orientation and the like.
 'exif-parse-file' and 'exif-parse-buffer' are the main interface
 functions.
+
+*** New library image-converter.
+If you need to view exotic image formats for which Emacs doesn't have
+native support, customize the new variable 'convert-images-externally'
+to t.  If your system has GraphicsMagick, ImageMagick or 'ffmpeg'
+installed, they will then be used to convert images automatically
+before displaying them.
 
 *** 'image-mode' now uses this library to automatically rotate images
 according to the orientation in the Exif data, if any.

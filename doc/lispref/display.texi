@@ -2949,11 +2949,12 @@ For a header line, Emacs applies the @code{header-line} face.
 If the text comes from an overlay string via @code{before-string} or
 @code{after-string} properties (@pxref{Overlay Properties}), or from a
 display string (@pxref{Other Display Specs}), and the string doesn't
-contain a @code{face} or @code{mouse-face} property, but the buffer
-text affected by the overlay/display property does define a face,
-Emacs applies the face attributes of the ``underlying'' buffer text.
-Note that this is so even if the overlay or display string is
-displayed in the display margins (@pxref{Display Margins}).
+contain a @code{face} or @code{mouse-face} property, or these
+properties leave some face attributes undefined, but the buffer text
+affected by the overlay/display property does define a face or those
+attributes, Emacs applies the face attributes of the ``underlying''
+buffer text.  Note that this is so even if the overlay or display
+string is displayed in the display margins (@pxref{Display Margins}).
 
 @item
 If any given attribute has not been specified during the preceding
@@ -5446,12 +5447,14 @@ because omitting them is what indicates the data has the format of an
 XBM file.  The file contents specify the height and width of the image.
 
 @item
-A string or a bool-vector containing the bits of the image (plus perhaps
-some extra bits at the end that will not be used).  It should contain at
-least @var{width} * @code{height} bits.  In this case, you must specify
-@code{:height} and @code{:width}, both to indicate that the string
-contains just the bits rather than a whole XBM file, and to specify the
-size of the image.
+A string or a bool-vector containing the bits of the image (plus
+perhaps some extra bits at the end that will not be used).  It should
+contain at least @w{@code{@var{stride} * @var{height}}} bits, where
+@var{stride} is the smallest multiple of 8 greater than or equal to
+the width of the image.  In this case, you should specify
+@code{:height}, @code{:width} and @code{:stride}, both to indicate
+that the string contains just the bits rather than a whole XBM file,
+and to specify the size of the image.
 @end itemize
 
 @item :width @var{width}
@@ -5459,6 +5462,10 @@ The value, @var{width}, specifies the width of the image, in pixels.
 
 @item :height @var{height}
 The value, @var{height}, specifies the height of the image, in pixels.
+
+@item :stride @var{stride}
+The number of bool vector entries stored for each row; the smallest
+multiple of 8 greater than or equal to @var{width}.
 @end table
 
 @node XPM Images
