@@ -4710,12 +4710,12 @@ that you have an unaltered copy of that data.
 SHA-1, SHA-2, SHA-224, SHA-256, SHA-384 and SHA-512.  MD5 is the
 oldest of these algorithms, and is commonly used in @dfn{message
 digests} to check the integrity of messages transmitted over a
-network.  MD5 is not collision resistant (i.e., it is possible to
-deliberately design different pieces of data which have the same MD5
-hash), so you should not used it for anything security-related.  A
-similar theoretical weakness also exists in SHA-1.  Therefore, for
-security-related applications you should use the other hash types,
-such as SHA-2.
+network.  MD5 and SHA-1 are not collision resistant (i.e., it is
+possible to deliberately design different pieces of data which have
+the same MD5 or SHA-1 hash), so you should not use them for anything
+security-related.  For security-related applications you should use
+the other hash types, such as SHA-2 (e.g. @code{sha256} or
+@code{sha512}).
 
 @defun secure-hash-algorithms
 This function returns a list of symbols representing algorithms that
@@ -5162,6 +5162,11 @@ which is a regular expression.
 Return all nodes in @var{dom} that have IDs that match @var{match},
 which is a regular expression.
 
+@item dom-search @var{dom} @var{predicate}
+Return all nodes in @var{dom} where @var{predicate} returns a
+non-@code{nil} value.  @var{predicate} is called with the node to be
+tested as its parameter.
+
 @item dom-strings @var{dom}
 Return all strings in @var{dom}.
 
@@ -5310,7 +5315,7 @@ the value if contains a valid JSON object; otherwise it signals the
 
 The @code{jsonrpc} library implements the @acronym{JSONRPC}
 specification, version 2.0, as it is described in
-@uref{http://www.jsonrpc.org/}.  As the name suggests, JSONRPC is a
+@uref{https://www.jsonrpc.org/}.  As the name suggests, JSONRPC is a
 generic @dfn{Remote Procedure Call} protocol designed around
 @acronym{JSON} objects, which you can convert to and from Lisp objects
 (@pxref{Parsing JSON}).
@@ -5325,7 +5330,7 @@ generic @dfn{Remote Procedure Call} protocol designed around
 @node JSONRPC Overview
 @subsection Overview
 
-Quoting from the @uref{http://www.jsonrpc.org/, spec}, JSONRPC "is
+Quoting from the @uref{https://www.jsonrpc.org/, spec}, JSONRPC "is
 transport agnostic in that the concepts can be used within the same
 process, over sockets, over http, or in many various message passing
 environments."

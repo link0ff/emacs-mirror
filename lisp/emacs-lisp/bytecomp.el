@@ -124,7 +124,7 @@
 (require 'backquote)
 (require 'macroexp)
 (require 'cconv)
-(eval-when-compile (require 'compile))
+(require 'compile)
 ;; Refrain from using cl-lib at run-time here, since it otherwise prevents
 ;; us from emitting warnings when compiling files which use cl-lib without
 ;; requiring it! (bug#30635)
@@ -395,16 +395,16 @@ else the global value will be modified."
   "Non-nil means collect call-graph information when compiling.
 This records which functions were called and from where.
 If the value is t, compilation displays the call graph when it finishes.
-If the value is neither t nor nil, compilation asks you whether to display
-the graph.
+If the value is neither t nor nil, compilation asks you whether to
+display the graph.
 
-The call tree only lists functions called, not macros used. Those functions
-which the byte-code interpreter knows about directly (eq, cons, etc.) are
-not reported.
+The call tree only lists functions called, not macros used.  Those
+functions which the byte-code interpreter knows about directly (eq,
+cons, etc.) are not reported.
 
-The call tree also lists those functions which are not known to be called
-\(that is, to which no calls have been compiled).  Functions which can be
-invoked interactively are excluded from this list."
+The call tree also lists those functions which are not known to be
+called (that is, to which no calls have been compiled).  Functions
+which can be invoked interactively are excluded from this list."
   :type '(choice (const :tag "Yes" t) (const :tag "No" nil)
 		 (other :tag "Ask" lambda)))
 
@@ -1045,8 +1045,26 @@ message buffer `default-directory'."
   :type '(repeat (choice (const :tag "Default" nil)
 			 (string :tag "Directory"))))
 
+(defvar emacs-lisp-compilation-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map compilation-minor-mode-map)
+    (define-key map "g" 'emacs-lisp-compilation-recompile)
+    map))
+
+(defvar emacs-lisp-compilation--current-file nil)
+
 (define-compilation-mode emacs-lisp-compilation-mode "elisp-compile"
-  "The variant of `compilation-mode' used for emacs-lisp compilation buffers.")
+  "The variant of `compilation-mode' used for emacs-lisp compilation buffers."
+  (setq-local emacs-lisp-compilation--current-file nil))
+
+(defun emacs-lisp-compilation-recompile ()
+  "Recompile the previously byte-compiled file."
+  (interactive)
+  (unless emacs-lisp-compilation--current-file
+    (error "No previously compiled file"))
+  (unless (stringp emacs-lisp-compilation--current-file)
+    (error "Only files can be recompiled"))
+  (byte-compile-file emacs-lisp-compilation--current-file))
 
 (defvar byte-compile-current-form nil)
 (defvar byte-compile-dest-file nil)
@@ -1236,6 +1254,7 @@ message buffer `default-directory'."
 	   ;; Do this after setting default-directory.
 	   (unless (derived-mode-p 'compilation-mode)
              (emacs-lisp-compilation-mode))
+           (setq emacs-lisp-compilation--current-file byte-compile-current-file)
 	   (compilation-forget-errors)
 	   pt))))
 

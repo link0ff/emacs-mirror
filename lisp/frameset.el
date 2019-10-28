@@ -1060,11 +1060,9 @@ Internal use only."
       ;; sometimes it gets "pushed back" onscreen; however, moving it afterwards is
       ;; allowed.  So we create the frame as invisible and then reapply the full
       ;; parameter alist (including position and size parameters).
-      (message "! 1 frameset--restore-frame %S" (selected-frame))
       (setq frame (make-frame-on-display display
 					 (cons '(visibility)
 					       (frameset--initial-params filtered-cfg))))
-      (message "! 2 frameset--restore-frame %S" (selected-frame))
       (puthash frame :created frameset--action-map))
 
     ;; Remove `border-width' from the list of parameters.  If it has not
@@ -1227,8 +1225,6 @@ All keyword parameters default to nil."
 
     ;; Sort saved states to guarantee that minibufferless frames will be created
     ;; after the frames that contain their minibuffer windows.
-    (message "! 1 %S" (frameset-states frameset))
-    (message "! 2 %S" (sort (copy-sequence (frameset-states frameset)) #'frameset--minibufferless-last-p))
     (dolist (state (sort (copy-sequence (frameset-states frameset))
 			 #'frameset--minibufferless-last-p))
       (pcase-let ((`(,frame-cfg . ,window-cfg) state))
@@ -1293,11 +1289,9 @@ All keyword parameters default to nil."
 			  (push (cons 'minibuffer mb-window) frame-cfg))))))
 		  ;; OK, we're ready at last to create (or reuse) a frame and
 		  ;; restore the window config.
-                  (message "! 1 frameset-restore %S" (selected-frame))
 		  (setq frame (frameset--restore-frame frame-cfg window-cfg
 						       (or filters frameset-filter-alist)
 						       force-onscreen))
-                  (message "! 2 frameset-restore %S" (selected-frame))
 		  ;; Now reset any duplicate frameset--id
 		  (when (and duplicate (not (eq frame duplicate)))
 		    (set-frame-parameter duplicate 'frameset--id nil))
@@ -1369,12 +1363,7 @@ All keyword parameters default to nil."
 			     (and (frame-live-p frame) (frame-visible-p frame)
 				  (throw 'visible t)))
 			   frameset--action-map)))
-      (message "! 3 frameset-restore %S" (selected-frame))
-      (make-frame-visible (selected-frame))
-      (message "! 4 frameset-restore %S" (selected-frame))
-      )
-    (message "! frame-list %S" (frame-list))
-    ))
+      (make-frame-visible (selected-frame)))))
 
 
 ;; Register support
