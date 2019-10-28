@@ -1419,6 +1419,55 @@ window_hscroll_limited (struct window *w, struct frame *f)
   return window_hscroll;
 }
 
+static bool
+current_tab_visible_p (struct window *w, int *tab_num)
+{
+  bool visible_p = false;
+
+  if (window_wants_tab_line (w))
+    {
+      /* ptrdiff_t charpos = 1; */
+      struct it it;
+      /* struct text_pos top; */
+      /* SET_TEXT_POS_FROM_MARKER (top, w->start); */
+      /* if (CHARPOS (top) > ZV || CHARPOS (top) < BEGV) */
+      /*   SET_TEXT_POS (top, BEGV, BEGV_BYTE); */
+
+      Lisp_Object window_tab_line_format
+	= window_parameter (w, Qtab_line_format);
+
+      w->tab_line_height
+	= display_mode_line (w, TAB_LINE_FACE_ID,
+			     NILP (window_tab_line_format)
+			     ? BVAR (current_buffer, tab_line_format)
+			     : window_tab_line_format);
+
+      init_iterator (&it, w, -1, -1, NULL, TAB_LINE_FACE_ID);
+
+      fprintf (stderr, "truncated_on_left_p=%d truncated_on_right_p=%d tab_line_p=%d enabled_p=%d \n",
+               it.glyph_row->truncated_on_left_p, it.glyph_row->truncated_on_right_p, it.glyph_row->tab_line_p, it.glyph_row->enabled_p);
+
+      /* start_display (&it, w, top); */
+
+      /* move_it_to (&it, charpos, -1, it.last_visible_y - 1, -1, */
+      /*             MOVE_TO_POS | MOVE_TO_Y); */
+
+      /* Lisp_Object cpos = make_fixnum (charpos); */
+      /* Lisp_Object endpos; */
+      /* endpos = */
+      /*   Fnext_single_char_property_change (cpos, intern ("current-tab"), */
+      /*                                      Qnil, Qnil); */
+
+      /* fprintf (stderr, "first_visible_x=%ld\n", */
+      /*          XFIXNUM (endpos)); */
+
+      /* *tab_num = 1; */
+      /* visible_p = true; */
+    }
+
+  return visible_p;
+}
+
 /* Return true if position CHARPOS is visible in window W.
    CHARPOS < 0 means return info about WINDOW_END position.
    If visible, set *X and *Y to pixel coordinates of top left corner.
@@ -24897,6 +24946,13 @@ display_mode_lines (struct window *w)
 
   if (window_wants_tab_line (w))
     {
+      int tab_num = 0;
+
+      if (current_tab_visible_p (w, &tab_num))
+        {
+          /* Set some Lisp variable */
+        }
+
       Lisp_Object window_tab_line_format
 	= window_parameter (w, Qtab_line_format);
 

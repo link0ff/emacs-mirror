@@ -334,6 +334,7 @@ variable `tab-line-tabs-function'."
                                       tab-line-close-button) ""))
                      `(
                        tab ,tab
+                       current-tab ,(eq tab selected-buffer)
                        face ,(if (eq tab selected-buffer)
                                  'tab-line-tab
                                'tab-line-tab-inactive)
