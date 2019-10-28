@@ -163,6 +163,8 @@ lifetime, i.e., its \"age\" when it will be purged."
         delay cbld bn)
     (dolist (buf (buffer-list))
       (when (buffer-live-p buf)
+        ;; TODO: should subtract `emacs-uptime'
+        ;; BETTER: add `midnight-desktop-file-modtime' and hook on desktop-load
         (setq bts (with-current-buffer buf buffer-display-time)
               bn (buffer-name buf)
               delay (if bts (round (float-time (time-subtract tm bts))) 0)

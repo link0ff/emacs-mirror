@@ -1623,11 +1623,21 @@ If `ask', ask for user confirmation."
 	       dired-create-files-failures)
 	 (dired-log "Can't set date on %s:\n%s\n" from err))))))
 
+(defcustom dired-vc-rename-file nil
+  "Whether Dired should register file renaming in underlying vc.
+If nil, use default `rename-file'.
+If non-nil and the renamed files are under vc control,
+rename them using `vc-rename-file'."
+  :type '(choice (const :tag "Use rename-file" nil)
+		 (const :tag "Use vc-rename-file" t))
+  :group 'dired
+  :version "27.1")
+
 ;;;###autoload
 (defun dired-rename-file (file newname ok-if-already-exists)
   (dired-handle-overwrite newname)
   (dired-maybe-create-dirs (file-name-directory newname))
-  (if (vc-backend file)
+  (if (and dired-vc-rename-file (vc-backend file))
       (vc-rename-file file newname)
     ;; error is caught in -create-files
     (rename-file file newname ok-if-already-exists))
