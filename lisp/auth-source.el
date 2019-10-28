@@ -504,7 +504,7 @@ soon as a function returns non-nil.")
 (add-hook 'auth-source-backend-parser-functions #'auth-source-backends-parser-secrets)
 
 (defun auth-source-backend-parse-parameters (entry backend)
-  "Fills in the extra auth-source-backend parameters of ENTRY.
+  "Fill in the extra auth-source-backend parameters of ENTRY.
 Using the plist ENTRY, get the :host, :port, and :user search
 parameters."
   (let ((entry (if (stringp entry)
@@ -773,7 +773,7 @@ Returns the deleted entries."
   (apply #'auth-source-search (plist-put spec :delete t)))
 
 (defun auth-source-search-collection (collection value)
-  "Returns t is VALUE is t or COLLECTION is t or COLLECTION contains VALUE."
+  "Return t if VALUE is t or COLLECTION is t or COLLECTION contains VALUE."
   (when (and (atom collection) (not (eq t collection)))
     (setq collection (list collection)))
 
@@ -1184,7 +1184,8 @@ FILE is the file from which we obtained this token."
           (auth-source--pad auth-source--session-nonce
                             (plist-get cdata :cipher-keysize))
           (list 'iv-auto (plist-get cdata :cipher-ivsize))
-          (auth-source--pad string (plist-get cdata :cipher-blocksize)))
+          (auth-source--pad (encode-coding-string string 'utf-8)
+                            (plist-get cdata :cipher-blocksize)))
          "-"))
     (mapcar #'1- string)))
 
@@ -1203,14 +1204,16 @@ FILE is the file from which we obtained this token."
            (gnutls-available-p))
       (let ((cdata (car (last (gnutls-ciphers))))
             (bits (split-string data "-")))
-        (auth-source--unpad
-         (car
-          (gnutls-symmetric-decrypt
-           (pop cdata)
-           (auth-source--pad auth-source--session-nonce
-                             (plist-get cdata :cipher-keysize))
-           (base64-decode-string (cadr bits))
-           (base64-decode-string (car bits))))))
+        (decode-coding-string
+         (auth-source--unpad
+          (car
+           (gnutls-symmetric-decrypt
+            (pop cdata)
+            (auth-source--pad auth-source--session-nonce
+                              (plist-get cdata :cipher-keysize))
+            (base64-decode-string (cadr bits))
+            (base64-decode-string (car bits)))))
+         'utf-8))
     (apply #'string (mapcar #'1+ data))))
 
 (cl-defun auth-source-netrc-search (&rest spec
@@ -1511,15 +1514,15 @@ Respects `auth-source-save-behavior'.  Uses
 ;;; Backend specific parsing: Secrets API backend
 
 (defun auth-source-secrets-listify-pattern (pattern)
-  "Convert a pattern with lists to a list of string patterns.
+  "Convert a PATTERN with lists to a list of string patterns.
 
 auth-source patterns can have values of the form :foo (\"bar\"
 \"qux\"), which means to match any secret with :foo equal to
 \"bar\" or :foo equal to \"qux\".  The secrets backend supports
 only string values for patterns, so this routine returns a list
-of patterns that is equivalent to the single original pattern
+of patterns that is equivalent to the single original PATTERN
 when interpreted such that if a secret matches any pattern in the
-list, it matches the original pattern."
+list, it matches the original PATTERN."
   (if (null pattern)
       '(nil)
     (let* ((key (pop pattern))
@@ -1932,7 +1935,7 @@ entries for git.gnus.org:
 
 
 (defun auth-source--decode-octal-string (string)
-  "Convert octal string to utf-8 string. E.g: 'a\134b' to 'a\b'"
+  "Convert octal string to utf-8 string.  E.g: 'a\134b' to 'a\b'"
   (let ((list (string-to-list string))
         (size (length string)))
     (decode-coding-string
@@ -2031,7 +2034,7 @@ entries for git.gnus.org:
 (cl-defun auth-source-plstore-search (&rest spec
                                       &key backend create delete max
                                       &allow-other-keys)
-  "Search the PLSTORE; spec is like `auth-source'."
+  "Search the PLSTORE; SPEC is like `auth-source'."
   (let* ((store (oref backend data))
          (max (or max 5000))     ; sanity check: default to stop at 5K
          (ignored-keys '(:create :delete :max :backend :label :require :type))
@@ -2046,9 +2049,9 @@ entries for git.gnus.org:
                                           (if (or (null v)
                                                   (eq t v))
                                               nil
-                                            (if (stringp v)
-                                                (setq v (list v)))
-                                            (list k v))))
+                                            (list
+                                             k
+                                             (auth-source-ensure-strings v)))))
                                       search-keys)))
          ;; needed keys (always including host, login, port, and secret)
          (returned-keys (delete-dups (append

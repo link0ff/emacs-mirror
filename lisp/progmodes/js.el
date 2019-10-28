@@ -650,7 +650,8 @@ indentation looks like this (different):
       </element>
   )"
   :version "27.1"
-  :type 'integer
+  :type '(choice integer
+                 (const :tag "Not Set" nil))
   :safe (lambda (x) (or (null x) (integerp x)))
   :group 'js)
 ;; This is how indentation behaved out-of-the-box until Emacs 27.  JSX
@@ -2702,7 +2703,7 @@ Whitespace and comments around the arrow are ignored.")
 
 (defun js--broken-arrow-terminates-line-p ()
   "Helper function for `js--proper-indentation'.
-Return t if the last non-comment, non-whitespace token of the
+Return non-nil if the last non-comment, non-whitespace token of the
 current line is the \"=>\" token (of an arrow function)."
   (let ((from (point)))
     (end-of-line)

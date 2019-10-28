@@ -424,7 +424,12 @@ changing `tabulated-list-sort-key'."
 	 (setq saved-col (current-column))
          (when (eq (window-buffer) (current-buffer))
            (setq window-line
-                 (count-screen-lines (window-start) (point)))))
+                 (save-excursion
+                   (save-restriction
+                     (widen)
+                     (narrow-to-region (window-start) (point))
+                     (goto-char (point-min))
+                     (vertical-motion (buffer-size)))))))
     ;; Sort the entries, if necessary.
     (when sorter
       (setq entries (sort entries sorter)))
@@ -544,7 +549,7 @@ Return the column number after insertion."
     (when (and not-last-col
                (> label-width available-space)
                (setq label (truncate-string-to-width
-                            label available-space nil nil t)
+                            label available-space nil nil t t)
                      label-width available-space)))
     (setq label (bidi-string-mark-left-to-right label))
     (when (and right-align (> width label-width))

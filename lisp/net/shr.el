@@ -201,6 +201,7 @@ and other things:
     (define-key map [?\M-\t] 'shr-previous-link)
     (define-key map [follow-link] 'mouse-face)
     (define-key map [mouse-2] 'shr-browse-url)
+    (define-key map [C-down-mouse-1] 'shr-mouse-browse-url-new-window)
     (define-key map "I" 'shr-insert-image)
     (define-key map "w" 'shr-maybe-probe-and-copy-url)
     (define-key map "u" 'shr-maybe-probe-and-copy-url)
@@ -967,7 +968,13 @@ size, and full-buffer size."
   (mouse-set-point ev)
   (shr-browse-url))
 
-(defun shr-browse-url (&optional external mouse-event)
+(defun shr-mouse-browse-url-new-window (ev)
+  "Browse the URL under the mouse cursor in a new window."
+  (interactive "e")
+  (mouse-set-point ev)
+  (shr-browse-url nil nil t))
+
+(defun shr-browse-url (&optional external mouse-event new-window)
   "Browse the URL at point using `browse-url'.
 If EXTERNAL is non-nil (interactively, the prefix argument), browse
 the URL using `browse-url-secondary-browser-function'.
@@ -987,7 +994,9 @@ the mouse click event."
           (progn
 	    (funcall browse-url-secondary-browser-function url)
             (shr--blink-link))
-	(browse-url url))))))
+	(browse-url url (if new-window
+			    (not browse-url-new-window-flag)
+			  browse-url-new-window-flag)))))))
 
 (defun shr-save-contents (directory)
   "Save the contents from URL in a file."
@@ -1066,7 +1075,8 @@ element is the data blob and the second element is the content-type."
 		      (create-image data nil t :ascent 100
 				    :format content-type))
 		     ((eq content-type 'image/svg+xml)
-		      (create-image data 'svg t :ascent 100))
+                      (when (image-type-available-p 'svg)
+		        (create-image data 'svg t :ascent 100)))
 		     ((eq size 'full)
 		      (ignore-errors
 			(shr-rescale-image data content-type
@@ -1146,14 +1156,13 @@ width/height instead."
 
 ;; url-cache-extract autoloads url-cache.
 (declare-function url-cache-create-filename "url-cache" (url))
-(autoload 'mm-disable-multibyte "mm-util")
 (autoload 'browse-url-mail "browse-url")
 
 (defun shr-get-image-data (url)
   "Get image data for URL.
 Return a string with image data."
   (with-temp-buffer
-    (mm-disable-multibyte)
+    (set-buffer-multibyte nil)
     (when (ignore-errors
 	    (url-cache-extract (url-cache-create-filename (shr-encode-url url)))
 	    t)
@@ -1181,9 +1190,11 @@ Return a string with image data."
                (eq content-type 'image/svg+xml))
       (setq data
             ;; Note that libxml2 doesn't parse everything perfectly,
-            ;; so glitches may occur during this transformation.
+            ;; so glitches may occur during this transformation.  And
+            ;; encode as utf-8: There may be text (and other elements)
+            ;; that are non-ASCII.
 	    (shr-dom-to-xml
-	     (libxml-parse-xml-region (point) (point-max)))))
+	     (libxml-parse-xml-region (point) (point-max)) 'utf-8)))
     ;; SVG images often do not have a specified foreground/background
     ;; color, so wrap them in styles.
     (when (eq content-type 'image/svg+xml)
@@ -1339,9 +1350,14 @@ ones, in case fg and bg are nil."
 (defun shr-tag-comment (_dom)
   )
 
-(defun shr-dom-to-xml (dom)
+(defun shr-dom-to-xml (dom &optional charset)
   (with-temp-buffer
     (shr-dom-print dom)
+    (when charset
+      (encode-coding-region (point-min) (point-max) charset)
+      (goto-char (point-min))
+      (insert (format "<?xml version=\"1.0\" encoding=\"%s\"?>\n"
+                      charset)))
     (buffer-string)))
 
 (defun shr-dom-print (dom)
@@ -1374,7 +1390,8 @@ ones, in case fg and bg are nil."
 	     (not shr-inhibit-images)
              (dom-attr dom 'width)
              (dom-attr dom 'height))
-    (funcall shr-put-image-function (list (shr-dom-to-xml dom) 'image/svg+xml)
+    (funcall shr-put-image-function (list (shr-dom-to-xml dom 'utf-8)
+                                          'image/svg+xml)
 	     "SVG Image")))
 
 (defun shr-tag-sup (dom)

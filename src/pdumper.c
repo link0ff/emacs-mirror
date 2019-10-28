@@ -630,7 +630,7 @@ dump_set_have_current_referrer (struct dump_context *ctx, bool have)
 #endif
 }
 
-/* Return true if if objects should be enqueued in CTX to refer to an
+/* Return true if objects should be enqueued in CTX to refer to an
    object that the caller should store into CTX->current_referrer.
 
    Until dump_clear_referrer is called, any objects enqueued are being
@@ -1093,7 +1093,7 @@ dump_calc_link_score (dump_off basis,
   return powf (link_score, (float) link_weight / 1000.0f);
 }
 
-/* Compute the score score for a queued object.
+/* Compute the score for a queued object.
 
    OBJECT is the object to query, which must currently be queued for
    dumping.  BASIS is the offset at which we would be
@@ -2769,7 +2769,7 @@ dump_hash_table (struct dump_context *ctx,
 static dump_off
 dump_buffer (struct dump_context *ctx, const struct buffer *in_buffer)
 {
-#if CHECK_STRUCTS && !defined HASH_buffer_9F2F522174
+#if CHECK_STRUCTS && !defined HASH_buffer_375A10F5E5
 # error "buffer changed. See CHECK_STRUCTS comment in config.h."
 #endif
   struct buffer munged_buffer = *in_buffer;

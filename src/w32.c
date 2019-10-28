@@ -4062,7 +4062,11 @@ faccessat (int dirfd, const char * path, int mode, int flags)
 	  /* FALLTHROUGH */
 	  FALLTHROUGH;
 	case ERROR_FILE_NOT_FOUND:
+	case ERROR_PATH_NOT_FOUND:
+	case ERROR_INVALID_DRIVE:
+	case ERROR_NOT_READY:
 	case ERROR_BAD_NETPATH:
+	case ERROR_BAD_NET_NAME:
 	  errno = ENOENT;
 	  break;
 	default:
@@ -6255,7 +6259,7 @@ acl_valid (acl_t acl)
   return is_valid_security_descriptor ((PSECURITY_DESCRIPTOR)acl) ? 0 : -1;
 }
 
-char *
+char * ATTRIBUTE_MALLOC
 acl_to_text (acl_t acl, ssize_t *size)
 {
   LPTSTR str_acl;

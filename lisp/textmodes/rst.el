@@ -388,8 +388,8 @@ in parentheses follows the development revision and the time stamp.")
 				        ; item tag.
 
     ;; Inline markup (`ilm')
-    (ilm-pfx (:alt "^" hws-prt "[-'\"([{<‘“«’/:]"))
-    (ilm-sfx (:alt "$" hws-prt "[]-'\")}>’”»/:.,;!?\\]"))
+    (ilm-pfx (:alt "^" hws-prt "['\"([{<‘“«’/:-]"))
+    (ilm-sfx (:alt "$" hws-prt "[]'\")}>’”»/:.,;!?\\-]"))
 
     ;; Inline markup content (`ilc')
     (ilcsgl-tag "\\S ") ; A single non-white character.
@@ -431,7 +431,7 @@ in parentheses follows the development revision and the time stamp.")
     (fld-tag ":" fldnam-tag ":") ; A field marker.
 
     ;; Options (`opt')
-    (optsta-tag (:alt "[-+/]" "--")) ; Start of an option.
+    (optsta-tag (:alt "[+/-]" "--")) ; Start of an option.
     (optnam-tag "\\sw" (:alt "-" "\\sw") "*") ; Name of an option.
     (optarg-tag (:shy "[ =]\\S +")) ; Option argument.
     (optsep-tag (:shy "," hws-prt)) ; Separator between options.
@@ -457,7 +457,7 @@ in parentheses follows the development revision and the time stamp.")
 				       ; tag.
 
     ;; Symbol (`sym')
-    (sym-prt "[-+.:_]") ; Non-word part of a symbol.
+    (sym-prt "[+.:_-]") ; Non-word part of a symbol.
     (sym-tag (:shy "\\sw+" (:shy sym-prt "\\sw+") "*"))
 
     ;; URIs (`uri')
@@ -4380,10 +4380,15 @@ buffer, if the region is not selected."
   "Convert the document to a PDF file and launch a preview program."
   (interactive)
   (let* ((tmp-filename (make-temp-file "rst_el" nil ".pdf"))
+         (pdf-compile-program (cadr (assq 'pdf rst-compile-toolsets)))
 	 (command (format "%s %s %s && %s %s ; rm %s"
-			  (cadr (assq 'pdf rst-compile-toolsets))
+			  pdf-compile-program
 			  buffer-file-name tmp-filename
 			  rst-pdf-program tmp-filename tmp-filename)))
+    (unless (executable-find pdf-compile-program)
+      (error "Cannot find executable `%s'" pdf-compile-program))
+    (unless (executable-find rst-pdf-program)
+      (error "Cannot find executable `%s'" rst-pdf-program))
     (start-process-shell-command "rst-pdf-preview" nil command)
     ;; Note: you could also use (compile command) to view the compilation
     ;; output.

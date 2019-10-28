@@ -342,6 +342,7 @@ is either `foreground-color', `background-color', or a keyword."
     (:box (".attributeBox" . "Face.AttributeBox"))
     (:underline (".attributeUnderline" . "Face.AttributeUnderline"))
     (:inverse-video (".attributeInverse" . "Face.AttributeInverse"))
+    (:extend (".attributeExtend" . "Face.AttributeExtend"))
     (:stipple
      (".attributeStipple" . "Face.AttributeStipple")
      (".attributeBackgroundPixmap" . "Face.AttributeBackgroundPixmap"))
@@ -594,6 +595,13 @@ Use `face-attribute' for finer control."
   (let ((italic (face-attribute face :slant frame inherit)))
     (memq italic '(italic oblique))))
 
+(defun face-extend-p (face &optional frame inherit)
+ "Return non-nil if FACE specifies a non-nil extend.
+If the optional argument FRAME is given, report on face FACE in that frame.
+If FRAME is t, report on the defaults for face FACE (for new frames).
+If FRAME is omitted or nil, use the selected frame.
+Optional argument INHERIT is passed to `face-attribute'."
+ (eq (face-attribute face :extend frame inherit) t))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -759,6 +767,11 @@ explicitly don't use a stipple pattern.
 For convenience, attributes `:family', `:foundry', `:width',
 `:height', `:weight', and `:slant' may also be set in one step
 from an X font name:
+
+`:extend'
+
+VALUE specifies whether the FACE should be extended after EOL.
+VALUE must be one of t or nil.
 
 `:font'
 
@@ -979,6 +992,18 @@ Use `set-face-attribute' or `modify-face' for finer control."
 
 (define-obsolete-function-alias 'set-face-italic-p 'set-face-italic "24.4")
 
+(defun set-face-extend (face extend-p &optional frame)
+  "Specify whether face FACE should be extended.
+EXTEND-P nil means FACE explicitly doesn't extend after EOL.
+EXTEND-P t means FACE extends after EOL.
+
+FRAME nil or not specified means change face on all frames.
+Use `set-face-attribute' to \"unspecify\" underlining."
+  (interactive
+   (let ((list (read-face-and-attribute :extend)))
+     (list (car list) (if (cadr list) t))))
+  (set-face-attribute face frame :extend extend-p))
+
 
 (defalias 'set-face-background-pixmap 'set-face-stipple)
 
@@ -1102,7 +1127,7 @@ an integer value."
 	   (:slant
 	    (mapcar #'(lambda (x) (cons (symbol-name (aref x 1)) (aref x 1)))
 		    font-slant-table))
-	   (:inverse-video
+	   ((or :inverse-video :extend)
 	    (mapcar #'(lambda (x) (cons (symbol-name x) x))
 		    (internal-lisp-face-attribute-values attribute)))
            ((or :underline :overline :strike-through :box)
@@ -1147,6 +1172,7 @@ an integer value."
     (:slant . "slant")
     (:underline . "underline")
     (:overline . "overline")
+    (:extend . "extend")
     (:strike-through . "strike-through")
     (:box . "box")
     (:inverse-video . "inverse-video display")
@@ -1549,7 +1575,8 @@ is given, in which case return its value instead."
 	     ;; (see also realize_default_face in xfaces.c).
 	     (append
 	      '(:underline nil :overline nil :strike-through nil
-		:box nil :inverse-video nil :stipple nil :inherit nil)
+		:box nil :inverse-video nil :stipple nil :inherit nil
+                :extend nil)
 	      ;; `display-graphic-p' is unavailable when running
 	      ;; temacs, prior to loading frame.el.
 	      (when (fboundp 'display-graphic-p)
@@ -2314,39 +2341,39 @@ If you set `term-file-prefix' to nil, this function does nothing."
 ;; if background is light.
 (defface region
   '((((class color) (min-colors 88) (background dark))
-     :background "blue3")
+     :background "blue3" :extend t)
     (((class color) (min-colors 88) (background light) (type gtk))
      :distant-foreground "gtk_selection_fg_color"
-     :background "gtk_selection_bg_color")
+     :background "gtk_selection_bg_color" :extend t)
     (((class color) (min-colors 88) (background light) (type ns))
      :distant-foreground "ns_selection_fg_color"
-     :background "ns_selection_bg_color")
+     :background "ns_selection_bg_color" :extend t)
     (((class color) (min-colors 88) (background light))
-     :background "lightgoldenrod2")
+     :background "lightgoldenrod2" :extend t)
     (((class color) (min-colors 16) (background dark))
-     :background "blue3")
+     :background "blue3" :extend t)
     (((class color) (min-colors 16) (background light))
-     :background "lightgoldenrod2")
+     :background "lightgoldenrod2" :extend t)
     (((class color) (min-colors 8))
-     :background "blue" :foreground "white")
+     :background "blue" :foreground "white" :extend t)
     (((type tty) (class mono))
      :inverse-video t)
-    (t :background "gray"))
+    (t :background "gray" :extend t))
   "Basic face for highlighting the region."
   :version "21.1"
   :group 'basic-faces)
 
 (defface secondary-selection
   '((((class color) (min-colors 88) (background light))
-     :background "yellow1")
+     :background "yellow1" :extend t)
     (((class color) (min-colors 88) (background dark))
-     :background "SkyBlue4")
+     :background "SkyBlue4" :extend t)
     (((class color) (min-colors 16) (background light))
-     :background "yellow")
+     :background "yellow" :extend t)
     (((class color) (min-colors 16) (background dark))
-     :background "SkyBlue4")
+     :background "SkyBlue4" :extend t)
     (((class color) (min-colors 8))
-     :background "cyan" :foreground "black")
+     :background "cyan" :foreground "black" :extend t)
     (t :inverse-video t))
   "Basic face for displaying the secondary selection."
   :group 'basic-faces)
@@ -2387,6 +2414,48 @@ the buffer.  Similarly, making this face's font different
 from that of the `line-number' face could produce such
 unwanted effects."
   :version "26.1"
+  :group 'basic-faces
+  :group 'display-line-numbers)
+
+(defface line-number-major-tick
+  '((((class color grayscale) (background light))
+     :background "grey85" :bold t)
+    (((class color grayscale) (background dark))
+     :background "grey75" :bold t)
+    (t :inherit line-number))
+  "Face for highlighting \"major ticks\" (as in a ruler).
+When `display-line-numbers-major-tick' is positive, highlight
+the line numbers of lines which are a multiple of its value.
+This face is used when `display-line-numbers' is non-nil.
+
+If you customize the font of this face, make sure it is a
+monospaced font, otherwise line numbers will not line up,
+and text lines might move horizontally as you move through
+the buffer.  Similarly, making this face's font different
+from that of the `line-number' face could produce such
+unwanted effects."
+  :version "27.1"
+  :group 'basic-faces
+  :group 'display-line-numbers)
+
+(defface line-number-minor-tick
+  '((((class color grayscale) (background light))
+     :background "grey95" :bold t)
+    (((class color grayscale) (background dark))
+     :background "grey55" :bold t)
+    (t :inherit line-number))
+  "Face for highlighting \"minor ticks\" (as in a ruler).
+When `display-line-numbers-minor-tick' is positive, highlight
+the line numbers of lines which are a multiple of its value.
+This face is used when `display-line-numbers' is non-nil.
+
+If you customize the font of this face, make sure it is a
+monospaced font, otherwise line numbers will not line up,
+and text lines might move horizontally as you move through
+the buffer.  Similarly, making this face's font different
+from that of the `line-number' face could produce such
+unwanted effects."
+  :version "27.1"
   :group 'basic-faces
   :group 'display-line-numbers)
 

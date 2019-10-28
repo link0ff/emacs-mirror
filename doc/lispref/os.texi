@@ -1435,9 +1435,9 @@ the past or future.
 
   Calendrical conversion functions always use the Gregorian calendar, even
 for dates before the Gregorian calendar was introduced.  Year numbers
-count the number of years since the year 1 B.C., and do not skip zero
+count the number of years since the year 1 BC, and do not skip zero
 as traditional Gregorian years do; for example, the year number
-@minus{}37 represents the Gregorian year 38 B.C@.
+@minus{}37 represents the Gregorian year 38 BC@.
 
 @defun time-convert time &optional form
 This function converts a time value into a Lisp timestamp.
@@ -2594,6 +2594,15 @@ if it is non-@code{nil}; this can be overridden by binding
 @defvar noninteractive
 This variable is non-@code{nil} when Emacs is running in batch mode.
 @end defvar
+
+If Emacs exits due to signalling an error in batch mode, the exit
+status of the Emacs command is non-zero:
+
+@example
+$ emacs -Q --batch --eval '(error "foo")'; echo $?
+foo
+255
+@end example
 
 @node Session Management
 @section Session Management

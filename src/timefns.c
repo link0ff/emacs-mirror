@@ -1491,8 +1491,8 @@ Lisp timestamp representing a nonnegative value less than 60
 \(or less than 61 if the operating system supports leap seconds).
 MINUTE is an integer between 0 and 59.  HOUR is an integer
 between 0 and 23.  DAY is an integer between 1 and 31.  MONTH is an
-integer between 1 and 12.  YEAR is an integer indicating the
-four-digit year.  DOW is the day of week, an integer between 0 and 6,
+integer between 1 and 12.  YEAR is the year number, an integer; 0
+represents 1 BC.  DOW is the day of week, an integer between 0 and 6,
 where 0 is Sunday.  DST is t if daylight saving time is in effect,
 nil if it is not in effect, and -1 if daylight saving information is
 not available.  UTCOFF is an integer indicating the UTC offset in
@@ -1719,7 +1719,7 @@ DEFUN ("time-convert", Ftime_convert, Stime_convert, 1, 2, 0,
 With optional FORM, convert to that timestamp form.
 Truncate the returned value toward minus infinity.
 
-If FORM is nil (the default), return the the same form as `current-time'.
+If FORM is nil (the default), return the same form as `current-time'.
 If FORM is a positive integer, return a pair of integers (TICKS . FORM),
 where TICKS is the number of clock ticks and FORM is the clock frequency
 in ticks per second.  (Currently the positive integer should be at least

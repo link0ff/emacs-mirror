@@ -45,6 +45,14 @@ wait this many seconds after Emacs becomes idle before doing an update."
   :group 'display
   :version "22.1")
 
+(defvar amalgamating-undo-limit 20
+  "The maximum number of changes to possibly amalgamate when undoing changes.
+The `undo' command will normally consider \"similar\" changes
+(like inserting characters) to be part of the same change.  This
+is called \"amalgamating\" the changes.  This variable says what
+the maximum number of changes condidered is when amalgamating.  A
+value of 1 means that nothing is amalgamated.")
+
 (defgroup killing nil
   "Killing and yanking commands."
   :group 'editing)
@@ -466,7 +474,10 @@ Other major modes are defined by comparison with this one."
 
 (put 'special-mode 'mode-class 'special)
 (define-derived-mode special-mode nil "Special"
-  "Parent major mode from which special major modes should inherit."
+  "Parent major mode from which special major modes should inherit.
+
+A special major mode is intended to view specially formatted data
+rather than files.  These modes usually use read-only buffers."
   (setq buffer-read-only t))
 
 ;; Making and deleting lines.
@@ -500,17 +511,18 @@ If `electric-indent-mode' is enabled, this indents the final new line
 that it adds, and reindents the preceding line.  To just insert
 a newline, use \\[electric-indent-just-newline].
 
-Calls `auto-fill-function' if the current column number is greater
-than the value of `fill-column' and ARG is nil.
+If `auto-fill-mode' is enabled, this may cause automatic line
+breaking of the preceding line.  A non-nil ARG inhibits this.
+
 A non-nil INTERACTIVE argument means to run the `post-self-insert-hook'."
   (interactive "*P\np")
   (barf-if-buffer-read-only)
-  ;; Call self-insert so that auto-fill, abbrev expansion etc. happens.
+  ;; Call self-insert so that auto-fill, abbrev expansion etc. happen.
   ;; Set last-command-event to tell self-insert what to insert.
   (let* ((was-page-start (and (bolp) (looking-at page-delimiter)))
          (beforepos (point))
          (last-command-event ?\n)
-         ;; Don't auto-fill if we have a numeric argument.
+         ;; Don't auto-fill if we have a prefix argument.
          (auto-fill-function (if arg nil auto-fill-function))
          (arg (prefix-numeric-value arg))
          (postproc
@@ -1993,12 +2005,15 @@ makes the search case-sensitive.
 See also `minibuffer-history-case-insensitive-variables'."
   (interactive
    (let* ((enable-recursive-minibuffers t)
-	  (regexp (read-from-minibuffer "Previous element matching (regexp): "
-					nil
-					minibuffer-local-map
-					nil
-					'minibuffer-history-search-history
-					(car minibuffer-history-search-history))))
+	  (regexp (read-from-minibuffer
+                   (format "Previous element matching regexp%s: "
+                           (if minibuffer-history-search-history
+                               (format " (default %s)"
+                                       (car minibuffer-history-search-history))
+                             ""))
+		   nil minibuffer-local-map nil
+		   'minibuffer-history-search-history
+		   (car minibuffer-history-search-history))))
      ;; Use the last regexp specified, by default, if input is empty.
      (list (if (string= regexp "")
 	       (if minibuffer-history-search-history
@@ -3123,7 +3138,7 @@ behavior."
          (undo-auto--last-boundary-amalgamating-number)))
     (setq undo-auto--this-command-amalgamating t)
     (when last-amalgamating-count
-      (if (and (< last-amalgamating-count 20)
+      (if (and (< last-amalgamating-count amalgamating-undo-limit)
                (eq this-command last-command))
           ;; Amalgamate all buffers that have changed.
           ;; This may be needed for example if some *-change-functions
@@ -3321,7 +3336,7 @@ to `shell-command-history'."
         (shell-completion-vars)
 	(set (make-local-variable 'minibuffer-default-add-function)
 	     'minibuffer-default-add-shell-commands))
-    (apply 'read-from-minibuffer prompt initial-contents
+    (apply #'read-from-minibuffer prompt initial-contents
 	   minibuffer-local-shell-command-map
 	   nil
 	   (or hist 'shell-command-history)
@@ -3372,6 +3387,13 @@ If a positive integer, tell the shell to use that number of columns for
 command output."
   :type '(choice (const :tag "Use system limit" nil)
                  (integer :tag "Fixed width" :value 80))
+  :group 'shell
+  :version "27.1")
+
+(defcustom shell-command-prompt-show-cwd nil
+  "If non-nil, show current directory when prompting for a shell command.
+This affects `shell-command' and `async-shell-command'."
+  :type 'boolean
   :group 'shell
   :version "27.1")
 
@@ -3464,7 +3486,12 @@ directly, since it offers more control and does not impose the use of
 a shell (with its need to quote arguments)."
   (interactive
    (list
-    (read-shell-command "Async shell command: " nil nil
+    (read-shell-command (if shell-command-prompt-show-cwd
+                            (format-message "Async shell command in `%s': "
+                                            (abbreviate-file-name
+                                             default-directory))
+                          "Async shell command: ")
+                        nil nil
 			(let ((filename
 			       (cond
 				(buffer-file-name)
@@ -3484,6 +3511,8 @@ a shell (with its need to quote arguments)."
 With prefix argument, insert the COMMAND's output at point.
 
 Interactively, prompt for COMMAND in the minibuffer.
+If `shell-command-prompt-show-cwd' is non-nil, show the current
+directory in the prompt.
 
 If COMMAND ends in `&', execute it asynchronously.
 The output appears in the buffer `*Async Shell Command*'.
@@ -3537,7 +3566,12 @@ impose the use of a shell (with its need to quote arguments)."
 
   (interactive
    (list
-    (read-shell-command "Shell command: " nil nil
+    (read-shell-command (if shell-command-prompt-show-cwd
+                            (format-message "Shell command in `%s': "
+                                            (abbreviate-file-name
+                                             default-directory))
+                          "Shell command: ")
+                        nil nil
 			(let ((filename
 			       (cond
 				(buffer-file-name)
@@ -5130,12 +5164,84 @@ and KILLP is t if a prefix arg was specified."
     ;; Avoid warning about delete-backward-char
     (with-no-warnings (delete-backward-char n killp))))
 
+(defvar read-char-with-history--history nil
+  "The default history for `read-char-with-history'.")
+
+(defun read-char-with-history (prompt &optional inherit-input-method seconds
+                                      history)
+  "Like `read-char', but allows navigating in a history.
+HISTORY is like HIST in `read-from-minibuffer'.
+
+The navigation commands are `M-p' and `M-n', with `RET' to select
+a character from history."
+  (let* ((result nil)
+         (real-prompt prompt)
+         (hist-format
+          (lambda (char)
+            (if (string-match ": *\\'" real-prompt)
+                (format "%s (default %c): "
+                        (substring real-prompt 0 (match-beginning 0))
+                        char)
+              (format "%s (default %c) " real-prompt char))))
+         (index 0)
+         histvar)
+    ;; Use the same history interface as `read-from-minibuffer'.
+    (cond
+     ((null history)
+      (setq histvar 'read-char-with-history--history))
+     ((consp history)
+      (setq histvar (car history)
+            index (cdr history)))
+     ((symbolp history)
+      (setq histvar history))
+     (t
+      (error "Invalid history: %s" history)))
+    (while (not result)
+      (setq result (read-event prompt inherit-input-method seconds))
+      ;; Go back in history.
+      (cond
+       ((memq result '(?\M-p up))
+        (if (>= index (length (symbol-value histvar)))
+            (progn
+              (message "Beginning of history; no preceding item")
+              (ding)
+              (sit-for 2))
+          (setq index (1+ index)
+                prompt (funcall hist-format
+                                (elt (symbol-value histvar) (1- index)))))
+        (setq result nil))
+       ;; Go forward in history.
+       ((memq result '(?\M-n down))
+        (if (zerop index)
+            (progn
+              (message "End of history; no next item")
+              (ding)
+              (sit-for 2))
+          (setq index (1- index)
+                prompt (if (zerop index)
+                           real-prompt
+                         (funcall hist-format
+                                  (elt (symbol-value histvar) (1- index))))))
+        (setq result nil))
+       ;; The user hits RET to either select a history item or to
+       ;; return RET.
+       ((eq result 'return)
+        (if (zerop index)
+            (setq result ?\r)
+          (setq result (elt (symbol-value histvar) (1- index)))))
+       ;; The user has entered some non-character event.
+       ((not (characterp result))
+        (user-error "Non-character input event"))))
+    ;; Record the chosen key.
+    (set histvar (cons result (symbol-value histvar)))
+    result))
+
 (defun zap-to-char (arg char)
   "Kill up to and including ARGth occurrence of CHAR.
 Case is ignored if `case-fold-search' is non-nil in the current buffer.
 Goes backward if ARG is negative; error if CHAR not found."
   (interactive (list (prefix-numeric-value current-prefix-arg)
-		     (read-char "Zap to char: " t)))
+		     (read-char-with-history "Zap to char: " t)))
   ;; Avoid "obsolete" warnings for translation-table-for-input.
   (with-no-warnings
     (if (char-table-p translation-table-for-input)
@@ -5584,10 +5690,11 @@ the region must not be empty.  Otherwise, the return value is nil.
 For some commands, it may be appropriate to ignore the value of
 `use-empty-active-region'; in that case, use `region-active-p'."
   (and (region-active-p)
-       (or use-empty-active-region (> (region-end) (region-beginning)))))
+       (or use-empty-active-region (> (region-end) (region-beginning)))
+       t))
 
 (defun region-active-p ()
-  "Return non-nil if Transient Mark mode is enabled and the mark is active.
+  "Return t if Transient Mark mode is enabled and the mark is active.
 
 Some commands act specially on the region when Transient Mark
 mode is enabled.  Usually, such commands should use
@@ -8391,10 +8498,7 @@ Called from `temp-buffer-show-hook'."
 		 "In this buffer, type \\[choose-completion] to \
 select the completion near point.\n\n"))))))
 
-(add-hook 'completion-setup-hook 'completion-setup-function)
-
-(define-key minibuffer-local-completion-map [prior] 'switch-to-completions)
-(define-key minibuffer-local-completion-map "\M-v"  'switch-to-completions)
+(add-hook 'completion-setup-hook #'completion-setup-function)
 
 (defun switch-to-completions ()
   "Select the completion list window."

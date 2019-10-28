@@ -598,7 +598,7 @@ Otherwise, goto next page only on typing SPC (ARG is nil)."
   (if (or doc-view-continuous (null arg))
       (let ((hscroll (window-hscroll))
 	    (cur-page (doc-view-current-page)))
-	(when (= (window-vscroll) (image-scroll-up arg))
+	(when (= (window-vscroll nil t) (image-scroll-up arg))
 	  (doc-view-next-page)
 	  (when (/= cur-page (doc-view-current-page))
 	    (image-bob)
@@ -615,7 +615,7 @@ Otherwise, goto previous page only on typing DEL (ARG is nil)."
   (if (or doc-view-continuous (null arg))
       (let ((hscroll (window-hscroll))
 	    (cur-page (doc-view-current-page)))
-	(when (= (window-vscroll) (image-scroll-down arg))
+	(when (= (window-vscroll nil t) (image-scroll-down arg))
 	  (doc-view-previous-page)
 	  (when (/= cur-page (doc-view-current-page))
 	    (image-eob)
@@ -631,7 +631,7 @@ at the bottom edge of the page moves to the next page."
   (if doc-view-continuous
       (let ((hscroll (window-hscroll))
 	    (cur-page (doc-view-current-page)))
-	(when (= (window-vscroll) (image-next-line arg))
+	(when (= (window-vscroll nil t) (image-next-line arg))
 	  (doc-view-next-page)
 	  (when (/= cur-page (doc-view-current-page))
 	    (image-bob)
@@ -647,7 +647,7 @@ at the top edge of the page moves to the previous page."
   (if doc-view-continuous
       (let ((hscroll (window-hscroll))
 	    (cur-page (doc-view-current-page)))
-	(when (= (window-vscroll) (image-previous-line arg))
+	(when (= (window-vscroll nil t) (image-previous-line arg))
 	  (doc-view-previous-page)
 	  (when (/= cur-page (doc-view-current-page))
 	    (image-eob)
@@ -1429,7 +1429,7 @@ ARGS is a list of image descriptors."
 		  (vscroll (image-mode-window-get 'vscroll win)))
 	      ;; Reset scroll settings, in case they were changed.
 	      (if hscroll (set-window-hscroll win hscroll))
-	      (if vscroll (set-window-vscroll win vscroll)))))))))
+	      (if vscroll (set-window-vscroll win vscroll t)))))))))
 
 (defun doc-view-sort (a b)
   "Return non-nil if A should be sorted before B.
@@ -1505,7 +1505,8 @@ For now these keys are useful:
   (interactive)
   (if doc-view--current-converter-processes
       (message "DocView: please wait till conversion finished.")
-    (let ((txt (expand-file-name "doc.txt" (doc-view--current-cache-dir))))
+    (let ((txt (expand-file-name "doc.txt" (doc-view--current-cache-dir)))
+          (page (doc-view-current-page)))
       (if (file-readable-p txt)
 	  (let ((inhibit-read-only t)
 		(buffer-undo-list t)
@@ -1521,6 +1522,10 @@ For now these keys are useful:
 	    (setq-local doc-view--buffer-file-name dv-bfn)
 	    (set-buffer-modified-p nil)
 	    (doc-view-minor-mode)
+            (goto-char (point-min))
+            ;; Put point at the start of the page the user was
+            ;; reading.  Pages are separated by Control-L characters.
+            (re-search-forward page-delimiter nil t (1- page))
 	    (add-hook 'write-file-functions
 		      (lambda ()
                         ;; FIXME: If the user changes major mode and then

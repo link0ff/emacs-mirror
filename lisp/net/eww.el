@@ -128,6 +128,18 @@ The string will be passed through `substitute-command-keys'."
   :type '(choice (const :tag "Never" nil)
                  regexp))
 
+(defcustom eww-browse-url-new-window-is-tab 'tab-bar
+  "Whether to open up new windows in a tab or a new buffer.
+If t, then open the URL in a new tab rather than a new buffer if
+`eww-browse-url' is asked to open it in a new window.
+If `tab-bar', then open the URL in a new tab only when
+the tab bar is enabled."
+  :version "27.1"
+  :group 'eww
+  :type '(choice (const :tag "Always open URL in new tab" t)
+                 (const :tag "Open new tab when tab bar is enabled" tab-bar)
+                 (const :tag "Never open URL in new tab" nil)))
+
 (defcustom eww-after-render-hook nil
   "A hook called after eww has finished rendering the buffer."
   :version "25.1"
@@ -369,6 +381,11 @@ engine used."
   (interactive)
   (let ((url (eww-suggested-uris)))
     (if (null url) (user-error "No link at point")
+      (when (or (eq eww-browse-url-new-window-is-tab t)
+                (and (eq eww-browse-url-new-window-is-tab 'tab-bar)
+                     tab-bar-mode))
+        (let ((tab-bar-new-tab-choice t))
+          (tab-new)))
       ;; clone useful to keep history, but
       ;; should not clone from non-eww buffer
       (with-current-buffer
@@ -878,7 +895,25 @@ the like."
 
 ;;;###autoload
 (defun eww-browse-url (url &optional new-window)
+  "Ask the EWW browser to load URL.
+
+Interactively, if the variable `browse-url-new-window-flag' is non-nil,
+loads the document in a new buffer tab on the window tab-line.  A non-nil
+prefix argument reverses the effect of `browse-url-new-window-flag'.
+
+If `tab-bar-mode' is enabled, then whenever a document would
+otherwise be loaded in a new buffer, it is loaded in a new tab
+in the tab-bar on an existing frame.  See more options in
+`eww-browse-url-new-window-is-tab'.
+
+Non-interactively, this uses the optional second argument NEW-WINDOW
+instead of `browse-url-new-window-flag'."
   (when new-window
+    (when (or (eq eww-browse-url-new-window-is-tab t)
+              (and (eq eww-browse-url-new-window-is-tab 'tab-bar)
+                   tab-bar-mode))
+      (let ((tab-bar-new-tab-choice t))
+        (tab-new)))
     (pop-to-buffer-same-window
      (generate-new-buffer
       (format "*eww-%s*" (url-host (url-generic-parse-url
@@ -1901,8 +1936,8 @@ If CHARSET is nil then use UTF-8."
 (defvar eww-history-mode-map
   (let ((map (make-sparse-keymap)))
     (define-key map "\r" 'eww-history-browse)
-;;    (define-key map "n" 'next-error-no-select)
-;;    (define-key map "p" 'previous-error-no-select)
+    (define-key map "n" 'next-line)
+    (define-key map "p" 'previous-line)
 
     (easy-menu-define nil map
       "Menu for `eww-history-mode-map'."

@@ -1364,7 +1364,7 @@ Return t if the file exists and loads successfully.  */)
                     {
                       Lisp_Object msg_file;
                       msg_file = Fsubstring (found, make_fixnum (0), make_fixnum (-1));
-                      message_with_string ("Source file `%s' newer than byte-compiled file",
+                      message_with_string ("Source file `%s' newer than byte-compiled file; using older file",
                                            msg_file, 1);
                     }
                 }
@@ -2146,6 +2146,12 @@ UNIBYTE, if non-nil, specifies `load-convert-to-unibyte' for this
 DO-ALLOW-PRINT, if non-nil, specifies that output functions in the
  evaluated code should work normally even if PRINTFLAG is nil, in
  which case the output is displayed in the echo area.
+
+This function ignores the current value of the `lexical-binding'
+variable.  Instead it will heed any
+  -*- lexical-binding: t -*-
+settings in the buffer, and if there is no such setting, the buffer
+will be evaluated without lexical binding.
 
 This function preserves the position of point.  */)
   (Lisp_Object buffer, Lisp_Object printflag, Lisp_Object filename, Lisp_Object unibyte, Lisp_Object do_allow_print)
