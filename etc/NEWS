@@ -476,7 +476,7 @@ bind it.
 
 +++
 ** 'zap-to-char' now uses history of characters you used to zap to.
-'zap-to-char' uses the new 'read-char-with-history' function to allow
+'zap-to-char' uses the new 'read-char-from-minibuffer' function to allow
 navigating through the history of characters that have been input.
 This is mostly useful for characters that have complex input methods
 where inputting the character again may involve many keystrokes.
@@ -574,6 +574,12 @@ current and the previous or the next line, as before.
 
 
 * Changes in Specialized Modes and Packages in Emacs 27.1
+
++++
+** New command 'font-lock-refontify'.
+This is an interactive convenience function to be used when developing
+font locking for a mode.  It recomputes the font locking data and then
+re-fontifies the buffer.
 
 ---
 ** The 'C' command in 'tar-mode' will now preserve the timestamp of
@@ -869,6 +875,13 @@ This new user option allows customizing the default arguments passed to
 *** Command 'vc-git-stash' now respects marks in the "*vc-dir*" buffer.
 When some files are marked, only those are stashed.
 When no files are marked, all modified files are stashed, as before.
+
+*** 'vc-git-stash' has now been bound to the 'C' keystroke in the
+stash headers.
+
+*** Some stash keybindings are now available in the stash button.
+'vc-git-stash' and 'vc-git-stash-snapshot' can now be run using 'C'
+and 'S' respectively, including when there are no stashes.
 
 *** The new hook 'vc-retrieve-tag-hook' runs after retrieving a tag.
 
@@ -2480,9 +2493,10 @@ This macro works like 'progn', but messages how long it takes to
 evaluate the body forms.  The value of the last form is the return
 value.
 
-** New function 'read-char-with-history'.
-This function works like 'read-char', but maintains a history that can
-be navigated via the 'M-p'/'M-n' keystrokes.
+** New function 'read-char-from-minibuffer'.
+This function works like 'read-char', but uses 'read-from-minibuffer'
+to read a character, so it maintains a history that can be navigated
+via usual minibuffer keystrokes 'M-p'/'M-n'.
 
 ** 'setq-local' can now set an arbitrary number of variables, which
 makes the syntax more like 'setq'.
@@ -2933,6 +2947,9 @@ data about creation times and orientation and the like.
 'exif-parse-file' and 'exif-parse-buffer' are the main interface
 functions.
 
+*** 'image-mode' now uses this library to automatically rotate images
+according to the orientation in the Exif data, if any.
+
 *** New library image-converter.
 If you need to view exotic image formats for which Emacs doesn't have
 native support, customize the new user option
@@ -2940,8 +2957,9 @@ native support, customize the new user option
 GraphicsMagick, ImageMagick or 'ffmpeg' installed, they will then be
 used to convert images automatically before displaying them.
 
-*** 'image-mode' now uses this library to automatically rotate images
-according to the orientation in the Exif data, if any.
+*** 'auto-mode-alist' now includes many of the types typically
+supported by the external image converters, like WEPB, BMP and ICO.
+These now default to using 'image-mode'.
 
 *** 'imagemagick-types-inhibit' disables using ImageMagick by default.
 'image-mode' started using ImageMagick by default for all images
