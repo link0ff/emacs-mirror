@@ -24946,10 +24946,10 @@ display_mode_lines (struct window *w)
     {
       int tab_num = 0;
 
-      if (current_tab_visible_p (w, &tab_num))
-        {
+      /* if (current_tab_visible_p (w, &tab_num)) */
+      /*   { */
           /* Set some Lisp variable */
-        }
+        /* } */
 
       Lisp_Object window_tab_line_format
 	= window_parameter (w, Qtab_line_format);
