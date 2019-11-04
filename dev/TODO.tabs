@@ -7,3 +7,6 @@
 shows no truncated_on_left_p
 
 
+D in tab-bar-list doesn't add to closed-tabs for undo
+
+

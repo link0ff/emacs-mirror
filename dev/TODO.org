@@ -1,4 +1,14 @@
 
+(info "(emacs) Regexp Backslash")
+  ‘\`’
+       matches the empty string, but only at the beginning of the string
+       or buffer (or its accessible portion) being matched against.
+  ‘\'’
+       matches the empty string, but only at the end of the string or
+       buffer (or its accessible portion) being matched against.
+so 'rx' should have 'bob' (in addition to 'bos', and instead of 'bot')
+
+
 * gettext i18n
 
 gettextize --dry-run

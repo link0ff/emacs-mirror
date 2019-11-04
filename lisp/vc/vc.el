@@ -2917,7 +2917,7 @@ current buffer's file name if it's under version control."
     (when (file-exists-p new)
       (error "New file already exists"))
     (let ((state (vc-state old)))
-      (unless (memq state '(up-to-date edited))
+      (unless (memq state '(up-to-date edited added))
 	(error "Please %s files before moving them"
 	       (if (stringp state) "check in" "update"))))
     (vc-call rename-file old new)
