@@ -10,3 +10,17 @@ shows no truncated_on_left_p
 D in tab-bar-list doesn't add to closed-tabs for undo
 
 
+(defcustom awesome-tab-auto-scroll-flag t
+(defun awesome-tab-scroll (tabset count)
+
+(defvar awesome-tab-buffer-list-function 'awesome-tab-buffer-list
+(defun awesome-tab-buffer-list ()
+                       ((char-equal ?\  (aref (buffer-name b) 0)) nil)
+
+(defvar awesome-tab-buffer-groups-function 'awesome-tab-buffer-groups
+
+(defun awesome-tab-truncate-string (len s &optional ellipsis)
+
+                        (> (vertical-motion 1) 0)))
+
+
