@@ -2922,6 +2922,7 @@ current buffer's file name if it's under version control."
 	       (if (stringp state) "check in" "update"))))
     (vc-call rename-file old new)
     (vc-file-clearprops old)
+    (vc-file-clearprops new)
     ;; Move the actual file (unless the backend did it already)
     (when (file-exists-p old) (rename-file old new))
     ;; ?? Renaming a file might change its contents due to keyword expansion.

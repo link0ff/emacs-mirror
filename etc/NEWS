@@ -202,6 +202,16 @@ the new version of the file again.)
 
 * Changes in Emacs 27.1
 
++++
+** 'next/previous-multiframe-window' have been renamed.
+The new names are as follows:
+
+ 'next-multiframe-window'     -> 'next-window-any-frame'
+ 'previous-multiframe-window' -> 'previous-window-any-frame'
+
+The old function names are maintained as aliases for backward
+compatibility.
+
 ** emacsclient
 
 +++
@@ -320,6 +330,12 @@ Previously, this support was only available when using the external
 'gnutls-cli' command.  Call 'open-network-stream' with
 ':client-certificate t' to trigger looking up of per-server
 certificates via 'auth-source'.
+
++++
+** New user option 'network-stream-use-client-certificates'.
+When non-nil, 'open-network-stream' performs lookups of client
+certificates using 'auth-source' as if ':client-certificate t' were
+specified.  Defaults to t.
 
 +++
 ** New function 'fill-polish-nobreak-p', to be used in 'fill-nobreak-predicate'.
@@ -830,6 +846,9 @@ directories in the destination.
 *** The non-nil value of 'dired-dwim-target' uses one of the most recently
 visited windows with a Dired buffer instead of the next window.
 
+*** When the new user option 'dired-vc-rename-file' is non-nil,
+Dired performs file renaming using underlying version control system.
+
 ** Find-Dired
 
 *** New user option 'find-dired-refine-function'.
@@ -1136,6 +1155,14 @@ the 'package-menu-clear-filter' function, bound to '/ /' by default.
 ---
 *** The package list can now be sorted by version or description.
 
++++
+*** In Package Menu, 'g' now updates package data from archives.
+Previously, 'g' invoked 'tabulated-list-revert' which did not update
+the cached archive data.  It is now bound to 'revert-buffer', which
+will now update the data.
+
+'package-menu-refresh' is an obsolete alias for 'revert-buffer'.
+
 ** Info
 
 +++
@@ -1185,6 +1212,15 @@ A new command 'xref-revert-buffer' is bound to 'g'.
 
 ---
 *** Imenu support has been added to 'xref--xref-buffer-mode'.
+
+** Icomplete
+
++++
+*** A new minor mode based on Icomplete, Fido mode, is made available.
+The point of this mode, named after "Fake Ido", is to recover much of
+the functionality that still separated the popular ido-mode from
+Icomplete, while still cooperating fully with all of Emacs's
+completion facilities.
 
 ** Ecomplete
 
@@ -1443,6 +1479,8 @@ commands repeat the search for the specified occurrence of the search string.
 A negative argument repeats the search in the opposite direction.
 This makes possible also to use a prefix argument for 'M-s .'
 ('isearch-forward-symbol-at-point') to find the next Nth symbol.
+Also a prefix argument is supported for 'isearch-yank-until-char',
+'isearch-yank-word-or-char', 'isearch-yank-symbol-or-char'.
 
 *** To go to the first/last occurrence of the current search string
 is possible now with new commands 'isearch-beginning-of-buffer' and
@@ -2616,6 +2654,11 @@ include functions like 'encode-char' that compute code-points, functions
 like 'file-attributes' that compute file sizes and other attributes,
 functions like 'process-id' that compute process IDs, and functions like
 'user-uid' and 'group-gid' that compute user and group IDs.
+
++++
+** overflow-error is now documented as a subcategory of range-error.
+Formerly it was undocumented, and was (incorrectly) a subcategory
+of domain-error.
 
 ** Time values
 
