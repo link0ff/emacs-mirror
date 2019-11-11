@@ -433,7 +433,6 @@ variable `tab-line-tabs-function'."
                                         tab-line-close-button) ""))
                        `(
                          tab ,tab
-                         current-tab ,(eq tab selected-buffer)
                          face ,(if selected-p
                                    (if (eq (selected-window) (old-selected-window))
                                        'tab-line-tab-current

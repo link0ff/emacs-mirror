@@ -9,6 +9,15 @@
 so 'rx' should have 'bob' (in addition to 'bos', and instead of 'bot')
 
 
+(defun quit-restore-window (&optional window bury-or-kill)
+      ;; Select old window.
+      ;; (when (window-live-p (nth 2 quit-restore))
+      ;;   (select-window (nth 2 quit-restore)))
+
+
+<H-M-right> M-. on man
+
+
 * gettext i18n
 
 gettextize --dry-run
