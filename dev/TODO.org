@@ -18,6 +18,12 @@ so 'rx' should have 'bob' (in addition to 'bos', and instead of 'bot')
 <H-M-right> M-. on man
 
 
+image zoom doesn't work neither with mouse-scroll nor with key '+'
+
+
+mouse-avoidance started to jump off the tooltip
+
+
 * gettext i18n
 
 gettextize --dry-run
