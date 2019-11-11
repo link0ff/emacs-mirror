@@ -2130,7 +2130,8 @@ the end of the list of defaults just after the default value."
   "Puts element of the minibuffer history in the minibuffer.
 The argument NABS specifies the absolute history position in
 descending order, where 0 means the current element and a
-positive number N means the Nth previous element."
+positive number N means the Nth previous element.  NABS being a
+negative number -N means the Nth entry of \"future history.\""
   (interactive "p")
   (when (and (not minibuffer-default-add-done)
 	     (functionp minibuffer-default-add-function)
@@ -2187,7 +2188,9 @@ positive number N means the Nth previous element."
 
 (defun next-history-element (n)
   "Puts next element of the minibuffer history in the minibuffer.
-With argument N, it uses the Nth following element."
+With argument N, it uses the Nth following element.  The position
+in the history can go beyond the current position and invoke \"future
+history.\""
   (interactive "p")
   (or (zerop n)
       (goto-history-element (- minibuffer-history-position n))))
@@ -5171,46 +5174,13 @@ and KILLP is t if a prefix arg was specified."
     ;; Avoid warning about delete-backward-char
     (with-no-warnings (delete-backward-char n killp))))
 
-(defvar read-char-from-minibuffer-history nil
-  "The default history for the `read-char-from-minibuffer' function.")
-
-(defvar read-char-from-minibuffer-map
-  (let ((map (make-sparse-keymap)))
-    (set-keymap-parent map minibuffer-local-map)
-    (define-key map [remap self-insert-command]
-      'read-char-from-minibuffer-self-insert)
-    map)
-  "Keymap for the `read-char-from-minibuffer' function.")
-
-(defun read-char-from-minibuffer-self-insert ()
-  "Insert the character you type in the minibuffer."
-  (interactive)
-  (delete-minibuffer-contents)
-  (insert (event-basic-type last-command-event))
-  (exit-minibuffer))
-
-(defun read-char-from-minibuffer (prompt)
-  "Read a character from the minibuffer, prompting with string PROMPT.
-Like `read-char', but allows navigating in a history.  The navigation
-commands are `M-p' and `M-n', with `RET' to select a character from
-history."
-  (let ((result
-         (read-from-minibuffer prompt nil
-                               read-char-from-minibuffer-map nil
-                               'read-char-from-minibuffer-history)))
-    (if (> (length result) 0)
-        ;; We have a string (with one character), so return the first one.
-        (elt result 0)
-      ;; The default value is RET.
-      (push "\r" read-char-from-minibuffer-history)
-      ?\r)))
-
 (defun zap-to-char (arg char)
   "Kill up to and including ARGth occurrence of CHAR.
 Case is ignored if `case-fold-search' is non-nil in the current buffer.
 Goes backward if ARG is negative; error if CHAR not found."
   (interactive (list (prefix-numeric-value current-prefix-arg)
-		     (read-char-from-minibuffer "Zap to char: ")))
+		     (read-char-from-minibuffer "Zap to char: "
+						nil 'read-char-history)))
   ;; Avoid "obsolete" warnings for translation-table-for-input.
   (with-no-warnings
     (if (char-table-p translation-table-for-input)
