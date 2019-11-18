@@ -4623,7 +4623,7 @@ This function is called directly from the C code."
 	  (run-with-timer 0 nil
 			  (lambda (msg)
 			    (discard-input)
-			    (minibuffer-message "%s" msg))
+			    (message "%s" msg))
 			  msg)))))
 
   ;; Finally, run any other hook.

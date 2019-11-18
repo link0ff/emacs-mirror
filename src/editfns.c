@@ -2880,7 +2880,7 @@ usage: (message FORMAT-STRING &rest ARGS)  */)
 {
   if (NILP (Vmessage_in_echo_area)
       && !(NILP (args[0]) || (STRINGP (args[0]) && SBYTES (args[0]) == 0))
-      && WINDOWP (Fold_selected_window ())
+      && WINDOW_LIVE_P (Fold_selected_window ())
       && BUFFERP (Fwindow_buffer (Fold_selected_window ()))
       && !NILP (Fminibufferp (Fwindow_buffer (Fold_selected_window ()))))
     {
@@ -4505,7 +4505,6 @@ syms_of_editfns (void)
 {
   DEFSYM (Qbuffer_access_fontify_functions, "buffer-access-fontify-functions");
   DEFSYM (Qwall, "wall");
-  DEFSYM (Qmessage_in_echo_area, "message-in-echo-area");
 
   DEFVAR_LISP ("inhibit-field-text-motion", Vinhibit_field_text_motion,
 	       doc: /* Non-nil means text motion commands don't notice fields.  */);
@@ -4567,6 +4566,7 @@ it to be non-nil.  */);
   DEFVAR_LISP ("message-in-echo-area", Vmessage_in_echo_area,
 	       doc: /* Non-nil means overwrite the minibuffer with a message in the echo area.  */);
   Vmessage_in_echo_area = Qnil;
+  DEFSYM (Qmessage_in_echo_area, "message-in-echo-area");
 
   defsubr (&Spropertize);
   defsubr (&Schar_equal);
