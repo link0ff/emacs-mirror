@@ -2266,6 +2266,10 @@ commands of Compilation major mode are available.  See
                               (replace-regexp-in-string "\n?$" ""
                                                         (car status)))))
              (message "%s" msg)
+             ;; (if (minibufferp (window-buffer (old-selected-window)))
+             ;;     (with-current-buffer (window-buffer (old-selected-window))
+             ;;       (minibuffer-message "%s" msg))
+             ;;   (message "%s" msg))
              (propertize out-string
                          'help-echo msg
                          'face (if (> exit-status 0)
