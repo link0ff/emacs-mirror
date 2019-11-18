@@ -4620,8 +4620,9 @@ This function is called directly from the C code."
 					  byte-compile-current-file
 					  byte-compile-root-dir)))
 	      (byte-compile-warn "%s" msg))
-	  (run-with-idle-timer 0 nil
+	  (run-with-timer 0 nil
 			  (lambda (msg)
+			    (discard-input)
 			    (minibuffer-message "%s" msg))
 			  msg)))))
 

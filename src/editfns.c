@@ -2880,6 +2880,8 @@ usage: (message FORMAT-STRING &rest ARGS)  */)
 {
   if (NILP (Vmessage_in_echo_area)
       && !(NILP (args[0]) || (STRINGP (args[0]) && SBYTES (args[0]) == 0))
+      && WINDOWP (Fold_selected_window ())
+      && BUFFERP (Fwindow_buffer (Fold_selected_window ()))
       && !NILP (Fminibufferp (Fwindow_buffer (Fold_selected_window ()))))
     {
       ptrdiff_t count = SPECPDL_INDEX ();
@@ -2890,7 +2892,8 @@ usage: (message FORMAT-STRING &rest ARGS)  */)
       record_unwind_current_buffer ();
       Fset_buffer (Fwindow_buffer (Fold_selected_window ()));
 
-      return unbind_to (count, CALLN (Fapply, intern ("minibuffer-message"), Flist (nargs, args)));
+      return unbind_to (count, CALLN (Fapply, intern ("minibuffer-message"),
+                                      Flist (nargs, args)));
     }
   else
     return Fmessage_in_echo_area (nargs, args);
