@@ -1252,7 +1252,7 @@ FMTS is a list of format specs for transforming the file name.
   (unless file (setq file '("*unknown*")))
   (let* ((file-struct (compilation-get-file-structure file fmts))
 	 ;; Get first already existing marker (if any has one, all have one).
-	 ;; Do this first, as the compilation-assq`s may create new nodes.
+	 ;; Do this first, as the compilation-assq's may create new nodes.
 	 (marker-line	; a line structure
           (cadr (compilation--file-struct->loc-tree file-struct)))
 	 (marker
@@ -2650,15 +2650,14 @@ column zero points to the current message."
 			       (compilation-beginning-of-line
 			        (- 1 compilation-context-lines))
 			       (point))))
-        ((eq compilation-context-lines t))
-    ;; If there is no left fringe.
-        ((equal (car (window-fringes w)) 0)
+        ((and (null compilation-context-lines)
+              ;; If there is no left fringe.
+              (equal (car (window-fringes w)) 0))
          (set-window-start w (save-excursion
                                (goto-char mk)
 			       (beginning-of-line 1)
-			       (point)))
-         (set-window-point w mk))
-        (t (set-window-point w mk))))
+			       (point)))))
+  (set-window-point w mk))
 
 (defvar-local compilation-arrow-overlay nil
   "Overlay with the before-string property of `overlay-arrow-string'.
@@ -2675,25 +2674,39 @@ at the overlay's start position.")
   "A string which is only a placeholder for `compilation--margin-string'.
 Actual value is never used, only the text property.")
 
-(defun compilation-set-up-arrow-spec-in-margin ()
-  "Set up compilation-arrow-overlay to display as an arrow in a margin."
+(defun compilation--set-up-margin (w)
+  "Setup the margin for \"=>\" in window W if it isn't already set up."
+  (set-window-margins w (+ (or (car (window-margins w)) 0) 2)))
+
+(defun compilation--tear-down-margin (w)
+  "Remove the margin for \"=>\" if it is setup in window W."
+  (when (window-margins w)
+    (set-window-margins w (- (car (window-margins w)) 2))))
+
+(defun compilation--set-up-arrow-spec-in-margins ()
+  "Set up compilation-arrow-overlay to display as an arrow in margins."
   (setq overlay-arrow-string "")
   (setq compilation-arrow-overlay
 	(make-overlay overlay-arrow-position overlay-arrow-position))
   (overlay-put compilation-arrow-overlay
                'before-string compilation--dummy-string)
-  (set-window-margins (selected-window) (+ (or (car (window-margins)) 0) 2))
+  (mapc #'compilation--set-up-margin (get-buffer-window-list nil nil t))
+  (add-hook 'window-buffer-change-functions #'compilation--set-up-margin nil t)
   ;; Take precautions against `compilation-mode' getting reinitialized.
   (add-hook 'change-major-mode-hook
-            'compilation-tear-down-arrow-spec-in-margin nil t))
+            #'compilation--tear-down-arrow-spec-in-margins nil t))
 
-(defun compilation-tear-down-arrow-spec-in-margin ()
-  "Restore compilation-arrow-overlay to not using the margin, which is removed."
+(defun compilation--tear-down-arrow-spec-in-margins ()
+  "Restore compilation-arrow-overlay to not using the margins, which are removed."
   (when (overlayp compilation-arrow-overlay)
     (overlay-put compilation-arrow-overlay 'before-string nil)
     (delete-overlay compilation-arrow-overlay)
     (setq compilation-arrow-overlay nil)
-    (set-window-margins (selected-window) (- (car (window-margins)) 2))))
+    (mapc #'compilation--tear-down-margin (get-buffer-window-list nil nil t))
+    (remove-hook 'change-major-mode-hook
+                 #'compilation--tear-down-arrow-spec-in-margins t)
+    (remove-hook 'window-buffer-change-functions
+                 #'compilation--set-up-margin t)))
 
 (defun compilation-set-overlay-arrow (w)
   "Set up, or switch off, the overlay-arrow for window W."
@@ -2711,10 +2724,10 @@ Actual value is never used, only the text property.")
 	      (if overlay-arrow-position
 	          (move-overlay compilation-arrow-overlay
 			        overlay-arrow-position overlay-arrow-position)
-                (compilation-tear-down-arrow-spec-in-margin))))
+                (compilation--tear-down-arrow-spec-in-margins))))
 
            (overlay-arrow-position
-            (compilation-set-up-arrow-spec-in-margin)))
+            (compilation--set-up-arrow-spec-in-margins)))
           ;; Ensure that the "=>" remains in the window by causing
           ;; the window to be scrolled, if needed.
           (goto-char (overlay-start compilation-arrow-overlay)))
@@ -2722,7 +2735,7 @@ Actual value is never used, only the text property.")
       ;; `compilation-context-lines' isn't t, or we've got a left
       ;; fringe, so remove any overlay arrow.
       (when (overlayp compilation-arrow-overlay)
-        (compilation-tear-down-arrow-spec-in-margin)))))
+        (compilation--tear-down-arrow-spec-in-margins)))))
 
 (defvar next-error-highlight-timer)
 
