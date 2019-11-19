@@ -338,7 +338,7 @@ redefine this function to suit your own tastes."
 	     (let ((modifiers (event-modifiers (car last-input-event))))
 	       (or (memq (car last-input-event)
 			 '(mouse-movement scroll-bar-movement
-			   select-window focus-out move-frame))
+			   select-window focus-out))
 		   (memq 'click modifiers)
 		   (memq 'double modifiers)
 		   (memq 'triple modifiers)
