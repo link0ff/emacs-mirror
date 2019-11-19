@@ -1244,7 +1244,8 @@ in the selected frame."
     (kill-buffer (current-buffer))
     ;; Delete the current window configuration of tab list
     ;; without storing it in the undo list of closed tabs
-    (let (tab-bar-closed-tabs)
+    (let ((tab-bar-mode t) ; avoid message about deleted tab
+          tab-bar-closed-tabs)
       (tab-bar-close-tab nil (1+ (tab-bar--tab-index to-tab))))))
 
 (defun tab-bar-list-mouse-select (event)
