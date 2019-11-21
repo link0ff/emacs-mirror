@@ -2,9 +2,6 @@
 <H-M-right> M-. on man
 
 
-mouse-avoidance started to jump off the tooltip
-
-
 * gettext i18n
 
 gettextize --dry-run

@@ -2875,6 +2875,11 @@ If the first argument is nil or the empty string, the function clears
 any existing message; this lets the minibuffer contents show.  See
 also `current-message'.
 
+When the variable `message-in-echo-area' is non-nil, use the function
+`message-in-echo-area' to display the message in the echo area.
+Otherwise, when the minibuffer is active, use `minibuffer-message'
+to temporarily display the message at the end of the minibuffer.
+
 usage: (message FORMAT-STRING &rest ARGS)  */)
   (ptrdiff_t nargs, Lisp_Object *args)
 {
