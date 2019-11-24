@@ -2794,6 +2794,7 @@ Also discard all previous input in the minibuffer."
   (interactive)
   (delete-minibuffer-contents)
   (ding)
+  (discard-input)
   (minibuffer-message "Please answer y or n")
   (sit-for 2))
 

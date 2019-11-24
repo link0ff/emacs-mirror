@@ -1,4 +1,13 @@
 
+TRY tooltip-frame mouse-avoidance with GTK-build
+
+
+M-x global-auto-revert-mode RET
+doesn't display in the echo area:
+"Global Auto-Revert mode enabled"
+because exit-minibuffer removes old_window later
+
+
 <H-M-right> M-. on man
 
 
