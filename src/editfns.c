@@ -2886,6 +2886,7 @@ usage: (message FORMAT-STRING &rest ARGS)  */)
   if (NILP (Vmessage_in_echo_area)
       && !inhibit_message
       && !(NILP (args[0]) || (STRINGP (args[0]) && SBYTES (args[0]) == 0))
+      && WINDOW_LIVE_P (Factive_minibuffer_window ())
       && WINDOW_LIVE_P (Fold_selected_window ())
       && BUFFERP (Fwindow_buffer (Fold_selected_window ()))
       && !NILP (Fminibufferp (Fwindow_buffer (Fold_selected_window ()))))
