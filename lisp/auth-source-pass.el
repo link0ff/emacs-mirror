@@ -34,8 +34,7 @@
 
 (require 'seq)
 (eval-when-compile (require 'subr-x))
-(eval-when-compile
-  (require 'cl-lib))
+(require 'cl-lib)
 (require 'auth-source)
 (require 'url-parse)
 
@@ -269,10 +268,15 @@ If ENTRIES is nil, use the result of calling `auth-source-pass-entries' instead.
 
 Based on the supported pathname patterns for HOSTNAME, USER, &
 PORT, return a list of possible suffixes for matching entries in
-the password-store."
+the password-store.
+
+PORT may be a list of ports."
   (let ((domains (auth-source-pass--domains (split-string hostname "\\."))))
-    (seq-mapcat (lambda (n)
-                  (auth-source-pass--name-port-user-suffixes n user port))
+    (seq-mapcat (lambda (domain)
+                  (seq-mapcat
+                   (lambda (p)
+                     (auth-source-pass--name-port-user-suffixes domain user p))
+                   (if (consp port) port (list port))))
                 domains)))
 
 (defun auth-source-pass--domains (name-components)

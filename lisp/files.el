@@ -958,7 +958,7 @@ one or more of those symbols."
       ;; M-x load-library RET t/x.e TAB finds some files.  Also remove elements
       ;; from `names' that matched `string' only when they still had
       ;; their suffix.
-      (setq names (all-completions string names))
+      (setq names (all-completions string-file names))
       ;; Remove duplicates of the first element, so that we can easily check
       ;; if `names' really contains only a single element.
       (when (cdr names) (setcdr names (delete (car names) (cdr names))))
@@ -7153,10 +7153,11 @@ normally equivalent short `-D' option is just passed on to
 		(goto-char beg)
 		;; First find the line to put it on.
 		(when (re-search-forward "^ *\\(total\\)" nil t)
+		  ;; Replace "total" with "total used in directory" to
+		  ;; avoid confusion.
+		  (replace-match "total used in directory" nil nil nil 1)
 		  (let ((available (get-free-disk-space ".")))
 		    (when available
-		      ;; Replace "total" with "used", to avoid confusion.
-		      (replace-match "total used in directory" nil nil nil 1)
 		      (end-of-line)
 		      (insert " available " available))))))))))
 

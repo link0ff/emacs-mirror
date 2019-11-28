@@ -2491,6 +2491,12 @@ remember_mouse_glyph (struct frame *f, int gx, int gy, NativeRectangle *rect)
   enum glyph_row_area area;
   int x, y, width, height;
 
+  if (mouse_fine_grained_tracking)
+    {
+      STORE_NATIVE_RECT (*rect, gx, gy, 1, 1);
+      return;
+    }
+
   /* Try to determine frame pixel position and size of the glyph under
      frame pixel coordinates X/Y on frame F.  */
 
@@ -21395,12 +21401,12 @@ append_space_for_newline (struct it *it, bool default_face_p)
 	{
 	  const int local_default_face_id =
 	    lookup_basic_face (it->w, it->f, DEFAULT_FACE_ID);
-	  struct face* default_face =
-	    FACE_FROM_ID_OR_NULL (it->f, local_default_face_id);
 
 #ifdef HAVE_WINDOW_SYSTEM
 	  if (FRAME_WINDOW_P (it->f))
 	    {
+	      struct face *default_face
+		= FACE_FROM_ID (it->f, local_default_face_id);
 	      struct font *font = (default_face->font
 	                           ? default_face->font
 	                           : FRAME_FONT (it->f));
@@ -21726,9 +21732,12 @@ extend_face_to_end_of_line (struct it *it)
 	      const int stretch_width = it->last_visible_x - it->current_x;
 
 	      if (stretch_width > 0)
-		append_stretch_glyph (it, Qnil, stretch_width,
-				      it->ascent + it->descent,
-				      stretch_ascent);
+		{
+		  memset (&it->position, 0, sizeof it->position);
+		  append_stretch_glyph (it, Qnil, stretch_width,
+					it->ascent + it->descent,
+					stretch_ascent);
+		}
 	    }
 
 	  it->char_to_display = saved_char;
@@ -34942,6 +34951,12 @@ display table takes effect; in this case, Emacs does not consult
 The default is to use octal format (\200) whereas hexadecimal (\x80)
 may be more familiar to users.  */);
   display_raw_bytes_as_hex = false;
+
+  DEFVAR_BOOL ("mouse-fine-grained-tracking", mouse_fine_grained_tracking,
+    doc: /* Non-nil for pixel-wise mouse-movement.
+When nil, mouse-movement events will not be generated as long as the
+mouse stays within the extent of a single glyph (except for images).  */);
+  mouse_fine_grained_tracking = false;
 
 }
 

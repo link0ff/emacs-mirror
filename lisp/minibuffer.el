@@ -1692,7 +1692,9 @@ See also `display-completion-list'.")
   "Face for the first character after point in completions.
 See also the face `completions-common-part'.")
 
-(defface completions-common-part '((t nil))
+(defface completions-common-part
+  '((((class color) (min-colors 16) (background light)) :foreground "blue3")
+    (((class color) (min-colors 16) (background dark)) :foreground "lightblue"))
   "Face for the parts of completions which matched the pattern.
 See also the face `completions-first-difference'.")
 
@@ -3494,8 +3496,8 @@ that is non-nil."
 ;;; "flex" completion, also known as flx/fuzzy/scatter completion
 ;; Completes "foo" to "frodo" and "farfromsober"
 
-(defcustom completion-flex-nospace nil
-  "Make flex style fail when a space is found in pattern."
+(defcustom completion-flex-nospace t
+  "Non-nil if `flex' completion rejects spaces in search pattern."
   :version "27.1"
   :type 'boolean)
 
