@@ -1664,7 +1664,7 @@ to override the value of `vc-diff-switches' and `diff-switches'."
   ;; The empty sync output case has already been handled, so the only
   ;; possibility of an empty output is for an async process.
   (when (buffer-live-p buffer)
-    (let ((window (get-buffer-window buffer t))
+    (let (;;(window (get-buffer-window buffer t))
 	  (emptyp (zerop (buffer-size buffer))))
       (with-current-buffer buffer
 	(and messages emptyp
@@ -2431,6 +2431,10 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
     ;; Display after setting up major-mode, so display-buffer-alist can know
     ;; the major-mode.
     (pop-to-buffer buffer)
+    ;; Scroll out of possible header inserted by backend function.
+    ;; TODO: this also hides vc-svn.el "Working file: "
+    (when (get-buffer-window buffer)
+      (set-window-start (get-buffer-window buffer) (point)))
     (vc-run-delayed
      (let ((inhibit-read-only t))
        (funcall setup-buttons-func backend files retval)

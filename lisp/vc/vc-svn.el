@@ -564,6 +564,7 @@ If LIMIT is non-nil, show no more than this many entries."
       (if files
 	  (dolist (file files)
 		  (insert "Working file: " file "\n")
+                  ;; Don't set point
 		  (apply
 		   'vc-svn-command
 		   buffer
