@@ -702,6 +702,9 @@ for use at QPOS."
 (defvar minibuffer-message-properties nil
   "Text properties added to the text shown by `minibuffer-message'.")
 
+(defvar minibuffer-message-timer nil)
+(defvar minibuffer-message-overlay nil)
+
 (defun minibuffer-message (message &rest args)
   "Temporarily display MESSAGE at the end of the minibuffer.
 The text is displayed for `minibuffer-message-timeout' seconds,
@@ -732,24 +735,23 @@ If ARGS are provided, then pass MESSAGE through `format-message'."
                 ;; Don't overwrite the face properties the caller has set
                 (text-properties-at 0 message))
       (setq message (apply #'propertize message minibuffer-message-properties)))
-    (let ((ol (make-overlay (point-max) (point-max) nil t t))
-          ;; A quit during sit-for normally only interrupts the sit-for,
-          ;; but since minibuffer-message is used at the end of a command,
-          ;; at a time when the command has virtually finished already, a C-g
-          ;; should really cause an abort-recursive-edit instead (i.e. as if
-          ;; the C-g had been typed at top-level).  Binding inhibit-quit here
-          ;; is an attempt to get that behavior.
-          (inhibit-quit t))
-      (unwind-protect
-          (progn
-            (unless (zerop (length message))
-              ;; The current C cursor code doesn't know to use the overlay's
-              ;; marker's stickiness to figure out whether to place the cursor
-              ;; before or after the string, so let's spoon-feed it the pos.
-              (put-text-property 0 1 'cursor t message))
-            (overlay-put ol 'after-string message)
-            (sit-for (or minibuffer-message-timeout 1000000)))
-        (delete-overlay ol)))))
+
+    (when (timerp minibuffer-message-timer)
+      (cancel-timer minibuffer-message-timer))
+    (when (overlayp minibuffer-message-overlay)
+      (delete-overlay minibuffer-message-overlay))
+    (setq minibuffer-message-overlay
+          (make-overlay (point-max) (point-max) nil t t))
+    (setq minibuffer-message-timer
+          (run-with-timer (or minibuffer-message-timeout 1) nil
+                          (lambda () (when (overlayp minibuffer-message-overlay)
+                                       (delete-overlay minibuffer-message-overlay)))))
+    (unless (zerop (length message))
+      ;; The current C cursor code doesn't know to use the overlay's
+      ;; marker's stickiness to figure out whether to place the cursor
+      ;; before or after the string, so let's spoon-feed it the pos.
+      (put-text-property 0 1 'cursor t message))
+    (overlay-put minibuffer-message-overlay 'after-string message)))
 
 (defun minibuffer-completion-contents ()
   "Return the user input in a minibuffer before point as a string.

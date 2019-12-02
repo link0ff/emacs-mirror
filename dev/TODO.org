@@ -1,4 +1,9 @@
 
+REPLACE read-key with read-char-from-mnibuffer:
+
+- widget-choose (read-key-sequence)
+
+
 <H-M-right> M-. on man
 
 
