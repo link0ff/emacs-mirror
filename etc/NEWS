@@ -973,6 +973,15 @@ The 'C-x v h' command now works in buffers that visit files controlled
 by Hg.
 
 +++
+*** The Hg (Mercurial) back-end now prompts for revision to merge when
+you invoke 'C-x v m' ('vc-merge').
+
+---
+*** The Hg (Mercurial) back-end now use tags, branches and bookmarks
+instead of revision numbers as completion candidates when it prompts
+for a revision.
+
++++
 *** 'C-u C-x v D' ('vc-root-version-diff') prompts for two revisions
 and compares their entire trees.
 
@@ -998,7 +1007,12 @@ With a prefix argument asks for a command, so for example,
 just one log entry found by its revision number.
 
 +++
-*** 'C-1 C-x v L' asks for a revision and shows its log entry with diff.
+*** It is now possible to display a specific revision given by its ID.
+If you invoke 'C-x v L' ('vc-print-root-log') with a numeric argument
+of 1, as in 'C-1 C-x v L' or 'C-u 1 C-x v L', it asks for a revision
+ID, and shows its log entry together with the diffs introduced by the
+revision's commit.  (For some less capable VCSes, only the log entry
+is shown.)
 
 *** 'C-x v =' can now mimic Magit's diff format.
 Set the new user option 'diff-font-lock-prettify' to t for that, see
@@ -2835,11 +2849,6 @@ doing computations on a decoded time structure), 'make-decoded-time'
 filled out), and 'encoded-time-set-defaults' (which fills in nil
 elements as if it's midnight January 1st, 1970) have been added.
 
-** New macros 'debounce' and 'debounce-reduce' postpone function call
-until after specified time have elapsed since the last time it was invoked.
-This improves performance of processing events occurring rapidly
-in quick succession.
-
 ** 'define-minor-mode' automatically documents the meaning of ARG.
 
 +++
@@ -2972,14 +2981,10 @@ and if the new behavior breaks your code please email
 <32252@debbugs.gnu.org>.  Because '%o' and '%x' can now format signed
 integers, they now support the '+' and space flags.
 
-** To avoid confusion caused by "smart quotes", the reader signals an
-error when reading Lisp symbols which begin with one of the following
-quotation characters: ‘’‛“”‟〞＂＇.  A symbol beginning with such a
-character can be written by escaping the quotation character with a
-backslash.  For example:
-
-    (read "‘smart") => (invalid-read-syntax "strange quote" "‘")
-    (read "\\‘smart") == (intern "‘smart")
++++
+** In Emacs Lisp mode, symbols with confusable quotes are highlighted.
+For example, the first character in '‘foo' would be highlighted in
+'font-lock-warning-face'.
 
 +++
 ** Omitting variables after '&optional' and '&rest' is now allowed.
