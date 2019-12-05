@@ -522,6 +522,12 @@ Note that this key binding will not work on MS-Windows systems if
 key binding with an upper case letter - if you can type it, you can
 bind it.
 
++++
+** 'read-from-minibuffer' now works with buffer-local history variables.
+The HIST argument of 'read-from-minibuffer' now works correctly with
+buffer-local variables.  This means that different buffers can have
+their own separated input history list if desired.
+
 
 * Editing Changes in Emacs 27.1
 
@@ -625,6 +631,13 @@ buffers.
 If the region is active, the command joins all the lines in the
 region.  When there's no active region, the command works on the
 current and the previous or the next line, as before.
+
+---
+** New customizable variable 'jit-lock-antiblink-grace'.
+When typing strings, this helps avoid "blinking", an oscillation
+between string and non-string fontification.  The variable holds a
+number of seconds (default is 2) before a potentially unwanted
+fontification starts.  Set to nil to get back the old behavior.
 
 
 * Changes in Specialized Modes and Packages in Emacs 27.1
@@ -813,7 +826,8 @@ displays the buffer from the next command in that window.  For example,
 'S-M-right C-h i' displays the "*Info*" buffer in the right window,
 creating the window if necessary.  A special key can be customized to
 display the buffer in the same window, for example, 'S-M-0 C-h e'
-displays the "*Messages*" buffer in the same window.
+displays the "*Messages*" buffer in the same window.  'S-M-t C-h C-n'
+displays NEWS in a new tab.
 
 *** Windmove also supports directional window deletion.
 The new command 'windmove-delete-default-keybindings' binds default
