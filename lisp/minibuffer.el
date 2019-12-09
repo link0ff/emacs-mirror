@@ -751,7 +751,12 @@ If ARGS are provided, then pass MESSAGE through `format-message'."
       ;; marker's stickiness to figure out whether to place the cursor
       ;; before or after the string, so let's spoon-feed it the pos.
       (put-text-property 0 1 'cursor t message))
-    (overlay-put minibuffer-message-overlay 'after-string message)))
+    (overlay-put minibuffer-message-overlay 'after-string message)
+
+    (when (and (stringp debug-on-message)
+               (stringp message)
+               (string-match-p debug-on-message message))
+      (debug message))))
 
 (defun minibuffer-completion-contents ()
   "Return the user input in a minibuffer before point as a string.
