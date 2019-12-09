@@ -28,7 +28,6 @@
     '((?\" "＂" "“" "”" "”" "„" "⹂" "〞" "‟" "‟" "❞" "❝" "❠" "“" "„" "〝" "〟" "🙷" "🙶" "🙸" "«" "»")
       (?' "❟" "❛" "❜" "‘" "’" "‚" "‛" "‚" "󠀢" "❮" "❯" "‹" "›")
       (?` "❛" "‘" "‛" "󠀢" "❮" "‹")
-      ;; (?\t " ")
       (?ß "ss") ;; de
       (?ι "ΐ")  ;; el for (?ΐ "ΐ") decomposition
       (?υ "ΰ")  ;; el for (?ΰ "ΰ") decomposition
@@ -256,8 +255,8 @@ Each entry is a list of a character and the strings that fold into it."
 (defcustom char-fold-exclude char-fold--default-exclude
   "Character foldings to remove from default decompisitions.
 Each entry is a list of a character and the strings to remove from folding."
-  :type '(alist :key-type (character :tag "Unfold to character")
-                :value-type (repeat (string :tag "Unfold from string")))
+  :type '(alist :key-type (character :tag "Fold to character")
+                :value-type (repeat (string :tag "Fold from string")))
   :initialize #'custom-initialize-default
   :set (lambda (sym val)
          (custom-set-default sym val)
@@ -325,6 +324,13 @@ from which to start."
     (while (< i end)
       (pcase (aref string i)
         (?\s (setq spaces (1+ spaces)))
+        ((pred (lambda (c) (and char-fold-symmetric
+                                (if isearch-regexp
+                                    isearch-regexp-lax-whitespace
+                                  isearch-lax-whitespace)
+                                (stringp search-whitespace-regexp)
+                                (string-match-p search-whitespace-regexp (char-to-string c)))))
+	 (setq spaces (1+ spaces)))
         (c (when (> spaces 0)
              (push (char-fold--make-space-string spaces) out)
              (setq spaces 0))
