@@ -2246,12 +2246,6 @@ The completion method is determined by `completion-at-point-functions'."
   (define-key map "\C-g" 'abort-recursive-edit)
   (define-key map "\M-<" 'minibuffer-beginning-of-buffer)
 
-  (define-key map [remap recenter-top-bottom] 'minibuffer-recenter-top-bottom)
-  (define-key map [remap scroll-up-command] 'minibuffer-scroll-up-command)
-  (define-key map [remap scroll-down-command] 'minibuffer-scroll-down-command)
-  (define-key map [remap scroll-other-window] 'minibuffer-scroll-other-window)
-  (define-key map [remap scroll-other-window-down] 'minibuffer-scroll-other-window-down)
-
   (define-key map "\r" 'exit-minibuffer)
   (define-key map "\n" 'exit-minibuffer))
 
@@ -3173,18 +3167,21 @@ one-letter-long matches).")
            (funcall update-score start start)
            (while md
              (funcall update-score start (car md))
-             (put-text-property start (pop md)
-                                'face 'completions-common-part
-                                str)
+             (add-face-text-property
+              start (pop md)
+              'completions-common-part
+              nil str)
              (setq start (pop md)))
            (funcall update-score len len)
-           (put-text-property start end
-                              'face 'completions-common-part
-                              str)
+           (add-face-text-property
+            start end
+            'completions-common-part
+            nil str)
            (if (> (length str) pos)
-               (put-text-property pos (1+ pos)
-                                  'face 'completions-first-difference
-                                  str))
+               (add-face-text-property
+                pos (1+ pos)
+                'completions-first-difference
+                nil str))
            (unless (zerop (length str))
              (put-text-property
               0 1 'completion-score

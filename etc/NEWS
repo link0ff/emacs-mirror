@@ -255,6 +255,10 @@ The default value is 30000, as the previously hard-coded threshold.
 +++
 ** The function 'read-passwd' uses "*" as default character to hide passwords.
 
+** The function 'read-answer' now accepts not only single character
+answers, but also function keys like F1, character events such as C-M-h,
+and control characters like C-h.
+
 ** Lexical binding is now used when evaluating interactive Elisp forms.
 More specifically, lexical-binding is now used for 'M-:', '--eval', as
 well as in the "*scratch*" and "*ielm*" buffers.
@@ -632,13 +636,6 @@ If the region is active, the command joins all the lines in the
 region.  When there's no active region, the command works on the
 current and the previous or the next line, as before.
 
----
-** New customizable variable 'jit-lock-antiblink-grace'.
-When typing strings, this helps avoid "blinking", an oscillation
-between string and non-string fontification.  The variable holds a
-number of seconds (default is 2) before a potentially unwanted
-fontification starts.  Set to nil to get back the old behavior.
-
 
 * Changes in Specialized Modes and Packages in Emacs 27.1
 
@@ -652,6 +649,17 @@ bound to 'C-c C-c #'.
 This is an interactive convenience function to be used when developing
 font locking for a mode.  It recomputes the font locking data and then
 re-fontifies the buffer.
+
+---
+** Font Lock is smarter about fontifying unterminated strings and comments.
+When you type a quote that starts a string, or a comment delimiter
+that starts a comment, font-lock will not immediately refontify the
+following characters in font-lock-string-face or
+font-lock-comment-face.  Instead, it will delay the fontification
+beyond the current line to give you a chance to close the string or
+comment.  This is controlled by the new customizable variable
+'jit-lock-antiblink-grace', which specifies the delay in seconds.  The
+default is 2 seconds; set to nil to get back the old behavior.
 
 ---
 ** The 'C' command in 'tar-mode' will now preserve the timestamp of
@@ -760,9 +768,6 @@ names match certain regular expressions as big.  Ido won't attempt to
 list the contents of such directories when completing file names.
 
 ** Minibuffer
-
-*** Scrolling and recentering commands in the minibuffer are invoked
-on the original window (that was selected before activating the minibuffer).
 
 +++
 *** A new user option, 'minibuffer-beginning-of-buffer-movement', has
@@ -1263,6 +1268,14 @@ The 'file://' URLs in Info documents can now be followed by passing
 them to the 'browse-url' function, like the other protocols: 'ftp',
 'http', and 'https'.  This allows to have references to local HTML
 files, for example.
+
+---
+** Display of man pages now limits the width for formatting pages.
+The new user option 'Man-width-max' (80 by default) limits the number
+of columns passed to the 'man' program for formatting man pages.  This
+is to enhance readability when man pages are displayed in very wide
+windows (which are customary with today's large displays).
+
 
 ** Xref
 
