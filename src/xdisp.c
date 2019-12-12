@@ -4243,11 +4243,26 @@ face_at_pos (const struct it *it, enum lface_attribute_index attr_filter)
 	     the display string do.  This sounds like a design bug,
 	     but Emacs always did that since v21.1, so changing that
 	     might be a big deal.  */
-	  base_face_id = it->string_from_prefix_prop_p
-	    ? (!NILP (Vface_remapping_alist)
-	       ? lookup_basic_face (it->w, it->f, DEFAULT_FACE_ID)
-	       : DEFAULT_FACE_ID)
-	    : underlying_face_id (it);
+	  bool use_default = (it->string_from_prefix_prop_p != 0);
+	  base_face_id = DEFAULT_FACE_ID;
+	  if (!use_default)
+	    {
+	      base_face_id = underlying_face_id (it);
+	      /* Reject the underlying face, if that face is different
+		 from the iterator face, and we filter by attr_filter,
+		 and that face's value of the filter attribute is nil
+		 or unspecified; use the default face instead.  */
+	      struct face *bf = FACE_FROM_ID_OR_NULL (it->f, base_face_id);
+	      if (base_face_id != it->base_face_id
+		  && attr_filter > 0
+		  && (NILP (bf->lface[attr_filter])
+		      || EQ (bf->lface[attr_filter], Qunspecified)))
+		use_default = true;
+	    }
+	  if (use_default)
+	    base_face_id = (!NILP (Vface_remapping_alist)
+			    ? lookup_basic_face (it->w, it->f, DEFAULT_FACE_ID)
+			    : DEFAULT_FACE_ID);
 	}
 
       return face_at_string_position (it->w,
@@ -21693,7 +21708,7 @@ extend_face_to_end_of_line (struct it *it)
 	      && indicator_column < it->last_visible_x)
 	    {
 
-	      /* Here we substract char_width because we want the
+	      /* Here we subtract char_width because we want the
 		 column indicator in the column INDICATOR_COLUMN,
 		 not after it.  */
 	      const int stretch_width =
@@ -21865,7 +21880,7 @@ extend_face_to_end_of_line (struct it *it)
       /* We need to subtract 1 to the indicator_column here because we
 	 will add the indicator IN the column indicator number, not
 	 after it.  We compare the variable it->current_x before
-	 producing the glyph.  When FRAME_WINDOW_P we substract
+	 producing the glyph.  When FRAME_WINDOW_P we subtract
 	 CHAR_WIDTH calculating STRETCH_WIDTH for the same reason.  */
       const int indicator_column =
 	fill_column_indicator_column (it, 1) - 1;
