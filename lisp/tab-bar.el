@@ -174,11 +174,14 @@ on a console which has no window system but does have a mouse."
     (when x-position
       (unless (catch 'done
                 (map-keymap
-                 (lambda (_key binding)
+                 (lambda (key binding)
                    (when (eq (car-safe binding) 'menu-item)
                      (when (> (+ column (length (nth 1 binding))) x-position)
-                       ;; TODO: handle close
-                       (unless (get-text-property (- x-position column) 'close-tab (nth 1 binding))
+                       (if (get-text-property (- x-position column) 'close-tab (nth 1 binding))
+                           (let* ((close-key (vector (intern (format "C-%s" key))))
+                                  (close-def (lookup-key keymap close-key)))
+                             (when close-def
+                               (call-interactively close-def)))
                          (call-interactively (nth 2 binding)))
                        (throw 'done t))
                      (setq column (+ column (length (nth 1 binding))))))
@@ -582,7 +585,10 @@ to the numeric argument.  ARG counts from 1."
 
         (when from-index
           (setf (nth from-index tabs) from-tab))
-        (setf (nth to-index tabs) (tab-bar--current-tab (nth to-index tabs))))
+        (setf (nth to-index tabs) (tab-bar--current-tab (nth to-index tabs)))
+
+        (unless tab-bar-mode
+          (message "Selected tab '%s'" (alist-get 'name to-tab))))
 
       (force-mode-line-update))))
 
@@ -704,7 +710,10 @@ called."
 (defun tab-bar-new-tab-to (&optional to-index)
   "Add a new tab at the absolute position TO-INDEX.
 TO-INDEX counts from 1.  If no TO-INDEX is specified, then add
-a new tab at the position specified by `tab-bar-new-tab-to'."
+a new tab at the position specified by `tab-bar-new-tab-to'.
+
+After the tab is created, the hooks in
+`tab-bar-tab-post-open-functions' are run."
   (interactive "P")
   (let* ((tabs (funcall tab-bar-tabs-function))
          (from-index (tab-bar--current-tab-index tabs))
@@ -819,7 +828,14 @@ ARG counts from 1.
 Optional TO-INDEX could be specified to override the value of
 `tab-bar-close-tab-select' programmatically with a position
 of an existing tab to select after closing the current tab.
-TO-INDEX counts from 1."
+TO-INDEX counts from 1.
+
+The functions in `tab-bar-tab-prevent-close-functions' will be
+run to determine whether or not to close the tab.
+Just before the tab is closed, the functions in
+`tab-bar-tab-pre-close-functions' will be run.  The base behavior
+for the last tab on a frame is determined by
+`tab-bar-close-last-tab-choice'."
   (interactive "P")
   (let* ((tabs (funcall tab-bar-tabs-function))
          (current-index (tab-bar--current-tab-index tabs))
@@ -859,7 +875,8 @@ TO-INDEX counts from 1."
                                           (1- current-index)))
                                 ('recent (tab-bar--tab-index-recent 1 tabs))))))
             (setq to-index (max 0 (min (or to-index 0) (1- (length tabs)))))
-            (tab-bar-select-tab (1+ to-index))
+            (let ((inhibit-message t)) ; avoid message about selected tab
+              (tab-bar-select-tab (1+ to-index)))
             ;; Re-read tabs after selecting another tab
             (setq tabs (funcall tab-bar-tabs-function))))
 
@@ -896,11 +913,18 @@ TO-INDEX counts from 1."
          (current-index (tab-bar--current-tab-index tabs)))
     (when current-index
       (dotimes (index (length tabs))
-        (unless (eq index current-index)
+        (unless (or (eq index current-index)
+                    (run-hook-with-args-until-success
+                     'tab-bar-tab-prevent-close-functions
+                     (nth index tabs)
+                     ; last-tab-p logically can't ever be true if we
+                     ; make it this far
+                     nil))
           (push `((frame . ,(selected-frame))
                   (index . ,index)
                   (tab . ,(nth index tabs)))
-                tab-bar-closed-tabs)))
+                tab-bar-closed-tabs)
+          (run-hook-with-args 'tab-bar-tab-pre-close-functions (nth index tabs) nil)))
       (set-frame-parameter nil 'tabs (list (nth current-index tabs)))
 
       (when (and tab-bar-mode

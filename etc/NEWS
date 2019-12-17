@@ -781,10 +781,6 @@ the minibuffer.  If non-nil, point will move to the end of the prompt
 at the end of the active minibuffer.
 
 +++
-*** The function 'message' now displays the message at the end of the minibuffer
-when the minibuffer is active.
-
-+++
 *** 'y-or-n-p' now uses the minibuffer to read 'y' or 'n' answer.
 
 *** Some commands that previously used read-char-choice now read
@@ -1037,6 +1033,14 @@ is shown.)
 *** 'C-x v =' can now mimic Magit's diff format.
 Set the new user option 'diff-font-lock-prettify' to t for that, see
 below under "Diff mode".
+
+---
+*** The 'diff' function arguments OLD and NEW may each be a buffer
+rather than a file, in non-interactive calls.  This change was made in
+Emacs 24.1, but wasn't documented until now.
+
++++
+*** New command 'diff-buffers' interactively diffs two buffers.
 
 ** Diff mode
 +++
@@ -2120,9 +2124,12 @@ These macros add new forms to the rx notation.
 Both match any single character; 'anychar' is more descriptive.
 
 +++
-*** New 'union' and 'intersection' forms for character sets.
-These permit composing character-matching expressions from simpler
-parts.
+*** New 'intersection' form for character sets.
+With 'or' and 'not', it can be used to compose character-matching
+expressions from simpler parts.
+
++++
+*** 'not' argument can now be a character or single-char string.
 
 ** Frames
 

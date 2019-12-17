@@ -273,10 +273,8 @@ Return (REGEXP . PRECEDENCE)."
   ;;   (or (+ digit) "CHARLIE" "CHAN" (+ blank))
   ;;   -> (or (+ digit) (or "CHARLIE" "CHAN") (+ blank))
   ;;
-  ;; - Fuse patterns into a single character alternative if they fit.
-  ;;   regexp-opt will do that if all are strings, but we want to do that for:
-  ;;     * symbols that expand to classes: space, alpha, ...
-  ;;     * character alternatives: (any ...)
+  ;; - Optimise single-character alternatives better:
+  ;;     * classes: space, alpha, ...
   ;;     * (syntax S), for some S (whitespace, word)
   ;;   so that (or "@" "%" digit (any "A-Z" space) (syntax word))
   ;;        -> (any "@" "%" digit "A-Z" space word)
@@ -294,12 +292,29 @@ Return (REGEXP . PRECEDENCE)."
    ((rx--every #'stringp body)     ; All strings.
     (cons (list (regexp-opt body nil t))
           t))
+   ((rx--every #'rx--charset-p body)  ; All charsets.
+    (rx--translate-union nil body))
    (t
     (cons (append (car (rx--translate (car body)))
                   (mapcan (lambda (item)
                             (cons "\\|" (car (rx--translate item))))
                           (cdr body)))
           nil))))
+
+(defun rx--charset-p (form)
+  "Whether FORM looks like a charset, only consisting of character intervals
+and set operations."
+  (or (and (consp form)
+           (or (and (memq (car form) '(any 'in 'char))
+                    (rx--every (lambda (x) (not (symbolp x))) (cdr form)))
+               (and (memq (car form) '(not or | intersection))
+                    (rx--every #'rx--charset-p (cdr form)))))
+      (characterp form)
+      (and (stringp form) (= (length form) 1))
+      (and (or (symbolp form) (consp form))
+           (let ((expanded (rx--expand-def form)))
+             (and expanded
+                  (rx--charset-p expanded))))))
 
 (defun rx--string-to-intervals (str)
   "Decode STR as intervals: A-Z becomes (?A . ?Z), and the single
@@ -477,7 +492,7 @@ If NEGATED, negate the sense."
      (not negated) (rx--complement-intervals intervals) nil)))
 
 ;; FIXME: Consider turning `not' into a variadic operator, following SRE:
-;; (not A B) = (not (union A B)) = (intersection (not A) (not B)), and
+;; (not A B) = (not (or A B)) = (intersection (not A) (not B)), and
 ;; (not) = anychar.
 ;; Maybe allow singleton characters as arguments.
 
@@ -498,7 +513,7 @@ If NEGATED, negate the sense (thus making it positive)."
               (rx--translate-category (not negated) (cdr arg)))
              ('not
               (rx--translate-not      (not negated) (cdr arg)))
-             ('union
+             ((or 'or '|)
               (rx--translate-union    (not negated) (cdr arg)))
              ('intersection
               (rx--translate-intersection (not negated) (cdr arg))))))
@@ -508,6 +523,11 @@ If NEGATED, negate the sense (thus making it positive)."
      ((eq arg 'word-boundary)
       (rx--translate-symbol
        (if negated 'word-boundary 'not-word-boundary)))
+     ((characterp arg)
+      (rx--generate-alt (not negated) (list (cons arg arg)) nil))
+     ((and (stringp arg) (= (length arg) 1))
+      (let ((char (string-to-char arg)))
+        (rx--generate-alt (not negated) (list (cons char char)) nil)))
      ((let ((expanded (rx--expand-def arg)))
         (and expanded
              (rx--translate-not negated (list expanded)))))
@@ -558,8 +578,8 @@ If NEGATED, negate the sense (thus making it positive)."
 (defun rx--charset-intervals (charset)
   "Return a sorted list of non-adjacent disjoint intervals from CHARSET.
 CHARSET is any expression allowed in a character set expression:
-either `any' (no classes permitted), or `not', `union' or `intersection'
-forms whose arguments are charsets."
+characters, single-char strings, `any' forms (no classes permitted),
+or `not', `or' or `intersection' forms whose arguments are charsets."
   (pcase charset
     (`(,(or 'any 'in 'char) . ,body)
      (let ((parsed (rx--parse-any body)))
@@ -569,8 +589,13 @@ forms whose arguments are charsets."
           (cadr parsed)))
        (car parsed)))
     (`(not ,x) (rx--complement-intervals (rx--charset-intervals x)))
-    (`(union . ,xs) (rx--charset-union xs))
-    (`(intersection . ,xs) (rx--charset-intersection xs))
+    (`(,(or 'or '|) . ,body) (rx--charset-union body))
+    (`(intersection . ,body) (rx--charset-intersection body))
+    ((pred characterp)
+     (list (cons charset charset)))
+    ((guard (and (stringp charset) (= (length charset) 1)))
+     (let ((char (string-to-char charset)))
+       (list (cons char char))))
     (_ (let ((expanded (rx--expand-def charset)))
          (if expanded
              (rx--charset-intervals expanded)
@@ -589,7 +614,7 @@ forms whose arguments are charsets."
              (mapcar #'rx--charset-intervals charsets)))
 
 (defun rx--translate-union (negated body)
-  "Translate a (union ...) construct.  Return (REGEXP . PRECEDENCE).
+  "Translate an (or ...) construct of charsets.  Return (REGEXP . PRECEDENCE).
 If NEGATED, negate the sense."
   (rx--intervals-to-alt negated (rx--charset-union body)))
 
@@ -976,7 +1001,6 @@ can expand to any number of values."
       ((or 'any 'in 'char)      (rx--translate-any nil body))
       ('not-char                (rx--translate-any t body))
       ('not                     (rx--translate-not nil body))
-      ('union                   (rx--translate-union nil body))
       ('intersection            (rx--translate-intersection nil body))
 
       ('repeat                  (rx--translate-repeat body))
@@ -1036,7 +1060,7 @@ can expand to any number of values."
         (t (error "Unknown rx form `%s'" op)))))))
 
 (defconst rx--builtin-forms
-  '(seq sequence : and or | any in char not-char not union intersection
+  '(seq sequence : and or | any in char not-char not intersection
     repeat = >= **
     zero-or-more 0+ *
     one-or-more 1+ +
@@ -1149,11 +1173,12 @@ CHAR           Match a literal character.
                 character, a string, a range as string \"A-Z\" or cons
                 (?A . ?Z), or a character class (see below).  Alias: in, char.
 (not CHARSPEC)  Match one character not matched by CHARSPEC.  CHARSPEC
-                can be (any ...), (union ...), (intersection ...),
-                (syntax ...), (category ...), or a character class.
-(union CHARSET...)        Union of CHARSETs.
-(intersection CHARSET...) Intersection of CHARSETs.
-                CHARSET is (any...), (not...), (union...) or (intersection...).
+                can be a character, single-char string, (any ...), (or ...),
+                (intersection ...), (syntax ...), (category ...),
+                or a character class.
+(intersection CHARSET...) Match all CHARSETs.
+                CHARSET is (any...), (not...), (or...) or (intersection...),
+                a character or a single-char string.
 not-newline     Match any character except a newline.  Alias: nonl.
 anychar         Match any character.  Alias: anything.
 unmatchable     Never match anything at all.

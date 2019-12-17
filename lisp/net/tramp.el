@@ -1019,7 +1019,7 @@ See also `tramp-file-name-regexp'.")
   (car tramp-file-name-structure))
 
 ;;;###autoload
-(defconst tramp-initial-file-name-regexp "\\`/.+:.*:"
+(defconst tramp-initial-file-name-regexp "\\`/[^/:]+:[^/:]*:"
   "Value for `tramp-file-name-regexp' for autoload.
 It must match the initial `tramp-syntax' settings.")
 
@@ -3259,10 +3259,16 @@ User is always nil."
 (defun tramp-handle-file-name-completion
   (filename directory &optional predicate)
   "Like `file-name-completion' for Tramp files."
-  (let (hits-ignored-extensions)
+  (let (hits-ignored-extensions fnac)
+    (setq fnac (file-name-all-completions filename directory))
+    ;; "." and ".." are never interesting as completions, and are
+    ;; actually in the way in a directory with only one file.  See
+    ;; file_name_completion() in dired.c.
+    (when (and (consp fnac) (= (length (delete "./" (delete "../" fnac))) 1))
+      (setq fnac (delete "./" (delete "../" fnac))))
     (or
      (try-completion
-      filename (file-name-all-completions filename directory)
+      filename fnac
       (lambda (x)
 	(when (funcall (or predicate #'identity) (expand-file-name x directory))
 	  (not
@@ -4169,7 +4175,8 @@ If found, set point to the end of the occurrence found, and return point.
 Otherwise, return nil."
   (goto-char (point-max))
   ;; We restrict ourselves to the last 256 characters.  There were
-  ;; reports of 85kB output, which has blocked Tramp forever.
+  ;; reports of a shell command "git ls-files -zco --exclude-standard"
+  ;; with 85k files involved, which has blocked Tramp forever.
   (re-search-backward regexp (max (point-min) (- (point) 256)) 'noerror))
 
 (defun tramp-check-for-regexp (proc regexp)
@@ -4968,12 +4975,14 @@ name of a process or buffer, or nil to default to the current buffer."
 ;; - Reset `file-name-handler-alist'
 ;; - Cleanup hooks where Tramp functions are in
 ;; - Cleanup autoloads
+;; We must autoload the function body.  Otherwise, Tramp would be
+;; loaded unconditionally if somebody calls `tramp-unload-tramp'.
 ;;;###autoload
-(defun tramp-unload-tramp ()
+(progn (defun tramp-unload-tramp ()
   "Discard Tramp from loading remote files."
   (interactive)
   ;; Maybe it's not loaded yet.
-  (ignore-errors (unload-feature 'tramp 'force)))
+  (ignore-errors (unload-feature 'tramp 'force))))
 
 (provide 'tramp)
 
