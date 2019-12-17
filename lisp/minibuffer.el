@@ -746,6 +746,68 @@ If ARGS are provided, then pass MESSAGE through `format-message'."
             (sit-for (or minibuffer-message-timeout 1000000)))
         (delete-overlay ol)))))
 
+(defcustom minibuffer-message-wait nil
+  "How long to display an echo-area message when the minibuffer is active.
+If the value is a number, it should be specified in seconds.
+If the value is not a number, such messages never time out."
+  :type '(choice (const :tag "Never time out" nil)
+                 (integer :tag "Wait for the number of seconds" 2)))
+
+(defvar minibuffer-message-timer nil)
+(defvar minibuffer-message-overlay nil)
+
+(defun set-minibuffer-message (message)
+  "Temporarily display MESSAGE at the end of the minibuffer.
+The text is displayed for `minibuffer-message-wait' seconds,
+or until the next input event arrives, whichever comes first.
+Enclose MESSAGE in [...] if this is not yet the case."
+  (when (and (window-live-p (active-minibuffer-window))
+             (window-live-p (old-selected-window))
+             (bufferp (window-buffer (old-selected-window)))
+             (minibufferp (window-buffer (old-selected-window))))
+    (setq message (if (string-match-p "\\` *\\[.+\\]\\'" message)
+                      ;; Make sure we can put-text-property.
+                      (copy-sequence message)
+                    (concat " [" message "]")))
+    (unless (or (null minibuffer-message-properties)
+                ;; Don't overwrite the face properties the caller has set
+                (text-properties-at 0 message))
+      (setq message (apply #'propertize message minibuffer-message-properties)))
+
+    (when (timerp minibuffer-message-timer)
+      (cancel-timer minibuffer-message-timer))
+    (when (overlayp minibuffer-message-overlay)
+      (delete-overlay minibuffer-message-overlay))
+
+    (setq minibuffer-message-overlay
+          (make-overlay (point-max) (point-max) nil t t))
+    (unless (zerop (length message))
+      ;; The current C cursor code doesn't know to use the overlay's
+      ;; marker's stickiness to figure out whether to place the cursor
+      ;; before or after the string, so let's spoon-feed it the pos.
+      (put-text-property 0 1 'cursor t message))
+    (overlay-put minibuffer-message-overlay 'after-string message)
+
+    (when (numberp minibuffer-message-wait)
+      (setq minibuffer-message-timer
+            (run-with-timer minibuffer-message-wait nil
+                            (lambda () (when (overlayp minibuffer-message-overlay)
+                                         (delete-overlay minibuffer-message-overlay))))))
+
+    t))
+
+(setq set-message-function 'set-minibuffer-message)
+
+(defun clear-minibuffer-message ()
+  "Clear minibuffer message."
+  (unless (numberp minibuffer-message-wait)
+    (when (timerp minibuffer-message-timer)
+      (cancel-timer minibuffer-message-timer))
+    (when (overlayp minibuffer-message-overlay)
+      (delete-overlay minibuffer-message-overlay))))
+
+(setq clear-message-function 'clear-minibuffer-message)
+
 (defun minibuffer-completion-contents ()
   "Return the user input in a minibuffer before point as a string.
 In Emacs 22, that was what completion commands operated on.

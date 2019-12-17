@@ -11706,13 +11706,33 @@ truncate_message_1 (ptrdiff_t nchars, Lisp_Object a2)
 static void
 set_message (Lisp_Object string)
 {
+  Lisp_Object message = Qnil;
+
   eassert (STRINGP (string));
 
-  message_enable_multibyte = STRING_MULTIBYTE (string);
+  if (!NILP (Vset_message_function))
+    {
+      ptrdiff_t count = SPECPDL_INDEX ();
+      specbind (Qinhibit_quit, Qt);
+      message = call1 (Vset_message_function, string);
+      unbind_to (count, Qnil);
 
-  with_echo_area_buffer (0, -1, set_message_1, 0, string);
-  message_buf_print = false;
-  help_echo_showing_p = false;
+      if (STRINGP (message))
+        {
+          eassert (STRINGP (message));
+          string = message;
+          message = Qnil;
+        }
+    }
+
+  if (NILP (message))
+    {
+      message_enable_multibyte = STRING_MULTIBYTE (string);
+
+      with_echo_area_buffer (0, -1, set_message_1, 0, string);
+      message_buf_print = false;
+      help_echo_showing_p = false;
+    }
 
   if (STRINGP (Vdebug_on_message)
       && STRINGP (string)
@@ -11768,6 +11788,14 @@ clear_message (bool current_p, bool last_displayed_p)
     {
       echo_area_buffer[0] = Qnil;
       message_cleared_p = true;
+
+      if (!NILP (Vclear_message_function))
+        {
+          ptrdiff_t count = SPECPDL_INDEX ();
+          specbind (Qinhibit_quit, Qt);
+          call0 (Vclear_message_function);
+          unbind_to (count, Qnil);
+        }
     }
 
   if (last_displayed_p)
@@ -34939,6 +34967,14 @@ display table takes effect; in this case, Emacs does not consult
   DEFVAR_LISP ("debug-on-message", Vdebug_on_message,
 	       doc: /* If non-nil, debug if a message matching this regexp is displayed.  */);
   Vdebug_on_message = Qnil;
+
+  DEFVAR_LISP ("set-message-function", Vset_message_function,
+	       doc: /* If non-nil, function to set message.  */);
+  Vset_message_function = Qnil;
+
+  DEFVAR_LISP ("clear-message-function", Vclear_message_function,
+	       doc: /* If non-nil, function to clear message.  */);
+  Vclear_message_function = Qnil;
 
   DEFVAR_LISP ("redisplay--all-windows-cause", Vredisplay__all_windows_cause,
 	       doc: /*  */);
