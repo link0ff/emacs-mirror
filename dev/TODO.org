@@ -1,17 +1,4 @@
 
-Subject: base64-decode-region breaks encoding
-
-0. emacs -Q
-1. insert a non-ASCII char, e.g. ä
-2. select the region around the char
-3. M-x base64-encode-region
-4. select the region around the encoded text
-5. M-x base64-decode-region
-
-results in a broken text.  IOW, base64-encode-region and base64-decode-region
-are not idempotent.
-
-
 vc-annotate should align two windows by setting window-start (in addition to window-point)
 like in vi, it was shame to hear this from a vi user
 

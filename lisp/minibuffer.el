@@ -761,7 +761,8 @@ If the value is not a number, such messages never time out."
 The text is displayed for `minibuffer-message-wait' seconds,
 or until the next input event arrives, whichever comes first.
 Enclose MESSAGE in [...] if this is not yet the case."
-  (when (and (window-live-p (active-minibuffer-window))
+  (when (and (not noninteractive)
+             (window-live-p (active-minibuffer-window))
              (window-live-p (old-selected-window))
              (bufferp (window-buffer (old-selected-window)))
              (minibufferp (window-buffer (old-selected-window))))
@@ -775,9 +776,11 @@ Enclose MESSAGE in [...] if this is not yet the case."
       (setq message (apply #'propertize message minibuffer-message-properties)))
 
     (when (timerp minibuffer-message-timer)
-      (cancel-timer minibuffer-message-timer))
+      (cancel-timer minibuffer-message-timer)
+      (setq minibuffer-message-timer nil))
     (when (overlayp minibuffer-message-overlay)
-      (delete-overlay minibuffer-message-overlay))
+      (delete-overlay minibuffer-message-overlay)
+      (setq minibuffer-message-overlay nil))
 
     (setq minibuffer-message-overlay
           (make-overlay (point-max) (point-max) nil t t))
@@ -791,8 +794,10 @@ Enclose MESSAGE in [...] if this is not yet the case."
     (when (numberp minibuffer-message-wait)
       (setq minibuffer-message-timer
             (run-with-timer minibuffer-message-wait nil
-                            (lambda () (when (overlayp minibuffer-message-overlay)
-                                         (delete-overlay minibuffer-message-overlay))))))
+                            (lambda ()
+                              (when (overlayp minibuffer-message-overlay)
+                                (delete-overlay minibuffer-message-overlay)
+                                (setq minibuffer-message-overlay nil))))))
 
     t))
 
@@ -800,11 +805,16 @@ Enclose MESSAGE in [...] if this is not yet the case."
 
 (defun clear-minibuffer-message ()
   "Clear minibuffer message."
-  (unless (numberp minibuffer-message-wait)
-    (when (timerp minibuffer-message-timer)
-      (cancel-timer minibuffer-message-timer))
-    (when (overlayp minibuffer-message-overlay)
-      (delete-overlay minibuffer-message-overlay))))
+  (when (not noninteractive)
+    ;; When this option is a number, the message
+    ;; should be cleared only by timer.
+    (unless (numberp minibuffer-message-wait)
+      (when (timerp minibuffer-message-timer)
+        (cancel-timer minibuffer-message-timer)
+        (setq minibuffer-message-timer nil))
+      (when (overlayp minibuffer-message-overlay)
+        (delete-overlay minibuffer-message-overlay)
+        (setq minibuffer-message-overlay nil)))))
 
 (setq clear-message-function 'clear-minibuffer-message)
 
