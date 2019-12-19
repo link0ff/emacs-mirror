@@ -760,9 +760,9 @@ and the text is displayed until the next input event arrives."
 
 (defun set-minibuffer-message (message)
   "Temporarily display MESSAGE at the end of the minibuffer.
-The text is displayed for `minibuffer-message-clear-timeout' seconds,
-or until the next input event arrives, whichever comes first.
-Enclose MESSAGE in [...] if this is not yet the case."
+The text is displayed for `minibuffer-message-clear-timeout' seconds
+(if the value is a number), or until the next input event arrives,
+whichever comes first."
   (when (and (not noninteractive)
              (window-live-p (active-minibuffer-window)))
     (with-current-buffer (window-buffer (active-minibuffer-window))
