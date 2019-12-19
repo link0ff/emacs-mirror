@@ -2990,7 +2990,7 @@ read_char (int commandflag, Lisp_Object map,
 	  safe_run_hooks (Qecho_area_clear_hook);
 	  clear_message (1, 0);
 	}
-      else if (!NILP (Vclear_message_function))
+      else if (FUNCTIONP (Vclear_message_function))
         message1 (0);
     }
 

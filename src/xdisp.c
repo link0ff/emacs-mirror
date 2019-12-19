@@ -11710,16 +11710,15 @@ set_message (Lisp_Object string)
 
   eassert (STRINGP (string));
 
-  if (!NILP (Vset_message_function))
+  if (FUNCTIONP (Vset_message_function))
     {
       ptrdiff_t count = SPECPDL_INDEX ();
       specbind (Qinhibit_quit, Qt);
-      message = call1 (Vset_message_function, string);
+      message = safe_call1 (Vset_message_function, string);
       unbind_to (count, Qnil);
 
       if (STRINGP (message))
         {
-          eassert (STRINGP (message));
           string = message;
           message = Qnil;
         }
@@ -11789,11 +11788,11 @@ clear_message (bool current_p, bool last_displayed_p)
       echo_area_buffer[0] = Qnil;
       message_cleared_p = true;
 
-      if (!NILP (Vclear_message_function))
+      if (FUNCTIONP (Vclear_message_function))
         {
           ptrdiff_t count = SPECPDL_INDEX ();
           specbind (Qinhibit_quit, Qt);
-          call0 (Vclear_message_function);
+          safe_call (1, Vclear_message_function);
           unbind_to (count, Qnil);
         }
     }
