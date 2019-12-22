@@ -746,7 +746,7 @@ If ARGS are provided, then pass MESSAGE through `format-message'."
             (sit-for (or minibuffer-message-timeout 1000000)))
         (delete-overlay ol)))))
 
-(defcustom minibuffer-message-clear-timeout 2
+(defcustom minibuffer-message-clear-timeout nil
   "How long to display an echo-area message when the minibuffer is active.
 If the value is a number, it should be specified in seconds.
 If the value is not a number, such messages never time out,

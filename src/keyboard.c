@@ -2991,7 +2991,7 @@ read_char (int commandflag, Lisp_Object map,
 	  clear_message (1, 0);
 	}
       else if (FUNCTIONP (Vclear_message_function))
-        message1 (0);
+        clear_message (1, 0);
     }
 
  reread_for_input_method:
