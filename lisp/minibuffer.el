@@ -748,9 +748,14 @@ If ARGS are provided, then pass MESSAGE through `format-message'."
 
 (defcustom minibuffer-message-clear-timeout nil
   "How long to display an echo-area message when the minibuffer is active.
-If the value is a number, it should be specified in seconds.
-If the value is not a number, such messages never time out,
-and the text is displayed until the next input event arrives."
+If the value is a number, it is the time in seconds after which to
+remove the echo-area message from the active minibuffer.
+If the value is not a number, such messages are never removed,
+and their text is displayed until the next input event arrives.
+Unlike `minibuffer-message-timeout' used by `minibuffer-message',
+this option affects the pair of functions `set-minibuffer-message'
+and `clear-minibuffer-message' called automatically via
+`set-message-function' and `clear-message-function'."
   :type '(choice (const :tag "Never time out" nil)
                  (integer :tag "Wait for the number of seconds" 2))
   :version "27.1")
@@ -762,7 +767,9 @@ and the text is displayed until the next input event arrives."
   "Temporarily display MESSAGE at the end of the minibuffer.
 The text is displayed for `minibuffer-message-clear-timeout' seconds
 (if the value is a number), or until the next input event arrives,
-whichever comes first."
+whichever comes first.
+Unlike `minibuffer-message', this function is called automatically
+via `set-message-function'."
   (when (and (not noninteractive)
              (window-live-p (active-minibuffer-window)))
     (with-current-buffer (window-buffer (active-minibuffer-window))
@@ -775,12 +782,7 @@ whichever comes first."
                   (text-properties-at 0 message))
         (setq message (apply #'propertize message minibuffer-message-properties)))
 
-      (when (timerp minibuffer-message-timer)
-        (cancel-timer minibuffer-message-timer)
-        (setq minibuffer-message-timer nil))
-      (when (overlayp minibuffer-message-overlay)
-        (delete-overlay minibuffer-message-overlay)
-        (setq minibuffer-message-overlay nil))
+      (clear-minibuffer-message)
 
       (setq minibuffer-message-overlay
             (make-overlay (point-max) (point-max) nil t t))
@@ -794,18 +796,17 @@ whichever comes first."
       (when (numberp minibuffer-message-clear-timeout)
         (setq minibuffer-message-timer
               (run-with-timer minibuffer-message-clear-timeout nil
-                              (lambda ()
-                                (when (overlayp minibuffer-message-overlay)
-                                  (delete-overlay minibuffer-message-overlay)
-                                  (setq minibuffer-message-overlay nil)
-                                  (setq minibuffer-message-timer nil))))))
+                              #'clear-minibuffer-message)))
 
+      ;; Return `t' telling the caller that the message
+      ;; was handled specially by this function.
       t)))
 
 (setq set-message-function 'set-minibuffer-message)
 
 (defun clear-minibuffer-message ()
-  "Clear minibuffer message."
+  "Clear minibuffer message.
+Intended to be called via `clear-message-function'."
   (when (not noninteractive)
     (when (timerp minibuffer-message-timer)
       (cancel-timer minibuffer-message-timer)
@@ -3585,17 +3586,33 @@ that is non-nil."
   (cl-flet ((compose-flex-sort-fn
              (existing-sort-fn) ; wish `cl-flet' had proper indentation...
              (lambda (completions)
-               (let ((res
-                      (if existing-sort-fn
-                          (funcall existing-sort-fn completions)
-                        completions)))
-                 (sort
-                  res
-                  (lambda (c1 c2)
-                    (or (equal c1 minibuffer-default)
-                        (let ((s1 (get-text-property 0 'completion-score c1))
-                              (s2 (get-text-property 0 'completion-score c2)))
-                          (> (or s1 0) (or s2 0))))))))))
+               (let* ((by-score
+                       (sort
+                        (if existing-sort-fn
+                            (funcall existing-sort-fn completions)
+                          completions)
+                        (lambda (c1 c2)
+                          (let ((s1 (get-text-property 0 'completion-score c1))
+                                (s2 (get-text-property 0 'completion-score c2)))
+                            (> (or s1 0) (or s2 0))))))
+                      (promoted-default
+                       (and minibuffer-default
+                            (and (window-minibuffer-p)
+                                 (= (point-max)
+                                    (minibuffer-prompt-end)))
+                            ;; If we have an empty pattern and a
+                            ;; non-nil default we probably want to
+                            ;; make sure that default is bubbled to
+                            ;; the top even if it doesn't match the
+                            ;; completion perfectly (like in M-x man
+                            ;; case)
+                            (cl-loop
+                             for l on by-score
+                             for comp = (cadr l)
+                             when (string-prefix-p minibuffer-default comp)
+                             do (setf (cdr l) (cddr l))
+                             and return (cons comp by-score)))))
+                 (or promoted-default by-score)))))
     `(metadata
       (display-sort-function
        . ,(compose-flex-sort-fn

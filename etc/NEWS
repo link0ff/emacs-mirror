@@ -533,6 +533,11 @@ The HIST argument of 'read-from-minibuffer' now works correctly with
 buffer-local variables.  This means that different buffers can have
 their own separated input history list if desired.
 
+** 'backup-by-copying-when-privileged-mismatch' applies to file gid, too.
+In addition to checking the file owner uid, Emacs also checks that the
+group gid is not greater than backup-by-copying-when-privileged-mismatch;
+if so, backup-by-copying-when-mismatch will be forced on.
+
 
 * Editing Changes in Emacs 27.1
 
@@ -775,6 +780,13 @@ list the contents of such directories when completing file names.
 been introduced to allow controlling how the 'M-<' command works in
 the minibuffer.  If non-nil, point will move to the end of the prompt
 (if point is after the end of the prompt).
+
++++
+*** When the minibuffer is active, echo-area messages are displayed at
+the end of the minibuffer instead of hiding the minibuffer by the echo
+area display.  The new option 'minibuffer-message-clear-timeout'
+controls how messages displayed in this situation are removed from the
+minibuffer.
 
 ---
 *** Minibuffer now uses 'minibuffer-message' to display error messages
@@ -1554,6 +1566,12 @@ The maximum level is used by default; customize
 *** New user option 'python-pdbtrack-kill-buffers'.
 If non-nil, the default, buffers opened during pdbtracking session are
 killed when pdbtracking session is finished.
+
+---
+*** New function 'python-shell-send-region'.
+It send the statement delimited by 'python-nav-beginning-of-statement' and
+'python-nav-end-of-statement' to the inferior Python process.
+
 
 ** Help
 
@@ -2712,6 +2730,10 @@ This function works like 'read-char', but uses 'read-from-minibuffer'
 to read a character, so it maintains a history that can be navigated
 via usual minibuffer keystrokes 'M-p'/'M-n'.
 
+** New variables 'set-message-function' and 'clear-message-function'
+can be used to specify functions to show and clear messages that
+normally are displayed in the echo area.
+
 ** 'setq-local' can now set an arbitrary number of variables, which
 makes the syntax more like 'setq'.
 
@@ -2723,6 +2745,14 @@ overlays.  This is only done on 'display' properties that have the
 +++
 ** 'process-contact' now takes an optional NO-BLOCK argument to allow
 not waiting for a process to be set up.
+
+---
+** New variable 'read-process-output-max' controls sub-process throughput.
+This variable determines how many bytes can be read from a sub-process
+in one read operation.  The default, 4096 bytes, was previously a
+hard-coded constant.  Setting it to a larger value might enhance
+throughput of reading from sub-processes that produces vast
+(megabytes) amounts of data in one go.
 
 +++
 ** The new user option 'quit-window-hook' is now run first when
