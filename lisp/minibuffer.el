@@ -3583,36 +3583,31 @@ that is non-nil."
 (put 'flex 'completion--adjust-metadata 'completion--flex-adjust-metadata)
 
 (defun completion--flex-adjust-metadata (metadata)
-  (cl-flet ((compose-flex-sort-fn
-             (existing-sort-fn) ; wish `cl-flet' had proper indentation...
-             (lambda (completions)
-               (let* ((by-score
-                       (sort
-                        (if existing-sort-fn
-                            (funcall existing-sort-fn completions)
-                          completions)
-                        (lambda (c1 c2)
-                          (let ((s1 (get-text-property 0 'completion-score c1))
-                                (s2 (get-text-property 0 'completion-score c2)))
-                            (> (or s1 0) (or s2 0))))))
-                      (promoted-default
-                       (and minibuffer-default
-                            (and (window-minibuffer-p)
-                                 (= (point-max)
-                                    (minibuffer-prompt-end)))
-                            ;; If we have an empty pattern and a
-                            ;; non-nil default we probably want to
-                            ;; make sure that default is bubbled to
-                            ;; the top even if it doesn't match the
-                            ;; completion perfectly (like in M-x man
-                            ;; case)
-                            (cl-loop
-                             for l on by-score
-                             for comp = (cadr l)
-                             when (string-prefix-p minibuffer-default comp)
-                             do (setf (cdr l) (cddr l))
-                             and return (cons comp by-score)))))
-                 (or promoted-default by-score)))))
+  (cl-flet
+      ((compose-flex-sort-fn
+        (existing-sort-fn) ; wish `cl-flet' had proper indentation...
+        (lambda (completions)
+          (let ((pre-sorted
+                 (if existing-sort-fn
+                     (funcall existing-sort-fn completions)
+                   completions)))
+            (cond
+             ((or (not (window-minibuffer-p))
+                  ;; JT@2019-12-23: FIXME: this is still wrong.  What
+                  ;; we need to test here is "some input that actually
+                  ;; leads to flex filtering", not "something after
+                  ;; the minibuffer prompt".  Among other
+                  ;; inconsistencies, the latter is always true for
+                  ;; file searches, meaning the next clauses will be
+                  ;; ignored.
+                  (> (point-max) (minibuffer-prompt-end)))
+              (sort
+               pre-sorted
+               (lambda (c1 c2)
+                 (let ((s1 (get-text-property 0 'completion-score c1))
+                       (s2 (get-text-property 0 'completion-score c2)))
+                   (> (or s1 0) (or s2 0))))))
+             (t pre-sorted))))))
     `(metadata
       (display-sort-function
        . ,(compose-flex-sort-fn
