@@ -1,4 +1,6 @@
 
+;; TODO: when Isearch is active, show messages at the end of Isearch prompt
+
 (require 'cl)
 (defvar test-i 0)
 (defvar test-timer (run-with-timer 3 3 (lambda () (message "☃!%s" (incf test-i)))))
