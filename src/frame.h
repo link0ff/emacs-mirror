@@ -1,5 +1,5 @@
 /* Define frame-object for GNU Emacs.
-   Copyright (C) 1993-1994, 1999-2019 Free Software Foundation, Inc.
+   Copyright (C) 1993-1994, 1999-2020 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -69,8 +69,9 @@ enum internal_border_part
 #ifdef NS_IMPL_COCOA
 enum ns_appearance_type
   {
-   ns_appearance_aqua,
-   ns_appearance_vibrant_dark
+    ns_appearance_system_default,
+    ns_appearance_aqua,
+    ns_appearance_vibrant_dark
   };
 #endif
 #endif /* HAVE_WINDOW_SYSTEM */

@@ -1,6 +1,6 @@
 ;;; table.el --- create and edit WYSIWYG text based embedded tables  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2000-2019 Free Software Foundation, Inc.
+;; Copyright (C) 2000-2020 Free Software Foundation, Inc.
 
 ;; Keywords: wp, convenience
 ;; Author: Takaaki Ota <Takaaki.Ota@am.sony.com>
@@ -3206,11 +3206,7 @@ CALS (DocBook DTD):
 	  (while (and (re-search-forward "$" nil t)
 		      (not (eobp)))
 	    (insert "<br />")
-	    (forward-char 1)))
-	(unless (and table-html-delegate-spacing-to-user-agent
-		     (progn
-		       (goto-char (point-min))
-		       (looking-at "\\s *\\'")))))
+	    (forward-char 1))))
        ((eq language 'cals)
 	(table--remove-eol-spaces (point-min) (point-max))
 	(if (re-search-forward "\\s +\\'" nil t)

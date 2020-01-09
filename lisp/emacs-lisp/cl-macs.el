@@ -1,6 +1,6 @@
 ;;; cl-macs.el --- Common Lisp macros  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1993, 2001-2019 Free Software Foundation, Inc.
+;; Copyright (C) 1993, 2001-2020 Free Software Foundation, Inc.
 
 ;; Author: Dave Gillespie <daveg@synaptics.com>
 ;; Old-Version: 2.02
@@ -1318,7 +1318,10 @@ For more details, see Info node `(cl)Loop Facility'.
                                                 (nreverse cl--loop-conditions)))
                                          ,then ,var))
                               loop-for-steps))
-		    (push `(,var (if ,first-assign ,start ,then)) loop-for-sets))))
+                    (push (if (eq start then)
+		              `(,var ,then)
+                            `(,var (if ,first-assign ,start ,then)))
+                          loop-for-sets))))
 
 	       ((memq word '(across across-ref))
 		(let ((temp-vec (make-symbol "--cl-vec--"))

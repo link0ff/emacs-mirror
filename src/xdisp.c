@@ -1,6 +1,6 @@
 /* Display generation from window structure and buffer text.
 
-Copyright (C) 1985-1988, 1993-1995, 1997-2019 Free Software Foundation,
+Copyright (C) 1985-1988, 1993-1995, 1997-2020 Free Software Foundation,
 Inc.
 
 This file is part of GNU Emacs.
@@ -1093,44 +1093,60 @@ window_box_height (struct window *w)
 
   /* Note: the code below that determines the mode-line/header-line/tab-line
      height is essentially the same as that contained in the macro
-     CURRENT_{MODE,HEADER}_LINE_HEIGHT, except that it checks whether
-     the appropriate glyph row has its `mode_line_p' flag set,
-     and if it doesn't, uses estimate_mode_line_height instead.  */
+     CURRENT_{MODE,HEADER,TAB}_LINE_HEIGHT, except that it checks whether
+     the appropriate glyph row has its `mode_line_p' flag set, and if
+     it doesn't, uses estimate_mode_line_height instead.  */
 
   if (window_wants_mode_line (w))
     {
-      struct glyph_row *ml_row
-	= (w->current_matrix && w->current_matrix->rows
-	   ? MATRIX_MODE_LINE_ROW (w->current_matrix)
-	   : 0);
-      if (ml_row && ml_row->mode_line_p)
-	height -= ml_row->height;
+      if (w->mode_line_height >= 0)
+	height -= w->mode_line_height;
       else
-	height -= estimate_mode_line_height (f, CURRENT_MODE_LINE_FACE_ID (w));
+	{
+	  struct glyph_row *ml_row
+	    = (w->current_matrix && w->current_matrix->rows
+	       ? MATRIX_MODE_LINE_ROW (w->current_matrix)
+	       : 0);
+	  if (ml_row && ml_row->mode_line_p)
+	    height -= ml_row->height;
+	  else
+	    height -= estimate_mode_line_height (f,
+						 CURRENT_MODE_LINE_FACE_ID (w));
+	}
     }
 
   if (window_wants_tab_line (w))
     {
-      struct glyph_row *tl_row
-	= (w->current_matrix && w->current_matrix->rows
-	   ? MATRIX_TAB_LINE_ROW (w->current_matrix)
-	   : 0);
-      if (tl_row && tl_row->mode_line_p)
-	height -= tl_row->height;
+      if (w->tab_line_height >= 0)
+	height -= w->tab_line_height;
       else
-	height -= estimate_mode_line_height (f, TAB_LINE_FACE_ID);
+	{
+	  struct glyph_row *tl_row
+	    = (w->current_matrix && w->current_matrix->rows
+	       ? MATRIX_TAB_LINE_ROW (w->current_matrix)
+	       : 0);
+	  if (tl_row && tl_row->mode_line_p)
+	    height -= tl_row->height;
+	  else
+	    height -= estimate_mode_line_height (f, TAB_LINE_FACE_ID);
+	}
     }
 
   if (window_wants_header_line (w))
     {
-      struct glyph_row *hl_row
-	= (w->current_matrix && w->current_matrix->rows
-	   ? MATRIX_HEADER_LINE_ROW (w->current_matrix)
-	   : 0);
-      if (hl_row && hl_row->mode_line_p)
-	height -= hl_row->height;
+      if (w->header_line_height >= 0)
+	height -= w->header_line_height;
       else
-	height -= estimate_mode_line_height (f, HEADER_LINE_FACE_ID);
+	{
+	  struct glyph_row *hl_row
+	    = (w->current_matrix && w->current_matrix->rows
+	       ? MATRIX_HEADER_LINE_ROW (w->current_matrix)
+	       : 0);
+	  if (hl_row && hl_row->mode_line_p)
+	    height -= hl_row->height;
+	  else
+	    height -= estimate_mode_line_height (f, HEADER_LINE_FACE_ID);
+	}
     }
 
   /* With a very small font and a mode-line that's taller than
@@ -8557,7 +8573,7 @@ compute_stop_pos_backwards (struct it *it)
    position before that.  This is called when we bump into a stop
    position while reordering bidirectional text.  CHARPOS should be
    the last previously processed stop_pos (or BEGV/0, if none were
-   processed yet) whose position is less that IT's current
+   processed yet) whose position is less than IT's current
    position.  */
 
 static void
@@ -16228,8 +16244,8 @@ set_cursor_from_row (struct window *w, struct glyph_row *row,
   bool string_from_text_prop = false;
 
   /* Don't even try doing anything if called for a mode-line or
-     header-line row, since the rest of the code isn't prepared to
-     deal with such calamities.  */
+     header-line or tab-line row, since the rest of the code isn't
+     prepared to deal with such calamities.  */
   eassert (!row->mode_line_p);
   if (row->mode_line_p)
     return false;
@@ -17488,6 +17504,9 @@ try_cursor_movement (Lisp_Object window, struct text_pos startp,
       else
 	{
 	  row = MATRIX_ROW (w->current_matrix, w->last_cursor_vpos);
+	  /* Skip the tab-line and header-line rows, if any.  */
+	  if (row->tab_line_p)
+	    ++row;
 	  if (row->mode_line_p)
 	    ++row;
 	  if (!row->enabled_p)
@@ -17560,6 +17579,9 @@ try_cursor_movement (Lisp_Object window, struct text_pos startp,
 		  || row->mode_line_p)
 		{
 		  row = w->current_matrix->rows;
+		  /* Skip the tab-line and header-line rows, if any.  */
+		  if (row->tab_line_p)
+		    ++row;
 		  if (row->mode_line_p)
 		    ++row;
 		}
@@ -17624,8 +17646,9 @@ try_cursor_movement (Lisp_Object window, struct text_pos startp,
 	    ;
 	  else if (rc != CURSOR_MOVEMENT_SUCCESS
 	      && MATRIX_ROW_PARTIALLY_VISIBLE_P (w, row)
-	      /* Make sure this isn't a header line by any chance, since
-		 then MATRIX_ROW_PARTIALLY_VISIBLE_P might yield true.  */
+	      /* Make sure this isn't a header line nor a tab-line by
+		 any chance, since then MATRIX_ROW_PARTIALLY_VISIBLE_P
+		 might yield true.  */
 	      && !row->mode_line_p
 	      && !cursor_row_fully_visible_p (w, true, true, true))
 	    {
@@ -18753,11 +18776,14 @@ redisplay_window (Lisp_Object window, bool just_this_one_p)
 	    }
 	}
       /* Finally, fall back on the first row of the window after the
-	 header line (if any).  This is slightly better than not
-	 displaying the cursor at all.  */
+	 tab-line and header line (if any).  This is slightly better
+	 than not displaying the cursor at all.  */
       if (!row)
 	{
 	  row = matrix->rows;
+	  /* Skip the tab-line and header-line rows, if any.  */
+	  if (row->tab_line_p)
+	    ++row;
 	  if (row->mode_line_p)
 	    ++row;
 	}
@@ -19771,7 +19797,9 @@ row_containing_pos (struct window *w, ptrdiff_t charpos,
   ptrdiff_t mindif = BUF_ZV (XBUFFER (w->contents)) + 1;
   int last_y;
 
-  /* If we happen to start on a header-line, skip that.  */
+  /* If we happen to start on a header-line or a tab-line, skip that.  */
+  if (row->tab_line_p)
+    ++row;
   if (row->mode_line_p)
     ++row;
 
@@ -22364,7 +22392,7 @@ find_row_edges (struct it *it, struct glyph_row *row,
       if (STRINGP (it->object)
 	  /* this is not the first row */
 	  && row > it->w->desired_matrix->rows
-	  /* previous row is not the header line */
+	  /* previous row is not the header line or tab-line */
 	  && !r1->mode_line_p
 	  /* previous row also ends in a newline from a string */
 	  && r1->ends_in_newline_from_string_p)
@@ -33491,7 +33519,7 @@ expose_area (struct window *w, struct glyph_row *row, const Emacs_Rectangle *r,
 
   if (area == TEXT_AREA && row->fill_line_p)
     /* If row extends face to end of line write the whole line.  */
-    draw_glyphs (w, 0, row, area,
+    draw_glyphs (w, row->x, row, area,
 		 0, row->used[area],
 		 DRAW_NORMAL_TEXT, 0);
   else

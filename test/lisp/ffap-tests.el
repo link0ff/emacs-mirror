@@ -1,6 +1,6 @@
 ;;; ffap-tests.el --- Test suite for ffap.el -*- lexical-binding: t -*-
 
-;; Copyright (C) 2016-2019 Free Software Foundation, Inc.
+;; Copyright (C) 2016-2020 Free Software Foundation, Inc.
 
 ;; Author: Tino Calancha <tino.calancha@gmail.com>
 
@@ -74,7 +74,7 @@ left alone when opening a URL in an external browser."
              (urls nil)
              (ffap-url-fetcher (lambda (url) (push url urls) nil)))
     (should-not (ffap-other-window "https://www.gnu.org"))
-    (should (equal (current-window-configuration) old))
+    (should (compare-window-configurations (current-window-configuration) old))
     (should (equal urls '("https://www.gnu.org")))))
 
 (provide 'ffap-tests)

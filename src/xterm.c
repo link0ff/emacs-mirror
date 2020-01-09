@@ -1,6 +1,6 @@
 /* X Communication module for terminals which understand the X protocol.
 
-Copyright (C) 1989, 1993-2019 Free Software Foundation, Inc.
+Copyright (C) 1989, 1993-2020 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -8933,6 +8933,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #if defined USE_CAIRO && !defined USE_GTK
       if (f)
 	x_cr_update_surface_desired_size (f, configureEvent.xconfigure.width,
+					  configureEvent.xconfigure.height);
+      else if (any && configureEvent.xconfigure.window == FRAME_X_WINDOW (any))
+	x_cr_update_surface_desired_size (any,
+					  configureEvent.xconfigure.width,
 					  configureEvent.xconfigure.height);
 #endif
 #ifdef USE_GTK

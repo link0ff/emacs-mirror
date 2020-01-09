@@ -1,5 +1,5 @@
 /* Window definitions for GNU Emacs.
-   Copyright (C) 1985-1986, 1993, 1995, 1997-2019 Free Software
+   Copyright (C) 1985-1986, 1993, 1995, 1997-2020 Free Software
    Foundation, Inc.
 
 This file is part of GNU Emacs.
@@ -1184,7 +1184,6 @@ extern Lisp_Object window_list (void);
 extern Lisp_Object window_parameter (struct window *, Lisp_Object parameter);
 extern struct window *decode_live_window (Lisp_Object);
 extern struct window *decode_any_window (Lisp_Object);
-extern bool compare_window_configurations (Lisp_Object, Lisp_Object, bool);
 extern void mark_window_cursors_off (struct window *);
 extern bool window_wants_mode_line (struct window *);
 extern bool window_wants_header_line (struct window *);

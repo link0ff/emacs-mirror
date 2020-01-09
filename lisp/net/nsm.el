@@ -1,6 +1,6 @@
 ;;; nsm.el --- Network Security Manager  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2014-2019 Free Software Foundation, Inc.
+;; Copyright (C) 2014-2020 Free Software Foundation, Inc.
 
 ;; Author: Lars Magne Ingebrigtsen <larsi@gnus.org>
 ;; Keywords: encryption, security, network
@@ -311,9 +311,9 @@ See also: `network-security-protocol-checks' and `nsm-noninteractive'"
                                                   (map-values results)
                                                   "\n")
                                                  "\n")
-                                                "\n* ")))))
-                 (delete-process process)
-                 (setq process nil)))
+						"\n* "))))))
+	(delete-process process)
+	(setq process nil))
       (run-hook-with-args 'nsm-tls-post-check-functions
                           host port status settings results)))
   process)

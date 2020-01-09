@@ -1,6 +1,6 @@
 /* Functions for the X Window System.
 
-Copyright (C) 1989, 1992-2019 Free Software Foundation, Inc.
+Copyright (C) 1989, 1992-2020 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -4572,11 +4572,12 @@ On MS Windows, this just returns nil.  */)
     return Qnil;
 }
 
+#if !defined USE_GTK || !defined HAVE_GTK3
+
 /* Store the geometry of the workarea on display DPYINFO into *RECT.
    Return false if and only if the workarea information cannot be
    obtained via the _NET_WORKAREA root window property.  */
 
-#ifndef HAVE_GTK3
 static bool
 x_get_net_workarea (struct x_display_info *dpyinfo, XRectangle *rect)
 {
@@ -4634,9 +4635,6 @@ x_get_net_workarea (struct x_display_info *dpyinfo, XRectangle *rect)
 
   return result;
 }
-#endif
-
-#ifndef USE_GTK
 
 /* Return monitor number where F is "most" or closest to.  */
 static int
@@ -5091,6 +5089,8 @@ Internal use only, use `display-monitor-attributes-list' instead.  */)
 #elif defined HAVE_GTK3
       scale = gdk_screen_get_monitor_scale_factor (gscreen, i);
 #endif
+      rec.x *= scale;
+      rec.y *= scale;
       rec.width *= scale;
       rec.height *= scale;
       work.x *= scale;

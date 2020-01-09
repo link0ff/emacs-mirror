@@ -1,6 +1,6 @@
 ;;; tabulated-list.el --- generic major mode for tabulated lists -*- lexical-binding: t -*-
 
-;; Copyright (C) 2011-2019 Free Software Foundation, Inc.
+;; Copyright (C) 2011-2020 Free Software Foundation, Inc.
 
 ;; Author: Chong Yidong <cyd@stupidchicken.com>
 ;; Keywords: extensions, lisp
@@ -547,10 +547,10 @@ Return the column number after insertion."
     ;; Don't truncate to `width' if the next column is align-right
     ;; and has some space left, truncate to `available-space' instead.
     (when (and not-last-col
-               (> label-width available-space)
-               (setq label (truncate-string-to-width
-                            label available-space nil nil t t)
-                     label-width available-space)))
+	       (> label-width available-space))
+      (setq label (truncate-string-to-width
+		   label available-space nil nil t t)
+	    label-width available-space))
     (setq label (bidi-string-mark-left-to-right label))
     (when (and right-align (> width label-width))
       (let ((shift (- width label-width)))

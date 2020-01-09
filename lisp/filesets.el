@@ -1,6 +1,6 @@
 ;;; filesets.el --- handle group of files
 
-;; Copyright (C) 2002-2019 Free Software Foundation, Inc.
+;; Copyright (C) 2002-2020 Free Software Foundation, Inc.
 
 ;; Author: Thomas Link <sanobast-emacs@yahoo.de>
 ;; Maintainer: emacs-devel@gnu.org
@@ -1645,10 +1645,10 @@ Replace <file-name> or <<file-name>> with filename."
 				      (dolist (this args txt)
 					(setq txt
 					      (concat txt
+						      (if (equal txt "") "" " ")
 						      (filesets-run-cmd--repl-fn
 						       this
 						       (lambda (this)
-							 (if (equal txt "") "" " ")
 							 (format "%s" this))))))))
 				   (cmd (concat fn " " args)))
 			      (filesets-cmd-show-result

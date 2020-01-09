@@ -1,6 +1,6 @@
 /* NeXT/Open/GNUstep / macOS communication module.      -*- coding: utf-8 -*-
 
-Copyright (C) 1989, 1993-1994, 2005-2006, 2008-2019 Free Software
+Copyright (C) 1989, 1993-1994, 2005-2006, 2008-2020 Free Software
 Foundation, Inc.
 
 This file is part of GNU Emacs.
@@ -2025,17 +2025,13 @@ ns_set_appearance (struct frame *f, Lisp_Object new_value, Lisp_Object old_value
     return;
 
   if (EQ (new_value, Qdark))
-    {
-      window.appearance = [NSAppearance
-                            appearanceNamed: NSAppearanceNameVibrantDark];
-      FRAME_NS_APPEARANCE (f) = ns_appearance_vibrant_dark;
-    }
+    FRAME_NS_APPEARANCE (f) = ns_appearance_vibrant_dark;
+  else if (EQ (new_value, Qlight))
+    FRAME_NS_APPEARANCE (f) = ns_appearance_aqua;
   else
-    {
-      window.appearance = [NSAppearance
-                            appearanceNamed: NSAppearanceNameAqua];
-      FRAME_NS_APPEARANCE (f) = ns_appearance_aqua;
-    }
+    FRAME_NS_APPEARANCE (f) = ns_appearance_system_default;
+
+  [window setAppearance];
 #endif /* MAC_OS_X_VERSION_MAX_ALLOWED >= 101000 */
 }
 
@@ -2290,26 +2286,21 @@ ns_lisp_to_color (Lisp_Object color, NSColor **col)
 
 /* Convert an index into the color table into an RGBA value.  Used in
    xdisp.c:extend_face_to_end_of_line when comparing faces and frame
-   color values.  No-op on non-gui frames.  */
+   color values.  */
 
 unsigned long
 ns_color_index_to_rgba(int idx, struct frame *f)
 {
-  if (FRAME_DISPLAY_INFO (f))
-    {
-      NSColor *col;
-      col = ns_lookup_indexed_color (idx, f);
+  NSColor *col;
+  col = ns_lookup_indexed_color (idx, f);
 
-      EmacsCGFloat r, g, b, a;
-      [col getRed: &r green: &g blue: &b alpha: &a];
+  EmacsCGFloat r, g, b, a;
+  [col getRed: &r green: &g blue: &b alpha: &a];
 
-      return ARGB_TO_ULONG((unsigned long) (a * 255),
-                           (unsigned long) (r * 255),
-                           (unsigned long) (g * 255),
-                           (unsigned long) (b * 255));
-    }
-  else
-    return idx;
+  return ARGB_TO_ULONG((unsigned long) (a * 255),
+                       (unsigned long) (r * 255),
+                       (unsigned long) (g * 255),
+                       (unsigned long) (b * 255));
 }
 
 void
@@ -2330,7 +2321,7 @@ ns_query_color(void *col, Emacs_Color *color_def, bool setPixel)
   if (setPixel == YES)
     color_def->pixel
       = ARGB_TO_ULONG((unsigned long) (a * 255),
-		      (unsigned long) (r * 255),
+                      (unsigned long) (r * 255),
                       (unsigned long) (g * 255),
                       (unsigned long) (b * 255));
 }
@@ -7474,16 +7465,8 @@ not_in_argv (NSString *arg)
   if (! FRAME_UNDECORATED (f))
     [self createToolbar: f];
 
-#if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
-#ifndef NSAppKitVersionNumber10_10
-#define NSAppKitVersionNumber10_10 1343
-#endif
 
-  if (NSAppKitVersionNumber >= NSAppKitVersionNumber10_10
-      && FRAME_NS_APPEARANCE (f) != ns_appearance_aqua)
-    win.appearance = [NSAppearance
-                          appearanceNamed: NSAppearanceNameVibrantDark];
-#endif
+  [win setAppearance];
 
 #if defined (NS_IMPL_COCOA) && MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
   if ([win respondsToSelector: @selector(titlebarAppearsTransparent)])
@@ -8731,6 +8714,32 @@ not_in_argv (NSString *arg)
       [self setFrame: sr display: NO];
     }
 #endif
+}
+
+- (void)setAppearance
+{
+#if MAC_OS_X_VERSION_MAX_ALLOWED >= 101000
+  struct frame *f = ((EmacsView *)[self delegate])->emacsframe;
+  NSAppearance *appearance = nil;
+
+  NSTRACE ("[EmacsWindow setAppearance]");
+
+#ifndef NSAppKitVersionNumber10_10
+#define NSAppKitVersionNumber10_10 1343
+#endif
+
+  if (NSAppKitVersionNumber < NSAppKitVersionNumber10_10)
+    return;
+
+  if (FRAME_NS_APPEARANCE (f) == ns_appearance_vibrant_dark)
+    appearance =
+      [NSAppearance appearanceNamed:NSAppearanceNameVibrantDark];
+  else if (FRAME_NS_APPEARANCE (f) == ns_appearance_aqua)
+    appearance =
+      [NSAppearance appearanceNamed:NSAppearanceNameAqua];
+
+  [self setAppearance:appearance];
+#endif /* MAC_OS_X_VERSION_MAX_ALLOWED >= 101000 */
 }
 
 - (void)setFrame:(NSRect)windowFrame

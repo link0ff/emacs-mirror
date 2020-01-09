@@ -1,6 +1,6 @@
 ;;; autorevert.el --- revert buffers when files on disk change  -*- lexical-binding:t -*-
 
-;; Copyright (C) 1997-1999, 2001-2019 Free Software Foundation, Inc.
+;; Copyright (C) 1997-1999, 2001-2020 Free Software Foundation, Inc.
 
 ;; Author: Anders Lindgren
 ;; Keywords: convenience
@@ -733,8 +733,8 @@ system.")
                      (null buffer-file-name))
                 (auto-revert-notify-rm-watch)
                 ;; Restart the timer if it wasn't running.
-                (unless auto-revert-timer)
-                  (auto-revert-set-timer))))
+                (unless auto-revert-timer
+                  (auto-revert-set-timer)))))
 
         ;; Loop over all buffers, in order to find the intended one.
         (cl-dolist (buffer buffers)

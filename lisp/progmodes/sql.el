@@ -1,6 +1,6 @@
 ;;; sql.el --- specialized comint.el for SQL interpreters  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1998-2019 Free Software Foundation, Inc.
+;; Copyright (C) 1998-2020 Free Software Foundation, Inc.
 
 ;; Author: Alex Schroeder <alex@gnu.org>
 ;; Maintainer: Michael Mauger <michael@mauger.com>
@@ -905,7 +905,7 @@ it automatically."
 		 (const  :tag "Default Terminator" t)
 		 (string :tag "Terminator String")
 		 (cons   :tag "Terminator Pattern and String"
-			 (string :tag "Terminator Pattern")
+			 (regexp :tag "Terminator Pattern")
 			 (string :tag "Terminator String")))
   :version "22.2"
   :group 'SQL)
@@ -1033,7 +1033,7 @@ All products share this list; products should define a regexp to
 identify additional keywords in a variable defined by
 the :statement feature."
   :version "24.1"
-  :type 'string
+  :type 'regexp
   :group 'SQL)
 
 ;; Customization for Oracle

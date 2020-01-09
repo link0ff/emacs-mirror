@@ -1,6 +1,6 @@
 ;;; fns-tests.el --- tests for src/fns.c
 
-;; Copyright (C) 2014-2019 Free Software Foundation, Inc.
+;; Copyright (C) 2014-2020 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -857,6 +857,22 @@
      (dotimes (k 200)
        (puthash k k h)))
     (should (= 100 (hash-table-count h)))))
+
+(ert-deftest test-sxhash-equal ()
+  (should (= (sxhash-equal (* most-positive-fixnum most-negative-fixnum))
+	     (sxhash-equal (* most-positive-fixnum most-negative-fixnum))))
+  (should (= (sxhash-equal (make-string 1000 ?a))
+	     (sxhash-equal (make-string 1000 ?a))))
+  (should (= (sxhash-equal (point-marker))
+	     (sxhash-equal (point-marker))))
+  (should (= (sxhash-equal (make-vector 1000 (make-string 10 ?a)))
+	     (sxhash-equal (make-vector 1000 (make-string 10 ?a)))))
+  (should (= (sxhash-equal (make-bool-vector 1000 t))
+	     (sxhash-equal (make-bool-vector 1000 t))))
+  (should (= (sxhash-equal (make-char-table nil (make-string 10 ?a)))
+	     (sxhash-equal (make-char-table nil (make-string 10 ?a)))))
+  (should (= (sxhash-equal (record 'a (make-string 10 ?a)))
+	     (sxhash-equal (record 'a (make-string 10 ?a))))))
 
 (ert-deftest test-secure-hash ()
   (should (equal (secure-hash 'md5    "foobar")

@@ -1,6 +1,6 @@
 ;;; tramp-tests.el --- Tests of remote file access  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2013-2019 Free Software Foundation, Inc.
+;; Copyright (C) 2013-2020 Free Software Foundation, Inc.
 
 ;; Author: Michael Albinus <michael.albinus@gmx.de>
 
@@ -2902,8 +2902,7 @@ This tests also `file-directory-p' and `file-accessible-directory-p'."
 	      (sort (copy-sequence `(,tmp-name3 ,tmp-name4)) 'string<))))
 
 	;; Cleanup.
-	(ignore-errors
-	  (delete-directory tmp-name1 'recursive))))))
+	(ignore-errors (delete-directory tmp-name1 'recursive))))))
 
 (ert-deftest tramp-test17-insert-directory ()
   "Check `insert-directory'."
@@ -4249,7 +4248,8 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 
   (dolist (quoted (if (tramp--test-expensive-test) '(nil t) '(nil)))
     (let ((default-directory tramp-test-temporary-file-directory)
-	  (tmp-name (tramp--test-make-temp-name nil quoted))
+	  (tmp-name1 (tramp--test-make-temp-name nil quoted))
+	  (tmp-name2 (tramp--test-make-temp-name 'local quoted))
 	  kill-buffer-query-functions proc)
       (with-no-warnings (should-not (make-process)))
 
@@ -4279,13 +4279,13 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
       ;; Simple process using a file.
       (unwind-protect
 	  (with-temp-buffer
-	    (write-region "foo" nil tmp-name)
-	    (should (file-exists-p tmp-name))
+	    (write-region "foo" nil tmp-name1)
+	    (should (file-exists-p tmp-name1))
 	    (setq proc
 		  (with-no-warnings
 		    (make-process
 		     :name "test2" :buffer (current-buffer)
-		     :command `("cat" ,(file-name-nondirectory tmp-name))
+		     :command `("cat" ,(file-name-nondirectory tmp-name1))
 		     :file-handler t)))
 	    (should (processp proc))
 	    ;; Read output.
@@ -4297,7 +4297,7 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 	;; Cleanup.
 	(ignore-errors
 	  (delete-process proc)
-	  (delete-file tmp-name)))
+	  (delete-file tmp-name1)))
 
       ;; Process filter.
       (unwind-protect
@@ -4352,31 +4352,54 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 	;; Cleanup.
 	(ignore-errors (delete-process proc)))
 
-      ;; Process with stderr.  tramp-adb.el doesn't support it (yet).
-      (unless (tramp--test-adb-p)
-	(let ((stderr
-	       (generate-new-buffer (generate-new-buffer-name "stderr"))))
-	  (unwind-protect
-	      (with-temp-buffer
-		(setq proc
-		      (with-no-warnings
-			(make-process
-			 :name "test5" :buffer (current-buffer)
-			 :command '("cat" "/")
-			 :stderr stderr
-			 :file-handler t)))
-		(should (processp proc))
-		;; Read stderr.
-		(with-current-buffer stderr
-		  (with-timeout (10 (tramp--test-timeout-handler))
-		    (while (= (point-min) (point-max))
-		      (while (accept-process-output proc 0 nil t))))
-		  (should
-		   (string-match "^cat:.* Is a directory" (buffer-string)))))
+      ;; Process with stderr buffer.
+      (let ((stderr (generate-new-buffer "*stderr*")))
+	(unwind-protect
+	    (with-temp-buffer
+	      (setq proc
+		    (with-no-warnings
+		      (make-process
+		       :name "test5" :buffer (current-buffer)
+		       :command '("cat" "/")
+		       :stderr stderr
+		       :file-handler t)))
+	      (should (processp proc))
+	      ;; Read stderr.
+	      (with-timeout (10 (tramp--test-timeout-handler))
+		(while (accept-process-output proc 0 nil t)))
+	      (delete-process proc)
+	      (with-current-buffer stderr
+		(should
+		 (string-match "cat:.* Is a directory" (buffer-string)))))
 
-	    ;; Cleanup.
-	    (ignore-errors (delete-process proc))
-	    (ignore-errors (kill-buffer stderr))))))))
+	  ;; Cleanup.
+	  (ignore-errors (delete-process proc))
+	  (ignore-errors (kill-buffer stderr))))
+
+      ;; Process with stderr file.
+      (dolist (tmpfile `(,tmp-name1 ,tmp-name2))
+	(unwind-protect
+	    (with-temp-buffer
+	      (setq proc
+		    (with-no-warnings
+		      (make-process
+		       :name "test6" :buffer (current-buffer)
+		       :command '("cat" "/")
+		       :stderr tmpfile
+		       :file-handler t)))
+	      (should (processp proc))
+	      ;; Read stderr.
+	      (with-timeout (10 (tramp--test-timeout-handler))
+		(while (accept-process-output proc nil nil t)))
+	      (delete-process proc)
+	      (with-temp-buffer
+		(insert-file-contents tmpfile)
+		(should
+		 (string-match "cat:.* Is a directory" (buffer-string)))))
+
+	  ;; Cleanup.
+	  (ignore-errors (delete-process proc))
+	  (ignore-errors (delete-file tmpfile)))))))
 
 (ert-deftest tramp-test31-interrupt-process ()
   "Check `interrupt-process'."
@@ -4458,6 +4481,19 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 	;; Cleanup.
 	(ignore-errors (delete-file tmp-name)))
 
+      ;; Test `shell-command' with error buffer.
+      (let ((stderr (generate-new-buffer "*stderr*")))
+	(unwind-protect
+	    (with-temp-buffer
+	      (shell-command "cat /" (current-buffer) stderr)
+	      (should (= (point-min) (point-max)))
+	      (with-current-buffer stderr
+		(should
+		 (string-match "cat:.* Is a directory" (buffer-string)))))
+
+	  ;; Cleanup.
+	  (ignore-errors (kill-buffer stderr))))
+
       ;; Test ordinary `async-shell-command'.
       (unwind-protect
 	  (with-temp-buffer
@@ -4475,10 +4511,6 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 	    (while
 		(re-search-forward tramp-display-escape-sequence-regexp nil t)
 	      (replace-match "" nil nil))
-	    ;; There might be a nasty "Process *Async Shell* finished" message.
-	    (goto-char (point-min))
-	    (forward-line)
-	    (narrow-to-region (point-min) (point))
 	    (should
 	     (string-equal
 	      (format "%s\n" (file-name-nondirectory tmp-name))
@@ -4486,6 +4518,24 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 
 	;; Cleanup.
 	(ignore-errors (delete-file tmp-name)))
+
+      ;; Test `async-shell-command' with error buffer.
+      (let ((stderr (generate-new-buffer "*stderr*")) proc)
+	(unwind-protect
+	    (with-temp-buffer
+	      (async-shell-command "cat /; sleep 1" (current-buffer) stderr)
+	      (setq proc (get-buffer-process (current-buffer)))
+	      ;; Read stderr.
+	      (when (processp proc)
+		(with-timeout (10 (tramp--test-timeout-handler))
+		  (while (accept-process-output proc nil nil t)))
+		(delete-process proc))
+	      (with-current-buffer stderr
+		(should
+		 (string-match "cat:.* Is a directory" (buffer-string)))))
+
+	    ;; Cleanup.
+	    (ignore-errors (kill-buffer stderr))))
 
       ;; Test sending string to `async-shell-command'.
       (unwind-protect
@@ -4505,13 +4555,15 @@ This tests also `make-symbolic-link', `file-truename' and `add-name-to-file'."
 	    (while
 		(re-search-forward tramp-display-escape-sequence-regexp nil t)
 	      (replace-match "" nil nil))
-	    ;; There might be a nasty "Process *Async Shell* finished" message.
-	    (goto-char (point-min))
-	    (forward-line)
-	    (narrow-to-region (point-min) (point))
 	    (should
 	     (string-equal
-	      (format "%s\n" (file-name-nondirectory tmp-name))
+	      ;; tramp-adb.el echoes, so we must add the string.
+	      (if (tramp--test-adb-p)
+		  (format
+		   "%s\n%s\n"
+		   (file-name-nondirectory tmp-name)
+		   (file-name-nondirectory tmp-name))
+		(format "%s\n" (file-name-nondirectory tmp-name)))
 	      (buffer-string))))
 
 	;; Cleanup.
