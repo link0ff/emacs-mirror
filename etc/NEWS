@@ -31,12 +31,15 @@ Pango instead of libXFT for font support.  Since Pango 1.44 has
 removed support for bitmapped fonts, this may require you to adjust
 your font settings.
 
-Note also that 'FontBackend' settings in .Xdefaults or .Xresources, or
-'font-backend' frame parameter settings in your init files, may need
+Note also that 'FontBackend' settings in ".Xdefaults" or ".Xresources",
+or 'font-backend' frame parameter settings in your init files, may need
 to be adjusted, as 'xft' is no longer a valid backend when using
 Cairo.  Use 'ftcrhb' if your Emacs was built with HarfBuzz support,
 and 'ftcr' otherwise.  You can determine this by checking
-'system-configuration-features'.  'x' is still a valid backend.
+'system-configuration-features'.  The 'ftcr' backend will still be
+available when HarfBuzz is supported, but will not be used by default.
+We strongly recommend building with HarBuzz support. 'x' is still a
+valid backend.
 
 ---
 ** The ftx font backend driver has been removed.
@@ -69,12 +72,23 @@ line numbers that were previously jumped to.
 ** The sb-image.el library is now marked obsolete.
 This file was a compatibility kludge which is no longer needed.
 
+---
+** 'lisp-mode' now uses 'common-lisp-indent-function'.
+To revert to the previous behaviour,
+'(setq lisp-indent-function 'lisp-indent-function)' from 'lisp-mode-hook'.
+
 ** Edebug
 
 +++
 *** Edebug specification lists can use the new keyword '&error', which
 unconditionally aborts the current edebug instrumentation with the
 supplied error message.
+
+** Tramp
+
++++
+*** New connection method "media", which allows accessing media devices
+like cell phones, tablets or cameras.
 
 
 * New Modes and Packages in Emacs 28.1
