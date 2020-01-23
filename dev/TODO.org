@@ -1,4 +1,35 @@
 
+Debugger entered--Lisp error: (wrong-type-argument arrayp nil)
+  substring(nil 0 1)
+  file-truename(nil)
+  eglot--path-to-uri(nil)
+  eglot--TextDocumentIdentifier()
+  eglot--signal-textDocument/didClose()
+  kill-buffer(#<buffer  *temp*-492063>)
+  (and (buffer-name temp-buffer) (kill-buffer temp-buffer))
+  (unwind-protect (progn (insert text) (diff-syntax-fontify-props file text line-nb t)) (and (buffer-name temp-buffer) (kill-buffer temp-buffer)))
+  (save-current-buffer (set-buffer temp-buffer) (unwind-protect (progn (insert text) (diff-syntax-fontify-props ...
+  (let ((temp-buffer (generate-new-buffer " *temp*"))) (save-current-buffer (set-buffer temp-buffer) (unwind-protect (progn (insert text) ...
+  (cond ((and file diff-default-directory ...) ...) ...)
+  (let ((file (car (diff-hunk-file-names old)))) ...)
+  (or (if (and diff-vc-backend (not (eq diff-font-lock-syntax 'hunk-only))) ...) ...)
+  (let* ((hunk (buffer-substring-no-properties beg end)) ...) ...
+  diff-syntax-fontify-hunk(10530 14909 t)
+  diff-syntax-fontify(10530 14909)
+  #f(compiled-function (beg end) #<bytecode 0x1cb64d70b7d4e0e5>)(10530 14909)
+  diff--iterate-hunks(12505 #f(compiled-function (beg end) #<bytecode 0x1cb64d70b7d4e0e5>))
+  diff--font-lock-syntax(12505)
+  font-lock-fontify-keywords-region(11965 12505 nil)
+  font-lock-default-fontify-region(11980 12480 nil)
+  font-lock-fontify-region(11980 12480)
+  #f(compiled-function (fun) #<bytecode 0x303b13b2afd8864>)(font-lock-fontify-region)
+  run-hook-wrapped(#f(compiled-function (fun) #<bytecode 0x303b13b2afd8864>) font-lock-fontify-region)
+  jit-lock--run-functions(11980 12480)
+  jit-lock-fontify-now(11980 12480)
+  jit-lock-function(11980)
+  redisplay_internal\ \(C\ function\)()
+
+
 vc-annotate should align two windows by setting window-start (in addition to window-point)
 like in vi, it was shame to hear this from a vi user
 
