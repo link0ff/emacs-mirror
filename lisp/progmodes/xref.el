@@ -1391,7 +1391,7 @@ Such as the current syntax table and the applied syntax properties."
           (insert-file-contents file nil 0 200)
           ;; Can't (setq-local delay-mode-hooks t) because of
           ;; bug#23272, but the performance penalty seems minimal.
-          (let ((buffer-file-name file)
+          (let ((buffer-file-name-for-mode file)
                 (inhibit-message t)
                 message-log-max)
             (ignore-errors

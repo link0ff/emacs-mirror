@@ -2099,7 +2099,7 @@ Unlike `vc-find-revision-save', doesn't save the buffer to the file."
                 (if buffer
                     ;; For non-interactive, skip any questions
                     (let ((enable-local-variables :safe) ;; to find `mode:'
-                          (buffer-file-name file))
+                          (buffer-file-name-for-mode file))
                       (ignore-errors (set-auto-mode)))
                   (normal-mode))
 	        (set-buffer-modified-p nil)

@@ -1262,6 +1262,11 @@ command applies to all frames, including frames yet to be created.  To
 control the use of tab bars at startup, customize the variable
 @code{tab-bar-mode}.
 
+Please note that the tab bar is different from the tab line (xref).
+Unlike tabs on the tab line at the top of each window that are used to
+switch buffers, tabs on the tab bar are used to switch window
+configurations containing several windows and buffer.
+
 @vindex tab-bar-show
   The variable @code{tab-bar-show} controls whether the Tab Bar mode
 is turned on automatically.  If the value is @code{t}, then

@@ -2718,10 +2718,7 @@ hunk text is not found in the source file."
     ;; temp buffer.
     (cl-assert (null buffer-file-name))
     (let ((enable-local-variables :safe) ;; to find `mode:'
-          (buffer-file-name file)
-          ;; (after-change-major-mode-hook nil)
-          )
-      ;; (setq-local after-change-major-mode-hook nil)
+          (buffer-file-name-for-mode file))
       (set-auto-mode)
       ;; FIXME: Is this really worth the trouble?
       (when (and (fboundp 'generic-mode-find-file-hook)

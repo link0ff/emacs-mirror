@@ -482,7 +482,7 @@ If MODE is not set, try to find mode automatically."
         ;; aren't a problem any more.  So we could probably get rid of this
         ;; setting now, but it seems harmless and potentially still useful.
 	(set (make-local-variable 'font-lock-mode-hook) nil)
-        (setq buffer-file-name (mm-handle-filename handle))
+        (setq buffer-file-name-for-mode (mm-handle-filename handle))
 	(with-demoted-errors
 	    (if mode
                 (save-window-excursion

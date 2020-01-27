@@ -3080,6 +3080,8 @@ If FUNCTION is nil, then it is not called.")
   "Upper limit on `magic-mode-alist' regexp matches.
 Also applies to `magic-fallback-mode-alist'.")
 
+(defvar-local buffer-file-name-for-mode nil)
+
 (defun set-auto-mode (&optional keep-mode-if-same)
   "Select major mode appropriate for current buffer.
 
@@ -3197,11 +3199,10 @@ we don't actually set it to the same mode the buffer already has."
 	  (set-auto-mode-0 done keep-mode-if-same)))
     ;; Next compare the filename against the entries in auto-mode-alist.
     (unless done
-      (if buffer-file-name
-	  (let ((name buffer-file-name)
-		(remote-id (file-remote-p buffer-file-name))
-		(case-insensitive-p (file-name-case-insensitive-p
-				     buffer-file-name)))
+      (if (or buffer-file-name buffer-file-name-for-mode)
+	  (let* ((name (or buffer-file-name buffer-file-name-for-mode))
+		 (remote-id (file-remote-p name))
+		 (case-insensitive-p (file-name-case-insensitive-p name)))
 	    ;; Remove backup-suffixes from file name.
 	    (setq name (file-name-sans-versions name))
 	    ;; Remove remote file name identification.
@@ -3459,6 +3460,8 @@ DIR-NAME is the name of the associated directory.  Otherwise it is nil."
     (let ((name (cond (dir-name)
 		      (buffer-file-name
 		       (file-name-nondirectory buffer-file-name))
+		      (buffer-file-name-for-mode
+		       (file-name-nondirectory buffer-file-name-for-mode))
 		      ((concat "buffer " (buffer-name)))))
 	  (offer-save (and (eq enable-local-variables t)
 			   unsafe-vars))
