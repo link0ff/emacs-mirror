@@ -1,4 +1,9 @@
 
+master:
+Error in post-command-hook ([#<buffer  *diff-syntax:file.~bbc3e58c~*> () eglot--managed-mode remove-hook post-command-hook nil buffer-live-p apply eglot--connect eglot--guess-contact] 4]):
+(error "[eglot] Can't guess mode to manage for ` *diff-syntax:/home/juri/gitlab/harid/gsuite1/harid/app/models/gsuite_api_user.rb.~bbc3e58c~*'")
+
+GNU-ELPA:
 Debugger entered--Lisp error: (wrong-type-argument arrayp nil)
   substring(nil 0 1)
   file-truename(nil)
