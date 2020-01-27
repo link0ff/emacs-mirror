@@ -1369,8 +1369,8 @@ This is METHOD, if non-nil.  Otherwise, do a lookup in
 		 (setq item (pop choices))
 		 (when (and (string-match-p (or (nth 0 item) "") (or host ""))
 			    (string-match-p (or (nth 1 item) "") (or user "")))
-		   (setq lmethod (nth 2 item))
-		   (setq choices nil)))
+		   (setq lmethod (nth 2 item)
+			 choices nil)))
 	       lmethod)
 	     tramp-default-method)))
     ;; We must mark, whether a default value has been used.
@@ -1390,8 +1390,8 @@ This is USER, if non-nil.  Otherwise, do a lookup in
 		 (setq item (pop choices))
 		 (when (and (string-match-p (or (nth 0 item) "") (or method ""))
 			    (string-match-p (or (nth 1 item) "") (or host "")))
-		   (setq luser (nth 2 item))
-		   (setq choices nil)))
+		   (setq luser (nth 2 item)
+			 choices nil)))
 	       luser)
 	     tramp-default-user)))
     ;; We must mark, whether a default value has been used.
@@ -1411,8 +1411,8 @@ This is HOST, if non-nil.  Otherwise, do a lookup in
 		 (setq item (pop choices))
 		 (when (and (string-match-p (or (nth 0 item) "") (or method ""))
 			    (string-match-p (or (nth 1 item) "") (or user "")))
-		   (setq lhost (nth 2 item))
-		   (setq choices nil)))
+		   (setq lhost (nth 2 item)
+			 choices nil)))
 	       lhost)
 	     tramp-default-host)))
     ;; We must mark, whether a default value has been used.
@@ -2412,10 +2412,11 @@ Fall back to normal file name handler if no Tramp file name handler exists."
 (defun tramp-completion-file-name-handler (operation &rest args)
   "Invoke Tramp file name completion handler for OPERATION and ARGS.
 Falls back to normal file name handler if no Tramp file name handler exists."
-  (when tramp-mode
-    (if-let ((fn (assoc operation tramp-completion-file-name-handler-alist)))
-	(save-match-data (apply (cdr fn) args))
-      (tramp-run-real-handler operation args))))
+  (if-let
+      ((fn (and tramp-mode
+		(assoc operation tramp-completion-file-name-handler-alist))))
+      (save-match-data (apply (cdr fn) args))
+    (tramp-run-real-handler operation args)))
 
 ;;;###autoload
 (progn (defun tramp-autoload-file-name-handler (operation &rest args)
@@ -2843,7 +2844,7 @@ User is always nil."
   (let ((default-directory (tramp-compat-temporary-file-directory)))
     (when (file-readable-p filename)
       (with-temp-buffer
-	(insert-file-contents filename)
+	(insert-file-contents-literally filename)
 	(goto-char (point-min))
         (cl-loop while (not (eobp)) collect (funcall function))))))
 
@@ -3554,8 +3555,8 @@ User is always nil."
 	;; Save exit.
 	(progn
 	  (when visit
-	    (setq buffer-file-name filename)
-	    (setq buffer-read-only (not (file-writable-p filename)))
+	    (setq buffer-file-name filename
+		  buffer-read-only (not (file-writable-p filename)))
 	    (set-visited-file-modtime)
 	    (set-buffer-modified-p nil))
 	  (when (and (stringp local-copy)
@@ -3617,6 +3618,7 @@ support symbolic links."
   (let* ((asynchronous (string-match-p "[ \t]*&[ \t]*\\'" command))
 	 (command (substring command 0 asynchronous))
 	 current-buffer-p
+	 (output-buffer-p output-buffer)
 	 (output-buffer
 	  (cond
 	   ((bufferp output-buffer) output-buffer)
@@ -3634,6 +3636,7 @@ support symbolic links."
 	   ((stringp error-buffer) (get-buffer-create error-buffer))))
 	 (bname (buffer-name output-buffer))
 	 (p (get-buffer-process output-buffer))
+	 (dir default-directory)
 	 buffer)
 
     ;; The following code is taken from `shell-command', slightly
@@ -3670,6 +3673,10 @@ support symbolic links."
 	  (rename-uniquely))
         (setq output-buffer (get-buffer-create bname)))))
 
+    (unless output-buffer-p
+      (with-current-buffer output-buffer
+	(setq default-directory dir)))
+
     (setq buffer (if error-buffer
 		     (with-parsed-tramp-file-name default-directory nil
 		       (list output-buffer
@@ -3698,32 +3705,37 @@ support symbolic links."
 	      ;; Run the process.
 	      (setq p (start-file-process-shell-command
 		       (buffer-name output-buffer) buffer command))
-	    (if (process-live-p p)
-		;; Display output.
-		(with-current-buffer output-buffer
-		  (display-buffer output-buffer '(nil (allow-no-window . t)))
-		  (setq mode-line-process '(":%s"))
-		  (shell-mode)
-		  (set-process-filter p #'comint-output-filter)
-		  (set-process-sentinel
-		   p (if (listp buffer)
-			 (lambda (_proc _string)
-			   (with-current-buffer error-buffer
-			     (insert-file-contents (cadr buffer)))
-			   (delete-file (cadr buffer)))
-		       #'shell-command-sentinel)))
-	      ;; Show stderr.
+	    ;; Insert error messages if they were separated.
+	    (when (consp buffer)
 	      (with-current-buffer error-buffer
-		(insert-file-contents (cadr buffer)))
-	      (delete-file (cadr buffer)))))
+		(insert-file-contents-literally (cadr buffer))))
+	    (if (process-live-p p)
+	      ;; Display output.
+	      (with-current-buffer output-buffer
+		(display-buffer output-buffer '(nil (allow-no-window . t)))
+		(setq mode-line-process '(":%s"))
+		(shell-mode)
+		(set-process-filter p #'comint-output-filter)
+		(set-process-sentinel p #'shell-command-sentinel)
+		(when (consp buffer)
+		  (add-function
+		   :after (process-sentinel p)
+		   (lambda (_proc _string)
+		     (with-current-buffer error-buffer
+		       (insert-file-contents-literally
+			(cadr buffer) nil nil nil 'replace))
+		     (delete-file (cadr buffer))))))
+
+	      (when (consp buffer)
+		(delete-file (cadr buffer))))))
 
       (prog1
 	  ;; Run the process.
 	  (process-file-shell-command command nil buffer nil)
 	;; Insert error messages if they were separated.
-	(when (listp buffer)
+	(when (consp buffer)
 	  (with-current-buffer error-buffer
-	    (insert-file-contents (cadr buffer)))
+	    (insert-file-contents-literally (cadr buffer)))
 	  (delete-file (cadr buffer)))
 	(if current-buffer-p
 	    ;; This is like exchange-point-and-mark, but doesn't
@@ -3744,10 +3756,10 @@ BUFFER might be a list, in this case STDERR is separated."
   (tramp-file-name-handler
    'make-process
    :name name
-   :buffer (if (listp buffer) (car buffer) buffer)
+   :buffer (if (consp buffer) (car buffer) buffer)
    :command (and program (cons program args))
    ;; `shell-command' adds an errfile to `buffer'.
-   :stderr (when (listp buffer) (cadr buffer))
+   :stderr (when (consp buffer) (cadr buffer))
    :noquery nil
    :file-handler t))
 
@@ -4069,9 +4081,9 @@ See `tramp-process-actions' for the format of ACTIONS."
       (while (tramp-accept-process-output proc 0))
       (setq todo actions)
       (while todo
-	(setq item (pop todo))
-	(setq pattern (format "\\(%s\\)\\'" (symbol-value (nth 0 item))))
-	(setq action (nth 1 item))
+	(setq item (pop todo)
+	      pattern (format "\\(%s\\)\\'" (symbol-value (nth 0 item)))
+	      action (nth 1 item))
 	(tramp-message
 	 vec 5 "Looking for regexp \"%s\" from remote shell" pattern)
 	(when (tramp-check-for-regexp proc pattern)
@@ -4121,9 +4133,8 @@ performed successfully.  Any other value means an error."
 		      (catch 'tramp-action
 			(tramp-process-one-action proc vec actions)))))
 	  (while (not exit)
-	    (setq exit
-		  (catch 'tramp-action
-		    (tramp-process-one-action proc vec actions)))))
+	    (setq exit (catch 'tramp-action
+			 (tramp-process-one-action proc vec actions)))))
 	(with-current-buffer (tramp-get-connection-buffer vec)
 	  (widen)
 	  (tramp-message vec 6 "\n%s" (buffer-string)))
@@ -4441,9 +4452,9 @@ This is used to map a mode number to a permission string.")
 	(suid	(> (logand (ash mode -9) 4) 0))
 	(sgid	(> (logand (ash mode -9) 2) 0))
 	(sticky	(> (logand (ash mode -9) 1) 0)))
-    (setq user  (tramp-file-mode-permissions user  suid "s"))
-    (setq group (tramp-file-mode-permissions group sgid "s"))
-    (setq other (tramp-file-mode-permissions other sticky "t"))
+    (setq user  (tramp-file-mode-permissions user  suid "s")
+	  group (tramp-file-mode-permissions group sgid "s")
+	  other (tramp-file-mode-permissions other sticky "t"))
     (concat type user group other)))
 
 (defun tramp-file-mode-permissions (perm suid suid-text)

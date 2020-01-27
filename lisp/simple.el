@@ -3507,10 +3507,9 @@ whose `car' is BUFFER."
         (let ((win   (car (get-buffer-window-list buf)))
               (pmax  (with-current-buffer buf (point-max))))
 
-          ;; The first time we run a command in a fresh created buffer
+          ;; The first time we run a command in a freshly created buffer
           ;; we have not saved positions yet; advance to `point-max', so that
-          ;; succesive commands knows the position where the new comman start.
-          ;; (unless (and pos (memq sym '(save-point beg-last-out)))
+          ;; successive commands know where to start.
           (unless (and pos (memq sym '(save-point beg-last-out end-last-out)))
             (setq pos pmax))
           ;; Set point in the window displaying buf, if any; otherwise
@@ -3646,10 +3645,11 @@ impose the use of a shell (with its need to quote arguments)."
     (if handler
 	(funcall handler 'shell-command command output-buffer error-buffer)
       (if (and output-buffer
+               (not (string-match "[ \t]*&[ \t]*\\'" command))
                (or (eq output-buffer (current-buffer))
                    (and (stringp output-buffer) (eq (get-buffer output-buffer) (current-buffer)))
 	           (not (or (bufferp output-buffer) (stringp output-buffer))))) ; Bug#39067
-	  ;; Output goes in current buffer.
+	  ;; Synchronous command with output in current buffer.
 	  (let ((error-file
                  (and error-buffer
                       (make-temp-file

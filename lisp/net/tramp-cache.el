@@ -141,7 +141,7 @@ Returns DEFAULT if not set."
     (tramp-message key 8 "%s %s %s" file property value)
     (when (>= tramp-verbose 10)
       (let* ((var (intern (concat "tramp-cache-get-count-" property)))
-	     (val (or (bound-and-true-p var)
+	     (val (or (numberp (bound-and-true-p var))
 		      (progn
 			(add-hook 'tramp-cache-unload-hook
 				  (lambda () (makunbound var)))
@@ -165,7 +165,7 @@ Returns VALUE."
     (tramp-message key 8 "%s %s %s" file property value)
     (when (>= tramp-verbose 10)
       (let* ((var (intern (concat "tramp-cache-set-count-" property)))
-	     (val (or (bound-and-true-p var)
+	     (val (or (numberp (bound-and-true-p var))
 		      (progn
 			(add-hook 'tramp-cache-unload-hook
 				  (lambda () (makunbound var)))
@@ -504,7 +504,7 @@ for all methods.  Resulting data are derived from connection history."
 	   tramp-cache-read-persistent-data)
   (condition-case err
       (with-temp-buffer
-	(insert-file-contents tramp-persistency-file-name)
+	(insert-file-contents-literally tramp-persistency-file-name)
 	(let ((list (read (current-buffer)))
 	      (tramp-verbose 0)
 	      element key item)
