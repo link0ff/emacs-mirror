@@ -646,6 +646,22 @@ since it could result in memory overflow and make Emacs crash."
 						     :format "%v")
 					    (other :tag "Unlimited" t))
 			      "24.3")
+             ;; (set-message-function
+             ;;  minibuffer (choice
+             ;;              (const :tag "Handle minibuffer" set-minibuffer-message)
+             ;;              (const :tag "Accumulate messages" set-multi-message)
+             ;;              (const :tag "Accumulate messages and handle minibuffer" set-minibuffer-multi-message)
+             ;;              (function :tag "Other function"))
+             ;;  "28.1"
+             ;;  :set (lambda (sym val)
+             ;;         ;; (message "! %S %S %S" sym val (symbol-function sym))
+             ;;         (cond
+             ;;          ((eq val 'set-minibuffer-multi-message)
+             ;;           (set-default sym 'set-minibuffer-message)
+             ;;           ;; (add-function :around (global sym) #'set-multi-message--wrapper)
+             ;;           (advice--add-function :around (gv-ref `(default-value ',sym)) #'set-multi-message--wrapper nil)
+             ;;           )
+             ;;          (t (set-default sym val)))))
 	     (unibyte-display-via-language-environment mule boolean)
 	     (blink-cursor-alist cursor alist "22.1")
 	     (overline-margin display integer "22.1")
