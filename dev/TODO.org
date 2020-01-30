@@ -11,10 +11,10 @@ Debugger entered--Lisp error: (wrong-type-argument stringp nil)
 (defun generic-mode-find-file-hook ()
   ...
   (when (and (eq major-mode 'fundamental-mode)
-	     (or (null generic-ignore-files-regexp)
-		 (not (string-match-p
-		       generic-ignore-files-regexp
-		       (file-name-sans-versions buffer-file-name)))))
+             (or (null generic-ignore-files-regexp)
+                 (not (string-match-p
+                       generic-ignore-files-regexp
+                       (file-name-sans-versions buffer-file-name)))))
                                                 ================
 
 master:
