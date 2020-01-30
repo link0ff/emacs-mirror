@@ -1,4 +1,22 @@
 
+
+Debugger entered--Lisp error: (wrong-type-argument stringp nil)
+  find-file-name-handler(nil file-name-sans-versions)
+  file-name-sans-versions(nil)
+  generic-mode-find-file-hook()
+  diff-syntax-fontify-props(#("/dev/null" 0 9 (face (diff-file-header diff-header) fontified t)) "" (0 0) t)
+  diff-syntax-fontify-hunk(1686 3081 t)
+  diff-syntax-fontify(1686 3081)
+
+(defun generic-mode-find-file-hook ()
+  ...
+  (when (and (eq major-mode 'fundamental-mode)
+	     (or (null generic-ignore-files-regexp)
+		 (not (string-match-p
+		       generic-ignore-files-regexp
+		       (file-name-sans-versions buffer-file-name)))))
+                                                ================
+
 master:
 Error in post-command-hook ([#<buffer  *diff-syntax:file.~bbc3e58c~*> () eglot--managed-mode remove-hook post-command-hook nil buffer-live-p apply eglot--connect eglot--guess-contact] 4]):
 (error "[eglot] Can't guess mode to manage for ` *diff-syntax:/home/juri/gitlab/harid/gsuite1/harid/app/models/gsuite_api_user.rb.~bbc3e58c~*'")
