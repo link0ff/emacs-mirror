@@ -503,9 +503,7 @@ This hook is run by `delete-selection-uses-region-p', which see.")
 
 (defun newline (&optional arg interactive)
   "Insert a newline, and move to left margin of the new line if it's blank.
-If option `use-hard-newlines' is non-nil, the newline is marked with the
-text-property `hard'.
-With ARG, insert that many newlines.
+With prefix argument ARG, insert that many newlines.
 
 If `electric-indent-mode' is enabled, this indents the final new line
 that it adds, and reindents the preceding line.  To just insert
@@ -513,6 +511,9 @@ a newline, use \\[electric-indent-just-newline].
 
 If `auto-fill-mode' is enabled, this may cause automatic line
 breaking of the preceding line.  A non-nil ARG inhibits this.
+
+If `use-hard-newlines' is enabled, the newline is marked with the
+text-property `hard'.
 
 A non-nil INTERACTIVE argument means to run the `post-self-insert-hook'."
   (interactive "*P\np")
@@ -1813,7 +1814,10 @@ to get different commands to edit and resubmit."
 The value can be a length of time to show the message for.
 If the value is non-nil and not a number, we wait 2 seconds.
 
-Also see `extended-command-suggest-shorter'."
+Also see `extended-command-suggest-shorter'.
+
+Equivalent key-bindings are also shown in the completion list of
+M-x for all commands that have them."
   :group 'keyboard
   :type '(choice (const :tag "off" nil)
                  (integer :tag "time" 2)
