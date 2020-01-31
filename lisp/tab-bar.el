@@ -1400,7 +1400,7 @@ in the selected frame."
    ((framep all-frames) (list all-frames))
    (t (list (selected-frame)))))
 
-(defun tab-bar-get-buffer-tab (buffer-or-name &optional all-frames)
+(defun tab-bar-get-buffer-tab (buffer-or-name &optional all-frames ignore-current-tab)
   "Return a tab owning a window whose buffer is BUFFER-OR-NAME.
 BUFFER-OR-NAME may be a buffer or a buffer name and defaults to
 the current buffer.
@@ -1424,7 +1424,8 @@ selected frame and no others."
          (seq-some
           (lambda (tab)
             (when (if (eq (car tab) 'current-tab)
-                      (get-buffer-window buffer frame)
+                      (unless ignore-current-tab
+                        (get-buffer-window buffer frame))
                     (let* ((state (alist-get 'ws tab))
                            (buffers (when state
                                       (window-state-buffers state))))
