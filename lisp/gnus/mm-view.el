@@ -482,7 +482,7 @@ If MODE is not set, try to find mode automatically."
         ;; aren't a problem any more.  So we could probably get rid of this
         ;; setting now, but it seems harmless and potentially still useful.
 	(set (make-local-variable 'font-lock-mode-hook) nil)
-        (setq buffer-file-name-for-mode (mm-handle-filename handle))
+        (setq buffer-file-name (mm-handle-filename handle))
 	(with-demoted-errors
 	    (if mode
                 (save-window-excursion
@@ -497,7 +497,7 @@ If MODE is not set, try to find mode automatically."
 	    (let ((auto-mode-alist
 		   (delq (rassq 'doc-view-mode-maybe auto-mode-alist)
 			 (copy-sequence auto-mode-alist))))
-	      (set-auto-mode)
+	      (delay-mode-hooks (set-auto-mode))
 	      (setq mode major-mode)))
 	  ;; Do not fontify if the guess mode is fundamental.
 	  (unless (eq major-mode 'fundamental-mode)
