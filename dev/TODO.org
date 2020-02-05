@@ -1,4 +1,6 @@
-
+#+TODO: TODO | DONE | WONTFIX
+
+* Eglot and buffer-file-name
 
 Debugger entered--Lisp error: (wrong-type-argument stringp nil)
   find-file-name-handler(nil file-name-sans-versions)
@@ -52,19 +54,15 @@ Debugger entered--Lisp error: (wrong-type-argument arrayp nil)
   jit-lock-function(11980)
   redisplay_internal\ \(C\ function\)()
 
-
+* vc-annotate
+
 vc-annotate should align two windows by setting window-start (in addition to window-point)
 like in vi, it was shame to hear this from a vi user
 
-
-REPLACE read-key with read-char-from-mnibuffer:
+* xref
 
-- widget-choose (read-key-sequence)
-
-
 <H-M-right> M-. on man
 
-
 * gettext i18n
 
 gettextize --dry-run
@@ -128,8 +126,6 @@ dpkg -L 'xemacs21-mulesupport'
 sudo locale-gen de_DE.utf8
 ??? LANG=de_DE xemacs -q
 
-
-
 * display-buffer actions
 
 need new display action (direction . right)
@@ -148,8 +144,6 @@ https://github.com/magit/magit/issues/3716
 https://github.com/magit/magit/commit/512790bb7119dabcd90a0695a0b506e315d72c2e
 https://emacs.stackexchange.com/questions/36071/magit-copy-text-from-stage-section-without-character/36090#36090
 
-
-
 * Tabs
 
 frameset like
@@ -235,6 +229,3 @@ switches tabs in the selected window
                                          0 pattern-height-2x)
                                         "")
                              nil nil nil "};")))))))))
-
-
-

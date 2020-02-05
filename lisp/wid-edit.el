@@ -266,7 +266,7 @@ minibuffer."
                (setq value (read-char-from-minibuffer
                             (format "%s: " title)
                             (mapcar #'car alist)))))
-	   (cdr (assq value alist))))))
+	   (cdr (assoc value alist))))))
 
 ;;; Widget text specifications.
 ;;
