@@ -2635,11 +2635,11 @@ When OLD is non-nil, highlight the hunk from the old source."
                          ;; Don't re-initialize the buffer (which would throw
                          ;; away the previous fontification work).
                          (setq file nil)
-                       (setq buffer (ignore-errors (delay-mode-hooks
+                       (setq buffer (ignore-errors
                                       (vc-find-revision-no-save
                                        file revision
                                        diff-vc-backend
-                                       (get-buffer-create buffer-name))))))
+                                       (get-buffer-create buffer-name)))))
                      (when buffer
                        (with-current-buffer buffer
                          (diff-syntax-fontify-props file text line-nb))))))))

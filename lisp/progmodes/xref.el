@@ -1395,7 +1395,7 @@ Such as the current syntax table and the applied syntax properties."
                 (inhibit-message t)
                 message-log-max)
             (ignore-errors
-              (delay-mode-hooks (set-auto-mode t))))
+              (set-auto-mode t)))
           (setq-local xref--temp-buffer-file-name file)
           (setq-local inhibit-read-only t)
           (erase-buffer))
