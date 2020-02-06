@@ -651,15 +651,10 @@ since it could result in memory overflow and make Emacs crash."
                           (const :tag "No special handling" nil)
                           (const :tag "Handle minibuffer" set-minibuffer-message)
                           (const :tag "Accumulate messages" set-multi-message)
-                          (const :tag "Accumulate messages and handle minibuffer" set-minibuffer-multi-message)
+                          (const :tag "Accumulate messages and handle minibuffer"
+                                 set-minibuffer-multi-message)
                           (function :tag "Other function"))
-              "28.1"
-              :set (lambda (sym val)
-                     (cond
-                      ((eq val 'set-minibuffer-multi-message)
-                       (set-default sym 'set-minibuffer-message)
-                       (add-function :around (default-value sym) #'set-multi-message--wrapper))
-                      (t (set-default sym val)))))
+              "28.1")
 	     (unibyte-display-via-language-environment mule boolean)
 	     (blink-cursor-alist cursor alist "22.1")
 	     (overline-margin display integer "22.1")

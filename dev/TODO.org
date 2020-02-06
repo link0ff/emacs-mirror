@@ -9,6 +9,8 @@ like in vi, it was shame to hear this from a vi user
 
 <H-M-right> M-. on man
 
+check if eglot uses xref M-.
+
 * display-buffer actions
 
 need new display action (direction . right)
