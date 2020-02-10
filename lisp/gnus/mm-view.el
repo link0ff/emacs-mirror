@@ -497,8 +497,8 @@ If MODE is not set, try to find mode automatically."
 	    (let ((auto-mode-alist
 		   (delq (rassq 'doc-view-mode-maybe auto-mode-alist)
 			 (copy-sequence auto-mode-alist))))
-              ;; Don't run hooks that might assume buffer-file-name
-              ;; really associates buffer with a file (bug#39190).
+	      ;; Don't run hooks that might assume buffer-file-name
+	      ;; really associates buffer with a file (bug#39190).
 	      (delay-mode-hooks (set-auto-mode))
 	      (setq mode major-mode)))
 	  ;; Do not fontify if the guess mode is fundamental.
