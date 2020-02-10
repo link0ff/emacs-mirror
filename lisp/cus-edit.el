@@ -1712,7 +1712,7 @@ Operate on all settings in this buffer:\n"))
 		(length (length options)))
 	    (mapcar (lambda (entry)
 		      (prog2
-			  (message "Creating customization items ...%2d%%"
+			  (message "Creating customization items...%2d%%"
 				   (floor (* 100.0 count) length))
 			  (widget-create (nth 1 entry)
 					 :tag (custom-unlispify-tag-name

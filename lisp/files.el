@@ -3080,10 +3080,6 @@ If FUNCTION is nil, then it is not called.")
   "Upper limit on `magic-mode-alist' regexp matches.
 Also applies to `magic-fallback-mode-alist'.")
 
-(defun set-auto-mode-internal (&optional keep-mode-if-same)
-  "Select major mode for internal buffers."
-  (delay-mode-hooks (set-auto-mode keep-mode-if-same)))
-
 (defun set-auto-mode (&optional keep-mode-if-same)
   "Select major mode appropriate for current buffer.
 

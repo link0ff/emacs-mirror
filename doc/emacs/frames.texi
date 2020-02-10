@@ -1265,7 +1265,7 @@ control the use of tab bars at startup, customize the variable
 Please note that the tab bar is different from the tab line (xref).
 Unlike tabs on the tab line at the top of each window that are used to
 switch buffers, tabs on the tab bar are used to switch window
-configurations containing several windows and buffer.
+configurations containing several windows and buffers.
 
 @vindex tab-bar-show
   The variable @code{tab-bar-show} controls whether the Tab Bar mode
