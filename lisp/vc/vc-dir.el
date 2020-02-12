@@ -1300,12 +1300,17 @@ These are the commands available for use in the file status buffer:
 
 \\{vc-dir-mode-map}"
 
+;; Now, vc-dir seems similar to magit-status.  But it has one _huge_
+;; drawback: it requires me to press RET each time after I invoke it.  (Why
+;; would I want to invoke vc-dir for some other directory than the one I'm
+;; in anyway?  And in such rare cases, C-u would handle that much better.)
+
   (interactive
    (list
     ;; When you hit C-x v d in a visited VC file,
     ;; the *vc-dir* buffer visits the directory under its truename;
     ;; therefore it makes sense to always do that.
-    ;; Otherwise if you do C-x v d -> C-x C-f -> C-c v d
+    ;; Otherwise if you do C-x v d -> C-x C-f -> C-x v d
     ;; you may get a new *vc-dir* buffer, different from the original
     (file-truename (read-directory-name "VC status for directory: "
 					(vc-root-dir) nil t

@@ -474,6 +474,16 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
                                         (tab-bar-new-tab))
                                       (setq type 'tab)
                                       (selected-window))
+                                     ((eq dir 'new-frame)
+                                      ;; TODO: qv more at display-buffer-pop-up-frame and other-frame-window
+                                      (window--maybe-raise-frame
+                                       (funcall pop-up-frame-function))
+                                      (setq type 'frame)
+                                      (selected-window))
+                                     ((eq dir 'new-window)
+                                      ;; TODO: qv more at display-buffer-pop-up-window and other-frame-window
+                                      ;; Split window in any direction
+                                      (setq dir nil))
                                      ((eq dir 'same-window)
                                       (selected-window))
                                      (t (window-in-direction
@@ -542,10 +552,22 @@ See the logic of the prefix ARG in `windmove-display-in-direction'."
   (windmove-display-in-direction 'same-window arg))
 
 ;;;###autoload
+(defun windmove-display-new-window (&optional arg)
+  "Display the next buffer in a new window."
+  (interactive "P")
+  (windmove-display-in-direction 'new-window arg))
+
+;;;###autoload
 (defun windmove-display-new-tab (&optional arg)
   "Display the next buffer in a new tab."
   (interactive "P")
   (windmove-display-in-direction 'new-tab arg))
+
+;;;###autoload
+(defun windmove-display-new-frame (&optional arg)
+  "Display the next buffer in a new frame."
+  (interactive "P")
+  (windmove-display-in-direction 'new-frame arg))
 
 ;;;###autoload
 (defun windmove-display-default-keybindings (&optional modifiers)
@@ -562,7 +584,9 @@ Default value of MODIFIERS is `shift-meta'."
   (global-set-key (vector (append modifiers '(up)))    'windmove-display-up)
   (global-set-key (vector (append modifiers '(down)))  'windmove-display-down)
   (global-set-key (vector (append modifiers '(?0)))    'windmove-display-same-window)
-  (global-set-key (vector (append modifiers '(?t)))    'windmove-display-new-tab))
+  (global-set-key (vector (append modifiers '(?w)))    'windmove-display-new-window)
+  (global-set-key (vector (append modifiers '(?t)))    'windmove-display-new-tab)
+  (global-set-key (vector (append modifiers '(?f)))    'windmove-display-new-frame))
 
 
 ;;; Directional window deletion
