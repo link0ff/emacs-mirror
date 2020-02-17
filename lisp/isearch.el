@@ -1265,6 +1265,9 @@ used to set the value of `isearch-regexp-function'."
   ;; by external packages in isearch-mode-hook.  (Bug#16035)
   (setq isearch--saved-overriding-local-map overriding-terminal-local-map)
 
+  ;; (setq set-message-function 'set-isearch-message)
+  ;; (setq clear-message-function 'clear-isearch-message)
+
   ;; Pushing the initial state used to be before running isearch-mode-hook,
   ;; but a hook might set `isearch-push-state-function' used in
   ;; `isearch-push-state' to save mode-specific initial state.  (Bug#4994)
@@ -1377,6 +1380,9 @@ NOPUSH is t and EDIT is t."
     (with-current-buffer isearch--current-buffer
       (setq isearch--current-buffer nil)
       (setq cursor-sensor-inhibit (delq 'isearch cursor-sensor-inhibit))))
+
+  (setq set-message-function 'set-minibuffer-message)
+  (setq clear-message-function 'clear-minibuffer-message)
 
   ;; Called by all commands that terminate isearch-mode.
   ;; If NOPUSH is non-nil, we don't push the string on the search ring.
@@ -3149,6 +3155,9 @@ If there is no completion possible, say so and continue searching."
 
 ;; Message string
 
+(defvar isearch-message-p nil)
+(defvar isearch-minibuffer-message nil)
+
 (defun isearch-message (&optional c-q-hack ellipsis)
   ;; Generate and print the message string.
 
@@ -3173,7 +3182,7 @@ If there is no completion possible, say so and continue searching."
 	     (isearch-message-prefix ellipsis isearch-nonincremental)
 	     m
 	     (isearch-message-suffix c-q-hack)))
-    (if c-q-hack m (let ((message-log-max nil)) (message "%s" m)))))
+    (if c-q-hack m (let ((message-log-max nil) (isearch-message-p t)) (message "%s" m)))))
 
 (defun isearch--describe-regexp-mode (regexp-function &optional space-before)
   "Make a string for describing REGEXP-FUNCTION.
@@ -3267,13 +3276,17 @@ the word mode."
 	   isearch-message-properties)))
 
 (defun isearch-message-suffix (&optional c-q-hack)
-  (apply #'propertize (concat (if c-q-hack "^Q" "")
-		      (isearch-lazy-count-format 'suffix)
-		      (if isearch-error
-			  (concat " [" isearch-error "]")
-			"")
-		      (or isearch-message-suffix-add ""))
-	 isearch-message-properties))
+  (concat
+   (apply #'propertize (concat (if c-q-hack "^Q" "")
+		               (isearch-lazy-count-format 'suffix)
+		               (if isearch-error
+			           (concat " [" isearch-error "]")
+			         "")
+		               (or isearch-message-suffix-add ""))
+	  isearch-message-properties)
+   (if isearch-minibuffer-message
+       (concat " [" isearch-minibuffer-message "]")
+     "")))
 
 (defun isearch-lazy-count-format (&optional suffix-p)
   "Format the current match number and the total number of matches.
@@ -3297,6 +3310,18 @@ isearch-message-suffix prompt.  Otherwise, for isearch-message-prefix."
                        -1)))
                 (or isearch-lazy-count-total "?"))
       "")))
+
+(defun set-isearch-message (message)
+  (unless isearch-message-p
+    (setq isearch-minibuffer-message message)
+    (funcall (or isearch-message-function #'isearch-message))
+    ;; (unless isearch-message-function
+    ;;   (isearch-message))
+    ))
+
+(defun clear-isearch-message ()
+  ;; (setq isearch-minibuffer-message nil)
+  )
 
 
 ;; Searching
