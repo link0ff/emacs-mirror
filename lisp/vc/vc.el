@@ -1071,6 +1071,9 @@ BEWARE: this function may change the current buffer."
 	      (list buffer-file-name))))
      (t (error "File is not under version control")))))
 
+(declare-function dired-get-marked-files "dired"
+                  (&optional localp arg filter distinguish-one-marked error))
+
 (defun vc-dired-deduce-fileset (&optional state-model-only-files observer)
   (let ((backend (vc-responsible-backend default-directory))
         (files (dired-get-marked-files nil nil nil nil t))
