@@ -600,6 +600,7 @@ using the `previous-buffer' command."
   (let* ((posnp (event-start e))
          (tab (get-pos-property 1 'tab (car (posn-string posnp))))
          (buffer (if (bufferp tab) tab (cdr (assq 'buffer tab)))))
+    (set-window-parameter nil 'tab-line-hscroll nil)
     (if buffer
         (tab-line-select-tab-buffer buffer (posn-window posnp))
       (let ((select (cdr (assq 'select tab))))

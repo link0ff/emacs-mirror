@@ -50,7 +50,8 @@
   (let ((map (make-sparse-keymap))
 	(menu-map (make-sparse-keymap)))
     (define-key map "\t"  'tab-to-tab-stop)
-    (define-key map "\es" 'center-line)
+    ;; Should use 'M-o M-s' from text-mode
+    ;; (define-key map "\es" 'center-line)
     (define-key map "\e?" 'nroff-count-text-lines)
     (define-key map "\n"  'nroff-electric-newline)
     (define-key map "\en" 'nroff-forward-text-line)

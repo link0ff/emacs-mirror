@@ -1031,12 +1031,6 @@ BEWARE: this function may change the current buffer."
     (cond
      ((derived-mode-p 'vc-dir-mode)
       (vc-dir-deduce-fileset state-model-only-files))
-;; Subject: bug#34949: 27.0.50; Docstring of `vc-deduce-fileset' incomplete
-;; > What I don't fully understand, however, is why prohibit state-changing
-;; > operations in Dired buffers. Is it just because there's no VC-Dir buffer
-;; > easily at hand, to update the visible file statuses?
-;; Exactly the same question I ask myself every time I forget about this limitation
-;; and type 'C-x v v' in Dired.
      ((derived-mode-p 'dired-mode)
       (vc-dired-deduce-fileset state-model-only-files observer))
      ((setq backend (vc-backend buffer-file-name))
