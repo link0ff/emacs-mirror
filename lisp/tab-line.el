@@ -472,7 +472,7 @@ variable `tab-line-tabs-function'."
                (natnump (nth 2 cache-key)) ; non-negative on manual scroll
                cache                       ; window-buffer was updated
                (not (equal (nth 1 (car cache)) (nth 1 cache-key))))
-      (set-window-parameter nil 'tab-line-hscroll nil))
+      (set-window-parameter nil 'tab-line-hscroll (- (nth 2 cache-key))))
     (or (and cache (equal (car cache) cache-key) (cdr cache))
         (cdr (set-window-parameter
               nil 'tab-line-cache
