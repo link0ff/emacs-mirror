@@ -28,3 +28,16 @@ TODO: C-x v V should deduce all changed files
    (lambda (entries &optional more-to-come)
      (message "! %S" entries))))
 #+end_src
+
+* vc-dir
+
+Now, vc-dir seems similar to magit-status.  But it has one _huge_
+drawback: it requires me to press RET each time after I invoke it.  (Why
+would I want to invoke vc-dir for some other directory than the one I'm
+in anyway?  And in such rare cases, C-u would handle that much better.)
+
+** Problem
+
+Typing 'v' (vc-next-action) at the beginning of *vc-dir* buffer signals the error
+"When applying VC operations to multiple files, the files are required
+to be in similar VC states.  File in state edited clashes with state unregistered.
