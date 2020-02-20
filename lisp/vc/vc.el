@@ -1158,20 +1158,10 @@ For old-style locking-based version control systems, like RCS:
   If every file is locked by you and unchanged, unlock them.
   If every file is locked by someone else, offer to steal the lock."
   (interactive "P")
-  ;; Subject: Re: In defense of VC [was: In support of Jonas Bernoulli's Magit]
-  ;; Date: Sun, 16 Jul 2017
-  ;; > If multiple files are modified, the “next action” could be to display
-  ;; > the ‘vc-dir’ buffer for the current repository.
-  ;; We had an argument about changing `M-x vc-dir' to show the repository root
-  ;; right away, instead of prompting. Couldn't reach an agreement.
-  ;; So I doubt your suggestion would be accepted as the default workflow.
-  ;; > in the unlikely case the asking behavior is needed, it could be
-  ;; > triggered by giving a prefix argument.)
-  ;; See https://debbugs.gnu.org/cgi/bugreport.cgi?bug=12492#23
-  ;; There was also a discussion on emacs-devel quite a bit later
-  ;; and f302475471df0553b3ee442112981f9b146e0b55
-  ;; TODO: C-x v V should deduce all changed files
-  (let* ((vc-fileset (vc-deduce-fileset nil t 'state-model-only-files))
+  )
+
+(defun vc-next-action-with-fileset (verbose &optional fileset)
+  (let* ((vc-fileset (or fileset (vc-deduce-fileset nil t 'state-model-only-files)))
          (backend (car vc-fileset))
 	 (files (nth 1 vc-fileset))
          ;; (fileset-only-files (nth 2 vc-fileset))
