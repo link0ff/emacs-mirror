@@ -457,6 +457,8 @@ variable `tab-line-tabs-function'."
        (list (concat separator (when tab-line-new-tab-choice
                                  tab-line-new-button)))))))
 
+(defvar tab-line-auto-hscroll)
+
 (defun tab-line-format ()
   "Template for displaying tab line for selected window."
   (let* ((tabs (funcall tab-line-tabs-function))
@@ -464,6 +466,13 @@ variable `tab-line-tabs-function'."
                           (window-buffer)
                           (window-parameter nil 'tab-line-hscroll)))
          (cache (window-parameter nil 'tab-line-cache)))
+    ;; Enable auto-hscroll again after it was disabled on manual scrolling.
+    ;; The moment to enable it is when the window-buffer was updated.
+    (when (and tab-line-auto-hscroll       ; if auto-hscroll was enabled
+               (natnump (nth 2 cache-key)) ; non-negative on manual scroll
+               cache                       ; window-buffer was updated
+               (not (equal (nth 1 (car cache)) (nth 1 cache-key))))
+      (set-window-parameter nil 'tab-line-hscroll nil))
     (or (and cache (equal (car cache) cache-key) (cdr cache))
         (cdr (set-window-parameter
               nil 'tab-line-cache
@@ -490,7 +499,7 @@ the selected tab visible."
       ;; Continuation means tab-line doesn't fit completely,
       ;; thus scroll arrows are needed for scrolling.
       (setq show-arrows (> (vertical-motion 1) 0))
-      ;; Try to auto-scroll only when scrolling is needed,
+      ;; Try to auto-hscroll only when scrolling is needed,
       ;; but no manual scrolling was performed before.
       (when (and tab-line-auto-hscroll
                  show-arrows
@@ -600,7 +609,6 @@ using the `previous-buffer' command."
   (let* ((posnp (event-start e))
          (tab (get-pos-property 1 'tab (car (posn-string posnp))))
          (buffer (if (bufferp tab) tab (cdr (assq 'buffer tab)))))
-    (set-window-parameter nil 'tab-line-hscroll nil)
     (if buffer
         (tab-line-select-tab-buffer buffer (posn-window posnp))
       (let ((select (cdr (assq 'select tab))))
