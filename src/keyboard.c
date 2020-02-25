@@ -5998,24 +5998,14 @@ make_lispy_event (struct input_event *event)
       return list2 (Qselect_window, list1 (event->frame_or_window));
 
     case TAB_BAR_EVENT:
-      if (EQ (event->arg, event->frame_or_window))
-	/* This is the prefix key.  We translate this to
-	   `(tab_bar)' because the code in keyboard.c for tab bar
-	   events, which we use, relies on this.  */
-	return list1 (Qtab_bar);
-      else if (SYMBOLP (event->arg))
-	return apply_modifiers (event->modifiers, event->arg);
-      return event->arg;
-
     case TOOL_BAR_EVENT:
-      if (EQ (event->arg, event->frame_or_window))
-	/* This is the prefix key.  We translate this to
-	   `(tool_bar)' because the code in keyboard.c for tool bar
-	   events, which we use, relies on this.  */
-	return list1 (Qtool_bar);
-      else if (SYMBOLP (event->arg))
-	return apply_modifiers (event->modifiers, event->arg);
-      return event->arg;
+      {
+	Lisp_Object res = event->arg;
+	Lisp_Object location
+	  = event->kind == TAB_BAR_EVENT ? Qtab_bar : Qtool_bar;
+	if (SYMBOLP (res)) res = apply_modifiers (event->modifiers, res);
+	return list2 (res, list2 (event->frame_or_window, location));
+      }
 
     case USER_SIGNAL_EVENT:
       /* A user signal.  */
