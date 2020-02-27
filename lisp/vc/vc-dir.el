@@ -1285,6 +1285,22 @@ state of item at point, if any."
 	(setq model (vc-checkout-model vc-dir-backend only-files-list))))
     (list vc-dir-backend files only-files-list state model)))
 
+(defcustom vc-dir-default-directory nil
+  "Default directory name for the command `vc-dir'.
+When nil, `vc-dir' reads a directory name using the minibuffer.
+When non-nil and the current directory is under version control,
+`vc-dir' doesn't ask for a directory name and uses the VC root directory.
+When a string and `vc-dir' is invoked in a directory outside of
+version control, then this string is used as a default directory name.
+
+However, the prefix arg of `vc-dir' overrides this customization
+and still asks for a directory name and backend."
+  :type '(choice (const :tag "Ask for directory" nil)
+                 (const :tag "Use VC root directory" t)
+                 (string :tag "Custom directory"))
+  :group 'vc
+  :version "28.1")
+
 ;;;###autoload
 (defun vc-dir (dir &optional backend)
   "Show the VC status for \"interesting\" files in and below DIR.
@@ -1304,22 +1320,31 @@ These are the commands available for use in the file status buffer:
 \\{vc-dir-mode-map}"
 
   (interactive
-   (list
-    ;; When you hit C-x v d in a visited VC file,
-    ;; the *vc-dir* buffer visits the directory under its truename;
-    ;; therefore it makes sense to always do that.
-    ;; Otherwise if you do C-x v d -> C-x C-f -> C-x v d
-    ;; you may get a new *vc-dir* buffer, different from the original
-    (file-truename (read-directory-name "VC status for directory: "
-					(vc-root-dir) nil t
-					nil))
-    (if current-prefix-arg
-	(intern
-	 (completing-read
-	  "Use VC backend: "
-	  (mapcar (lambda (b) (list (symbol-name b)))
-		  vc-handled-backends)
-	  nil t nil nil)))))
+   (let ((dir
+          ;; When you hit C-x v d in a visited VC file,
+          ;; the *vc-dir* buffer visits the directory under its truename;
+          ;; therefore it makes sense to always do that.
+          ;; Otherwise if you do C-x v d -> C-x C-f -> C-x v d
+          ;; you may get a new *vc-dir* buffer, different from the original
+          (file-truename
+           (let ((root-dir (vc-root-dir)))
+             (if (and vc-dir-default-directory
+                      (not current-prefix-arg)
+                      (or root-dir (stringp vc-dir-default-directory)))
+                 (if (and (not root-dir) (stringp vc-dir-default-directory))
+                     vc-dir-default-directory
+                   root-dir)
+               (read-directory-name "VC status for directory: "
+                                    (vc-root-dir) nil t
+                                    nil))))))
+     (list dir (if current-prefix-arg
+                   (intern
+                    (completing-read
+                     "Use VC backend: "
+                     (mapcar (lambda (b) (list (symbol-name b)))
+                             vc-handled-backends)
+                     nil t nil nil (symbol-name (ignore-errors
+                                                  (vc-responsible-backend dir)))))))))
   (unless backend
     (setq backend (vc-responsible-backend dir)))
   (let (pop-up-windows)		      ; based on cvs-examine; bug#6204
