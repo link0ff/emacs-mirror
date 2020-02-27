@@ -1331,12 +1331,9 @@ These are the commands available for use in the file status buffer:
              (if (and vc-dir-default-directory
                       (not current-prefix-arg)
                       (or root-dir (stringp vc-dir-default-directory)))
-                 (if (and (not root-dir) (stringp vc-dir-default-directory))
-                     vc-dir-default-directory
-                   root-dir)
+                 (or root-dir vc-dir-default-directory)
                (read-directory-name "VC status for directory: "
-                                    (vc-root-dir) nil t
-                                    nil))))))
+                                    (vc-root-dir) nil t nil))))))
      (list dir (if current-prefix-arg
                    (intern
                     (completing-read
