@@ -1330,7 +1330,8 @@ These are the commands available for use in the file status buffer:
            (let ((root-dir (vc-root-dir)))
              (if (and vc-dir-default-directory
                       (not current-prefix-arg)
-                      (or root-dir (stringp vc-dir-default-directory)))
+                      (or root-dir (and (stringp vc-dir-default-directory)
+                                        (file-directory-p vc-dir-default-directory))))
                  (or root-dir vc-dir-default-directory)
                (read-directory-name "VC status for directory: "
                                     (vc-root-dir) nil t nil))))))
