@@ -261,7 +261,7 @@ Append ellipsis `tab-line-tab-name-ellipsis' in this case."
                   'help-echo tab-name))))
 
 
-(defcustom tab-line-tabs-function #'tab-line-tabs-mode-buffers
+(defcustom tab-line-tabs-function #'tab-line-tabs-window-buffers
   "Function to get a list of tabs to display in the tab line.
 This function should return either a list of buffers whose names will
 be displayed, or just a list of strings to display in the tab line.
@@ -562,17 +562,6 @@ the selected tab visible."
                     (setq hscroll (float new-hscroll))
                     (set-window-parameter nil 'tab-line-hscroll hscroll)))))))))
       (list show-arrows hscroll))))
-
-(defun test1 ()
-  (interactive)
-  (with-selected-window (split-window-below -10)
-    (switch-to-buffer "*Messages*")
-    (tab-line-mode 0))
-  (message "tab-line-hscroll: %S" (window-parameter nil 'tab-line-hscroll))
-  (message "tab-line-cache: %S" (cdr (car (window-parameter nil 'tab-line-cache))))
-  (tab-line-format-template (funcall tab-line-tabs-function))
-  (select-window (split-window-below -5))
-  (switch-to-buffer tab-line-auto-hscroll-buffer))
 
 
 (defun tab-line-hscroll (&optional arg window)
