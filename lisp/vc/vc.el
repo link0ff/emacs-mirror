@@ -1032,9 +1032,7 @@ BEWARE: this function may change the current buffer."
      ((derived-mode-p 'vc-dir-mode)
       (vc-dir-deduce-fileset state-model-only-files))
      ((derived-mode-p 'dired-mode)
-      (if observer
-	  (vc-dired-deduce-fileset)
-	(error "State changing VC operations not supported in `dired-mode'")))
+      (vc-dired-deduce-fileset state-model-only-files observer))
      ((setq backend (vc-backend buffer-file-name))
       (if state-model-only-files
 	(list backend (list buffer-file-name)
@@ -1067,27 +1065,21 @@ BEWARE: this function may change the current buffer."
 	      (list buffer-file-name))))
      (t (error "File is not under version control")))))
 
-(defun vc-root-deduce-fileset (callback)
-  (let* ((backend (vc-responsible-backend default-directory))
-         (rootdir (vc-call-backend backend 'root default-directory)))
-    (vc-directory-deduce-fileset rootdir callback)))
-
-(defun vc-directory-deduce-fileset (dir callback)
-  ;; TODO: use vc-dir-status-files
-  )
-
 (declare-function dired-get-marked-files "dired"
                   (&optional localp arg filter distinguish-one-marked error))
 
-(defun vc-dired-deduce-fileset (&optional callback)
+(defun vc-dired-deduce-fileset (&optional state-model-only-files observer)
   (let ((backend (vc-responsible-backend default-directory))
         (files (dired-get-marked-files nil nil nil nil t))
 	only-files-list
 	state
 	model)
 
-    (when callback
-      ;; TODO: use vc-directory-deduce-fileset
+    (when (and (not observer) (cl-some #'file-directory-p files))
+      (vc-dir default-directory)
+      (user-error "State changing VC operations on directories supported only in `vc-dir'"))
+
+    (when state-model-only-files
       (setq only-files-list (mapcar (lambda (file) (cons file (vc-state file))) files))
       (setq state (cdar only-files-list))
       ;; Check that all files are in a consistent state, since we use that
@@ -1142,11 +1134,6 @@ BEWARE: this function may change the current buffer."
    (completing-read prompt (mapcar #'symbol-name vc-handled-backends)
                     nil 'require-match)))
 
-(defun vc-next-action-on-root (verbose)
-  (interactive "P")
-  (vc-root-deduce-fileset
-   (lambda (vc-fileset) (vc-next-action-on-fileset vc-fileset verbose))))
-
 ;; Here's the major entry point.
 
 ;;;###autoload
@@ -1173,16 +1160,8 @@ For old-style locking-based version control systems, like RCS:
   If every file is locked by you and unchanged, unlock them.
   If every file is locked by someone else, offer to steal the lock."
   (interactive "P")
-  (cond
-   ((derived-mode-p 'dired-mode)
-    ;; Async operation
-    (vc-dired-deduce-fileset
-     (lambda (vc-fileset) (vc-next-action-on-fileset vc-fileset verbose))))
-   (t (vc-next-action-on-fileset
-       (vc-deduce-fileset nil t 'state-model-only-files) verbose))))
-
-(defun vc-next-action-on-fileset (vc-fileset verbose)
-  (let* ((backend (car vc-fileset))
+  (let* ((vc-fileset (vc-deduce-fileset nil t 'state-model-only-files))
+         (backend (car vc-fileset))
 	 (files (nth 1 vc-fileset))
          ;; (fileset-only-files (nth 2 vc-fileset))
          ;; FIXME: We used to call `vc-recompute-state' here.
@@ -3171,10 +3150,6 @@ to provide the `find-revision' operation instead."
 (defalias 'vc-default-mark-resolved 'ignore)
 
 (defun vc-default-dir-status-files (_backend _dir files update-function)
-  (funcall update-function
-           (mapcar (lambda (file) (list file 'up-to-date)) files)))
-
-(defun vc-dir-status-files (backend dir files update-function)
   (funcall update-function
            (mapcar (lambda (file) (list file 'up-to-date)) files)))
 
