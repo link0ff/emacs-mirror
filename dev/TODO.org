@@ -18,3 +18,9 @@ with optional parameter (create-window . t)
 like windmove-create-window
 
 TRY to use it for 'C-z d' (vc-dir-in-project-root)
+
+* windmove-display-in-direction for window/frame
+
+** TODO qv more at display-buffer-pop-up-frame and other-frame-window
+
+** TODO qv more at display-buffer-pop-up-window and other-frame-window
