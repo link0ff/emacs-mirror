@@ -259,9 +259,9 @@ to skip any messages.
 
   When Emacs visits the locus of an error message, it momentarily
 highlights the relevant source line.  The duration of this highlight
-is determined by the variable @code{next-error-highlight} for
-loci in selected buffers, and @code{next-error-highlight-no-select} for
-loci in non-selected buffers.
+is determined by the variable @code{next-error-highlight} for the locus
+in the selected buffer, and @code{next-error-highlight-no-select} for
+the locus in non-selected buffers.
 
 @vindex compilation-context-lines
   If the @file{*compilation*} buffer is shown in a window with a left

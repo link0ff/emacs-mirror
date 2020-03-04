@@ -75,16 +75,16 @@ value of 1 means that nothing is amalgamated.")
   :version "22.1")
 
 (defcustom next-error-highlight 0.5
-  "Highlighting of locations in selected source buffers.
-See `next-error-highlight-no-select' to customize highlighting
-of locations in non-selected buffers.
+  "Highlighting of locations in the selected buffer.
 If a number, highlight the locus in `next-error' face for the given time
 in seconds, or until the next command is executed.
 If t, highlight the locus until the next command is executed, or until
 some other locus replaces it.
 If nil, don't highlight the locus in the source buffer.
 If `fringe-arrow', indicate the locus by the fringe arrow
-indefinitely until some other locus replaces it."
+indefinitely until some other locus replaces it.
+See `next-error-highlight-no-select' to customize highlighting
+of the locus in non-selected buffers."
   :type '(choice (number :tag "Highlight for specified time")
                  (const :tag "Semipermanent highlighting" t)
                  (const :tag "No highlighting" nil)
@@ -95,12 +95,13 @@ indefinitely until some other locus replaces it."
 (defcustom next-error-highlight-no-select 0.5
   "Highlighting of locations in non-selected source buffers.
 Usually non-selected buffers are displayed by `next-error-no-select'.
-See `next-error-highlight' to customize highlighting of selected buffers.
 If number, highlight the locus in `next-error' face for given time in seconds.
 If t, highlight the locus indefinitely until some other locus replaces it.
 If nil, don't highlight the locus in the source buffer.
 If `fringe-arrow', indicate the locus by the fringe arrow
-indefinitely until some other locus replaces it."
+indefinitely until some other locus replaces it.
+See `next-error-highlight' to customize highlighting of the locus
+in the selected buffer."
   :type '(choice (number :tag "Highlight for specified time")
                  (const :tag "Semipermanent highlighting" t)
                  (const :tag "No highlighting" nil)
