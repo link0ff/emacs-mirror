@@ -44,8 +44,8 @@ installed on the system."
 
 (defvar image-converter--converters
   '((graphicsmagick :command ("gm" "convert") :probe ("-list" "format"))
-    (ffmpeg :command "ffmpeg" :probe "-decoders")
-    (imagemagick :command "convert" :probe ("-list" "format")))
+    (imagemagick :command "convert" :probe ("-list" "format"))
+    (ffmpeg :command "ffmpeg" :probe "-decoders"))
   "List of supported image converters to try.")
 
 (defun image-convert-p (source &optional data-p)
@@ -150,7 +150,7 @@ data is returned as a string."
         (forward-line 1)
         ;; Lines look like
         ;; "      WPG* r--   Word Perfect Graphics".
-        (while (re-search-forward "^ *\\([A-Z0-9]+\\)\\*? +r" nil t)
+        (while (re-search-forward "^ *\\([A-Z0-9]+\\)\\*?\\(?: +[A-Z0-9]+\\)? +r" nil t)
           (push (downcase (match-string 1)) formats)))
       (nreverse formats))))
 
