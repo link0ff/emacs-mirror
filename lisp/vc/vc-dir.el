@@ -1174,7 +1174,8 @@ Throw an error if another update process is in progress."
       ;; Bzr has serious locking problems, so setup the headers first (this is
       ;; synchronous) rather than doing it while dir-status is running.
       (ewoc-set-hf vc-ewoc (vc-dir-headers backend def-dir) "")
-      (let ((buffer (current-buffer)))
+      (let ((buffer (current-buffer))
+            (mark-files vc-dir-mark-files))
         (with-current-buffer vc-dir-process-buffer
           (setq default-directory def-dir)
           (erase-buffer)
@@ -1193,7 +1194,15 @@ Throw an error if another update process is in progress."
                    (if remaining
                        (vc-dir-refresh-files
                         (mapcar 'vc-dir-fileinfo->name remaining))
-                     (setq mode-line-process nil))))))))))))
+                     (setq mode-line-process nil)
+                     (when mark-files
+                       (vc-dir-unmark-all-files t)
+                       (ewoc-map
+                        (lambda (filearg)
+                          (when (member (vc-dir-fileinfo->name filearg) mark-files)
+                            (setf (vc-dir-fileinfo->marked filearg) t)
+                            t))
+                        vc-ewoc)))))))))))))
 
 (defun vc-dir-show-fileentry (file)
   "Insert an entry for a specific file into the current *VC-dir* listing.

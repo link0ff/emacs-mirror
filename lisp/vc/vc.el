@@ -1068,6 +1068,8 @@ BEWARE: this function may change the current buffer."
 (declare-function dired-get-marked-files "dired"
                   (&optional localp arg filter distinguish-one-marked error))
 
+(defvar vc-dir-mark-files nil)
+
 (defun vc-dired-deduce-fileset (&optional state-model-only-files observer)
   (let ((backend (vc-responsible-backend default-directory))
         (files (dired-get-marked-files nil nil nil nil t))
@@ -1076,7 +1078,16 @@ BEWARE: this function may change the current buffer."
 	model)
 
     (when (and (not observer) (cl-some #'file-directory-p files))
-      (vc-dir default-directory)
+      (let* ((rootdir (vc-call-backend backend 'root default-directory))
+             (vc-dir-mark-files
+              (mapcar (lambda (file)
+                        (file-relative-name
+                         (if (file-directory-p file)
+                             (file-name-as-directory file)
+                           file)
+                         rootdir))
+                      files)))
+        (vc-dir rootdir))
       (user-error "State changing VC operations on directories supported only in `vc-dir'"))
 
     (when state-model-only-files
