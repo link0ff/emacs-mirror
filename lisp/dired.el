@@ -3465,23 +3465,28 @@ argument or confirmation)."
       (with-displayed-buffer-window
        buffer
        (cons 'display-buffer-below-selected
-	     '((window-height . fit-window-to-buffer)
-	       (preserve-size . (nil . t))))
+             `((window-height . fit-window-to-buffer)
+               (preserve-size . (nil . t))
+               (after-display-function
+                .
+                ;; Handle (t FILE) just like (FILE), here.  That value is
+                ;; used (only in some cases), to mean just one file that was
+                ;; marked, rather than the current line file.
+                ,#'(lambda ()
+                    (with-current-buffer buffer
+                      (let ((inhibit-read-only t)
+                            (inhibit-modification-hooks t))
+                        (dired-format-columns-of-files
+                         (if (eq (car files) t) (cdr files) files))
+                        (remove-text-properties (point-min) (point-max)
+                                                '(mouse-face nil help-echo nil))
+                        (setq tab-line-exclude nil)))))))
        #'(lambda (window _value)
 	   (with-selected-window window
 	     (unwind-protect
 		 (apply function args)
 	       (when (window-live-p window)
-		 (quit-restore-window window 'kill)))))
-       ;; Handle (t FILE) just like (FILE), here.  That value is
-       ;; used (only in some cases), to mean just one file that was
-       ;; marked, rather than the current line file.
-       (with-current-buffer buffer
-	 (dired-format-columns-of-files
-	  (if (eq (car files) t) (cdr files) files))
-	 (remove-text-properties (point-min) (point-max)
-				 '(mouse-face nil help-echo nil))
-	 (setq tab-line-exclude nil))))))
+		 (quit-restore-window window 'kill)))))))))
 
 (defun dired-format-columns-of-files (files)
   (let ((beg (point)))
