@@ -1024,6 +1024,7 @@ If it is a file, return the corresponding cons for the file itself."
     (dolist (b drop) (setq vc-dir-buffers (delq b vc-dir-buffers)))))
 
 (defvar use-vc-backend)  ;; dynamically bound
+(defvar use-mark-files)  ;; dynamically bound
 
 (define-derived-mode vc-dir-mode special-mode "VC dir"
   "Major mode for VC directory buffers.
@@ -1079,7 +1080,7 @@ the *vc-dir* buffer.
     ;; process running in the background is also killed.
     (add-hook 'kill-buffer-query-functions 'vc-dir-kill-query nil t)
     (hack-dir-local-variables-non-file-buffer)
-    (vc-dir-refresh)))
+    (vc-dir-refresh use-mark-files)))
 
 (defun vc-dir-headers (backend dir)
   "Display the headers in the *VC dir* buffer.
@@ -1143,7 +1144,7 @@ specific headers."
 (defun vc-dir-revert-buffer-function (&optional _ignore-auto _noconfirm)
   (vc-dir-refresh))
 
-(defun vc-dir-refresh ()
+(defun vc-dir-refresh (&optional mark-files)
   "Refresh the contents of the *VC-dir* buffer.
 Throw an error if another update process is in progress."
   (interactive)
@@ -1174,8 +1175,7 @@ Throw an error if another update process is in progress."
       ;; Bzr has serious locking problems, so setup the headers first (this is
       ;; synchronous) rather than doing it while dir-status is running.
       (ewoc-set-hf vc-ewoc (vc-dir-headers backend def-dir) "")
-      (let ((buffer (current-buffer))
-            (mark-files vc-dir-mark-files))
+      (let ((buffer (current-buffer)))
         (with-current-buffer vc-dir-process-buffer
           (setq default-directory def-dir)
           (erase-buffer)
@@ -1196,13 +1196,26 @@ Throw an error if another update process is in progress."
                         (mapcar 'vc-dir-fileinfo->name remaining))
                      (setq mode-line-process nil)
                      (when mark-files
-                       (vc-dir-unmark-all-files t)
-                       (ewoc-map
-                        (lambda (filearg)
-                          (when (member (vc-dir-fileinfo->name filearg) mark-files)
-                            (setf (vc-dir-fileinfo->marked filearg) t)
-                            t))
-                        vc-ewoc)))))))))))))
+                       (let* ((backend (vc-responsible-backend default-directory))
+                              (rootdir (vc-call-backend backend 'root default-directory)))
+                         (when (listp mark-files)
+                           (setq mark-files (mapcar (lambda (file)
+                                                      (file-relative-name
+                                                       (if (file-directory-p file)
+                                                           (file-name-as-directory file)
+                                                         file)
+                                                       rootdir))
+                                                    mark-files)))
+                         (vc-dir-unmark-all-files t)
+                         (ewoc-map
+                          (lambda (filearg)
+                            (when (cond ((consp mark-files)
+                                         (member (vc-dir-fileinfo->name filearg) mark-files))
+                                        ((eq mark-files 'registered)
+                                         (memq (vc-dir-fileinfo->state filearg) '(edited added removed))))
+                              (setf (vc-dir-fileinfo->marked filearg) t)
+                              t))
+                          vc-ewoc))))))))))))))
 
 (defun vc-dir-show-fileentry (file)
   "Insert an entry for a specific file into the current *VC-dir* listing.
@@ -1296,7 +1309,7 @@ state of item at point, if any."
     (list vc-dir-backend files only-files-list state model)))
 
 ;;;###autoload
-(defun vc-dir (dir &optional backend)
+(defun vc-dir (dir &optional backend mark-files)
   "Show the VC status for \"interesting\" files in and below DIR.
 This allows you to mark files and perform VC operations on them.
 The list omits files which are up to date, with no changes in your copy
@@ -1335,9 +1348,10 @@ These are the commands available for use in the file status buffer:
   (let (pop-up-windows)		      ; based on cvs-examine; bug#6204
     (pop-to-buffer (vc-dir-prepare-status-buffer "*vc-dir*" dir backend)))
   (if (derived-mode-p 'vc-dir-mode)
-      (vc-dir-refresh)
+      (vc-dir-refresh mark-files)
     ;; FIXME: find a better way to pass the backend to `vc-dir-mode'.
-    (let ((use-vc-backend backend))
+    (let ((use-vc-backend backend)
+          (use-mark-files mark-files))
       (vc-dir-mode))))
 
 (defun vc-default-dir-extra-headers (_backend _dir)

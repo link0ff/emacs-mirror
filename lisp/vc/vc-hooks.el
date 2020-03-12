@@ -897,6 +897,7 @@ In the latter case, VC mode is deactivated for this buffer."
     (define-key map "s" 'vc-create-tag)
     (define-key map "u" 'vc-revert)
     (define-key map "v" 'vc-next-action)
+    (define-key map "V" 'vc-next-action-on-root)
     (define-key map "+" 'vc-update)
     ;; I'd prefer some kind of symmetry with vc-update:
     (define-key map "P" 'vc-push)
