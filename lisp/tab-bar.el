@@ -306,7 +306,8 @@ This helps to select the tab by its number using `tab-bar-select-tab'."
   :group 'tab-bar
   :version "27.1")
 
-(defvar tab-bar-separator nil)
+(defvar tab-bar-separator nil
+  "Separator")
 
 
 (defcustom tab-bar-tab-name-function #'tab-bar-tab-name-current

@@ -3583,6 +3583,12 @@ no ARGth marked file is found before this line."
 	    (insert dired-marker-char)))
       (forward-line 1))))
 
+(defcustom dired-mark-inclusive nil
+  "Non-nil means `dired-mark' marks file on the region end."
+  :type 'boolean
+  :version "28.1"
+  :group 'dired)
+
 (defun dired-mark (arg &optional interactive)
   "Mark the file at point in the Dired buffer.
 If the region is active, mark all files in the region.
@@ -3602,7 +3608,11 @@ this subdir."
 	    (end (region-end)))
 	(dired-mark-files-in-region
 	 (progn (goto-char beg) (line-beginning-position))
-	 (progn (goto-char end) (line-beginning-position))))))
+	 (progn (goto-char end)
+                (if (and dired-mark-inclusive
+                         (or (eolp) (get-text-property (point) 'dired-filename)))
+                    (line-end-position)
+                  (line-beginning-position)))))))
    ;; Mark subdir files from the subdir headerline.
    ((dired-get-subdir)
     (save-excursion (dired-mark-subdir-files)))
