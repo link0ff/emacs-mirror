@@ -1133,7 +1133,7 @@ BEWARE: this function may change the current buffer."
                     nil 'require-match)))
 
 (defun vc-next-action-on-root ()
-  (interactive "P")
+  (interactive)
   (vc-dir (vc-root-dir) nil 'registered))
 
 ;; Here's the major entry point.

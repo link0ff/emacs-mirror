@@ -1,10 +1,5 @@
 #+TODO: TODO | DONE | WONTFIX
 
-* vc-rgrep and project-rgrep
-
-qv vc-git-grep (maybe add keybinding? but more important is it
-possible to generalize for other backends and project.el?)
-
 * vc-annotate
 
 vc-annotate should align two windows by setting window-start (in addition to window-point)
