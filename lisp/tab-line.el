@@ -453,9 +453,10 @@ variable `tab-line-tabs-function'."
                      (> (length strings) 1))
                tab-line-right-button)))
      (if hscroll (nthcdr (truncate hscroll) strings) strings)
-     (when (eq tab-line-tabs-function #'tab-line-tabs-window-buffers)
-       (list (concat separator (when tab-line-new-tab-choice
-                                 tab-line-new-button)))))))
+     (list separator)
+     (when (and (eq tab-line-tabs-function #'tab-line-tabs-window-buffers)
+                tab-line-new-tab-choice)
+       (list tab-line-new-button)))))
 
 (defvar tab-line-auto-hscroll)
 
