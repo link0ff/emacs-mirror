@@ -44,8 +44,8 @@ installed on the system."
 
 (defvar image-converter--converters
   '((graphicsmagick :command ("gm" "convert") :probe ("-list" "format"))
-    (imagemagick :command "convert" :probe ("-list" "format"))
-    (ffmpeg :command "ffmpeg" :probe "-decoders"))
+    (ffmpeg :command "ffmpeg" :probe "-decoders")
+    (imagemagick :command "convert" :probe ("-list" "format")))
   "List of supported image converters to try.")
 
 (defun image-convert-p (source &optional data-p)
@@ -57,6 +57,10 @@ is a string, it should be a MIME format string like
   ;; Find an installed image converter.
   (unless image-converter
     (image-converter--find-converter))
+  ;; When image-converter was customized
+  (if (and image-converter (not image-converter-regexp))
+      (when-let ((formats (image-converter--probe image-converter)))
+        (setq image-converter-regexp (concat "\\." (regexp-opt formats) "\\'"))))
   (and image-converter
        (or (and (not data-p)
                 (string-match image-converter-regexp source))
