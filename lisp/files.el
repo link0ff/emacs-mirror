@@ -2813,7 +2813,7 @@ ARC\\|ZIP\\|LZH\\|LHA\\|ZOO\\|[JEW]AR\\|XPI\\|RAR\\|CBR\\|7Z\\)\\'" . archive-mo
      ("/config\\.\\(?:bat\\|log\\)\\'" . fundamental-mode)
      ("/\\.\\(authinfo\\|netrc\\)\\'" . authinfo-mode)
      ;; Windows candidates may be opened case sensitively on Unix
-     ("\\.\\(?:[iI][nN][iI]\\|[lL][sS][tT]\\|[rR][eE][gG]\\|[sS][yY][sS]\\)\\'" . conf-mode)
+     ("\\.\\(?:[iI][nN][iI]\\|[lL][sS][tT]\\|[rR][eE][gG]\\|[sS][yY][sS]\\)\\'" . (lambda () (funcall (conf--guess-mode))))
      ("\\.la\\'" . conf-unix-mode)
      ("\\.ppd\\'" . conf-ppd-mode)
      ("java.+\\.conf\\'" . conf-javaprop-mode)
@@ -2822,15 +2822,15 @@ ARC\\|ZIP\\|LZH\\|LHA\\|ZOO\\|[JEW]AR\\|XPI\\|RAR\\|CBR\\|7Z\\)\\'" . archive-mo
      ("\\.desktop\\'" . conf-desktop-mode)
      ("/\\.redshift.conf\\'" . conf-windows-mode)
      ("\\`/etc/\\(?:DIR_COLORS\\|ethers\\|.?fstab\\|.*hosts\\|lesskey\\|login\\.?de\\(?:fs\\|vperm\\)\\|magic\\|mtab\\|pam\\.d/.*\\|permissions\\(?:\\.d/.+\\)?\\|protocols\\|rpc\\|services\\)\\'" . conf-space-mode)
-     ("\\`/etc/\\(?:acpid?/.+\\|aliases\\(?:\\.d/.+\\)?\\|default/.+\\|group-?\\|hosts\\..+\\|inittab\\|ksysguarddrc\\|opera6rc\\|passwd-?\\|shadow-?\\|sysconfig/.+\\)\\'" . conf-mode)
+     ("\\`/etc/\\(?:acpid?/.+\\|aliases\\(?:\\.d/.+\\)?\\|default/.+\\|group-?\\|hosts\\..+\\|inittab\\|ksysguarddrc\\|opera6rc\\|passwd-?\\|shadow-?\\|sysconfig/.+\\)\\'" . (lambda () (funcall (conf--guess-mode))))
      ;; ChangeLog.old etc.  Other change-log-mode entries are above;
      ;; this has lower priority to avoid matching changelog.sgml etc.
      ("[cC]hange[lL]og[-.][-0-9a-z]+\\'" . change-log-mode)
      ;; either user's dot-files or under /etc or some such
-     ("/\\.?\\(?:gitconfig\\|gnokiirc\\|hgrc\\|kde.*rc\\|mime\\.types\\|wgetrc\\)\\'" . conf-mode)
+     ("/\\.?\\(?:gitconfig\\|gnokiirc\\|hgrc\\|kde.*rc\\|mime\\.types\\|wgetrc\\)\\'" . (lambda () (funcall (conf--guess-mode))))
      ;; alas not all ~/.*rc files are like this
-     ("/\\.\\(?:asound\\|enigma\\|fetchmail\\|gltron\\|gtk\\|hxplayer\\|mairix\\|mbsync\\|msmtp\\|net\\|neverball\\|nvidia-settings-\\|offlineimap\\|qt/.+\\|realplayer\\|reportbug\\|rtorrent\\.\\|screen\\|scummvm\\|sversion\\|sylpheed/.+\\|xmp\\)rc\\'" . conf-mode)
-     ("/\\.\\(?:gdbtkinit\\|grip\\|mpdconf\\|notmuch-config\\|orbital/.+txt\\|rhosts\\|tuxracer/options\\)\\'" . conf-mode)
+     ("/\\.\\(?:asound\\|enigma\\|fetchmail\\|gltron\\|gtk\\|hxplayer\\|mairix\\|mbsync\\|msmtp\\|net\\|neverball\\|nvidia-settings-\\|offlineimap\\|qt/.+\\|realplayer\\|reportbug\\|rtorrent\\.\\|screen\\|scummvm\\|sversion\\|sylpheed/.+\\|xmp\\)rc\\'" . (lambda () (funcall (conf--guess-mode))))
+     ("/\\.\\(?:gdbtkinit\\|grip\\|mpdconf\\|notmuch-config\\|orbital/.+txt\\|rhosts\\|tuxracer/options\\)\\'" . (lambda () (funcall (conf--guess-mode))))
      ("/\\.?X\\(?:default\\|resource\\|re\\)s\\>" . conf-xdefaults-mode)
      ("/X11.+app-defaults/\\|\\.ad\\'" . conf-xdefaults-mode)
      ("/X11.+locale/.+/Compose\\'" . conf-colon-mode)
@@ -2920,7 +2920,8 @@ and `magic-mode-alist', which determines modes based on file contents.")
 	  (goto-char (point-min))
 	  (looking-at "<\\?xml \\|<!-- \\|<!DOCTYPE ")))
       (xml-mode)
-    (conf-mode)))
+    ;; bug#39190
+    (funcall (conf--guess-mode))))
 
 (defvar interpreter-mode-alist
   ;; Note: The entries for the modes defined in cc-mode.el (awk-mode
