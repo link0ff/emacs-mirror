@@ -319,8 +319,8 @@ When `inclusive', include the file into marking if the end of the region
 is anywhere on its Dired line, except the beginning of the line."
   :type '(choice
           (const :tag "Don't mark files in active region" nil)
-          (const :tag "Include the file at region end line" inclusive)
-          (const :tag "Exclude file name outside of region" exclusive))
+          (const :tag "Exclude file name outside of region" exclusive)
+          (const :tag "Include the file at region end line" inclusive))
   :group 'dired
   :version "28.1")
 
