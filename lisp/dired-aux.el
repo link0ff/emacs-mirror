@@ -208,7 +208,7 @@ Examples of PREDICATE:
                  (file-attribute-group-id fa2))))
 
 If the region is active in Transient Mark mode, mark files
-in the active region only."
+only in the active region if `dired-mark-region' is non-nil."
   (interactive
    (list
     (let* ((target-dir (dired-dwim-target-directory))

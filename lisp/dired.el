@@ -642,7 +642,8 @@ MSG is a noun phrase for the type of files being marked.
 It should end with a noun that can be pluralized by adding `s'.
 
 In Transient Mark mode, if the mark is active, operate on the contents
-of the region.  Otherwise, operate on the whole buffer.
+of the region if `dired-mark-region' is non-nil.  Otherwise, operate
+on the whole buffer.
 
 Return value is the number of files marked, or nil if none were marked."
   `(let ((inhibit-read-only t) count
@@ -672,7 +673,7 @@ Return value is the number of files marked, or nil if none were marked."
 		 (if (eq dired-del-marker dired-marker-char)
 		     " for deletion"
 		   "")
-                 (if (use-region-p)
+                 (if (and dired-mark-region (use-region-p))
                      " in region"
                    "")))
       (goto-char beg)
@@ -690,7 +691,7 @@ Return value is the number of files marked, or nil if none were marked."
                         (if (eq dired-marker-char ?\s) "un" "")
                         (if (eq dired-marker-char dired-del-marker)
                             "flagged" "marked")
-                        (if (use-region-p)
+                        (if (and dired-mark-region (use-region-p))
                             " in region"
                           ""))))
     (and (> count 0) count)))
@@ -3637,7 +3638,8 @@ no ARGth marked file is found before this line."
 
 (defun dired-mark (arg &optional interactive)
   "Mark the file at point in the Dired buffer.
-If the region is active, mark all files in the region.
+If the region is active in Transient Mark mode, mark all files
+in the region if `dired-mark-region' is non-nil.
 Otherwise, with a prefix arg, mark files on the next ARG lines.
 
 If on a subdir headerline, mark all its files except `.' and `..'.
@@ -3741,7 +3743,7 @@ A prefix argument means to unmark them instead.
 `.' and `..' are never marked.
 
 If the region is active in Transient Mark mode, mark files
-in the active region only.
+only in the active region if `dired-mark-region' is non-nil.
 
 REGEXP is an Emacs regexp, not a shell wildcard.  Thus, use `\\.o$' for
 object files--just `.o' will mark more than you might think."
@@ -3795,7 +3797,7 @@ A prefix argument means to unmark them instead.
 `.' and `..' are never marked.
 
 If the region is active in Transient Mark mode, mark files
-in the active region only.
+only in the active region if `dired-mark-region' is non-nil.
 
 Note that if a file is visited in an Emacs buffer, and
 `dired-always-read-filesystem' is nil, this command will
@@ -3843,7 +3845,7 @@ The match is against the non-directory part of the filename.  Use `^'
   "Mark all symbolic links.
 With prefix argument, unmark or unflag all those files.
 If the region is active in Transient Mark mode, mark files
-in the active region only."
+only in the active region if `dired-mark-region' is non-nil."
   (interactive "P")
   (let ((dired-marker-char (if unflag-p ?\s dired-marker-char)))
     (dired-mark-if (looking-at-p dired-re-sym) "symbolic link")))
@@ -3852,7 +3854,7 @@ in the active region only."
   "Mark all directory file lines except `.' and `..'.
 With prefix argument, unmark or unflag all those files.
 If the region is active in Transient Mark mode, mark files
-in the active region only."
+only in the active region if `dired-mark-region' is non-nil."
   (interactive "P")
   (let ((dired-marker-char (if unflag-p ?\s dired-marker-char)))
     (dired-mark-if (and (looking-at-p dired-re-dir)
@@ -3863,7 +3865,7 @@ in the active region only."
   "Mark all executable files.
 With prefix argument, unmark or unflag all those files.
 If the region is active in Transient Mark mode, mark files
-in the active region only."
+only in the active region if `dired-mark-region' is non-nil."
   (interactive "P")
   (let ((dired-marker-char (if unflag-p ?\s dired-marker-char)))
     (dired-mark-if (looking-at-p dired-re-exe) "executable file")))
@@ -3875,7 +3877,7 @@ in the active region only."
   "Flag for deletion files whose names suggest they are auto save files.
 A prefix argument says to unmark or unflag those files instead.
 If the region is active in Transient Mark mode, flag files
-in the active region only."
+only in the active region if `dired-mark-region' is non-nil."
   (interactive "P")
   (let ((dired-marker-char (if unflag-p ?\s dired-del-marker)))
     (dired-mark-if
@@ -3917,7 +3919,7 @@ in the active region only."
   "Flag all backup files (names ending with `~') for deletion.
 With prefix argument, unmark or unflag these files.
 If the region is active in Transient Mark mode, flag files
-in the active region only."
+only in the active region if `dired-mark-region' is non-nil."
   (interactive "P")
   (let ((dired-marker-char (if unflag-p ?\s dired-del-marker)))
     (dired-mark-if

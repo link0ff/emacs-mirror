@@ -624,8 +624,8 @@ With prefix argument, unflag all those files.
 Optional fourth argument LOCALP is as in `dired-get-filename'.
 Optional fifth argument CASE-FOLD-P specifies the value of
 `case-fold-search' used for matching REGEXP.
-If the region is active in Transient Mark mode, mark files
-in the active region only."
+If the region is active in Transient Mark mode, operate only on
+files in the active region if `dired-mark-region' is non-nil."
   (interactive
    (list (read-regexp
 	  "Mark unmarked files matching regexp (default all): "
@@ -1390,7 +1390,7 @@ This function operates only on the buffer content and does not
 refer at all to the underlying file system.  Contrast this with
 `find-dired', which might be preferable for the task at hand.
 If the region is active in Transient Mark mode, mark files
-in the active region only."
+only in the active region if `dired-mark-region' is non-nil."
   ;; Using sym="" instead of nil avoids the trap of
   ;; (string-match "foo" sym) into which a user would soon fall.
   ;; Give `equal' instead of `=' in the example, as this works on
