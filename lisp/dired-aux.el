@@ -3062,9 +3062,9 @@ in the Dired buffer."
   (interactive "P")
   (let ((mark-files
          (when (derived-mode-p 'dired-mode)
-           (let ((files (dired-get-marked-files nil nil nil nil t)))
-             (when (cl-some #'file-directory-p files)
-               files)))))
+           (let ((marked-files (dired-get-marked-files nil nil nil nil t)))
+             (when (cl-some #'file-directory-p marked-files)
+               marked-files)))))
     (if mark-files
         (let ((transient-hook (make-symbol "vc-dir-mark-files")))
           (fset transient-hook
