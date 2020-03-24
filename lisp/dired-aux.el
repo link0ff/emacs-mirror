@@ -3060,13 +3060,19 @@ When also directories are marked then call `vc-dir' and mark
 the same files/directories in the VC-Dir buffer that were marked
 in the Dired buffer."
   (interactive "P")
-  (let ((marks
+  (let ((mark-files
          (when (derived-mode-p 'dired-mode)
            (let ((files (dired-get-marked-files nil nil nil nil t)))
              (when (cl-some #'file-directory-p files)
                files)))))
-    (if marks
-        (vc-dir (vc-root-dir) nil marks)
+    (if mark-files
+        (let ((transient-hook (make-symbol "vc-dir-mark-files")))
+          (fset transient-hook
+                (lambda ()
+                  (remove-hook 'vc-dir-refresh-hook transient-hook t)
+                  (vc-dir-mark-files mark-files)))
+          (vc-dir (vc-root-dir))
+          (add-hook 'vc-dir-refresh-hook transient-hook nil t))
       (vc-next-action verbose))))
 
 

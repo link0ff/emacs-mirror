@@ -1310,7 +1310,7 @@ state of item at point, if any."
     (list vc-dir-backend files only-files-list state model)))
 
 ;;;###autoload
-(defun vc-dir (dir &optional backend mark-files)
+(defun vc-dir (dir &optional backend)
   "Show the VC status for \"interesting\" files in and below DIR.
 This allows you to mark files and perform VC operations on them.
 The list omits files which are up to date, with no changes in your copy
@@ -1352,14 +1352,7 @@ These are the commands available for use in the file status buffer:
       (vc-dir-refresh)
     ;; FIXME: find a better way to pass the backend to `vc-dir-mode'.
     (let ((use-vc-backend backend))
-      (vc-dir-mode)))
-  (when mark-files
-    (let ((transient-hook (make-symbol "vc-dir-mark-files")))
-      (fset transient-hook
-          (lambda ()
-            (remove-hook 'vc-dir-refresh-hook transient-hook t)
-            (vc-dir-mark-files mark-files)))
-      (add-hook 'vc-dir-refresh-hook transient-hook nil t))))
+      (vc-dir-mode))))
 
 (defun vc-default-dir-extra-headers (_backend _dir)
   ;; Be loud by default to remind people to add code to display
