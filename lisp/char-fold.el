@@ -330,7 +330,7 @@ from which to start."
                                   isearch-lax-whitespace)
                                 (stringp search-whitespace-regexp)
                                 (string-match-p search-whitespace-regexp (char-to-string c)))))
-	 (setq spaces (1+ spaces)))
+         (setq spaces (1+ spaces)))
         (c (when (> spaces 0)
              (push (char-fold--make-space-string spaces) out)
              (setq spaces 0))

@@ -2920,7 +2920,6 @@ and `magic-mode-alist', which determines modes based on file contents.")
 	  (goto-char (point-min))
 	  (looking-at "<\\?xml \\|<!-- \\|<!DOCTYPE ")))
       (xml-mode)
-    ;; bug#39190
     (funcall (conf--guess-mode))))
 
 (defvar interpreter-mode-alist
