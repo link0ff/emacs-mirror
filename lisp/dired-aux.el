@@ -3050,6 +3050,25 @@ instead."
 	(backward-delete-char 1))
       (message "%s" (buffer-string)))))
 
+
+;;;###autoload
+(defun dired-vc-next-action (verbose)
+  "Do the next version control operation on marked files/directories.
+When only files are marked then call `vc-next-action' with the
+same value of the VERBOSE argument.
+When also directories are marked then call `vc-dir' and copy
+marks from Dired to VC-Dir."
+  (interactive "P")
+  (let ((marks
+         (when (derived-mode-p 'dired-mode)
+           (let ((files (dired-get-marked-files nil nil nil nil t)))
+             (when (cl-some #'file-directory-p files)
+               files)))))
+    (if marks
+        (vc-dir (vc-root-dir) nil marks)
+      (vc-next-action verbose))))
+
+
 (provide 'dired-aux)
 
 ;; Local Variables:
