@@ -771,6 +771,28 @@ that share the same state."
   (interactive "e")
   (vc-dir-at-event e (vc-dir-mark-unmark 'vc-dir-toggle-mark-file)))
 
+(defun vc-dir-mark-files (mark-files)
+  (let* ((backend (vc-responsible-backend default-directory))
+         (rootdir (vc-call-backend backend 'root default-directory)))
+    (when (listp mark-files)
+      (setq mark-files (mapcar (lambda (file)
+                                 (file-relative-name
+                                  (if (file-directory-p file)
+                                      (file-name-as-directory file)
+                                    file)
+                                  rootdir))
+                               mark-files)))
+    (vc-dir-unmark-all-files t)
+    (ewoc-map
+     (lambda (filearg)
+       (when (cond ((consp mark-files)
+                    (member (vc-dir-fileinfo->name filearg) mark-files))
+                   ((eq mark-files 'registered)
+                    (memq (vc-dir-fileinfo->state filearg) '(edited added removed))))
+         (setf (vc-dir-fileinfo->marked filearg) t)
+         t))
+     vc-ewoc)))
+
 (defun vc-dir-clean-files ()
   "Delete the marked files, or the current file if no marks.
 The files will not be marked as deleted in the version control
@@ -1024,7 +1046,6 @@ If it is a file, return the corresponding cons for the file itself."
     (dolist (b drop) (setq vc-dir-buffers (delq b vc-dir-buffers)))))
 
 (defvar use-vc-backend)  ;; dynamically bound
-(defvar use-mark-files)  ;; dynamically bound
 
 (define-derived-mode vc-dir-mode special-mode "VC dir"
   "Major mode for VC directory buffers.
@@ -1080,7 +1101,7 @@ the *vc-dir* buffer.
     ;; process running in the background is also killed.
     (add-hook 'kill-buffer-query-functions 'vc-dir-kill-query nil t)
     (hack-dir-local-variables-non-file-buffer)
-    (vc-dir-refresh use-mark-files)))
+    (vc-dir-refresh)))
 
 (defun vc-dir-headers (backend dir)
   "Display the headers in the *VC dir* buffer.
@@ -1144,7 +1165,7 @@ specific headers."
 (defun vc-dir-revert-buffer-function (&optional _ignore-auto _noconfirm)
   (vc-dir-refresh))
 
-(defun vc-dir-refresh (&optional mark-files)
+(defun vc-dir-refresh ()
   "Refresh the contents of the *VC-dir* buffer.
 Throw an error if another update process is in progress."
   (interactive)
@@ -1195,27 +1216,7 @@ Throw an error if another update process is in progress."
                        (vc-dir-refresh-files
                         (mapcar 'vc-dir-fileinfo->name remaining))
                      (setq mode-line-process nil)
-                     (when mark-files
-                       (let* ((backend (vc-responsible-backend default-directory))
-                              (rootdir (vc-call-backend backend 'root default-directory)))
-                         (when (listp mark-files)
-                           (setq mark-files (mapcar (lambda (file)
-                                                      (file-relative-name
-                                                       (if (file-directory-p file)
-                                                           (file-name-as-directory file)
-                                                         file)
-                                                       rootdir))
-                                                    mark-files)))
-                         (vc-dir-unmark-all-files t)
-                         (ewoc-map
-                          (lambda (filearg)
-                            (when (cond ((consp mark-files)
-                                         (member (vc-dir-fileinfo->name filearg) mark-files))
-                                        ((eq mark-files 'registered)
-                                         (memq (vc-dir-fileinfo->state filearg) '(edited added removed))))
-                              (setf (vc-dir-fileinfo->marked filearg) t)
-                              t))
-                          vc-ewoc))))))))))))))
+                     (run-hooks 'vc-dir-refresh-hook))))))))))))
 
 (defun vc-dir-show-fileentry (file)
   "Insert an entry for a specific file into the current *VC-dir* listing.
@@ -1348,11 +1349,17 @@ These are the commands available for use in the file status buffer:
   (let (pop-up-windows)		      ; based on cvs-examine; bug#6204
     (pop-to-buffer (vc-dir-prepare-status-buffer "*vc-dir*" dir backend)))
   (if (derived-mode-p 'vc-dir-mode)
-      (vc-dir-refresh mark-files)
+      (vc-dir-refresh)
     ;; FIXME: find a better way to pass the backend to `vc-dir-mode'.
-    (let ((use-vc-backend backend)
-          (use-mark-files mark-files))
-      (vc-dir-mode))))
+    (let ((use-vc-backend backend))
+      (vc-dir-mode)))
+  (when mark-files
+    (let ((transient-hook (make-symbol "vc-dir-mark-files")))
+      (fset transient-hook
+          (lambda ()
+            (remove-hook 'vc-dir-refresh-hook transient-hook t)
+            (vc-dir-mark-files mark-files)))
+      (add-hook 'vc-dir-refresh-hook transient-hook nil t))))
 
 (defun vc-default-dir-extra-headers (_backend _dir)
   ;; Be loud by default to remind people to add code to display

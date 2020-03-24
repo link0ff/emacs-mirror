@@ -3056,8 +3056,9 @@ instead."
   "Do the next version control operation on marked files/directories.
 When only files are marked then call `vc-next-action' with the
 same value of the VERBOSE argument.
-When also directories are marked then call `vc-dir' and copy
-marks from Dired to VC-Dir."
+When also directories are marked then call `vc-dir' and mark
+the same files/directories in the VC-Dir buffer that were marked
+in the Dired buffer."
   (interactive "P")
   (let ((marks
          (when (derived-mode-p 'dired-mode)
