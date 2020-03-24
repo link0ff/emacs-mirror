@@ -2724,7 +2724,7 @@ hunk text is not found in the source file."
           (buffer-file-name file))
       ;; Don't run hooks that might assume buffer-file-name
       ;; really associates buffer with a file (bug#39190).
-      (delay-mode-hooks (set-auto-mode))
+      (delay-mode-hooks (ignore-errors (set-auto-mode)))
       ;; FIXME: Is this really worth the trouble?
       (when (and (fboundp 'generic-mode-find-file-hook)
                  (memq #'generic-mode-find-file-hook

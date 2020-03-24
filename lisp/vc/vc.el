@@ -1132,10 +1132,6 @@ BEWARE: this function may change the current buffer."
    (completing-read prompt (mapcar #'symbol-name vc-handled-backends)
                     nil 'require-match)))
 
-(defun vc-next-action-on-root ()
-  (interactive)
-  (vc-dir (vc-root-dir) nil 'registered))
-
 ;; Here's the major entry point.
 
 ;;;###autoload

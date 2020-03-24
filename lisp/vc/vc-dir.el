@@ -1311,7 +1311,9 @@ state of item at point, if any."
 
 ;;;###autoload
 (defun vc-dir-root ()
-  "Run `vc-dir' in the repository root directory."
+  "Run `vc-dir' in the repository root directory without prompt.
+If the default directory of the current buffer is
+not under version control, prompt for the directory."
   (interactive)
   (let ((root-dir (vc-root-dir)))
     (if root-dir (vc-dir root-dir)
