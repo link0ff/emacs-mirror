@@ -3051,6 +3051,8 @@ instead."
       (message "%s" (buffer-string)))))
 
 
+(declare-function vc-dir-mark-files "vc-dir")
+
 ;;;###autoload
 (defun dired-vc-next-action (verbose)
   "Do the next version control operation on marked files/directories.
