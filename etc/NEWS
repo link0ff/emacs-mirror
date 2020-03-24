@@ -114,7 +114,11 @@ marking the file at the end of the region.
 
 ---
 *** Change to default value of 'message-draft-headers' option.
-No longer includes the Date header.
+The Date header has been removed from the default value, meaning that
+draft or delayed messages will get a Date reflecting when the message
+was sent. To restore the original behavior of dating a message
+from when it is first saved or delayed, add the symbol 'Date back to
+this option.
 
 ** Help
 
@@ -185,6 +189,12 @@ key             binding
 / s             package-menu-filter-by-status
 / v             package-menu-filter-by-version
 / /             package-menu-filter-clear
+
+** Gravatar
+
+---
+*** New user option 'gravatar-service' for host to query for gravatars.
+Defaults to Libravatar, with Unicornify and Gravatar as options.
 
 
 * New Modes and Packages in Emacs 28.1
