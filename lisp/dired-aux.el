@@ -3051,6 +3051,7 @@ instead."
       (message "%s" (buffer-string)))))
 
 
+(declare-function vc-dir-unmark-all-files "vc-dir")
 (declare-function vc-dir-mark-files "vc-dir")
 
 ;;;###autoload
@@ -3062,15 +3063,22 @@ When also directories are marked then call `vc-dir' and mark
 the same files/directories in the VC-Dir buffer that were marked
 in the Dired buffer."
   (interactive "P")
-  (let ((mark-files
-         (let ((marked-files (dired-get-marked-files nil nil nil nil t)))
-           (when (cl-some #'file-directory-p marked-files)
-             marked-files))))
+  (let* ((marked-files
+          (dired-get-marked-files nil nil nil nil t))
+         (mark-files
+          (when (cl-some #'file-directory-p marked-files)
+            ;; Fix deficiency of Dired by adding slash to dirs
+            (mapcar (lambda (file)
+                      (if (file-directory-p file)
+                          (file-name-as-directory file)
+                        file))
+                    marked-files))))
     (if mark-files
         (let ((transient-hook (make-symbol "vc-dir-mark-files")))
           (fset transient-hook
                 (lambda ()
                   (remove-hook 'vc-dir-refresh-hook transient-hook t)
+                  (vc-dir-unmark-all-files t)
                   (vc-dir-mark-files mark-files)))
           (vc-dir-root)
           (add-hook 'vc-dir-refresh-hook transient-hook nil t))
