@@ -7073,7 +7073,7 @@ Return WINDOW if BUFFER and WINDOW are live."
 
     ;; Is this the right place to call body of with-displayed-buffer-window?
     (when (functionp (cdr (assq 'after-display-function alist)))
-      (funcall (cdr (assq 'after-display-function alist))))
+      (funcall (cdr (assq 'after-display-function alist)) window))
 
     (let ((quit-restore (window-parameter window 'quit-restore))
 	  (height (cdr (assq 'window-height alist)))

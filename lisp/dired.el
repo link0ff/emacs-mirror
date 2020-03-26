@@ -3531,7 +3531,7 @@ argument or confirmation)."
                 ;; Handle (t FILE) just like (FILE), here.  That value is
                 ;; used (only in some cases), to mean just one file that was
                 ;; marked, rather than the current line file.
-                ,#'(lambda ()
+                ,#'(lambda (_window)
                     (with-current-buffer buffer
                       (let ((inhibit-read-only t)
                             (inhibit-modification-hooks t))
