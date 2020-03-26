@@ -196,6 +196,12 @@ key             binding
 *** New user option 'gravatar-service' for host to query for gravatars.
 Defaults to Libravatar, with Unicornify and Gravatar as options.
 
+** Compilation mode
+
+*** Regexp matching of messages is now case-sensitive by default.
+The user option 'compilation-error-case-fold-search' can be set
+for case-insensitive matching of messages.
+
 
 * New Modes and Packages in Emacs 28.1
 
@@ -251,6 +257,10 @@ finalizers, respectively.
 called when the function object is garbage-collected.  Use
 'set_function_finalizer' to set the finalizer and
 'get_function_finalizer' to retrieve it.
+
+** Modules can now open a channel to an existing pipe process using
+the new module function 'open_channel'.  Modules can use this
+functionality to asynchronously send data back to Emacs.
 
 ** 'file-modes', 'set-file-modes', and 'set-file-times' now have an
 optional argument specifying whether to follow symbolic links.
