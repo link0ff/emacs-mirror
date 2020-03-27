@@ -149,10 +149,10 @@ See `run-hooks'."
 
     (define-key map [mark-unregistered]
       '(menu-item "Mark Unregistered" vc-dir-mark-unregistered-files
-		  :help "Mark all files in the unregistered state"))
+                  :help "Mark all files in the unregistered state"))
     (define-key map [mark-registered]
       '(menu-item "Mark Registered" vc-dir-mark-registered-files
-		  :help "Mark all files in the state edited, added or removed"))
+                  :help "Mark all files in the state edited, added or removed"))
     (define-key map [mark-all]
       '(menu-item "Mark All" vc-dir-mark-all-files
 		  :help "Mark all files that are in the same state as the current file\

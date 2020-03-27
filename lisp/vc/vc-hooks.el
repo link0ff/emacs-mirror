@@ -974,7 +974,7 @@ In the latter case, VC mode is deactivated for this buffer."
 		  :help "Ignore a file under current version control system"))
     (bindings--define-key map [vc-dir-root]
       '(menu-item "VC Dir"  vc-dir-root
-		  :help "Show the VC status of the repository"))
+                  :help "Show the VC status of the repository"))
     map))
 
 (defalias 'vc-menu-map vc-menu-map)

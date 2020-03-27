@@ -3091,9 +3091,9 @@ in the Dired buffer."
 (defun dired-vc-deduce-fileset (&optional state-model-only-files not-state-changing)
   (let ((backend (vc-responsible-backend default-directory))
         (files (dired-get-marked-files nil nil nil nil t))
-	only-files-list
-	state
-	model)
+        only-files-list
+        state
+        model)
     (when (and (not not-state-changing) (cl-some #'file-directory-p files))
       (user-error "State changing VC operations on directories supported only in `vc-dir'"))
 
@@ -3103,12 +3103,12 @@ in the Dired buffer."
       ;; Check that all files are in a consistent state, since we use that
       ;; state to decide which operation to perform.
       (dolist (crt (cdr only-files-list))
-	(unless (vc-compatible-state (cdr crt) state)
-	  (error "When applying VC operations to multiple files, the files are required\nto  be in similar VC states.\n%s in state %s clashes with %s in state %s"
-		 (car crt) (cdr crt) (caar only-files-list) state)))
+        (unless (vc-compatible-state (cdr crt) state)
+          (error "When applying VC operations to multiple files, the files are required\nto  be in similar VC states.\n%s in state %s clashes with %s in state %s"
+                 (car crt) (cdr crt) (caar only-files-list) state)))
       (setq only-files-list (mapcar 'car only-files-list))
       (when (and state (not (eq state 'unregistered)))
-	(setq model (vc-checkout-model backend only-files-list))))
+        (setq model (vc-checkout-model backend only-files-list))))
     (list backend files only-files-list state model)))
 
 

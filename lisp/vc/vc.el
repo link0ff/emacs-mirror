@@ -1009,7 +1009,7 @@ Within directories, only files already under version control are noticed."
 (declare-function dired-vc-deduce-fileset "dired-aux" (&optional state-model-only-files not-state-changing))
 
 (defun vc-deduce-fileset (&optional not-state-changing
-                                    allow-unregistered
+				    allow-unregistered
 				    state-model-only-files)
   "Deduce a set of files and a backend to which to apply an operation.
 Return (BACKEND FILESET FILESET-ONLY-FILES STATE CHECKOUT-MODEL).
