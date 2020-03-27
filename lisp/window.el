@@ -7071,9 +7071,10 @@ Return WINDOW if BUFFER and WINDOW are live."
     (when (memq type '(window frame tab))
       (set-window-prev-buffers window nil))
 
-    ;; Is this the right place to call body of with-displayed-buffer-window?
     (when (functionp (cdr (assq 'after-display-function alist)))
-      (funcall (cdr (assq 'after-display-function alist)) window))
+      (let ((inhibit-read-only t)
+            (inhibit-modification-hooks t))
+        (funcall (cdr (assq 'after-display-function alist)) window)))
 
     (let ((quit-restore (window-parameter window 'quit-restore))
 	  (height (cdr (assq 'window-height alist)))
