@@ -135,6 +135,11 @@ patterns."
 ;; It can have a function value.
 (put 'hi-lock-file-patterns-policy 'risky-local-variable t)
 
+(defcustom hi-lock-case-fold-search t
+  "Non-nil means the patterns for `font-lock' are case-insensitive."
+  :type 'boolean
+  :version "28.1")
+
 (defcustom hi-lock-auto-select-face nil
   "Non-nil means highlighting commands do not prompt for the face to use.
 Instead, each hi-lock command will cycle through the faces in
@@ -394,6 +399,7 @@ versions before 22 use the following in your init file:
       (progn
 	(define-key-after menu-bar-edit-menu [hi-lock]
 	  (cons "Regexp Highlighting" hi-lock-menu))
+        (setq-local font-lock-keywords-case-fold-search hi-lock-case-fold-search)
 	(hi-lock-find-patterns)
         (add-hook 'font-lock-mode-hook 'hi-lock-font-lock-hook nil t)
         ;; Remove regexps from font-lock-keywords (bug#13891).
