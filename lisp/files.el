@@ -7259,7 +7259,7 @@ if any returns nil.  If `confirm-kill-emacs' is non-nil, calls it."
                   (dedicated . t)
                   (window-height . fit-window-to-buffer)
                   (preserve-size . (nil . t))
-                  (after-display-function
+                  (body-function
                    . ,#'(lambda (_window)
                           (list-processes t))))
                 #'(lambda (window _value)

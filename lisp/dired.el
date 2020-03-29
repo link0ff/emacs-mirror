@@ -3526,7 +3526,7 @@ argument or confirmation)."
        `(display-buffer-below-selected
          (window-height . fit-window-to-buffer)
          (preserve-size . (nil . t))
-         (after-display-function
+         (body-function
           . ,#'(lambda (_window)
                  ;; Handle (t FILE) just like (FILE), here.  That value is
                  ;; used (only in some cases), to mean just one file that was

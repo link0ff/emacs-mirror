@@ -1992,7 +1992,7 @@ variables.")
 	       '(window-height . fit-window-to-buffer))
 	    ,(when temp-buffer-resize-mode
 	       '(preserve-size . (nil . t)))
-            (after-display-function
+            (body-function
              . ,#'(lambda (_window)
                     ;; Remove the base-size tail because `sort' requires a properly
                     ;; nil-terminated list.

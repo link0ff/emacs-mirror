@@ -318,8 +318,7 @@ See `run-hooks'."
 
     (let ((mark-map (make-sparse-keymap)))
       (define-key map "*" mark-map)
-      (define-key mark-map "r" 'vc-dir-mark-registered-files)
-      (define-key mark-map "u" 'vc-dir-mark-unregistered-files))
+      (define-key mark-map "r" 'vc-dir-mark-registered-files))
 
     ;; Hook up the menu.
     (define-key map [menu-bar vc-dir-mode]
