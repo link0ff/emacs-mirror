@@ -707,7 +707,8 @@ share the same state."
 	    (setq crt (ewoc-next vc-ewoc crt))))))))
 
 (defun vc-dir-mark-files (mark-files)
-  "Mark files specified by file names in the argument MARK-FILES."
+  "Mark files specified by file names in the argument MARK-FILES.
+MARK-FILES should be a list of absolute filenames."
   (ewoc-map
    (lambda (filearg)
      (when (member (expand-file-name (vc-dir-fileinfo->name filearg))
