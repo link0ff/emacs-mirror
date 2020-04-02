@@ -135,11 +135,6 @@ patterns."
 ;; It can have a function value.
 (put 'hi-lock-file-patterns-policy 'risky-local-variable t)
 
-(defcustom hi-lock-case-fold-search t
-  "Non-nil means the patterns for `font-lock' are case-insensitive."
-  :type 'boolean
-  :version "28.1")
-
 (defcustom hi-lock-auto-select-face nil
   "Non-nil means highlighting commands do not prompt for the face to use.
 Instead, each hi-lock command will cycle through the faces in
@@ -399,7 +394,6 @@ versions before 22 use the following in your init file:
       (progn
 	(define-key-after menu-bar-edit-menu [hi-lock]
 	  (cons "Regexp Highlighting" hi-lock-menu))
-        (setq-local font-lock-keywords-case-fold-search hi-lock-case-fold-search)
 	(hi-lock-find-patterns)
         (add-hook 'font-lock-mode-hook 'hi-lock-font-lock-hook nil t)
         ;; Remove regexps from font-lock-keywords (bug#13891).
@@ -440,6 +434,9 @@ of text in those lines.
 Interactively, prompt for REGEXP using `read-regexp', then FACE.
 Use the global history list for FACE.
 
+If REGEXP contains upper case characters (excluding those preceded by `\\')
+and `search-upper-case' is non-nil, the matching is case-sensitive.
+
 Use Font lock mode, if enabled, to highlight REGEXP.  Otherwise,
 use overlays for highlighting.  If overlays are used, the
 highlighting will not update as you type."
@@ -453,7 +450,10 @@ highlighting will not update as you type."
   (hi-lock-set-pattern
    ;; The \\(?:...\\) grouping construct ensures that a leading ^, +, * or ?
    ;; or a trailing $ in REGEXP will be interpreted correctly.
-   (concat "^.*\\(?:" regexp "\\).*\\(?:$\\)\n?") face))
+   (concat "^.*\\(?:" regexp "\\).*\\(?:$\\)\n?") face nil
+   (if (and case-fold-search search-upper-case)
+       (isearch-no-upper-case-p regexp t)
+     case-fold-search)))
 
 
 ;;;###autoload
@@ -466,6 +466,9 @@ Use the global history list for FACE.  Limit face setting to the
 corresponding SUBEXP (interactively, the prefix argument) of REGEXP.
 If SUBEXP is omitted or nil, the entire REGEXP is highlighted.
 
+If REGEXP contains upper case characters (excluding those preceded by `\\')
+and `search-upper-case' is non-nil, the matching is case-sensitive.
+
 Use Font lock mode, if enabled, to highlight REGEXP.  Otherwise,
 use overlays for highlighting.  If overlays are used, the
 highlighting will not update as you type."
@@ -477,7 +480,11 @@ highlighting will not update as you type."
     current-prefix-arg))
   (or (facep face) (setq face 'hi-yellow))
   (unless hi-lock-mode (hi-lock-mode 1))
-  (hi-lock-set-pattern regexp face subexp))
+  (hi-lock-set-pattern
+   regexp face subexp
+   (if (and case-fold-search search-upper-case)
+       (isearch-no-upper-case-p regexp t)
+     case-fold-search)))
 
 ;;;###autoload
 (defalias 'highlight-phrase 'hi-lock-face-phrase-buffer)
@@ -513,6 +520,9 @@ Uses the next face from `hi-lock-face-defaults' without prompting,
 unless you use a prefix argument.
 Uses `find-tag-default-as-symbol-regexp' to retrieve the symbol at point.
 
+If REGEXP contains upper case characters (excluding those preceded by `\\')
+and `search-upper-case' is non-nil, the matching is case-sensitive.
+
 This uses Font lock mode if it is enabled; otherwise it uses overlays,
 in which case the highlighting will not update as you type."
   (interactive)
@@ -522,7 +532,11 @@ in which case the highlighting will not update as you type."
 	 (face (hi-lock-read-face-name)))
     (or (facep face) (setq face 'hi-yellow))
     (unless hi-lock-mode (hi-lock-mode 1))
-    (hi-lock-set-pattern regexp face)))
+    (hi-lock-set-pattern
+     regexp face nil
+     (if (and case-fold-search search-upper-case)
+         (isearch-no-upper-case-p regexp t)
+       case-fold-search))))
 
 (defun hi-lock-keyword->face (keyword)
   (cadr (cadr (cadr keyword))))    ; Keyword looks like (REGEXP (0 'FACE) ...).
@@ -719,14 +733,17 @@ with completion and history."
       (add-to-list 'hi-lock-face-defaults face t))
     (intern face)))
 
-(defun hi-lock-set-pattern (regexp face &optional subexp)
+(defun hi-lock-set-pattern (regexp face &optional subexp case-fold)
   "Highlight SUBEXP of REGEXP with face FACE.
 If omitted or nil, SUBEXP defaults to zero, i.e. the entire
-REGEXP is highlighted."
+REGEXP is highlighted.  Non-nil CASE-FOLD ignores case."
   ;; Hashcons the regexp, so it can be passed to remove-overlays later.
   (setq regexp (hi-lock--hashcons regexp))
   (setq subexp (or subexp 0))
-  (let ((pattern (list regexp (list subexp (list 'quote face) 'prepend)))
+  (let ((pattern (list (lambda (limit)
+                         (let ((case-fold-search case-fold))
+                           (re-search-forward regexp limit t)))
+                       (list subexp (list 'quote face) 'prepend)))
         (no-matches t))
     ;; Refuse to highlight a text that is already highlighted.
     (if (assoc regexp hi-lock-interactive-patterns)
@@ -746,14 +763,15 @@ REGEXP is highlighted."
                      (+ range-max (max 0 (- (point-min) range-min))))))
           (save-excursion
             (goto-char search-start)
-            (while (re-search-forward regexp search-end t)
-              (when no-matches (setq no-matches nil))
-              (let ((overlay (make-overlay (match-beginning subexp)
-                                           (match-end subexp))))
-                (overlay-put overlay 'hi-lock-overlay t)
-                (overlay-put overlay 'hi-lock-overlay-regexp regexp)
-                (overlay-put overlay 'face face))
-              (goto-char (match-end 0)))
+            (let ((case-fold-search case-fold))
+              (while (re-search-forward regexp search-end t)
+                (when no-matches (setq no-matches nil))
+                (let ((overlay (make-overlay (match-beginning subexp)
+                                             (match-end subexp))))
+                  (overlay-put overlay 'hi-lock-overlay t)
+                  (overlay-put overlay 'hi-lock-overlay-regexp regexp)
+                  (overlay-put overlay 'face face))
+                (goto-char (match-end 0))))
             (when no-matches
               (add-to-list 'hi-lock--unused-faces (face-name face))
               (setq hi-lock-interactive-patterns

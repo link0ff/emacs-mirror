@@ -2382,22 +2382,12 @@ respectively)."
                        (funcall isearch-regexp-function isearch-string))
 		      (isearch-regexp-function (word-search-regexp isearch-string))
 		      (isearch-regexp isearch-string)
-		      ((if (and (eq isearch-case-fold-search t)
-				search-upper-case)
-			   (isearch-no-upper-case-p
-			    isearch-string isearch-regexp)
-			 isearch-case-fold-search)
-		       ;; Turn isearch-string into a case-insensitive
-		       ;; regexp.
-		       (mapconcat
-			(lambda (c)
-			  (let ((s (string c)))
-			    (if (string-match "[[:alpha:]]" s)
-				(format "[%s%s]" (upcase s) (downcase s))
-			      (regexp-quote s))))
-			isearch-string ""))
 		      (t (regexp-quote isearch-string)))))
-    (funcall hi-lock-func regexp (hi-lock-read-face-name)))
+    (let ((case-fold-search isearch-case-fold-search)
+	  ;; Set `search-upper-case' to nil to not call
+	  ;; `isearch-no-upper-case-p' in `hi-lock'.
+	  (search-upper-case nil))
+      (funcall hi-lock-func regexp (hi-lock-read-face-name))))
   (and isearch-recursive-edit (exit-recursive-edit)))
 
 (defun isearch-highlight-regexp ()
