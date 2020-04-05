@@ -645,7 +645,12 @@ then remove all hi-lock highlighting."
       ;; calls font-lock-set-defaults).  This is yet-another bug in
       ;; font-lock-add/remove-keywords, which we circumvent here by
       ;; testing `font-lock-fontified' (bug#19796).
-      (if font-lock-fontified (font-lock-remove-keywords nil (list keyword)))
+      (when font-lock-fontified
+        (font-lock-remove-keywords nil (list keyword))
+        (dolist (k font-lock-keywords)
+          (when (and (consp k) (consp (car k)) (eq (caar k) 'closure)
+                     (equal (car keyword) (cdr (assq 'regexp (cadr (car k))))))
+            (font-lock-remove-keywords nil (list k)))))
       (setq hi-lock-interactive-patterns
             (delq keyword hi-lock-interactive-patterns))
       (remove-overlays
@@ -740,10 +745,7 @@ REGEXP is highlighted.  Non-nil CASE-FOLD ignores case."
   ;; Hashcons the regexp, so it can be passed to remove-overlays later.
   (setq regexp (hi-lock--hashcons regexp))
   (setq subexp (or subexp 0))
-  (let ((pattern (list (lambda (limit)
-                         (let ((case-fold-search case-fold))
-                           (re-search-forward regexp limit t)))
-                       (list subexp (list 'quote face) 'prepend)))
+  (let ((pattern (list regexp (list subexp (list 'quote face) 'prepend)))
         (no-matches t))
     ;; Refuse to highlight a text that is already highlighted.
     (if (assoc regexp hi-lock-interactive-patterns)
@@ -751,7 +753,13 @@ REGEXP is highlighted.  Non-nil CASE-FOLD ignores case."
       (push pattern hi-lock-interactive-patterns)
       (if (and font-lock-mode (font-lock-specified-p major-mode))
 	  (progn
-	    (font-lock-add-keywords nil (list pattern) t)
+	    (font-lock-add-keywords
+             nil (list (cons
+                        (lambda (limit)
+                          (let ((case-fold-search case-fold))
+                            (re-search-forward (car pattern) limit t)))
+                        (cdr pattern)))
+             t)
 	    (font-lock-flush))
         (let* ((range-min (- (point) (/ hi-lock-highlight-range 2)))
                (range-max (+ (point) (/ hi-lock-highlight-range 2)))
@@ -760,18 +768,18 @@ REGEXP is highlighted.  Non-nil CASE-FOLD ignores case."
                      (- range-min (max 0 (- range-max (point-max))))))
                (search-end
                 (min (point-max)
-                     (+ range-max (max 0 (- (point-min) range-min))))))
+                     (+ range-max (max 0 (- (point-min) range-min)))))
+               (case-fold-search case-fold))
           (save-excursion
             (goto-char search-start)
-            (let ((case-fold-search case-fold))
-              (while (re-search-forward regexp search-end t)
-                (when no-matches (setq no-matches nil))
-                (let ((overlay (make-overlay (match-beginning subexp)
-                                             (match-end subexp))))
-                  (overlay-put overlay 'hi-lock-overlay t)
-                  (overlay-put overlay 'hi-lock-overlay-regexp regexp)
-                  (overlay-put overlay 'face face))
-                (goto-char (match-end 0))))
+            (while (re-search-forward regexp search-end t)
+              (when no-matches (setq no-matches nil))
+              (let ((overlay (make-overlay (match-beginning subexp)
+                                           (match-end subexp))))
+                (overlay-put overlay 'hi-lock-overlay t)
+                (overlay-put overlay 'hi-lock-overlay-regexp regexp)
+                (overlay-put overlay 'face face))
+              (goto-char (match-end 0)))
             (when no-matches
               (add-to-list 'hi-lock--unused-faces (face-name face))
               (setq hi-lock-interactive-patterns
