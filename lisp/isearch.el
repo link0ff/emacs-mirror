@@ -2387,7 +2387,7 @@ respectively)."
 	  ;; Set `search-upper-case' to nil to not call
 	  ;; `isearch-no-upper-case-p' in `hi-lock'.
 	  (search-upper-case nil))
-      (funcall hi-lock-func regexp (hi-lock-read-face-name))))
+      (funcall hi-lock-func regexp (hi-lock-read-face-name) isearch-string)))
   (and isearch-recursive-edit (exit-recursive-edit)))
 
 (defun isearch-highlight-regexp ()
@@ -2395,14 +2395,18 @@ respectively)."
 The arguments passed to `highlight-regexp' are the regexp from
 the last search and the face from `hi-lock-read-face-name'."
   (interactive)
-  (isearch--highlight-regexp-or-lines 'highlight-regexp))
+  (isearch--highlight-regexp-or-lines
+   #'(lambda (regexp face lighter)
+       (highlight-regexp regexp face nil lighter))))
 
 (defun isearch-highlight-lines-matching-regexp ()
   "Exit Isearch mode and call `highlight-lines-matching-regexp'.
 The arguments passed to `highlight-lines-matching-regexp' are the
 regexp from the last search and the face from `hi-lock-read-face-name'."
   (interactive)
-  (isearch--highlight-regexp-or-lines 'highlight-lines-matching-regexp))
+  (isearch--highlight-regexp-or-lines
+   #'(lambda (regexp face _lighter)
+       (highlight-lines-matching-regexp regexp face))))
 
 
 (defun isearch-delete-char ()
