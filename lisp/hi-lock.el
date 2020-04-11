@@ -234,7 +234,7 @@ Instead, each hi-lock command will cycle through the faces in
 (put 'hi-lock-interactive-patterns 'permanent-local t)
 
 (defvar-local hi-lock-interactive-lighters nil
-  "Lighters for `hi-lock-interactive-patterns'.")
+  "Human-readable lighters for `hi-lock-interactive-patterns'.")
 (put 'hi-lock-interactive-lighters 'permanent-local t)
 
 (define-obsolete-variable-alias 'hi-lock-face-history
@@ -455,7 +455,7 @@ highlighting will not update as you type."
   (hi-lock-set-pattern
    ;; The \\(?:...\\) grouping construct ensures that a leading ^, +, * or ?
    ;; or a trailing $ in REGEXP will be interpreted correctly.
-   (concat "^.*\\(?:" regexp "\\).*\\(?:$\\)\n?") face nil
+   (concat "^.*\\(?:" regexp "\\).*\\(?:$\\)\n?") face nil nil
    (if (and case-fold-search search-upper-case)
        (isearch-no-upper-case-p regexp t)
      case-fold-search)))
@@ -470,6 +470,10 @@ Interactively, prompt for REGEXP using `read-regexp', then FACE.
 Use the global history list for FACE.  Limit face setting to the
 corresponding SUBEXP (interactively, the prefix argument) of REGEXP.
 If SUBEXP is omitted or nil, the entire REGEXP is highlighted.
+
+LIGHTER is a human-readable string that can be used to select
+a regexp to unhighlight by its name instead of selecting a possibly
+complex regexp or closure.
 
 If REGEXP contains upper case characters (excluding those preceded by `\\')
 and `search-upper-case' is non-nil, the matching is case-sensitive.
@@ -486,11 +490,11 @@ highlighting will not update as you type."
   (or (facep face) (setq face 'hi-yellow))
   (unless hi-lock-mode (hi-lock-mode 1))
   (hi-lock-set-pattern
-   regexp face subexp
+   regexp face subexp lighter
    (if (and case-fold-search search-upper-case)
        (isearch-no-upper-case-p regexp t)
      case-fold-search)
-   lighter))
+   search-spaces-regexp))
 
 ;;;###autoload
 (defalias 'highlight-phrase 'hi-lock-face-phrase-buffer)
@@ -510,12 +514,16 @@ highlighting will not update as you type."
   (interactive
    (list
     (hi-lock-regexp-okay
-     (hi-lock-process-phrase
-      (read-regexp "Phrase to highlight" 'regexp-history-last)))
+     (read-regexp "Phrase to highlight" 'regexp-history-last))
     (hi-lock-read-face-name)))
   (or (facep face) (setq face 'hi-yellow))
   (unless hi-lock-mode (hi-lock-mode 1))
-  (hi-lock-set-pattern regexp face))
+  (hi-lock-set-pattern
+   regexp face nil nil
+   (if (and case-fold-search search-upper-case)
+       (isearch-no-upper-case-p regexp t)
+     case-fold-search)
+   search-whitespace-regexp))
 
 ;;;###autoload
 (defalias 'highlight-symbol-at-point 'hi-lock-face-symbol-at-point)
@@ -539,7 +547,7 @@ in which case the highlighting will not update as you type."
     (or (facep face) (setq face 'hi-yellow))
     (unless hi-lock-mode (hi-lock-mode 1))
     (hi-lock-set-pattern
-     regexp face nil
+     regexp face nil nil
      (if (and case-fold-search search-upper-case)
          (isearch-no-upper-case-p regexp t)
        case-fold-search))))
@@ -629,7 +637,7 @@ then remove all hi-lock highlighting."
     (t
      ;; Un-highlighting triggered via keyboard action.
      (unless hi-lock-interactive-patterns
-       (error "No highlighting to remove"))
+       (user-error "No highlighting to remove"))
      ;; Infer the regexp to un-highlight based on cursor position.
      (let* ((defaults (or (hi-lock--regexps-at-point)
                           (mapcar #'car hi-lock-interactive-patterns))))
@@ -686,7 +694,7 @@ Interactively added patterns are those normally specified using
 be found in variable `hi-lock-interactive-patterns'."
   (interactive)
   (if (null hi-lock-interactive-patterns)
-      (error "There are no interactive patterns"))
+      (user-error "There are no interactive patterns"))
   (let ((beg (point)))
     (mapc
      (lambda (pattern)
@@ -699,25 +707,6 @@ be found in variable `hi-lock-interactive-patterns'."
     (warn "Inserted keywords not close enough to top of file")))
 
 ;; Implementation Functions
-
-(defun hi-lock-process-phrase (phrase)
-  "Convert regexp PHRASE to a regexp that matches phrases.
-
-Blanks in PHRASE replaced by regexp that matches arbitrary whitespace
-and initial lower-case letters made case insensitive."
-  (let ((mod-phrase nil))
-    ;; FIXME fragile; better to just bind case-fold-search?  (Bug#7161)
-    (setq mod-phrase
-          (replace-regexp-in-string
-           "\\(^\\|\\s-\\)\\([a-z]\\)"
-           (lambda (m) (format "%s[%s%s]"
-                               (match-string 1 m)
-                               (upcase (match-string 2 m))
-                               (match-string 2 m))) phrase))
-    ;; FIXME fragile; better to use search-spaces-regexp?
-    (setq mod-phrase
-          (replace-regexp-in-string
-           "\\s-+" "[ \t\n]+" mod-phrase nil t))))
 
 (defun hi-lock-regexp-okay (regexp)
   "Return REGEXP if it appears suitable for a font-lock pattern.
@@ -758,15 +747,18 @@ with completion and history."
       (add-to-list 'hi-lock-face-defaults face t))
     (intern face)))
 
-(defun hi-lock-set-pattern (regexp face &optional subexp case-fold lighter)
+(defun hi-lock-set-pattern (regexp face &optional subexp lighter case-fold spaces-regexp)
   "Highlight SUBEXP of REGEXP with face FACE.
 If omitted or nil, SUBEXP defaults to zero, i.e. the entire
-REGEXP is highlighted.  Non-nil CASE-FOLD ignores case."
+REGEXP is highlighted.  LIGHTER is a human-readable string to
+display instead of a regexp.  Non-nil CASE-FOLD ignores case.
+SPACES-REGEXP is a regexp to substitute spaces in font-lock search."
   ;; Hashcons the regexp, so it can be passed to remove-overlays later.
   (setq regexp (hi-lock--hashcons regexp))
   (setq subexp (or subexp 0))
   (let ((pattern (list (lambda (limit)
-                         (let ((case-fold-search case-fold))
+                         (let ((case-fold-search case-fold)
+                               (search-spaces-regexp spaces-regexp))
                            (re-search-forward regexp limit t)))
                        (list subexp (list 'quote face) 'prepend)))
         (no-matches t))

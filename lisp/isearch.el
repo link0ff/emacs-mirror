@@ -2384,9 +2384,14 @@ respectively)."
 		      (isearch-regexp isearch-string)
 		      (t (regexp-quote isearch-string)))))
     (let ((case-fold-search isearch-case-fold-search)
-	  ;; Set `search-upper-case' to nil to not call
-	  ;; `isearch-no-upper-case-p' in `hi-lock'.
-	  (search-upper-case nil))
+          ;; Set `search-upper-case' to nil to not call
+          ;; `isearch-no-upper-case-p' in `hi-lock'.
+          (search-upper-case nil)
+          (search-spaces-regexp
+           (if (if isearch-regexp
+                   isearch-regexp-lax-whitespace
+                 isearch-lax-whitespace)
+               search-whitespace-regexp)))
       (funcall hi-lock-func regexp (hi-lock-read-face-name) isearch-string)))
   (and isearch-recursive-edit (exit-recursive-edit)))
 
