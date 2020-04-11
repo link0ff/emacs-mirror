@@ -620,13 +620,15 @@ then remove all hi-lock highlighting."
           'keymap
           (cons "Select Pattern to Unhighlight"
                 (mapcar (lambda (pattern)
-                          (list pattern
-                                (format
-                                 "%s (%s)" (or (car (rassq pattern hi-lock-interactive-lighters))
-                                               (car pattern))
-                                 (hi-lock-keyword->face pattern))
-                                (cons nil nil)
-                                pattern))
+                          (let ((lighter
+                                 (or (car (rassq pattern hi-lock-interactive-lighters))
+                                     (car pattern))))
+                            (list lighter
+                                  (format
+                                   "%s (%s)" lighter
+                                   (hi-lock-keyword->face pattern))
+                                  (cons nil nil)
+                                  lighter)))
                         hi-lock-interactive-patterns))))
         ;; If the user clicks outside the menu, meaning that they
         ;; change their mind, x-popup-menu returns nil, and
@@ -679,10 +681,12 @@ then remove all hi-lock highlighting."
       (if font-lock-fontified (font-lock-remove-keywords nil (list keyword)))
       (setq hi-lock-interactive-patterns
             (delq keyword hi-lock-interactive-patterns))
+      (remove-overlays
+       nil nil 'hi-lock-overlay-regexp
+       (hi-lock--hashcons (or (car (rassq keyword hi-lock-interactive-lighters))
+                              (car keyword))))
       (setq hi-lock-interactive-lighters
             (rassq-delete-all keyword hi-lock-interactive-lighters))
-      (remove-overlays
-       nil nil 'hi-lock-overlay-regexp (hi-lock--hashcons (car keyword)))
       (font-lock-flush))))
 
 ;;;###autoload
@@ -779,7 +783,8 @@ SPACES-REGEXP is a regexp to substitute spaces in font-lock search."
                (search-end
                 (min (point-max)
                      (+ range-max (max 0 (- (point-min) range-min)))))
-               (case-fold-search case-fold))
+               (case-fold-search case-fold)
+               (search-spaces-regexp spaces-regexp))
           (save-excursion
             (goto-char search-start)
             (while (re-search-forward regexp search-end t)
