@@ -504,9 +504,9 @@ highlighting will not update as you type."
 Interactively, prompt for REGEXP using `read-regexp', then FACE.
 Use the global history list for FACE.
 
-When called interactively, replace whitespace in user-provided
-regexp with arbitrary whitespace, and make initial lower-case
-letters case-insensitive, before highlighting with `hi-lock-set-pattern'.
+If REGEXP contains upper case characters (excluding those preceded by `\\')
+and `search-upper-case' is non-nil, the matching is case-sensitive.
+Also set `search-spaces-regexp' to the value of `search-whitespace-regexp'.
 
 Use Font lock mode, if enabled, to highlight REGEXP.  Otherwise,
 use overlays for highlighting.  If overlays are used, the
