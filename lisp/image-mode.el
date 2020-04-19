@@ -53,6 +53,34 @@ See `image-mode-winprops'.")
   "Special hook run when image data is requested in a new window.
 It is called with one argument, the initial WINPROPS.")
 
+(defcustom image-resize t
+  "Non-nil to resize the image upon first display.
+Its value should be one of the following:
+ - nil, meaning no resizing.
+ - t, meaning to fit the image to the window height and width.
+ - `fit-height', meaning to fit the image to the window height.
+ - `fit-width', meaning to fit the image to the window width.
+ - A number, which is a scale factor (the default size is 1)."
+  :type '(choice (const :tag "No resizing" nil)
+                 (other :tag "Fit height and width" t)
+		 (const :tag "Fit height" fit-height)
+		 (const :tag "Fit width" fit-width)
+		 (number :tag "Scale factor" 1))
+  :version "27.1"
+  :group 'image)
+
+(defcustom image-window-resize t
+  "Non-nil to resize the image whenever the window's dimensions change."
+  :type 'boolean
+  :version "27.1"
+  :group 'image)
+
+(defcustom image-window-resize-delay 1
+  "Number of seconds to wait before resizing according to `image-window-resize'."
+  :type 'integer
+  :version "27.1"
+  :group 'image)
+
 ;; FIXME this doesn't seem mature yet. Document in manual when it is.
 (defvar-local image-transform-resize nil
   "The image resize operation.
@@ -418,24 +446,40 @@ call."
 
 (defvar image-mode-map
   (let ((map (make-sparse-keymap)))
+
+    ;; Toggling keys
     (define-key map "\C-c\C-c" 'image-toggle-display)
     (define-key map "\C-c\C-x" 'image-toggle-hex-display)
-    (define-key map (kbd "SPC")       'image-scroll-up)
-    (define-key map (kbd "S-SPC")     'image-scroll-down)
-    (define-key map (kbd "DEL")       'image-scroll-down)
-    (define-key map (kbd "RET")       'image-toggle-animation)
+
+    ;; Transformation keys
+    (define-key map "sf" 'image-mode-fit-frame)
+    (define-key map "sh" 'image-transform-fit-to-height)
+    (define-key map "sw" 'image-transform-fit-to-width)
+    (define-key map "sr" 'image-transform-set-rotation)
+    (define-key map "s0" 'image-transform-reset)
+    (define-key map "ss" 'image-transform-set-scale)
+
+    ;; Multi-frame keys
+    (define-key map (kbd "RET") 'image-toggle-animation)
     (define-key map "F" 'image-goto-frame)
     (define-key map "f" 'image-next-frame)
     (define-key map "b" 'image-previous-frame)
-    (define-key map "n" 'image-next-file)
-    (define-key map "p" 'image-previous-file)
     (define-key map "a+" 'image-increase-speed)
     (define-key map "a-" 'image-decrease-speed)
     (define-key map "a0" 'image-reset-speed)
     (define-key map "ar" 'image-reverse-speed)
+
+    ;; File keys
+    (define-key map "n" 'image-next-file)
+    (define-key map "p" 'image-previous-file)
     (define-key map "w" 'image-mode-copy-file-name-as-kill)
     (define-key map "m" 'image-mode-mark-file)
     (define-key map "u" 'image-mode-unmark-file)
+
+    ;; Scrolling keys
+    (define-key map (kbd "SPC")   'image-scroll-up)
+    (define-key map (kbd "S-SPC") 'image-scroll-down)
+    (define-key map (kbd "DEL")   'image-scroll-down)
     (define-key map [remap forward-char] 'image-forward-hscroll)
     (define-key map [remap backward-char] 'image-backward-hscroll)
     (define-key map [remap right-char] 'image-forward-hscroll)
@@ -452,6 +496,7 @@ call."
     (define-key map [remap move-end-of-line] 'image-eol)
     (define-key map [remap beginning-of-buffer] 'image-bob)
     (define-key map [remap end-of-buffer] 'image-eob)
+
     (easy-menu-define image-mode-menu map "Menu for Image mode."
       '("Image"
 	["Show as Text" image-toggle-display :active t
@@ -459,17 +504,15 @@ call."
     ["Show as Hex" image-toggle-hex-display :active t
      :help "Show image as hex"]
 	"--"
+	["Fit Frame to Image" image-mode-fit-frame :active t
+	 :help "Resize frame to match image"]
 	["Fit to Window Height" image-transform-fit-to-height
-	 :visible (eq image-type 'imagemagick)
 	 :help "Resize image to match the window height"]
 	["Fit to Window Width" image-transform-fit-to-width
-	 :visible (eq image-type 'imagemagick)
 	 :help "Resize image to match the window width"]
 	["Rotate Image..." image-transform-set-rotation
-	 :visible (eq image-type 'imagemagick)
 	 :help "Rotate the image"]
 	["Reset Transformations" image-transform-reset
-	 :visible (eq image-type 'imagemagick)
 	 :help "Reset all image transformations"]
 	"--"
 	["Show Thumbnails"
@@ -485,9 +528,6 @@ call."
 	["Copy File Name" image-mode-copy-file-name-as-kill
          :active buffer-file-name
          :help "Copy the current file name to the kill ring"]
-	"--"
-	["Fit Frame to Image" image-mode-fit-frame :active t
-	 :help "Resize frame to match image"]
 	"--"
 	["Animate Image" image-toggle-animation :style toggle
 	 :selected (let ((image (image-get-display-property)))
@@ -767,11 +807,12 @@ was inserted."
 	 props image)
 
     ;; Get the rotation data from the file, if any.
-    (setq image-transform-rotation
-          (or (exif-orientation
-               (ignore-error exif-error
-                 (exif-parse-buffer)))
-              0.0))
+    (when (zerop image-transform-rotation) ; don't reset modified value
+      (setq image-transform-rotation
+            (or (exif-orientation
+                 (ignore-error exif-error
+                   (exif-parse-buffer)))
+                0.0)))
 
     ;; :scale 1: If we do not set this, create-image will apply
     ;; default scaling based on font size.
@@ -1250,8 +1291,7 @@ Do this for an image of type `imagemagick' to make sure that the
 elisp code matches the way ImageMagick computes the bounding box
 of a rotated image."
   (when (and (not (numberp image-transform-resize))
-	     (boundp 'image-type)
-	     (eq image-type 'imagemagick))
+	     (boundp 'image-type))
     (let ((size (image-display-size (image-get-display-property) t)))
       (cond ((eq image-transform-resize 'fit-width)
 	     (cl-assert (= (car size)
@@ -1268,10 +1308,7 @@ of a rotated image."
   "Return rescaling/rotation properties for image SPEC.
 These properties are determined by the Image mode variables
 `image-transform-resize' and `image-transform-rotation'.  The
-return value is suitable for appending to an image spec.
-
-Rescaling and rotation properties only take effect if Emacs is
-compiled with ImageMagick support."
+return value is suitable for appending to an image spec."
   (setq image-transform-scale 1.0)
   (when (or image-transform-resize
 	    (/= image-transform-rotation 0.0))
@@ -1302,41 +1339,32 @@ compiled with ImageMagick support."
 	    (list :rotation image-transform-rotation))))))
 
 (defun image-transform-set-scale (scale)
-  "Prompt for a number, and resize the current image by that amount.
-This command has no effect unless Emacs is compiled with
-ImageMagick support."
+  "Prompt for a number, and resize the current image by that amount."
   (interactive "nScale: ")
   (setq image-transform-resize scale)
   (image-toggle-display-image))
 
 (defun image-transform-fit-to-height ()
-  "Fit the current image to the height of the current window.
-This command has no effect unless Emacs is compiled with
-ImageMagick support."
+  "Fit the current image to the height of the current window."
   (interactive)
   (setq image-transform-resize 'fit-height)
   (image-toggle-display-image))
 
 (defun image-transform-fit-to-width ()
-  "Fit the current image to the width of the current window.
-This command has no effect unless Emacs is compiled with
-ImageMagick support."
+  "Fit the current image to the width of the current window."
   (interactive)
   (setq image-transform-resize 'fit-width)
   (image-toggle-display-image))
 
 (defun image-transform-set-rotation (rotation)
   "Prompt for an angle ROTATION, and rotate the image by that amount.
-ROTATION should be in degrees.  This command has no effect unless
-Emacs is compiled with ImageMagick support."
+ROTATION should be in degrees."
   (interactive "nRotation angle (in degrees): ")
   (setq image-transform-rotation (float (mod rotation 360)))
   (image-toggle-display-image))
 
 (defun image-transform-reset ()
-  "Display the current image with the default size and rotation.
-This command has no effect unless Emacs is compiled with
-ImageMagick support."
+  "Display the current image with the default size and rotation."
   (interactive)
   (setq image-transform-resize nil
 	image-transform-rotation 0.0
