@@ -69,7 +69,7 @@ Its value should be one of the following:
   :version "27.1"
   :group 'image)
 
-(defcustom image-keep-auto-resize 1
+(defcustom image-auto-resize-on-window-resize 1
   "Non-nil to resize the image whenever the window's dimensions change.
 This will always keep the image fit into the window.
 When non-nil, the value should be a number of seconds to wait before
@@ -642,7 +642,7 @@ Key bindings:
 
   (add-hook 'change-major-mode-hook #'image-toggle-display-text nil t)
   (add-hook 'after-revert-hook #'image-after-revert-hook nil t)
-  (when image-keep-auto-resize
+  (when image-auto-resize-on-window-resize
     (add-hook 'window-state-change-functions #'image--window-state-change nil t))
 
   (run-mode-hooks 'image-mode-hook)
@@ -910,8 +910,8 @@ Otherwise, display the image by calling `image-mode'."
   ;; image resizing happens later during redisplay.  So if those
   ;; consecutive calls happen without any redisplay between them,
   ;; the costly operation of image resizing should happen only once.
-  (when (numberp image-keep-auto-resize)
-    (run-with-idle-timer image-keep-auto-resize nil
+  (when (numberp image-auto-resize-on-window-resize)
+    (run-with-idle-timer image-auto-resize-on-window-resize nil
                          #'image-fit-to-window window)))
 
 (defun image-fit-to-window (window)
