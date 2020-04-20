@@ -1340,26 +1340,38 @@ Close all tabs on the selected frame, except the selected one.
 @end table
 
   The following commands can be used to switch between tabs:
+
 @table @kbd
 @item C-x t o
 @itemx C-@key{TAB}
-@itemx S-C-@key{TAB}
 @kindex C-x t o
 @kindex C-TAB
-@kindex S-C-TAB
 @findex tab-next
-Switch to another tab.  If you repeat this command, it cycles through
+Switch to the next tab.  If you repeat this command, it cycles through
 all the tabs on the selected frame.  With a positive numeric argument
 N, it switches to the next Nth tab; with a negative argument −N, it
 switches back to the previous Nth tab.
+
+@item S-C-@key{TAB}
+@kindex S-C-TAB
+@findex tab-previous
+Switch to the previous tab.  With a positive numeric argument N, it
+switches to the previous Nth tab; with a negative argument −N, it
+switches back to the next Nth tab.
 @end table
 
   The following commands can be used to operate on tabs:
+
 @table @kbd
 @item C-x t r @var{tabname} @key{RET}
-Renames the current tab to @var{tabname}.  You can control the
+Rename the current tab to @var{tabname}.  You can control the
 programmatic name given to a tab by default by customizing the
 variable @code{tab-bar-tab-name-function}.
+
+@item C-x t m
+Move the current tab N positions to the right with a positive numeric
+argument N.  With a negative argument −N, it moves the current tab
+N positions to the left.
 @end table
 
 @node Dialog Boxes
