@@ -11825,17 +11825,22 @@ set_message_1 (ptrdiff_t a1, Lisp_Object string)
 void
 clear_message (bool current_p, bool last_displayed_p)
 {
+  Lisp_Object preserve = Qnil;
+
   if (current_p)
     {
-      echo_area_buffer[0] = Qnil;
-      message_cleared_p = true;
-
       if (FUNCTIONP (Vclear_message_function))
         {
           ptrdiff_t count = SPECPDL_INDEX ();
           specbind (Qinhibit_quit, Qt);
-          safe_call (1, Vclear_message_function);
+          preserve = safe_call (1, Vclear_message_function);
           unbind_to (count, Qnil);
+        }
+
+      if (NILP (preserve))
+        {
+          echo_area_buffer[0] = Qnil;
+          message_cleared_p = true;
         }
     }
 
