@@ -303,7 +303,7 @@ are `word-search-regexp' \(`\\[isearch-toggle-word]'), `isearch-symbol-regexp'
 
 (defcustom isearch-lazy-highlight t
   "Controls the lazy-highlighting during incremental search.
-When non-nil, all text currently visible on the screen
+When non-nil, all text currently visible! on the screen
 matching the current search string is highlighted lazily
 (see `lazy-highlight-initial-delay' and `lazy-highlight-interval').
 
@@ -319,7 +319,7 @@ this variable is set to the symbol `all-windows'."
   "Show match numbers in the search prompt.
 When both this option and `isearch-lazy-highlight' are non-nil,
 show the current match number and the total number of matches
-in the buffer (or its restriction)."
+in the buffer (or its restriction), including all hidden matches."
   :type 'boolean
   :group 'lazy-count
   :group 'isearch
@@ -3869,7 +3869,8 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    (isearch-regexp-lax-whitespace
 	     isearch-lazy-highlight-regexp-lax-whitespace)
 	    (isearch-forward isearch-lazy-highlight-forward)
-	    (search-invisible nil)	; don't match invisible text
+            ;; don't match invisible text unless it can open or counting matches
+	    (search-invisible (or (eq search-invisible 'open) isearch-lazy-count))
 	    (retry t)
 	    (success nil))
 	;; Use a loop like in `isearch-search'.
@@ -3877,6 +3878,7 @@ Attempt to do the search exactly the way the pending Isearch would."
 	  (setq success (isearch-search-string string bound t))
 	  ;; Clear RETRY unless the search predicate says
 	  ;; to skip this search hit.
+          ;; Why this highlights org links, but search doesn't visit them???
 	  (if (or (not success)
 		  (= (point) bound) ; like (bobp) (eobp) in `isearch-search'.
 		  (= (match-beginning 0) (match-end 0))
