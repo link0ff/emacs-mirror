@@ -71,7 +71,7 @@ Its value should be one of the following:
 
 (defcustom image-auto-resize-on-window-resize 1
   "Non-nil to resize the image whenever the window's dimensions change.
-This will always keep the image fit into the window.
+This will always keep the image fit to the window.
 When non-nil, the value should be a number of seconds to wait before
 resizing according to the value specified in `image-auto-resize'."
   :type '(choice (const :tag "No auto-resize on window size change" nil)
@@ -79,7 +79,6 @@ resizing according to the value specified in `image-auto-resize'."
   :version "27.1"
   :group 'image)
 
-;; FIXME this doesn't seem mature yet. Document in manual when it is.
 (defvar-local image-transform-resize nil
   "The image resize operation.
 Its value should be one of the following:
@@ -455,9 +454,10 @@ call."
     (define-key map "sb" 'image-transform-fit-both)
     (define-key map "sh" 'image-transform-fit-to-height)
     (define-key map "sw" 'image-transform-fit-to-width)
+    (define-key map "sb" 'image-transform-fit-both)
+    (define-key map "ss" 'image-transform-set-scale)
     (define-key map "sr" 'image-transform-set-rotation)
     (define-key map "s0" 'image-transform-reset)
-    (define-key map "ss" 'image-transform-set-scale)
 
     ;; Multi-frame keys
     (define-key map (kbd "RET") 'image-toggle-animation)
@@ -512,6 +512,8 @@ call."
 	 :help "Resize image to match the window width"]
 	["Fit to Window Height and Width" image-transform-fit-both
 	 :help "Resize image to match the window height and width"]
+	["Set Scale..." image-transform-set-scale
+	 :help "Resize image by specified scale factor"]
 	["Rotate Image..." image-transform-set-rotation
 	 :help "Rotate the image"]
 	["Reset Transformations" image-transform-reset

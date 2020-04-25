@@ -620,7 +620,7 @@ shows special buttons (``tabs'') for each buffer that was displayed in
 a window, and allows switching to any of these buffers by clicking the
 corresponding button.  Clicking on the @kbd{+} icon adds a new buffer
 to the window-local tab line of buffers, and clicking on the @kbd{x}
-icon of a tab deletes a tab.  The mouse wheel on the tab line scrolls
+icon of a tab deletes it.  The mouse wheel on the tab line scrolls
 the tabs horizontally.
 
 Selecting the previous window-local tab is the same as typing @kbd{C-x
