@@ -3869,7 +3869,7 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    (isearch-regexp-lax-whitespace
 	     isearch-lazy-highlight-regexp-lax-whitespace)
 	    (isearch-forward isearch-lazy-highlight-forward)
-            ;; don't match invisible text unless it can open or counting matches
+	    ;; don't match invisible text unless it can open or counting matches
 	    (search-invisible (or (eq search-invisible 'open) isearch-lazy-count))
 	    (retry t)
 	    (success nil))
@@ -3878,7 +3878,6 @@ Attempt to do the search exactly the way the pending Isearch would."
 	  (setq success (isearch-search-string string bound t))
 	  ;; Clear RETRY unless the search predicate says
 	  ;; to skip this search hit.
-          ;; Why this highlights org links, but search doesn't visit them???
 	  (if (or (not success)
 		  (= (point) bound) ; like (bobp) (eobp) in `isearch-search'.
 		  (= (match-beginning 0) (match-end 0))
