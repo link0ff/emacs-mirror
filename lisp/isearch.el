@@ -3535,6 +3535,7 @@ Optional third argument, if t, means if fail just return nil (no error).
 	    (overlay-put ov 'invisible (overlay-get ov 'isearch-invisible))
 	    (overlay-put ov 'isearch-invisible nil)))))))
 
+(defvar isearch-check-overlays nil)
 
 (defun isearch-range-invisible (beg end)
   "Return t if all the text from BEG to END is invisible."
@@ -3546,7 +3547,7 @@ Optional third argument, if t, means if fail just return nil (no error).
 	    (can-be-opened (eq search-invisible 'open))
 	    ;; the list of overlays that could be opened
 	    (crt-overlays nil))
-	(when (and can-be-opened isearch-hide-immediately)
+	(when (and can-be-opened isearch-hide-immediately (not isearch-check-overlays))
 	  (isearch-close-unnecessary-overlays beg end))
 	;; If the following character is currently invisible,
 	;; skip all characters with that same `invisible' property value.
@@ -3585,9 +3586,10 @@ Optional third argument, if t, means if fail just return nil (no error).
 	(if (>= (point) end)
 	    (if (and can-be-opened (consp crt-overlays))
 		(progn
-		  (setq isearch-opened-overlays
-			(append isearch-opened-overlays crt-overlays))
-		  (mapc 'isearch-open-overlay-temporary crt-overlays)
+		  (unless isearch-check-overlays
+		    (setq isearch-opened-overlays
+			  (append isearch-opened-overlays crt-overlays))
+		    (mapc 'isearch-open-overlay-temporary crt-overlays))
 		  nil)
 	      (setq isearch-hidden t)))))))
 
@@ -3869,8 +3871,10 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    (isearch-regexp-lax-whitespace
 	     isearch-lazy-highlight-regexp-lax-whitespace)
 	    (isearch-forward isearch-lazy-highlight-forward)
-	    ;; don't match invisible text unless it can open or counting matches
-	    (search-invisible (or (eq search-invisible 'open) isearch-lazy-count))
+	    ;; Don't match invisible text unless it can be opened
+	    ;; or when counting matches and user can visit hidden matches
+	    (search-invisible (or (eq search-invisible 'open)
+				  (and isearch-lazy-count search-invisible)))
 	    (retry t)
 	    (success nil))
 	;; Use a loop like in `isearch-search'.
@@ -3881,8 +3885,10 @@ Attempt to do the search exactly the way the pending Isearch would."
 	  (if (or (not success)
 		  (= (point) bound) ; like (bobp) (eobp) in `isearch-search'.
 		  (= (match-beginning 0) (match-end 0))
-		  (funcall isearch-filter-predicate
-			   (match-beginning 0) (match-end 0)))
+		  (let ((search-invisible (and search-invisible 'open))
+		        (isearch-check-overlays t))
+		    (funcall isearch-filter-predicate
+			     (match-beginning 0) (match-end 0))))
 	      (setq retry nil)))
 	success)
     (error nil)))
