@@ -379,7 +379,8 @@ where `next-error-function' is bound to an appropriate function."
    (list (get-buffer
           (read-buffer "Select next-error buffer: " nil nil
                        (lambda (b) (next-error-buffer-p (cdr b)))))))
-  (setq next-error-last-buffer buffer))
+  (setq next-error-last-buffer buffer)
+  (setq next-error-buffer buffer))
 
 (defalias 'goto-next-locus 'next-error)
 (defalias 'next-match 'next-error)
