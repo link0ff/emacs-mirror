@@ -1,6 +1,6 @@
-;;; tests/em-hist-tests.el --- em-hist test suite  -*- lexical-binding:t -*-
+;;; float-sup-tests.el --- Tests for float-sup.el  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2017-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2020 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -17,23 +17,17 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
+;;; Commentary:
+
 ;;; Code:
 
 (require 'ert)
-(require 'em-hist)
 
-(ert-deftest eshell-write-readonly-history ()
-  "Test that having read-only strings in history is okay."
-  (let ((histfile (make-temp-file "eshell-history"))
-        (eshell-history-ring (make-ring 2)))
-    (ring-insert eshell-history-ring
-                 (propertize "echo foo" 'read-only t))
-    (ring-insert eshell-history-ring
-                 (propertize "echo bar" 'read-only t))
-    (unwind-protect
-        (eshell-write-history histfile)
-      (delete-file histfile))))
+(ert-deftest float-sup-degrees-and-radians ()
+  (should (equal (degrees-to-radians 180.0) float-pi))
+  (should (equal (radians-to-degrees float-pi) 180.0))
+  (should (equal (radians-to-degrees (degrees-to-radians 360.0)) 360.0))
+  (should (equal (degrees-to-radians (radians-to-degrees float-pi)) float-pi)))
 
-(provide 'em-hist-test)
-
-;;; em-hist-tests.el ends here
+(provide 'float-sup-tests)
+;;; float-sup-tests.el ends here

@@ -1381,7 +1381,7 @@ visited tab, the second last, and so on.
 @item @var{modifier}-@var{tabnumber}
 @findex tab-select
 Switch to the tab by its number.  After customizing the variable
-@code{tab-bar-select-tab-modifiers} to specify a key @var{modifier}, you
+@code{tab-bar-select-tab-modifiers} to specify a @var{modifier} key, you
 can select a tab by its ordinal number using the specified modifier in
 combination with the tab number to select.  To display the tab number
 alongside the tab name, you can customize another variable
@@ -1390,7 +1390,7 @@ to select the tab by its number.
 
 @item @var{modifier}-@kbd{0}
 @findex tab-recent
-Switch to the recent tab.  The key combination is the key modifier
+Switch to the recent tab.  The key combination is the modifier key
 defined by @code{tab-bar-select-tab-modifiers} and the key @kbd{0}.
 With a numeric argument N, switch to the Nth recent tab.
 @end table

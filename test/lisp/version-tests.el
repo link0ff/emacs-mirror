@@ -1,6 +1,6 @@
-;;; tests/em-hist-tests.el --- em-hist test suite  -*- lexical-binding:t -*-
+;;; version-tests.el --- Tests for version.el  -*- lexical-binding: t -*-
 
-;; Copyright (C) 2017-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2020 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -17,23 +17,15 @@
 ;; You should have received a copy of the GNU General Public License
 ;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
+;;; Commentary:
+
 ;;; Code:
 
 (require 'ert)
-(require 'em-hist)
 
-(ert-deftest eshell-write-readonly-history ()
-  "Test that having read-only strings in history is okay."
-  (let ((histfile (make-temp-file "eshell-history"))
-        (eshell-history-ring (make-ring 2)))
-    (ring-insert eshell-history-ring
-                 (propertize "echo foo" 'read-only t))
-    (ring-insert eshell-history-ring
-                 (propertize "echo bar" 'read-only t))
-    (unwind-protect
-        (eshell-write-history histfile)
-      (delete-file histfile))))
+(ert-deftest test-emacs-version ()
+  (should (string-match emacs-version (emacs-version)))
+  (should (string-match system-configuration (emacs-version))))
 
-(provide 'em-hist-test)
-
-;;; em-hist-tests.el ends here
+(provide 'version-tests)
+;;; version-tests.el ends here

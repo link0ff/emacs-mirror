@@ -87,11 +87,11 @@
 
 
 (defcustom tab-bar-select-tab-modifiers '()
-  "List of key modifiers for selecting a tab by its index digit.
-Possible key modifiers are `control', `meta', `shift', `hyper', `super' and
+  "List of modifier keys for selecting a tab by its index digit.
+Possible modifier keys are `control', `meta', `shift', `hyper', `super' and
 `alt'.  To help you to select a tab by its number, you can customize
 `tab-bar-tab-hints' that will show tab numbers alongside the tab name."
-  :type '(set :tag "Tab selection key modifiers"
+  :type '(set :tag "Tab selection modifier keys"
               (const control)
               (const meta)
               (const shift)
@@ -565,7 +565,7 @@ Return its existing value or a new value."
 
 (defun tab-bar-select-tab (&optional arg)
   "Switch to the tab by its absolute position ARG in the tab bar.
-When this command is bound to a numeric key (with a key prefix or modifier
+When this command is bound to a numeric key (with a prefix or modifier key
 using `tab-bar-select-tab-modifiers'), calling it without an argument
 will translate its bound numeric key to the numeric argument.
 ARG counts from 1."
