@@ -1382,6 +1382,13 @@ ROTATION should be in degrees."
   (setq image-transform-rotation (float (mod rotation 360)))
   (image-toggle-display-image))
 
+(defun image-transform-1-to-1 ()
+  "Display the current image 1:1."
+  (interactive)
+  (setq image-transform-resize nil
+	image-transform-scale 1)
+  (image-toggle-display-image))
+
 (defun image-transform-reset ()
   "Display the current image with the default size and rotation."
   (interactive)
