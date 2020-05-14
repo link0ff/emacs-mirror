@@ -1579,8 +1579,8 @@ The following key bindings are currently in effect in the buffer:
   (set (make-local-variable 'outline-level) (lambda () 1))
   (set (make-local-variable 'bookmark-make-record-function)
        'Man-bookmark-make-record)
-  (when t ;; something like ‘image-auto-resize-on-window-resize’
-    (add-hook 'window-state-change-functions #'Man--window-state-change nil t)))
+  ;; (when Man-fit-to-window-on-window-resize ;; something like ‘image-auto-resize-on-window-resize’
+  (add-hook 'window-state-change-functions #'Man--window-state-change nil t))
 
 (defun Man-build-section-list ()
   "Build the list of manpage sections."

@@ -456,6 +456,7 @@ call."
     (define-key map "sb" 'image-transform-fit-both)
     (define-key map "ss" 'image-transform-set-scale)
     (define-key map "sr" 'image-transform-set-rotation)
+    (define-key map "so" 'image-transform-original)
     (define-key map "s0" 'image-transform-reset)
 
     ;; Multi-frame keys
@@ -521,6 +522,8 @@ call."
 	 :help "Rotate the image"]
 	["Set Rotation..." image-transform-set-rotation
 	 :help "Set rotation angle of the image"]
+	["Original Size" image-transform-original
+	 :help "Reset image to original size"]
 	["Reset Transformations" image-transform-reset
 	 :help "Reset all image transformations"]
 	"--"
@@ -1382,8 +1385,8 @@ ROTATION should be in degrees."
   (setq image-transform-rotation (float (mod rotation 360)))
   (image-toggle-display-image))
 
-(defun image-transform-1-to-1 ()
-  "Display the current image 1:1."
+(defun image-transform-original ()
+  "Display the current image with the original size and rotation."
   (interactive)
   (setq image-transform-resize nil
 	image-transform-scale 1)
