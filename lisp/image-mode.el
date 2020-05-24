@@ -523,9 +523,9 @@ call."
 	["Set Rotation..." image-transform-set-rotation
 	 :help "Set rotation angle of the image"]
 	["Original Size" image-transform-original
-	 :help "Reset image to original size"]
-	["Reset Transformations" image-transform-reset
-	 :help "Reset all image transformations"]
+	 :help "Reset image to actual size"]
+	["Reset to Default Size" image-transform-reset
+	 :help "Reset all image transformations to initial size"]
 	"--"
 	["Show Thumbnails"
 	 (lambda ()
@@ -1386,14 +1386,14 @@ ROTATION should be in degrees."
   (image-toggle-display-image))
 
 (defun image-transform-original ()
-  "Display the current image with the original size and rotation."
+  "Display the current image with the original (actual) size and rotation."
   (interactive)
   (setq image-transform-resize nil
 	image-transform-scale 1)
   (image-toggle-display-image))
 
 (defun image-transform-reset ()
-  "Display the current image with the default size and rotation."
+  "Display the current image with the default (initial) size and rotation."
   (interactive)
   (setq image-transform-resize image-auto-resize
 	image-transform-rotation 0.0
