@@ -4456,7 +4456,7 @@ live_string_holding (struct mem_node *m, void *p)
 
       /* P must point into a Lisp_String structure, and it
 	 must not be on the free-list.  */
-      if (0 <= offset && offset < STRING_BLOCK_SIZE * sizeof b->strings[0])
+      if (0 <= offset && offset < sizeof b->strings)
 	{
 	  cp = ptr_bounds_copy (cp, b);
 	  struct Lisp_String *s = p = cp -= offset % sizeof b->strings[0];
@@ -4489,7 +4489,7 @@ live_cons_holding (struct mem_node *m, void *p)
       /* P must point into a Lisp_Cons, not be
 	 one of the unused cells in the current cons block,
 	 and not be on the free-list.  */
-      if (0 <= offset && offset < CONS_BLOCK_SIZE * sizeof b->conses[0]
+      if (0 <= offset && offset < sizeof b->conses
 	  && (b != cons_block
 	      || offset / sizeof b->conses[0] < cons_block_index))
 	{
@@ -4525,7 +4525,7 @@ live_symbol_holding (struct mem_node *m, void *p)
       /* P must point into the Lisp_Symbol, not be
 	 one of the unused cells in the current symbol block,
 	 and not be on the free-list.  */
-      if (0 <= offset && offset < SYMBOL_BLOCK_SIZE * sizeof b->symbols[0]
+      if (0 <= offset && offset < sizeof b->symbols
 	  && (b != symbol_block
 	      || offset / sizeof b->symbols[0] < symbol_block_index))
 	{
@@ -4559,9 +4559,8 @@ live_float_p (struct mem_node *m, void *p)
 
       /* P must point to the start of a Lisp_Float and not be
 	 one of the unused cells in the current float block.  */
-      return (offset >= 0
+      return (0 <= offset && offset < sizeof b->floats
 	      && offset % sizeof b->floats[0] == 0
-	      && offset < (FLOAT_BLOCK_SIZE * sizeof b->floats[0])
 	      && (b != float_block
 		  || offset / sizeof b->floats[0] < float_block_index));
     }
@@ -4687,35 +4686,6 @@ mark_maybe_objects (Lisp_Object const *array, ptrdiff_t nelts)
     mark_maybe_object (*array);
 }
 
-/* A lower bound on the alignment of Lisp objects that need marking.
-   Although 1 is safe, higher values speed up mark_maybe_pointer.
-   If USE_LSB_TAG, this value is typically GCALIGNMENT; otherwise,
-   it's determined by the natural alignment of Lisp structs.
-   All vectorlike objects have alignment at least that of union
-   vectorlike_header and it's unlikely they all have alignment greater,
-   so use the union as a safe and likely-accurate standin for
-   vectorlike objects.  */
-
-enum { GC_OBJECT_ALIGNMENT_MINIMUM
-         = max (GCALIGNMENT,
-		min (alignof (union vectorlike_header),
-		     min (min (alignof (struct Lisp_Cons),
-			       alignof (struct Lisp_Float)),
-			  min (alignof (struct Lisp_String),
-			       alignof (struct Lisp_Symbol))))) };
-
-/* Return true if P might point to Lisp data that can be garbage
-   collected, and false otherwise (i.e., false if it is easy to see
-   that P cannot point to Lisp data that can be garbage collected).
-   Symbols are implemented via offsets not pointers, but the offsets
-   are also multiples of GC_OBJECT_ALIGNMENT_MINIMUM.  */
-
-static bool
-maybe_lisp_pointer (void *p)
-{
-  return (uintptr_t) p % GC_OBJECT_ALIGNMENT_MINIMUM == 0;
-}
-
 /* If P points to Lisp data, mark that as live if it isn't already
    marked.  */
 
@@ -4727,9 +4697,6 @@ mark_maybe_pointer (void *p)
 #ifdef USE_VALGRIND
   VALGRIND_MAKE_MEM_DEFINED (&p, sizeof (p));
 #endif
-
-  if (!maybe_lisp_pointer (p))
-    return;
 
   if (pdumper_object_p (p))
     {
@@ -4830,7 +4797,16 @@ mark_memory (void const *start, void const *end)
 
   for (pp = start; (void const *) pp < end; pp += GC_POINTER_ALIGNMENT)
     {
-      mark_maybe_pointer (*(void *const *) pp);
+      char *p = *(char *const *) pp;
+      mark_maybe_pointer (p);
+
+      /* Unmask any struct Lisp_Symbol pointer that make_lisp_symbol
+	 previously disguised by adding the address of 'lispsym'.
+	 On a host with 32-bit pointers and 64-bit Lisp_Objects,
+	 a Lisp_Object might be split into registers saved into
+	 non-adjacent words and P might be the low-order word's value.  */
+      p += (intptr_t) lispsym;
+      mark_maybe_pointer (p);
 
       verify (alignof (Lisp_Object) % GC_POINTER_ALIGNMENT == 0);
       if (alignof (Lisp_Object) == GC_POINTER_ALIGNMENT
