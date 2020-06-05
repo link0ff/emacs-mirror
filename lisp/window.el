@@ -10069,6 +10069,48 @@ displaying that processes's buffer."
                 (set-process-window-size process (cdr size) (car size))))))))))
 
 (add-hook 'window-configuration-change-hook 'window--adjust-process-windows)
+
+
+(defun display-buffer-override-next-command (pre-function &optional post-function)
+  "Set `display-buffer-overriding-action' for the next command.
+`pre-function' is called to prepare the window where the buffer should be
+displayed.  This function takes two arguments `buffer' and `alist', and
+should return a cons with the displayed window and its type.  See the
+meaning of these values in `window--display-buffer'.
+Optional `post-function' is called after the buffer is displayed in the
+window; the function takes two arguments: an old and new window."
+  (let* ((old-window (or (minibuffer-selected-window) (selected-window)))
+         (new-window nil)
+         (minibuffer-depth (minibuffer-depth))
+         (action (lambda (buffer alist)
+                   (unless (> (minibuffer-depth) minibuffer-depth)
+                     (let* ((ret (funcall pre-function buffer alist))
+                            (window (car ret))
+                            (type (cdr ret)))
+                       (setq new-window (window--display-buffer buffer window
+                                                                type alist))))))
+         (command this-command)
+         (clearfun (make-symbol "clear-display-buffer-overriding-action"))
+         (exitfun
+          (lambda ()
+            (setq display-buffer-overriding-action
+                  (delq action display-buffer-overriding-action))
+            (when (functionp post-function)
+              (funcall post-function old-window new-window))
+            (remove-hook 'post-command-hook clearfun))))
+    (fset clearfun
+          (lambda ()
+            (unless (or
+		     ;; Remove the hook immediately
+		     ;; after exiting the minibuffer.
+		     (> (minibuffer-depth) minibuffer-depth)
+		     ;; But don't remove immediately after
+		     ;; adding the hook by the same command below.
+		     (eq this-command command))
+              (funcall exitfun))))
+    (add-hook 'post-command-hook clearfun)
+    (push action display-buffer-overriding-action)))
+
 
 ;; Some of these are in tutorial--default-keys, so update that if you
 ;; change these.
