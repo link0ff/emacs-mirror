@@ -36,8 +36,9 @@
 ;; Function                           Browser     Earliest version
 ;; browse-url-mozilla                 Mozilla     Don't know
 ;; browse-url-firefox                 Firefox     Don't know (tried with 1.0.1)
-;; browse-url-chrome                  Chrome      47.0.2526.111
+;; browse-url-brave                   Brave       1.9.76
 ;; browse-url-chromium                Chromium    3.0
+;; browse-url-chrome                  Chrome      47.0.2526.111
 ;; browse-url-epiphany                Epiphany    Don't know
 ;; browse-url-w3                      w3          0
 ;; browse-url-text-*	              Any text browser     0
@@ -150,8 +151,9 @@
     (function-item :tag "eww" :value  eww-browse-url)
     (function-item :tag "Mozilla" :value  browse-url-mozilla)
     (function-item :tag "Firefox" :value browse-url-firefox)
-    (function-item :tag "Google Chrome" :value browse-url-chrome)
+    (function-item :tag "Brave" :value browse-url-brave)
     (function-item :tag "Chromium" :value browse-url-chromium)
+    (function-item :tag "Google Chrome" :value browse-url-chrome)
     (function-item :tag "Epiphany" :value  browse-url-epiphany)
     (function-item :tag "Text browser in an xterm window"
 		   :value browse-url-text-xterm)
@@ -301,19 +303,19 @@ Defaults to the value of `browse-url-firefox-arguments' at the time
 (make-obsolete-variable 'browse-url-firefox-startup-arguments
                         "it no longer has any effect." "24.5")
 
-(defcustom browse-url-chrome-program
-  (let ((candidates '("google-chrome-stable" "google-chrome")))
+(defcustom browse-url-brave-program
+  (let ((candidates '("brave-browser-stable" "brave-browser")))
     (while (and candidates (not (executable-find (car candidates))))
       (setq candidates (cdr candidates)))
-    (or (car candidates) "chromium"))
-  "The name by which to invoke the Chrome browser."
+    (or (car candidates) "brave"))
+  "The name by which to invoke the Brave browser."
   :type 'string
-  :version "25.1")
+  :version "28.1")
 
-(defcustom browse-url-chrome-arguments nil
-  "A list of strings to pass to Google Chrome as arguments."
+(defcustom browse-url-brave-arguments nil
+  "A list of strings to pass to Brave as arguments."
   :type '(repeat (string :tag "Argument"))
-  :version "25.1")
+  :version "28.1")
 
 (defcustom browse-url-chromium-program
   (let ((candidates '("chromium" "chromium-browser")))
@@ -328,6 +330,20 @@ Defaults to the value of `browse-url-firefox-arguments' at the time
   "A list of strings to pass to Chromium as arguments."
   :type '(repeat (string :tag "Argument"))
   :version "24.1")
+
+(defcustom browse-url-chrome-program
+  (let ((candidates '("google-chrome-stable" "google-chrome")))
+    (while (and candidates (not (executable-find (car candidates))))
+      (setq candidates (cdr candidates)))
+    (or (car candidates) "chromium"))
+  "The name by which to invoke the Chrome browser."
+  :type 'string
+  :version "25.1")
+
+(defcustom browse-url-chrome-arguments nil
+  "A list of strings to pass to Google Chrome as arguments."
+  :type '(repeat (string :tag "Argument"))
+  :version "25.1")
 
 (defcustom browse-url-galeon-program "galeon"
   "The name by which to invoke Galeon."
@@ -1071,6 +1087,7 @@ instead of `browse-url-new-window-flag'."
 ;;;    ((executable-find browse-url-gnome-moz-program) 'browse-url-gnome-moz)
     ((executable-find browse-url-mozilla-program) 'browse-url-mozilla)
     ((executable-find browse-url-firefox-program) 'browse-url-firefox)
+    ((executable-find browse-url-brave-program) 'browse-url-brave)
     ((executable-find browse-url-chromium-program) 'browse-url-chromium)
 ;;;    ((executable-find browse-url-galeon-program) 'browse-url-galeon)
     ((executable-find browse-url-kde-program) 'browse-url-kde)
@@ -1267,6 +1284,25 @@ instead of `browse-url-new-window-flag'."
             (list url)))))
 
 (function-put 'browse-url-firefox 'browse-url-browser-kind 'external)
+
+;;;###autoload
+(defun browse-url-brave (url &optional _new-window)
+  "Ask the Brave WWW browser to load URL.
+Default to the URL around or before point.  The strings in
+variable `browse-url-brave-arguments' are also passed to
+Brave.
+The optional argument NEW-WINDOW is not used."
+  (interactive (browse-url-interactive-arg "URL: "))
+  (setq url (browse-url-encode-url url))
+  (let* ((process-environment (browse-url-process-environment)))
+    (apply 'start-process
+	   (concat "brave " url) nil
+	   browse-url-brave-program
+	   (append
+	    browse-url-brave-arguments
+	    (list url)))))
+
+(function-put 'browse-url-brave 'browse-url-browser-kind 'external)
 
 ;;;###autoload
 (defun browse-url-chromium (url &optional _new-window)

@@ -1575,7 +1575,7 @@ Like \\[find-file-other-frame] (which see), but creates a new tab."
           value)
       (switch-to-buffer-other-tab value))))
 
-(defun other-tab-command ()
+(defun other-tab-prefix ()
   "Display the buffer of the next command in a new tab.
 The next buffer is the buffer displayed by the next command invoked
 immediately after this command (ignoring reading from the minibuffer).
@@ -1604,7 +1604,7 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
 (define-key tab-prefix-map "b" 'switch-to-buffer-other-tab)
 (define-key tab-prefix-map "f" 'find-file-other-tab)
 (define-key tab-prefix-map "\C-f" 'find-file-other-tab)
-(define-key tab-prefix-map "t" 'other-tab-command)
+(define-key tab-prefix-map "t" 'other-tab-prefix)
 
 
 (provide 'tab-bar)
