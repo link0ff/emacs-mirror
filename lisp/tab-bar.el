@@ -1579,7 +1579,7 @@ Like \\[find-file-other-frame] (which see), but creates a new tab."
   "Display the buffer of the next command in a new tab.
 The next buffer is the buffer displayed by the next command invoked
 immediately after this command (ignoring reading from the minibuffer).
-Creates a new tab before displaying the buffer or switches to the tab
+Creates a new tab before displaying the buffer, or switches to the tab
 that already contains that buffer.
 When `switch-to-buffer-obey-display-actions' is non-nil,
 `switch-to-buffer' commands are also supported."
@@ -1592,7 +1592,7 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
                                      (reusable-frames . t))))
              (selected-window))
            'tab)))
-  (message "[display-next-command-buffer-in-new-tab]"))
+  (message "Display next command buffer in a new tab..."))
 
 (define-key tab-prefix-map "2" 'tab-new)
 (define-key tab-prefix-map "1" 'tab-close-other)

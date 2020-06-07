@@ -8590,15 +8590,18 @@ window; the function takes two arguments: an old and new window."
   (let* ((old-window (or (minibuffer-selected-window) (selected-window)))
          (new-window nil)
          (minibuffer-depth (minibuffer-depth))
+         (clearfun (make-symbol "clear-display-buffer-overriding-action"))
          (action (lambda (buffer alist)
                    (unless (> (minibuffer-depth) minibuffer-depth)
                      (let* ((ret (funcall pre-function buffer alist))
                             (window (car ret))
                             (type (cdr ret)))
                        (setq new-window (window--display-buffer buffer window
-                                                                type alist))))))
+                                                                type alist))
+                       (funcall clearfun)
+                       (setq post-function nil)
+                       new-window))))
          (command this-command)
-         (clearfun (make-symbol "clear-display-buffer-overriding-action"))
          (exitfun
           (lambda ()
             (setq display-buffer-overriding-action
@@ -10110,7 +10113,6 @@ displaying that processes's buffer."
                 (set-process-window-size process (cdr size) (car size))))))))))
 
 (add-hook 'window-configuration-change-hook 'window--adjust-process-windows)
-
 
 ;; Some of these are in tutorial--default-keys, so update that if you
 ;; change these.

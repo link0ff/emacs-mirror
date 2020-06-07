@@ -1496,8 +1496,10 @@ This implements the `bookmark-make-record-function' type for
 This implements the `handler' function interface for the record
 type returned by `vc-dir-bookmark-make-record'."
   (let* ((file (bookmark-prop-get bmk 'filename))
-         (buf (save-window-excursion
-                 (vc-dir file) (current-buffer))))
+         ;; (display-buffer-overriding-action '(nil))
+         (buf (progn ;; save-window-excursion
+                (vc-dir file)
+                (current-buffer))))
     (bookmark-default-handler
      `("" (buffer . ,buf) . ,(bookmark-get-bookmark-record bmk)))))
 
