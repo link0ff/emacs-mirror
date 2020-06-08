@@ -3992,7 +3992,13 @@ characters."
                                  shell-file-name t t
                                  nil shell-command-switch
                                  command)
-            (setq output (split-string (buffer-string) "\n")))
+            (setq output (split-string (buffer-substring
+                                        (point-min)
+                                        ;; Trim the trailing newline.
+                                        (if (eq (char-before (point-max)) ?\n)
+                                            (1- (point-max))
+                                          (point-max)))
+                                       "\n")))
           (goto-char start)
           (funcall region-insert-function output))
       (if (or replace
