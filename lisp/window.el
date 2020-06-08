@@ -8598,6 +8598,8 @@ window; the function takes two arguments: an old and new window."
                             (type (cdr ret)))
                        (setq new-window (window--display-buffer buffer window
                                                                 type alist))
+                       ;; Reset display-buffer-overriding-action
+                       ;; after the first buffer display action
                        (funcall clearfun)
                        (setq post-function nil)
                        new-window))))
@@ -8619,6 +8621,8 @@ window; the function takes two arguments: an old and new window."
 		     ;; adding the hook by the same command below.
 		     (eq this-command command))
               (funcall exitfun))))
+    ;; Reset display-buffer-overriding-action
+    ;; after the next command finishes
     (add-hook 'post-command-hook clearfun)
     (push action display-buffer-overriding-action)))
 
