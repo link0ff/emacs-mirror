@@ -3984,7 +3984,7 @@ characters."
 	exit-status)
     ;; Unless a single contiguous chunk is selected, operate on multiple chunks.
     (if region-noncontiguous-p
-        (let ((input (concat (funcall region-extract-function 'delete) "\n"))
+        (let ((input (concat (funcall region-extract-function (when replace 'delete)) "\n"))
               output)
           (with-temp-buffer
             (insert input)
@@ -3999,8 +3999,17 @@ characters."
                                             (1- (point-max))
                                           (point-max)))
                                        "\n")))
-          (goto-char start)
-          (funcall region-insert-function output))
+          (cond
+           (replace
+            (goto-char start)
+            (funcall region-insert-function output))
+           (t
+            (let ((buffer (get-buffer-create
+                           (or output-buffer "*Shell Command Output*"))))
+              (with-current-buffer buffer
+                (erase-buffer)
+                (funcall region-insert-function output))
+              (display-message-or-buffer buffer)))))
       (if (or replace
               (and output-buffer
                    (not (or (bufferp output-buffer) (stringp output-buffer)))))
