@@ -1890,11 +1890,15 @@ designators specifying which revisions to compare.
 The optional argument NOT-URGENT non-nil means it is ok to say no to
 saving the buffer."
   (interactive (list current-prefix-arg t))
-  (if historic
-      (call-interactively 'vc-version-diff)
-    (when buffer-file-name (vc-buffer-sync not-urgent))
-    (vc-diff-internal t (vc-deduce-fileset t) nil nil
-		      (called-interactively-p 'interactive))))
+  (if (vc-deduce-backend)
+      (if historic
+          (call-interactively 'vc-version-diff)
+        (when buffer-file-name (vc-buffer-sync not-urgent))
+        (vc-diff-internal t (vc-deduce-fileset t) nil nil
+		          (called-interactively-p 'interactive)))
+    ;; Fall back to non-vc diff-backup
+    (diff-backup (if (derived-mode-p 'dired-mode) (dired-get-filename) buffer-file-name)
+                 vc-diff-switches)))
 
 ;;;###autoload
 (defun vc-diff-mergebase (_files rev1 rev2)
