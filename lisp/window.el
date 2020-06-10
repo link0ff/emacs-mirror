@@ -4005,6 +4005,22 @@ always effectively nil."
 	;; Always return nil.
 	nil))))
 
+(defun other-window-prefix ()
+  "Display the buffer of the next command in a new window.
+The next buffer is the buffer displayed by the next command invoked
+immediately after this command (ignoring reading from the minibuffer).
+Creates a new window before displaying the buffer, or switches to the window
+that already contains that buffer.
+When `switch-to-buffer-obey-display-actions' is non-nil,
+`switch-to-buffer' commands are also supported."
+  (interactive)
+  (display-buffer-override-next-command
+   (lambda (buffer alist)
+     (cons (display-buffer-pop-up-window
+            buffer (append alist '((inhibit-same-window . t))))
+           'window)))
+  (message "Display next command buffer in a new window..."))
+
 ;; This should probably return non-nil when the selected window is part
 ;; of an atomic window whose root is the frame's root window.
 (defun one-window-p (&optional nomini all-frames)
@@ -10131,5 +10147,6 @@ displaying that processes's buffer."
 (define-key ctl-x-map "-" 'shrink-window-if-larger-than-buffer)
 (define-key ctl-x-map "+" 'balance-windows)
 (define-key ctl-x-4-map "0" 'kill-buffer-and-window)
+(define-key ctl-x-4-map "4" 'other-window-prefix)
 
 ;;; window.el ends here
