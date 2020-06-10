@@ -240,6 +240,7 @@ With prefix arg, prompt for diff switches."
       ;; Fall back to vc-diff
       (if (vc-backend file)
           (let ((vc-diff-switches switches))
+            (require 'vc)
             (vc-diff-internal
              t (list (vc-backend file) (list file)) nil nil t))
         (error "No backup found for %s" file)))))
