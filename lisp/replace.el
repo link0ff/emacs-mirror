@@ -227,7 +227,16 @@ wants to replace FROM with TO."
                 (if regexp-flag
                     (read-regexp prompt nil 'minibuffer-history)
                   (read-from-minibuffer
-                   prompt nil nil nil nil (car search-ring) t)))))
+                   prompt nil nil nil nil
+                   (delq nil
+                         (list
+                          (when (use-region-p)
+                            (buffer-substring-no-properties
+                             (region-beginning) (region-end)))
+                          (find-tag-default)
+                          (car search-ring)
+                          (car (symbol-value query-replace-from-history-variable))))
+                   t)))))
            (to))
       (if (and (zerop (length from)) query-replace-defaults)
 	  (cons (caar query-replace-defaults)
@@ -798,6 +807,9 @@ the last isearch string, and the last replacement regexp.  `read-regexp'
 appends the list returned by this function to the end of values available
 via \\<minibuffer-local-map>\\[next-history-element]."
   (list
+   (when (use-region-p)
+     (buffer-substring-no-properties
+      (region-beginning) (region-end)))
    (find-tag-default-as-regexp)
    (find-tag-default-as-symbol-regexp)
    (car regexp-search-ring)
