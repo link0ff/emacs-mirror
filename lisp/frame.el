@@ -1082,8 +1082,8 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
   (display-buffer-override-next-command
    (lambda (buffer alist)
      (cons (display-buffer-pop-up-frame
-            buffer (append alist '((reusable-frames . 0)
-                                   (inhibit-same-window . t))))
+            buffer (append '((inhibit-same-window . t))
+                           alist))
            'frame)))
   (message "Display next command buffer in a new frame..."))
 

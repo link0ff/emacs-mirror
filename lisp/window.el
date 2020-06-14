@@ -4016,8 +4016,11 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
   (interactive)
   (display-buffer-override-next-command
    (lambda (buffer alist)
-     (cons (display-buffer-pop-up-window
-            buffer (append alist '((inhibit-same-window . t))))
+     (cons (or
+            (display-buffer-pop-up-window
+             buffer (append '((inhibit-same-window . t)) alist))
+            (display-buffer-use-some-window
+             buffer (append '((inhibit-same-window . t)) alist)))
            'window)))
   (message "Display next command buffer in a new window..."))
 
