@@ -4016,13 +4016,32 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
   (interactive)
   (display-buffer-override-next-command
    (lambda (buffer alist)
-     (cons (or
-            (display-buffer-pop-up-window
-             buffer (append '((inhibit-same-window . t)) alist))
-            (display-buffer-use-some-window
-             buffer (append '((inhibit-same-window . t)) alist)))
-           'window)))
+     (let ((alist (append '((inhibit-same-window . t)) alist))
+           window type)
+       (if (setq window (display-buffer-pop-up-window buffer alist))
+           (setq type 'window)
+         (setq window (display-buffer-use-some-window buffer alist)
+               type 'reuse))
+       (cons window type))))
   (message "Display next command buffer in a new window..."))
+
+(defun same-window-prefix ()
+  "Display the buffer of the next command in the same window.
+The next buffer is the buffer displayed by the next command invoked
+immediately after this command (ignoring reading from the minibuffer).
+Even when the default rule should display the buffer in a new window,
+force its display in the already selected window.
+When `switch-to-buffer-obey-display-actions' is non-nil,
+`switch-to-buffer' commands are also supported."
+  (interactive)
+  (display-buffer-override-next-command
+   (lambda (buffer alist)
+     (setq alist (append '((inhibit-same-window . nil)) alist))
+     (cons (or
+            (display-buffer-same-window buffer alist)
+            (display-buffer-use-some-window buffer alist))
+           'reuse)))
+  (message "Display next command buffer in the same window..."))
 
 ;; This should probably return non-nil when the selected window is part
 ;; of an atomic window whose root is the frame's root window.
@@ -10150,6 +10169,7 @@ displaying that processes's buffer."
 (define-key ctl-x-map "-" 'shrink-window-if-larger-than-buffer)
 (define-key ctl-x-map "+" 'balance-windows)
 (define-key ctl-x-4-map "0" 'kill-buffer-and-window)
+(define-key ctl-x-4-map "1" 'same-window-prefix)
 (define-key ctl-x-4-map "4" 'other-window-prefix)
 
 ;;; window.el ends here
