@@ -748,13 +748,7 @@ or an empty string if none."
 	  (when (string-match "\\([^\n]+\\)" remote)
 	    (setq remote (match-string 1 remote)))
 	  (when remote
-	    (setq remote-url
-		  (with-output-to-string
-		    (with-current-buffer standard-output
-		      (vc-git--out-ok "config"
-                                      (concat "remote." remote ".url"))))))
-	  (when (string-match "\\([^\n]+\\)" remote-url)
-	    (setq remote-url (match-string 1 remote-url))))
+	    (setq remote-url (vc-git-repository-url dir remote))))
       (setq branch "not (detached HEAD)"))
     (when stash-list
       (let* ((len (length stash-list))
@@ -821,10 +815,10 @@ or an empty string if none."
      (when (file-exists-p (expand-file-name ".git/rebase-apply" (vc-git-root dir)))
        (propertize  "\nRebase     : in progress" 'face 'font-lock-warning-face))
      (if stash-list
-       (concat
-        (propertize "\nStash      : " 'face 'font-lock-type-face)
-        stash-button
-        stash-string)
+         (concat
+          (propertize "\nStash      : " 'face 'font-lock-type-face)
+          stash-button
+          stash-string)
        (concat
 	(propertize "\nStash      : " 'face 'font-lock-type-face)
 	(propertize "Nothing stashed"
@@ -1083,10 +1077,11 @@ This prompts for a branch to merge from."
                                 "DU" "AA" "UU"))
             (push (expand-file-name file directory) files)))))))
 
-(defun vc-git-repository-url (file-or-dir)
+(defun vc-git-repository-url (file-or-dir &optional remote-name)
   (let ((default-directory (vc-git-root file-or-dir)))
     (with-temp-buffer
-      (vc-git-command (current-buffer) 0 nil "remote" "get-url" "origin")
+      (vc-git-command (current-buffer) 0 nil "remote" "get-url"
+                      (or remote-name "origin"))
       (buffer-substring-no-properties (point-min) (1- (point-max))))))
 
 ;; Everywhere but here, follows vc-git-command, which uses vc-do-command
