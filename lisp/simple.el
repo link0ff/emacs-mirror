@@ -199,7 +199,7 @@ rejected, and the function returns nil."
 	   (and extra-test-inclusive
 		(funcall extra-test-inclusive))))))
 
-(defcustom next-error-find-buffer-function '(ignore)
+(defcustom next-error-find-buffer-function #'ignore
   "Function called to find a `next-error' capable buffer.
 This functions takes the same three arguments as the function
 `next-error-find-buffer', and should return the buffer to be
@@ -208,13 +208,12 @@ and `previous-error'.
 If the function returns nil, `next-error-find-buffer' will
 try to use the buffer it used previously, and failing that
 all other buffers."
-  :type '(repeat
-          (choice (const :tag "No default" ignore)
-                  (const :tag "Single next-error capable buffer on selected frame"
-                         next-error-buffer-on-selected-frame)
-                  (const :tag "Current buffer if next-error capable and outside navigation"
-                         next-error-no-navigation-try-current)
-                  (function :tag "Other function")))
+  :type '(choice (const :tag "No default" ignore)
+                 (const :tag "Single next-error capable buffer on selected frame"
+                        next-error-buffer-on-selected-frame)
+                 (const :tag "Current buffer if next-error capable and outside navigation"
+                        next-error-no-navigation-try-current)
+                 (function :tag "Other function"))
   :group 'next-error
   :version "28.1")
 
@@ -276,13 +275,9 @@ that would normally be considered usable.  If it returns nil,
 that buffer is rejected."
   (or
    ;; 1. If a customizable function returns a buffer, use it.
-   (or (and (functionp next-error-find-buffer-function)
-            (funcall next-error-find-buffer-function avoid-current
-                     extra-test-inclusive extra-test-exclusive))
-       (and (listp next-error-find-buffer-function)
-            (run-hook-with-args-until-success
-             'next-error-find-buffer-function avoid-current
-             extra-test-inclusive extra-test-exclusive)))
+   (funcall next-error-find-buffer-function avoid-current
+                                            extra-test-inclusive
+                                            extra-test-exclusive)
    ;; 2. If next-error-last-buffer is an acceptable buffer, use that.
    (if (and next-error-last-buffer
             (next-error-buffer-p next-error-last-buffer avoid-current
