@@ -212,7 +212,7 @@ all other buffers."
                  (const :tag "Single next-error capable buffer on selected frame"
                         next-error-buffer-on-selected-frame)
                  (const :tag "Current buffer if next-error capable and outside navigation"
-                        next-error-no-navigation-try-current)
+                        next-error-buffer-unnavigated-current)
                  (function :tag "Other function"))
   :group 'next-error
   :version "28.1")
@@ -242,10 +242,9 @@ from which next-error navigated, and a target buffer TO-BUFFER."
     (if (eq (length window-buffers) 1)
         (car window-buffers))))
 
-(defun next-error-no-navigation-try-current (&optional
-                                             avoid-current
-                                             extra-test-inclusive
-                                             extra-test-exclusive)
+(defun next-error-buffer-unnavigated-current (&optional avoid-current
+                                                        extra-test-inclusive
+                                                        extra-test-exclusive)
   "Try the current buffer when outside navigation.
 But return nil if we navigated to the current buffer by the means
 of `next-error' command.  Othewise, return it if it's next-error
