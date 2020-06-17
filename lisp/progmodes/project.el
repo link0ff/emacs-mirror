@@ -306,7 +306,7 @@ backend implementation of `project-external-roots'.")
                     (if (and
                          ;; FIXME: Invalidate the cache when the value
                          ;; of this variable changes.
-                         project-vc-merge-submodules
+                         (project--vc-merge-submodules-p root)
                          (project--submodule-p root))
                         (let* ((parent (file-name-directory
                                         (directory-file-name root))))
@@ -396,19 +396,20 @@ backend implementation of `project-external-roots'.")
               (split-string
                (apply #'vc-git--run-command-string nil "ls-files" args)
                "\0" t)))
-       ;; Unfortunately, 'ls-files --recurse-submodules' conflicts with '-o'.
-       (let* ((submodules (project--git-submodules))
-              (sub-files
-               (mapcar
-                (lambda (module)
-                  (when (file-directory-p module)
-                    (project--vc-list-files
-                     (concat default-directory module)
-                     backend
-                     extra-ignores)))
-                submodules)))
-         (setq files
-               (apply #'nconc files sub-files)))
+       (when (project--vc-merge-submodules-p default-directory)
+         ;; Unfortunately, 'ls-files --recurse-submodules' conflicts with '-o'.
+         (let* ((submodules (project--git-submodules))
+                (sub-files
+                 (mapcar
+                  (lambda (module)
+                    (when (file-directory-p module)
+                      (project--vc-list-files
+                       (concat default-directory module)
+                       backend
+                       extra-ignores)))
+                  submodules)))
+           (setq files
+                 (apply #'nconc files sub-files))))
        ;; 'git ls-files' returns duplicate entries for merge conflicts.
        ;; XXX: Better solutions welcome, but this seems cheap enough.
        (delete-consecutive-dups files)))
@@ -428,6 +429,11 @@ backend implementation of `project-external-roots'.")
          (mapcar
           (lambda (s) (concat default-directory s))
           (split-string (buffer-string) "\0" t)))))))
+
+(defun project--vc-merge-submodules-p (dir)
+  (project--value-in-dir
+   'project-vc-merge-submodules
+   dir))
 
 (defun project--git-submodules ()
   ;; 'git submodule foreach' is much slower.
@@ -483,6 +489,27 @@ whose is already in the list."
 DIRS must contain directory names."
   ;; Sidestep the issue of expanded/abbreviated file names here.
   (cl-set-difference files dirs :test #'file-in-directory-p))
+
+
+;;; Project commands
+
+;;;###autoload
+(defvar project-prefix-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "f" 'project-find-file)
+    (define-key map "b" 'project-switch-to-buffer)
+    (define-key map "s" 'project-shell)
+    (define-key map "d" 'project-dired)
+    (define-key map "v" 'project-vc-dir)
+    (define-key map "c" 'project-compile)
+    (define-key map "e" 'project-eshell)
+    (define-key map "p" 'project-switch-project)
+    (define-key map "g" 'project-find-regexp)
+    (define-key map "r" 'project-query-replace-regexp)
+    map)
+  "Keymap for project commands.")
+
+;;;###autoload (define-key ctl-x-map "p" project-prefix-map)
 
 (defun project--value-in-dir (var dir)
   (with-temp-buffer
@@ -744,6 +771,19 @@ Arguments the same as in `compile'."
   (let* ((pr (project-current t))
          (default-directory (project-root pr)))
     (compile command comint)))
+
+;;;###autoload
+(defun project-switch-to-buffer ()
+  "Switch to a buffer in the current project."
+  (interactive)
+  (let ((root (project-root (project-current t))))
+    (switch-to-buffer
+     (read-buffer
+      "Switch to buffer: " nil t
+      (lambda (buffer)
+        ;; BUFFER is an entry (BUF-NAME . BUF-OBJ) of Vbuffer_alist.
+        (when-let ((file (buffer-file-name (cdr buffer))))
+          (file-in-directory-p file root)))))))
 
 
 ;;; Project list
