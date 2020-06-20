@@ -897,6 +897,12 @@ It's also possible to enter an arbitrary directory."
         (read-directory-name "Select directory: " default-directory nil t)
       pr-dir)))
 
+;;;###autoload
+(defun project-vc-list ()
+  "Return a list of VC-based projects."
+  (project--ensure-read-project-list)
+  (seq-filter #'project-try-vc (mapcar #'car project--list)))
+
 
 ;;; Project switching
 

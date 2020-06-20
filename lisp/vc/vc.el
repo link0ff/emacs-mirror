@@ -2559,7 +2559,8 @@ with its diffs (if the underlying VCS supports that)."
 	 rootdir)
     (if backend
 	(setq rootdir (vc-call-backend backend 'root default-directory))
-      (setq rootdir (read-directory-name "Directory for VC revision log: "))
+      (setq rootdir (read-directory-name "Directory for VC revision log: " nil
+                                         (project-vc-list)))
       (setq backend (vc-responsible-backend rootdir))
       (unless backend
         (error "Directory is not version controlled")))
