@@ -2450,7 +2450,9 @@ Falls back to normal file name handler if no Tramp file name handler exists."
   "Load Tramp file name handler, and perform OPERATION."
   (tramp-unload-file-name-handlers)
   (when tramp-mode
-    (let ((default-directory (tramp-compat-temporary-file-directory)))
+    ;; We cannot use `tramp-compat-temporary-file-directory' here due
+    ;; to autoload.
+    (let ((default-directory temporary-file-directory))
       (load "tramp" 'noerror 'nomessage)))
   (apply operation args)))
 
@@ -4724,18 +4726,21 @@ This handles also chrooted environments, which are not regarded as local."
 	  (tramp-error vec 'file-error "Directory %s not accessible" dir))
       dir)))
 
+(defun tramp-make-tramp-temp-name (vec)
+  "Generate a temporary file name on the remote host identified by VEC."
+  (make-temp-name
+   (expand-file-name tramp-temp-name-prefix (tramp-get-remote-tmpdir vec))))
+
 (defun tramp-make-tramp-temp-file (vec)
   "Create a temporary file on the remote host identified by VEC.
 Return the local name of the temporary file."
-  (let ((prefix (expand-file-name
-		 tramp-temp-name-prefix (tramp-get-remote-tmpdir vec)))
-	result)
+  (let (result)
     (while (not result)
       ;; `make-temp-file' would be the natural choice for
       ;; implementation.  But it calls `write-region' internally,
       ;; which also needs a temporary file - we would end in an
       ;; infinite loop.
-      (setq result (make-temp-name prefix))
+      (setq result (tramp-make-tramp-temp-name vec))
       (if (file-exists-p result)
 	  (setq result nil)
 	;; This creates the file by side effect.
