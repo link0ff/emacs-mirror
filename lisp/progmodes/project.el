@@ -195,7 +195,7 @@ subset of the project root and external roots.
 
 The default implementation uses `find-program'.  PROJECT is used
 to find the list of ignores for each directory."
-  (cl-mapcan
+  (mapcan
    (lambda (dir)
      (project--files-in-directory dir
                                   (project--dir-ignores project dir)))
@@ -351,7 +351,7 @@ backend implementation of `project-external-roots'.")
    (list (project-root project))))
 
 (cl-defmethod project-files ((project (head vc)) &optional dirs)
-  (cl-mapcan
+  (mapcan
    (lambda (dir)
      (let (backend)
        (if (and (file-equal-p dir (cdr project))
@@ -716,8 +716,10 @@ PREDICATE, HIST, and DEFAULT have the same meaning as in
 ;;;###autoload
 (defun project-shell ()
   "Start an inferior shell in the current project's root directory.
-With \\[universal-argument] prefix, create subsequent shell buffers
-with uniquified names."
+If a buffer already exists for running a shell in the project's root,
+switch to it.  Otherwise, create a new shell buffer.
+With \\[universal-argument] prefix arg, create a new inferior shell buffer even
+if one already exist."
   (interactive)
   (let* ((default-directory (project-root (project-current t)))
          (default-project-shell-name
@@ -732,10 +734,22 @@ with uniquified names."
 
 ;;;###autoload
 (defun project-eshell ()
-  "Start Eshell in the current project's root directory."
+  "Start Eshell in the current project's root directory.
+If a buffer already exists for running Eshell in the project's root,
+switch to it.  Otherwise, create a new Eshell buffer.
+With \\[universal-argument] prefix arg, create a new Eshell buffer even
+if one already exist."
   (interactive)
-  (let ((default-directory (project-root (project-current t))))
-    (eshell t)))
+  (let* ((default-directory (project-root (project-current t)))
+         (eshell-buffer-name
+           (concat "*" (file-name-nondirectory
+                        (directory-file-name
+                         (file-name-directory default-directory)))
+                   "-eshell*"))
+         (eshell-buffer (get-buffer eshell-buffer-name)))
+    (if (and eshell-buffer (not current-prefix-arg))
+        (pop-to-buffer eshell-buffer)
+      (eshell t))))
 
 (declare-function fileloop-continue "fileloop" ())
 
