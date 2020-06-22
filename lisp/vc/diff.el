@@ -217,9 +217,6 @@ See `diff' for the meaning of the arguments."
 	(set-marker (process-mark proc) (point)))
       (if moving (goto-char (process-mark proc))))))
 
-(defvar vc-diff-switches)
-(declare-function vc-diff-internal "vc")
-
 ;;;###autoload
 (defun diff-backup (file &optional switches)
   "Diff this file with its backup file or vice versa.
@@ -233,17 +230,10 @@ With prefix arg, prompt for diff switches."
     (if (backup-file-name-p file)
 	(setq bak file
 	      ori (file-name-sans-versions file))
-      (setq bak (diff-latest-backup-file file)
+      (setq bak (or (diff-latest-backup-file file)
+		    (error "No backup found for %s" file))
 	    ori file))
-    (if bak
-        (diff bak ori switches)
-      ;; Fall back to vc-diff
-      (if (vc-backend file)
-          (let ((vc-diff-switches switches))
-            (require 'vc)
-            (vc-diff-internal
-             t (list (vc-backend file) (list file)) nil nil t))
-        (error "No backup found for %s" file)))))
+    (diff bak ori switches)))
 
 ;;;###autoload
 (defun diff-latest-backup-file (fn)
