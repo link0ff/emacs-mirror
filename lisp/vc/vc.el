@@ -2005,7 +2005,8 @@ saving the buffer."
 	  rootdir working-revision)
       (if backend
 	  (setq rootdir (vc-call-backend backend 'root default-directory))
-	(setq rootdir (read-directory-name "Directory for VC root-diff: "))
+	(setq rootdir (read-directory-name "Directory for VC root-diff: "
+                                           nil (vc-known-roots)))
 	(setq backend (vc-responsible-backend rootdir))
 	(if backend
 	    (setq default-directory rootdir)
@@ -2555,8 +2556,8 @@ with its diffs (if the underlying VCS supports that)."
 	 rootdir)
     (if backend
 	(setq rootdir (vc-call-backend backend 'root default-directory))
-      (setq rootdir (read-directory-name "Directory for VC revision log: " nil
-                                         (project-vc-list)))
+      (setq rootdir (read-directory-name "Directory for VC revision log: "
+                                         nil (vc-known-roots)))
       (setq backend (vc-responsible-backend rootdir))
       (unless backend
         (error "Directory is not version controlled")))

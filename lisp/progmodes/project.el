@@ -936,10 +936,10 @@ It's also possible to enter an arbitrary directory not in the list."
       pr-dir)))
 
 ;;;###autoload
-(defun project-vc-list ()
-  "Return a list of VC-based projects."
+(defun project-known-roots ()
+  "Return a list of known project roots."
   (project--ensure-read-project-list)
-  (seq-filter #'project-try-vc (mapcar #'car project--list)))
+  project--list)
 
 
 ;;; Project switching
