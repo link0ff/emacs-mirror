@@ -64,8 +64,8 @@ It was declared obsolete in Emacs 27.1.
 ** Emacs can support 24-bit color TTY without terminfo database.
 If your text-mode terminal supports 24-bit true color, but your system
 lacks the terminfo database, you can instruct Emacs to support 24-bit
-true color by setting COLORTERM=truecolor in the environment.  This is
-useful on systems such as FreeBSD which ships only with 'etc/termcap'.
+true color by setting 'COLORTERM=truecolor' in the environment.  This is
+useful on systems such as FreeBSD which ships only with "etc/termcap".
 
 
 * Changes in Emacs 28.1
@@ -173,11 +173,14 @@ directories with the help of new command 'dired-vc-next-action'.
 
 ** Change Logs and VC
 
-*** More vc commands that don't change VC state can be used from non-file buffers.
-Such non-file buffers should have default-directory under vc.
+*** More VC commands can be used from non-file buffers.
+The relevant commands are those that don't change the VC state.
+The non-file buffers which can use VC commands are those that have
+their 'default-directory' under VC.
 
-*** Typing 'M-n' in the minibuffer that asks for a vc directory in vc commands
-can retrieve directories of previously used vc projects.
+*** 'M-n' now works in minibuffer prompts of VC commands.
+Typing 'M-n' in the minibuffer that prompts for a VC directory in VC
+commands now retrieves directories of previously used VC projects.
 
 *** New command 'vc-dir-root' uses the root directory without asking.
 
@@ -633,7 +636,7 @@ truncating precision field, such as '%.2a'.
 ---
 ** New function 'color-values-from-color-spec'.
 This can be used to parse RGB color specs in several formats and
-convert them to a list (R G B) of primary color values.
+convert them to a list '(R G B)' of primary color values.
 
 
 * Changes in Emacs 28.1 on Non-Free Operating Systems
