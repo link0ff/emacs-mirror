@@ -1078,8 +1078,12 @@ command before it's run."
        (error "grep.el: No `grep-template' available"))
       (t (let* ((regexp (grep-read-regexp))
 		(files (grep-read-files regexp))
-		(dir (read-directory-name "In directory: "
-					  nil default-directory t))
+		(dir (read-directory-name
+                      "In directory: " nil
+                      (if (featurep 'project)
+                          (cons default-directory (project-known-project-roots))
+                        default-directory)
+                      t))
 		(confirm (equal current-prefix-arg '(4))))
 	   (list regexp files dir confirm))))))
   (when (and (stringp regexp) (> (length regexp) 0))
@@ -1166,8 +1170,12 @@ command before it's run."
        (error "grep.el: No `grep-find-template' available"))
       (t (let* ((regexp (grep-read-regexp))
 		(files (grep-read-files regexp))
-		(dir (read-directory-name "Base directory: "
-					  nil default-directory t))
+		(dir (read-directory-name
+                      "Base directory: " nil
+                      (if (featurep 'project)
+                          (cons default-directory (project-known-project-roots))
+                        default-directory)
+                      t))
 		(confirm (equal current-prefix-arg '(4))))
 	   (list regexp files dir confirm))))))
   (when (and (stringp regexp) (> (length regexp) 0))
@@ -1297,8 +1305,12 @@ command before it's run."
 	 (error "grep.el: No `grep-find-template' available"))
 	(t (let* ((regexp (grep-read-regexp))
 		  (files (grep-read-files regexp))
-		  (dir (read-directory-name "Base directory: "
-					    nil default-directory t))
+		  (dir (read-directory-name
+                        "Base directory: " nil
+                        (if (featurep 'project)
+                            (cons default-directory (project-known-project-roots))
+                          default-directory)
+                        t))
 		  (confirm (equal current-prefix-arg '(4))))
 	     (list regexp files dir confirm grep-find-template)))))))
   (let ((grep-find-template template)
