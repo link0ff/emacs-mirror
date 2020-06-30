@@ -262,7 +262,7 @@ command invoked immediately after this prefix command.  It requests
 the buffer of the next command to be displayed in another window.
 
 @item C-x 4 1
-Another general prefix command requests the buffer of the next command
+This general prefix command requests the buffer of the next command
 to be displayed in the same window.
 @end table
 
