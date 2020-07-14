@@ -775,7 +775,7 @@ The character information includes:
                                     (setq glyph (lgstring-glyph gstring from)))
                           (insert (format "  %S\n" glyph))
                           (setq from (1+ from)))
-                        (insert "from these character(s):\n")
+                        (insert "from these characters:\n")
                         (dotimes (i (lgstring-char-len gstring))
                           (let ((char (lgstring-char gstring i)))
                             (insert (format "  %c (#x%x) %s\n"
@@ -950,7 +950,7 @@ This function can be used as a value of
       ;; instead of returning a string tailored here for the echo area
       ;; exclusively, we could call the (now unused) argument
       ;; _CALLBACK with hints on how to shorten the string if needed,
-      ;; or with multiple usable strings which Eldoc picks according
+      ;; or with multiple usable strings which ElDoc picks according
       ;; to its space contraints.
       (describe-char-eldoc--format
        ch
