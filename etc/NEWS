@@ -213,6 +213,10 @@ The names of the commands 'gnus-slave', 'gnus-slave-no-server' and
 'gnus-slave-unplugged' have changed to 'gnus-child',
 'gnus-child-no-server' and 'gnus-child-unplugged' respectively.
 
++++
+*** The 'W Q' summary mode command now takes a numerical prefix to
+allow adjusting the fill width.
+
 ---
 *** Change to default value of 'message-draft-headers' user option.
 The 'Date' symbol has been removed from the default value, meaning that
@@ -685,6 +689,12 @@ after the process has been created, or pass in ':coding '(nil nil)'.
 This allows specifying the coding systems used by a network process
 for encoding and decoding without having to bind
 'coding-system-for-{read,write}' or call 'set-process-coding-system'.
+
++++
+** 'open-network-stream' can now take a :capability-command that's a function.
+The function is called with the greeting from the server as its only
+parameter, and allows sending different TLS capability commands to the
+server based on that greeting.
 
 +++
 ** 'open-gnutls-stream' now also accepts a ':coding' argument.
