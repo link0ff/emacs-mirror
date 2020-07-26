@@ -78,6 +78,7 @@ To add a new module function, proceed as follows:
 #include "emacs-module.h"
 
 #include <stdarg.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -189,7 +190,7 @@ struct emacs_runtime_private
 /* Forward declarations.  */
 
 static Lisp_Object value_to_lisp (emacs_value);
-static emacs_value allocate_emacs_value (emacs_env *, struct emacs_value_storage *, Lisp_Object);
+static emacs_value allocate_emacs_value (emacs_env *, Lisp_Object);
 static emacs_value lisp_to_value (emacs_env *, Lisp_Object);
 static enum emacs_funcall_exit module_non_local_exit_check (emacs_env *);
 static void module_assert_thread (void);
@@ -400,6 +401,28 @@ XMODULE_GLOBAL_REFERENCE (Lisp_Object o)
   return XUNTAG (o, Lisp_Vectorlike, struct module_global_reference);
 }
 
+/* Returns whether V is a global reference.  Only used to check module
+   assertions.  If V is not a global reference, increment *N by the
+   number of global references (for debugging output).  */
+
+static bool
+module_global_reference_p (emacs_value v, ptrdiff_t *n)
+{
+  struct Lisp_Hash_Table *h = XHASH_TABLE (Vmodule_refs_hash);
+  /* Note that we can't use `hash_lookup' because V might be a local
+     reference that's identical to some global reference.  */
+  for (ptrdiff_t i = 0; i < HASH_TABLE_SIZE (h); ++i)
+    {
+      if (!EQ (HASH_KEY (h, i), Qunbound)
+          && &XMODULE_GLOBAL_REFERENCE (HASH_VALUE (h, i))->value == v)
+        return true;
+    }
+  /* Only used for debugging, so we don't care about overflow, just
+     make sure the operation is defined.  */
+  INT_ADD_WRAPV (*n, h->count, n);
+  return false;
+}
+
 static emacs_value
 module_make_global_ref (emacs_env *env, emacs_value value)
 {
@@ -445,6 +468,14 @@ module_free_global_ref (emacs_env *env, emacs_value global_value)
   Lisp_Object obj = value_to_lisp (global_value);
   ptrdiff_t i = hash_lookup (h, obj, NULL);
 
+  if (module_assertions)
+    {
+      ptrdiff_t n = 0;
+      if (! module_global_reference_p (global_value, &n))
+        module_abort ("Global value was not found in list of %"pD"d globals",
+                      n);
+    }
+
   if (i >= 0)
     {
       Lisp_Object value = HASH_VALUE (h, i);
@@ -452,11 +483,6 @@ module_free_global_ref (emacs_env *env, emacs_value global_value)
       eassert (0 < ref->refcount);
       if (--ref->refcount == 0)
         hash_remove_from_table (h, obj);
-    }
-  else if (module_assertions)
-    {
-      module_abort ("Global value was not found in list of %"pD"d globals",
-                    h->count);
     }
 }
 
@@ -1277,10 +1303,8 @@ value_to_lisp (emacs_value v)
           ++num_environments;
         }
       /* Also check global values.  */
-      struct Lisp_Hash_Table *h = XHASH_TABLE (Vmodule_refs_hash);
-      if (hash_lookup (h, v->v, NULL) != -1)
+      if (module_global_reference_p (v, &num_values))
         goto ok;
-      INT_ADD_WRAPV (num_values, h->count, &num_values);
       module_abort (("Emacs value not found in %"pD"d values "
 		     "of %"pD"d environments"),
                     num_values, num_environments);
@@ -1297,7 +1321,7 @@ lisp_to_value (emacs_env *env, Lisp_Object o)
   struct emacs_env_private *p = env->private_members;
   if (p->pending_non_local_exit != emacs_funcall_exit_return)
     return NULL;
-  return allocate_emacs_value (env, &p->storage, o);
+  return allocate_emacs_value (env, o);
 }
 
 /* Must be called for each frame before it can be used for allocation.  */
@@ -1334,9 +1358,9 @@ finalize_storage (struct emacs_value_storage *storage)
 /* Allocate a new value from STORAGE and stores OBJ in it.  Return
    NULL if allocation fails and use ENV for non local exit reporting.  */
 static emacs_value
-allocate_emacs_value (emacs_env *env, struct emacs_value_storage *storage,
-		      Lisp_Object obj)
+allocate_emacs_value (emacs_env *env, Lisp_Object obj)
 {
+  struct emacs_value_storage *storage = &env->private_members->storage;
   eassert (storage->current);
   eassert (storage->current->offset < value_frame_size);
   eassert (! storage->current->next);
