@@ -1947,6 +1947,9 @@ resize_string_data (Lisp_Object string, ptrdiff_t cidx_byte,
       /* No need to reallocate, as the size change falls within the
 	 alignment slop.  */
       XSTRING (string)->u.s.size_byte = new_nbytes;
+#ifdef GC_CHECK_STRING_BYTES
+      SDATA_NBYTES (old_sdata) = new_nbytes;
+#endif
       new_charaddr = data + cidx_byte;
       memmove (new_charaddr + new_clen, new_charaddr + clen,
 	       nbytes - (cidx_byte + (clen - 1)));
@@ -4638,7 +4641,16 @@ mark_maybe_object (Lisp_Object obj)
       break;
     }
 
-  void *po = (char *) XLP (obj) + (offset - LISP_WORD_TAG (type_tag));
+  bool overflow
+    = INT_SUBTRACT_WRAPV (offset, LISP_WORD_TAG (type_tag), &offset);
+#if !defined WIDE_EMACS_INT || USE_LSB_TAG
+  /* If we don't use wide integers, then `intptr_t' should always be
+     large enough to not overflow.  Furthermore, when using the least
+     significant bits as tag bits, the tag is small enough to not
+     overflow either.  */
+  eassert (!overflow);
+#endif
+  void *po = (char *) ((intptr_t) (char *) XLP (obj) + offset);
 
   /* If the pointer is in the dump image and the dump has a record
      of the object starting at the place where the pointer points, we
@@ -4849,7 +4861,7 @@ mark_memory (void const *start, void const *end)
 	 On a host with 32-bit pointers and 64-bit Lisp_Objects,
 	 a Lisp_Object might be split into registers saved into
 	 non-adjacent words and P might be the low-order word's value.  */
-      p += (intptr_t) lispsym;
+      p = (char *) ((intptr_t) p + (intptr_t) lispsym);
       mark_maybe_pointer (p);
 
       verify (alignof (Lisp_Object) % GC_POINTER_ALIGNMENT == 0);
