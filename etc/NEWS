@@ -207,6 +207,12 @@ Bookmark locations can refer to VC directory buffers.
 
 ** Gnus
 
+---
+*** The value of "all" in the 'large-newsgroup-initial' group parameter changes.
+It was previously nil, which didn't work, because nil is
+indistinguishable from not being present.  The new value for "all" is
+the symbol 'all'.
+
 +++
 *** The name of dependent Gnus sessions has changed from "slave" to "child".
 The names of the commands 'gnus-slave', 'gnus-slave-no-server' and
@@ -224,6 +230,12 @@ draft or delayed messages will get a date reflecting when the message
 was sent.  To restore the original behavior of dating a message
 from when it is first saved or delayed, add the symbol 'Date' back to
 this user option.
+
++++
+*** New variable 'mm-inline-font-lock'.
+This variable is supposed to be bound by callers to determine whether
+inline MIME parts (that support it) are supposed to be font-locked or
+not.
 
 ** Help
 
@@ -253,6 +265,10 @@ To revert to the previous behaviour,
 *** Edebug specification lists can use the new keyword '&error', which
 unconditionally aborts the current edebug instrumentation with the
 supplied error message.
+
+*** Edebug specification lists can use the new keyword ':unique',
+which appends a unique suffix to the Edebug name of the current
+definition.
 
 +++
 ** ElDoc

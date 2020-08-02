@@ -4649,8 +4649,11 @@ mark_maybe_object (Lisp_Object obj)
      significant bits as tag bits, the tag is small enough to not
      overflow either.  */
   eassert (!overflow);
+#else
+  (void) overflow;
 #endif
-  void *po = (char *) ((intptr_t) (char *) XLP (obj) + offset);
+  INT_ADD_WRAPV (offset, (intptr_t) (char *) XLP (obj), &offset);
+  void *po = (char *) offset;
 
   /* If the pointer is in the dump image and the dump has a record
      of the object starting at the place where the pointer points, we
@@ -4861,7 +4864,7 @@ mark_memory (void const *start, void const *end)
 	 On a host with 32-bit pointers and 64-bit Lisp_Objects,
 	 a Lisp_Object might be split into registers saved into
 	 non-adjacent words and P might be the low-order word's value.  */
-      p = (char *) ((intptr_t) p + (intptr_t) lispsym);
+      p = (char *) ((uintptr_t) p + (uintptr_t) lispsym);
       mark_maybe_pointer (p);
 
       verify (alignof (Lisp_Object) % GC_POINTER_ALIGNMENT == 0);
