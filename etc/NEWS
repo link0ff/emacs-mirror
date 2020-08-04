@@ -59,6 +59,11 @@ shaping, so 'configure' now recommends that combination.
 It was declared obsolete in Emacs 27.1.
 
 ---
+** Support for building with '-fcheck-pointer-bounds' has been removed.
+GCC has withdrawn the '-fcheck-pointer-bounds' option and support for
+its implementation has been removed from the Linux kernel.
+
+---
 ** Emacs no longer supports old OpenBSD systems.
 OpenBSD 5.3 and older releases are no longer supported, as they lack
 proper pty support that Emacs needs.
@@ -323,6 +328,16 @@ like cell phones, tablets or cameras.
 This command marks a remote directory to contain only encrypted files.
 See the "(tramp) Keeping files encrypted" node of the Tramp manual for
 details.  This feature is experimental.
+
++++
+*** Support of direct asynchronous process invocation.
+When Tramp connection property "direct-async-process" is set to
+non-nil for a given connection, 'make-process' and 'start-file-process'
+calls are performed directly as in "ssh ... <command>".  This avoids
+initialization performance penalties.  See the "(tramp) Improving
+performance of asynchronous remote processes" node of the Tramp manual
+for details, and also for a discussion or restrictions.  This feature
+is experimental.
 
 ** Tempo
 
