@@ -228,6 +228,14 @@ The names of the commands 'gnus-slave', 'gnus-slave-no-server' and
 *** The 'W Q' summary mode command now takes a numerical prefix to
 allow adjusting the fill width.
 
++++
+*** New variable 'mm-inline-font-lock'.
+This variable is supposed to be bound by callers to determine whether
+inline MIME parts (that support it) are supposed to be font-locked or
+not.
+
+** Message
+
 ---
 *** Change to default value of 'message-draft-headers' user option.
 The 'Date' symbol has been removed from the default value, meaning that
@@ -237,10 +245,10 @@ from when it is first saved or delayed, add the symbol 'Date' back to
 this user option.
 
 +++
-*** New variable 'mm-inline-font-lock'.
-This variable is supposed to be bound by callers to determine whether
-inline MIME parts (that support it) are supposed to be font-locked or
-not.
+*** New command to take screenshots.
+In Message mode buffers, the 'C-c C-p' ('message-insert-screenshot')
+command has been added.  It depends on using an external program to
+take the actual screenshot, and defaults to ImageMagick "import".
 
 ** Help
 
@@ -590,6 +598,12 @@ Previously 'xml-print' would produce invalid XML when given a string
 with characters that are not valid in XML (see
 https://www.w3.org/TR/xml/#charsets).  Now it rejects such strings.
 
+** erc
+
+---
+*** The /ignore command will now ask for a timeout to stop ignoring the user.
+Allowed inputs are seconds or ISO8601-like periods like "1h" or "4h30m".
+
 ** Battery
 
 ---
@@ -730,6 +744,11 @@ optional argument specifying whether to follow symbolic links.
 
 ** 'parse-time-string' can now parse ISO 8601 format strings,
 such as "2020-01-15T16:12:21-08:00".
+
+---
+** The new function 'decoded-time-period' has been added.
+It interprets a decoded time structure as a period and returns the
+equivalent period in seconds.
 
 +++
 ** The new function 'dom-remove-attribute' has been added.
