@@ -6998,15 +6998,28 @@ want to get rid of this query permanently.")))
 
       ;; Build the header alist.  Allow the user to be asked whether
       ;; or not to reply to all recipients in a wide reply.
-      (setq follow-to (list (cons 'To (cdr (pop recipients)))))
-      (when (and recipients
-		 (or (not message-wide-reply-confirm-recipients)
-		     (y-or-n-p "Reply to all recipients? ")))
-	(setq recipients (mapconcat
-			  (lambda (addr) (cdr addr)) recipients ", "))
-	(if (string-match "^ +" recipients)
-	    (setq recipients (substring recipients (match-end 0))))
-	(push (cons 'Cc recipients) follow-to)))
+      (when (or (< (length recipients) 2)
+		(not message-wide-reply-confirm-recipients)
+		(y-or-n-p "Reply to all recipients? "))
+	(if never-mct
+	    ;; The author has requested never to get a (wide)
+	    ;; response, so put everybody else into the To header.
+	    ;; This avoids looking as if we're To-in somebody else in
+	    ;; specific, and just Cc-in the rest.
+	    (setq follow-to (list
+			     (cons 'To
+				   (mapconcat
+				    (lambda (addr)
+				      (cdr addr)) recipients ", "))))
+	  ;; Put the first recipient in the To header.
+	  (setq follow-to (list (cons 'To (cdr (pop recipients)))))
+	  ;; Put the rest of the recipients in Cc.
+	  (when recipients
+	    (setq recipients (mapconcat
+			      (lambda (addr) (cdr addr)) recipients ", "))
+	    (if (string-match "^ +" recipients)
+		(setq recipients (substring recipients (match-end 0))))
+	    (push (cons 'Cc recipients) follow-to)))))
     follow-to))
 
 (defun message-prune-recipients (recipients)
@@ -8696,7 +8709,7 @@ used to take the screenshot."
 		   :max-width (truncate (* (frame-pixel-width) 0.8))
 		   :max-height (truncate (* (frame-pixel-height) 0.8))
 		   :scale 1)
-     (format "<#part type=\"image/png\" disposition=inline content-transfer-encoding=base64 raw=t>\n%s\n<#/part>"
+     (format "<#part type=\"image/png\" disposition=inline data-encoding=base64 raw=t>\n%s\n<#/part>"
 	     ;; Get a base64 version of the image -- this avoids later
 	     ;; complications if we're auto-saving the buffer and
 	     ;; restoring from a file.
@@ -8707,6 +8720,63 @@ used to take the screenshot."
 	       (buffer-string))))
     (insert "\n\n")
     (message "")))
+
+(declare-function gnus-url-unhex-string "gnus-util")
+
+(defun message-parse-mailto-url (url)
+  "Parse a mailto: url."
+  (setq url (replace-regexp-in-string "\n" " " url))
+  (when (string-match "mailto:/*\\(.*\\)" url)
+    (setq url (substring url (match-beginning 1) nil)))
+  (setq url (if (string-match "^\\?" url)
+		(substring url 1)
+	      (if (string-match "^\\([^?]+\\)\\?\\(.*\\)" url)
+		  (concat "to=" (match-string 1 url) "&"
+			  (match-string 2 url))
+		(concat "to=" url))))
+  (let (retval pairs cur key val)
+    (setq pairs (split-string url "&"))
+    (while pairs
+      (setq cur (car pairs)
+	    pairs (cdr pairs))
+      (if (not (string-match "=" cur))
+	  nil                           ; Grace
+	(setq key (downcase (gnus-url-unhex-string
+			     (substring cur 0 (match-beginning 0))))
+	      val (gnus-url-unhex-string (substring cur (match-end 0) nil) t))
+	(setq cur (assoc key retval))
+	(if cur
+	    (setcdr cur (cons val (cdr cur)))
+	  (setq retval (cons (list key val) retval)))))
+    retval))
+
+;;;###autoload
+(defun message-mailto ()
+  "Function to be run to parse command line mailto: links.
+This is meant to be used for MIME handlers: Setting the handler
+for \"x-scheme-handler/mailto;\" to \"emacs -fn message-mailto %u\"
+will then start up Emacs ready to compose mail."
+  (interactive)
+  ;; <a href="mailto:someone@example.com?subject=This%20is%20the%20subject&cc=someone_else@example.com&body=This%20is%20the%20body">Send email</a>
+  (message-mail)
+  (message-mailto-1 (car command-line-args-left))
+  (setq command-line-args-left (cdr command-line-args-left)))
+
+(defun message-mailto-1 (url)
+  (let ((args (message-parse-mailto-url url)))
+    (dolist (arg args)
+      (unless (equal (car arg) "body")
+	(message-position-on-field (capitalize (car arg)))
+	(insert (replace-regexp-in-string
+		 "\r\n" "\n"
+		 (mapconcat #'identity (reverse (cdr arg)) ", ") nil t))))
+    (when (assoc "body" args)
+      (message-goto-body)
+      (dolist (body (cdr (assoc "body" args)))
+	(insert body "\n")))
+    (if (assoc "subject" args)
+	(message-goto-body)
+      (message-goto-subject))))
 
 (provide 'message)
 

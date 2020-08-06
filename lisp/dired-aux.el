@@ -1014,8 +1014,8 @@ To undo the killing, the undo command can be used as normally."
 (defvar dired-compress-file-suffixes
   '(
     ;; "tar -zxf" isn't used because it's not available on the
-    ;; Solaris10 version of tar. Solaris10 becomes obsolete in 2021.
-    ;; Same thing on AIX 7.1.
+    ;; Solaris 10 version of tar (obsolete in 2024?).
+    ;; Same thing on AIX 7.1 (obsolete 2023?) and 7.2 (obsolete 2022?).
     ("\\.tar\\.gz\\'" "" "gzip -dc %i | tar -xf -")
     ("\\.tgz\\'" "" "gzip -dc %i | tar -xf -")
     ("\\.gz\\'" "" "gunzip")
@@ -1978,6 +1978,10 @@ Optional arg HOW-TO determines how to treat the target.
 	(apply (car into-dir) operation rfn-list fn-list target (cdr into-dir))
       (if (not (or dired-one-file into-dir))
 	  (error "Marked %s: target must be a directory: %s" operation target))
+      (if (and (not (file-directory-p (car fn-list)))
+               (not (file-directory-p target))
+               (directory-name-p target))
+          (error "%s: Target directory does not exist: %s" operation target))
       ;; rename-file bombs when moving directories unless we do this:
       (or into-dir (setq target (directory-file-name target)))
       (dired-create-files

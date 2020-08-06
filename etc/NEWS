@@ -237,6 +237,26 @@ not.
 ** Message
 
 ---
+*** A change to how Mail-Copies-To: never is handled.
+If a user has specified Mail-Copies-To: never, and Message was asked
+to do a "wide reply", some other arbitrary recipient would end up in
+the resulting To header, while the remaining recipients would be put
+in the Cc header.  This is somewhat misleading, as it looks like
+you're responding to a specific person in particular.  This has been
+changed so that all the recipients are put in the To header in these
+instances.
+
++++
+*** New function to start Emacs in Message mode to send an email.
+Emacs can be defined as a handler for the "x-scheme-handler/mailto"
+MIME type with the following command: "emacs -f message-mailto %u".
+An emacs-mail.desktop file has been included, suitable for installing
+in desktop directories like /usr/share/applications.  Clicking on a
+mailto: link in other applications will then open Emacs with headers
+filled out according to the link, e.g.
+"mailto:larsi@gnus.org?subject=This+is+a+test".
+
+---
 *** Change to default value of 'message-draft-headers' user option.
 The 'Date' symbol has been removed from the default value, meaning that
 draft or delayed messages will get a date reflecting when the message
@@ -538,6 +558,15 @@ took more than two seconds to display.  The new algorithm maintains a
 decaying average of delays, and if this number gets too high, the
 animation is stopped.
 
++++
+*** The 'n' and 'p' commands (next/previous image) now respects dired order.
+These commands would previously display the next/previous image in
+alphabetical order, but will now find the "parent" dired buffer and
+select the next/previous image file according to how the files are
+sorted there.  The commands have also been extended to work when the
+"parent" buffer is an archive mode (i.e., zip file or the like) or tar
+mode buffer.
+
 ** EWW
 
 +++
@@ -639,6 +668,13 @@ network in rcirc and ERC buffers.  All mechanisms are extensible with
 custom rules, see the variables 'bug-reference-setup-from-vc-alist',
 'bug-reference-setup-from-mail-alist', and
 'bug-reference-setup-from-irc-alist'.
+
+** HTML Mode
+
+---
+*** A new skeleton for adding relative URLs has been added.
+It's bound to the 'C-c C-c f' keystroke, and prompts for a local file
+name.
 
 
 * New Modes and Packages in Emacs 28.1
