@@ -80,6 +80,13 @@ useful on systems such as FreeBSD which ships only with "etc/termcap".
 
 * Changes in Emacs 28.1
 
++++
+** New variables that hold default buffer names for shell output.
+The new constants 'shell-command-buffer-name' and
+'shell-command-buffer-name-async' store the default buffer names
+for the output of, respectively, synchronous and async shell
+commands.
+
 ** Support for '(box . SIZE)' 'cursor-type'.
 By default, 'box' cursor always has a filled box shape.  But if you
 specify 'cursor-type' to be '(box . SIZE)', the cursor becomes a hollow
@@ -194,6 +201,14 @@ The presence of a space between an open paren and a symbol now is
 taken as a statement by the programmer that this should be indented
 as a data list rather than as a piece of code.
 
+** Calendar
+
++++
+*** New variable 'calendar-use-numeric-time-zones' to use numeric time zones.
+If non-nil, functions that display time zones (like the 'S' command in
+calendar mode that displays the sunrise time) will display time zones
+like "+0100" instead of "CET".
+
 ** Dired
 
 *** New user option 'dired-mark-region' affects all Dired commands
@@ -219,6 +234,15 @@ their 'default-directory' under VC.
 
 *** Support for bookmark.el.
 Bookmark locations can refer to VC directory buffers.
+
+---
+*** New user option 'vc-hg-create-bookmark'.
+It controls whether a bookmark or branch will be created when you
+invoke 'C-u C-x v s' ('vc-create-tag').
+
+---
+*** 'vc-hg' now uses 'hg summary' to populate extra 'vc-dir' headers.
+
 
 ** Gnus
 
@@ -249,7 +273,7 @@ not.
 +++
 *** Message now supports the OpenPGP header.
 To generate these headers, add the new function
-'messasge-add-openpgp-header' to 'message-send-hook'.  The header will
+'message-add-openpgp-header' to 'message-send-hook'.  The header will
 be generated according to the new 'message-openpgp-header' variable.
 
 ---
@@ -597,6 +621,12 @@ mode buffer.
 ** EWW
 
 +++
+*** New Emacs command line convenience function.
+The 'eww-browse' command has been added, which allows you to register
+Emacs as a MIME handler for "text/x-uri", and will call eww on the
+supplied URL.  Usage example: emacs -f eww-browse https://gnu.org
+
++++
 *** 'eww-download-directory' will now use the XDG location, if defined.
 However, if "~/Downloads/" already exists, that will continue to be
 used.
@@ -709,6 +739,10 @@ The recentf files are no longer backed up.
 
 
 ** Miscellaneous
+
+*** The new library hierarchy.el has been added.
+It's a library to create, query, navigate and display hierarchy
+structures.
 
 ---
 *** The width of the buffer-name column in 'list-buffers' is now dynamic.

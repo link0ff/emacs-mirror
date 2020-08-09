@@ -2763,7 +2763,7 @@ will not be inserted."
 			(const "signencrypt" :tag "Sign and Encrypt"))))
   :version "28.1")
 
-(defun messasge-add-openpgp-header ()
+(defun message-add-openpgp-header ()
   "Add OpenPGP header to point to public key.
 
 Header will be constructed as specified in `message-openpgp-header'.
@@ -8810,15 +8810,14 @@ used to take the screenshot."
 
 ;;;###autoload
 (defun message-mailto ()
-  "Function to be run to parse command line mailto: links.
+  "Command to parse command line mailto: links.
 This is meant to be used for MIME handlers: Setting the handler
-for \"x-scheme-handler/mailto;\" to \"emacs -fn message-mailto %u\"
+for \"x-scheme-handler/mailto;\" to \"emacs -f message-mailto %u\"
 will then start up Emacs ready to compose mail."
   (interactive)
   ;; <a href="mailto:someone@example.com?subject=This%20is%20the%20subject&cc=someone_else@example.com&body=This%20is%20the%20body">Send email</a>
   (message-mail)
-  (message-mailto-1 (car command-line-args-left))
-  (setq command-line-args-left (cdr command-line-args-left)))
+  (message-mailto-1 (pop command-line-args-left)))
 
 (defun message-mailto-1 (url)
   (let ((args (message-parse-mailto-url url)))
