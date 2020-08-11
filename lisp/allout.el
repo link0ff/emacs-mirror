@@ -2484,20 +2484,16 @@ Outermost is first."
              (allout-back-to-current-heading)
              (allout-end-of-current-line))
             (t
-             (if (not (allout-mark-active-p))
+             (if (not mark-active)
                  (push-mark))
              (allout-end-of-entry))))))
+
 ;;;_   > allout-mark-active-p ()
 (defun allout-mark-active-p ()
   "True if the mark is currently or always active."
-  ;; `(cond (boundp...))' (or `(if ...)') invokes special byte-compiler
-  ;; provisions, at least in GNU Emacs to prevent warnings about lack of,
-  ;; eg, region-active-p.
-  (cond ((boundp 'mark-active)
-         mark-active)
-        ((fboundp 'region-active-p)
-         (region-active-p))
-        (t)))
+  (declare (obsolete nil "28.1"))
+  mark-active)
+
 ;;;_   > allout-next-heading ()
 (defsubst allout-next-heading ()
   "Move to the heading for the topic (possibly invisible) after this one.
@@ -5452,11 +5448,9 @@ header and body.  The elements of that list are:
 				 (cdr format)))))))
       ;; Put the list with first at front, to last at back:
       (nreverse result))))
-;;;_   > allout-region-active-p ()
-(defmacro allout-region-active-p ()
-  (cond ((fboundp 'use-region-p) '(use-region-p))
-        ((fboundp 'region-active-p) '(region-active-p))
-        (t 'mark-active)))
+
+(define-obsolete-function-alias 'allout-region-active-p 'region-active-p "28.1")
+
 ;;_   > allout-process-exposed (&optional func from to frombuf
 ;;;					    tobuf format)
 (defun allout-process-exposed (&optional func from to frombuf tobuf
@@ -5489,7 +5483,7 @@ Defaults:
 					; defaulting if necessary:
   (if (not func) (setq func 'allout-insert-listified))
   (if (not (and from to))
-      (if (allout-region-active-p)
+      (if (region-active-p)
 	  (setq from (region-beginning) to (region-end))
 	(setq from (point-min) to (point-max))))
   (if frombuf
