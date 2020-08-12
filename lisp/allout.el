@@ -410,8 +410,7 @@ where auto-fill occurs."
   :group 'allout)
 (make-variable-buffer-local 'allout-use-hanging-indents)
 ;;;###autoload
-(put 'allout-use-hanging-indents 'safe-local-variable
-     (if (fboundp 'booleanp) 'booleanp (lambda (x) (member x '(t nil)))))
+(put 'allout-use-hanging-indents 'safe-local-variable 'booleanp)
 ;;;_  = allout-reindent-bodies
 (defcustom allout-reindent-bodies (if allout-use-hanging-indents
 				    'text)
@@ -440,8 +439,7 @@ just the header."
   :group 'allout)
 (make-variable-buffer-local 'allout-show-bodies)
 ;;;###autoload
-(put 'allout-show-bodies 'safe-local-variable
-     (if (fboundp 'booleanp) 'booleanp (lambda (x) (member x '(t nil)))))
+(put 'allout-show-bodies 'safe-local-variable 'booleanp)
 
 ;;;_  = allout-beginning-of-line-cycles
 (defcustom allout-beginning-of-line-cycles t
@@ -662,8 +660,7 @@ are always respected by the topic maneuvering functions."
   :group 'allout)
 (make-variable-buffer-local 'allout-old-style-prefixes)
 ;;;###autoload
-(put 'allout-old-style-prefixes 'safe-local-variable
-     (if (fboundp 'booleanp) 'booleanp (lambda (x) (member x '(t nil)))))
+(put 'allout-old-style-prefixes 'safe-local-variable 'booleanp)
 ;;;_  = allout-stylish-prefixes -- alternating bullets
 (defcustom allout-stylish-prefixes t
   "Do fancy stuff with topic prefix bullets according to level, etc.
@@ -711,8 +708,7 @@ is non-nil."
   :group 'allout)
 (make-variable-buffer-local 'allout-stylish-prefixes)
 ;;;###autoload
-(put 'allout-stylish-prefixes 'safe-local-variable
-     (if (fboundp 'booleanp) 'booleanp (lambda (x) (member x '(t nil)))))
+(put 'allout-stylish-prefixes 'safe-local-variable 'booleanp)
 
 ;;;_  = allout-numbered-bullet
 (defcustom allout-numbered-bullet "#"
@@ -726,10 +722,7 @@ disables numbering maintenance."
   :group 'allout)
 (make-variable-buffer-local 'allout-numbered-bullet)
 ;;;###autoload
-(put 'allout-numbered-bullet 'safe-local-variable
-     (if (fboundp 'string-or-null-p)
-         'string-or-null-p
-       (lambda (x) (or (stringp x) (null x)))))
+(put 'allout-numbered-bullet 'safe-local-variable 'string-or-null-p)
 ;;;_  = allout-file-xref-bullet
 (defcustom allout-file-xref-bullet "@"
   "Bullet signifying file cross-references, for `allout-resolve-xref'.
@@ -738,10 +731,7 @@ Set this var to the bullet you want to use for file cross-references."
   :type '(choice (const nil) string)
   :group 'allout)
 ;;;###autoload
-(put 'allout-file-xref-bullet 'safe-local-variable
-     (if (fboundp 'string-or-null-p)
-         'string-or-null-p
-       (lambda (x) (or (stringp x) (null x)))))
+(put 'allout-file-xref-bullet 'safe-local-variable 'string-or-null-p)
 ;;;_  = allout-presentation-padding
 (defcustom allout-presentation-padding 2
   "Presentation-format white-space padding factor, for greater indent."
