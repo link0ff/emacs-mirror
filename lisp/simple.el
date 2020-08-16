@@ -2402,7 +2402,7 @@ previous element of the minibuffer history in the minibuffer."
        (setq temporary-goal-column 0)
        ;; Restore the original goal column on the first line
        ;; of possibly multi-line input.
-       (goto-char (minibuffer-prompt-end))
+       (goto-char (minibuffer-prompt-end)) ; FIXME: maybe remove this line?
        (if old-column
 	   (if (= (line-number-at-pos) 1)
 	       (move-to-column (+ old-column
@@ -2410,15 +2410,17 @@ previous element of the minibuffer history in the minibuffer."
 				    (goto-char (1- (minibuffer-prompt-end)))
 				    (current-column))))
 	     (move-to-column old-column))
-	 ;; Put the cursor at the end of the visual line instead of the
-	 ;; logical line, so the next `previous-line-or-history-element'
-	 ;; would move to the previous history element, not to a possible upper
-	 ;; visual line from the end of logical line in `line-move-visual' mode.
-	 (end-of-visual-line)
-	 ;; Since `end-of-visual-line' puts the cursor at the beginning
-	 ;; of the next visual line, move it one char back to the end
-	 ;; of the first visual line (bug#22544).
-	 (unless (eolp) (backward-char 1)))))))
+	 (if (not line-move-visual)     ; (bug#42862)
+             (goto-char (point-max))
+	   ;; Put the cursor at the end of the visual line instead of the
+	   ;; logical line, so the next `previous-line-or-history-element'
+	   ;; would move to the previous history element, not to a possible upper
+	   ;; visual line from the end of logical line in `line-move-visual' mode.
+	   (end-of-visual-line)
+	   ;; Since `end-of-visual-line' puts the cursor at the beginning
+	   ;; of the next visual line, move it one char back to the end
+	   ;; of the first visual line (bug#22544).
+	   (unless (eolp) (backward-char 1))))))))
 
 (defun next-complete-history-element (n)
   "Get next history element that completes the minibuffer before the point.
