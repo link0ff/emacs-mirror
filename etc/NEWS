@@ -816,6 +816,15 @@ window after starting).  This variable defaults to nil.
 ** Miscellaneous
 
 ---
+*** 'M-x report-emacs-bug' will no longer include "Recent messages" section.
+These were taken from the "*Messages*" buffer, and may inadvertently
+leak information from the reporting user.
+
+---
+*** 'count-windows' now takes an optional parameter ALL-FRAMES.
+The semantics are as with 'walk-windows'.
+
+---
 *** Killing virtual ido buffers interactively will make them go away.
 Previously, killing a virtual ido buffer with 'ido-kill-buffer' didn't
 do anything.  This has now been changed, and killing virtual buffers
@@ -881,9 +890,34 @@ Otherwise, it will use 'xwidget-webkit-last-session'.
 *** Corrections and actions menu can be optionally bound to mouse-3.
 When Flyspell mode highlights a word as misspelled, you can click on
 it to display a menu of possible corrections and actions.  You can now
-easily bind this menu to mouse-3 (usually the right mouse button)
+easily bind this menu to down-mouse-3 (usually the right mouse button)
 instead of mouse-2 (the default) by customizing the new option
-'flyspell-correct-on-mouse-3'.
+'flyspell-use-mouse-3-for-menu'.
+
+** Time
+
+---
+*** 'display-time-world' has been renamed to 'world-clock'.
+'world-clock' creates a buffer with an updating time display using
+several time zones.  It is hoped that the new names are more
+discoverable.
+
+The following functions have been renamed:
+
+  'display-time-world'         to 'world-clock'
+  'display-time-world-mode'    to 'world-clock-mode'
+  'display-time-world-display' to 'world-clock-display'
+  'display-time-world-timer'   to 'world-clock-update'
+
+The following options have been renamed:
+
+  'display-time-world-list'         to 'world-clock-list'
+  'display-time-world-time-format'  to 'world-clock-time-format'
+  'display-time-world-buffer-name'  to 'world-clock-buffer-name'
+  'display-time-world-timer-enable' to 'world-clock-timer-enable'
+  'display-time-world-timer-second' to 'world-clock-timer-second'
+
+The old names are now obsolete.
 
 
 * New Modes and Packages in Emacs 28.1
