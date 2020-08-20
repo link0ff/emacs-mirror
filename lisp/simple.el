@@ -5036,9 +5036,11 @@ of this sample text; it defaults to 40."
 	(if (< point mark)
 	    ;; Don't say "killed"; that is misleading.
 	    (message "Saved text until \"%s\""
-		     (buffer-substring-no-properties (- mark len) mark))
+		     (query-replace-descr
+                      (buffer-substring-no-properties (- mark len) mark)))
 	  (message "Saved text from \"%s\""
-		   (buffer-substring-no-properties mark (+ mark len))))))))
+		   (query-replace-descr
+                    (buffer-substring-no-properties mark (+ mark len)))))))))
 
 (defun append-next-kill (&optional interactive)
   "Cause following command, if it kills, to add to previous kill.

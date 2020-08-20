@@ -10984,7 +10984,7 @@ message3 (Lisp_Object m)
       message_dolog (buffer, nbytes, true, multibyte);
       SAFE_FREE ();
     }
-  if (! inhibit_message)
+  if (! inhibit_message && NILP (Fget (Vthis_command, Qinhibit_message)))
     message3_nolog (m);
 }
 
@@ -34353,6 +34353,7 @@ syms_of_xdisp (void)
 
   DEFSYM (Qredisplay_internal_xC_functionx, "redisplay_internal (C function)");
 
+  DEFSYM (Qinhibit_message, "inhibit-message");
   DEFVAR_BOOL("inhibit-message", inhibit_message,
               doc:  /* Non-nil means calls to `message' are not displayed.
 They are still logged to the *Messages* buffer.
