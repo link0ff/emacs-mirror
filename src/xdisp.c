@@ -10984,7 +10984,7 @@ message3 (Lisp_Object m)
       message_dolog (buffer, nbytes, true, multibyte);
       SAFE_FREE ();
     }
-  if (! inhibit_message && NILP (Fget (Vthis_command, Qinhibit_message)))
+  if (! inhibit_message && (!SYMBOLP (Vthis_command) || NILP (Fget (Vthis_command, Qinhibit_message))))
     message3_nolog (m);
 }
 
