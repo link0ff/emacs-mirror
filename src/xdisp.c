@@ -5771,7 +5771,7 @@ handle_single_display_spec (struct it *it, Lisp_Object spec, Lisp_Object object,
       else
 	{
 	  it->what = IT_IMAGE;
-	  it->image_id = lookup_image (it->f, value);
+	  it->image_id = lookup_image (it->f, value, it->face_id);
 	  it->position = start_pos;
 	  it->object = NILP (object) ? it->w->contents : object;
 	  it->method = GET_FROM_IMAGE;
@@ -12570,6 +12570,11 @@ gui_consider_frame_title (Lisp_Object frame)
       display_mode_element (&it, 0, -1, -1, fmt, Qnil, false);
       len = MODE_LINE_NOPROP_LEN (title_start);
       title = mode_line_noprop_buf + title_start;
+      /* Make sure that any raw bytes in the title are properly
+         represented by their multibyte sequences.  */
+      ptrdiff_t nchars = 0;
+      len = str_as_multibyte ((unsigned char *)title,
+			      mode_line_noprop_buf_end - title, len, &nchars);
       unbind_to (count, Qnil);
 
       /* Set the title only if it's changed.  This avoids consing in
@@ -12581,9 +12586,10 @@ gui_consider_frame_title (Lisp_Object frame)
            || SBYTES (f->name) != len
            || memcmp (title, SDATA (f->name), len) != 0)
           && FRAME_TERMINAL (f)->implicit_set_name_hook)
-	FRAME_TERMINAL (f)->implicit_set_name_hook (f,
-                                                    make_string (title, len),
-                                                    Qnil);
+        {
+          Lisp_Object title_string = make_multibyte_string (title, nchars, len);
+          FRAME_TERMINAL (f)->implicit_set_name_hook (f, title_string, Qnil);
+        }
     }
 }
 
@@ -22522,7 +22528,7 @@ push_prefix_prop (struct it *it, Lisp_Object prop)
   else if (IMAGEP (prop))
     {
       it->what = IT_IMAGE;
-      it->image_id = lookup_image (it->f, prop);
+      it->image_id = lookup_image (it->f, prop, it->face_id);
       it->method = GET_FROM_IMAGE;
     }
 #endif /* HAVE_WINDOW_SYSTEM */
@@ -25636,6 +25642,12 @@ display_mode_element (struct it *it, int depth, int field_width, int precision,
 		    spec = decode_mode_spec (it->w, c, field, &string);
 		    eassert (NILP (string) || STRINGP (string));
 		    multibyte = !NILP (string) && STRING_MULTIBYTE (string);
+		    /* Non-ASCII characters in SPEC should cause mode-line
+		       element be displayed as a multibyte string.  */
+		    ptrdiff_t nbytes = strlen (spec);
+		    if (multibyte_chars_in_text ((const unsigned char *)spec,
+						 nbytes) != nbytes)
+		      multibyte = true;
 
 		    switch (mode_line_target)
 		      {
@@ -26254,9 +26266,11 @@ decode_mode_spec_coding (Lisp_Object coding_system, char *buf, bool eol_flag)
       attrs = AREF (val, 0);
       eolvalue = AREF (val, 2);
 
-      *buf++ = multibyte
-	? XFIXNAT (CODING_ATTR_MNEMONIC (attrs))
-	: ' ';
+      if (multibyte)
+	buf += CHAR_STRING (XFIXNAT (CODING_ATTR_MNEMONIC (attrs)),
+			    (unsigned char *) buf);
+      else
+	*buf++ = ' ';
 
       if (eol_flag)
 	{
@@ -27436,7 +27450,7 @@ calc_pixel_width_or_height (double *res, struct it *it, Lisp_Object prop,
 	  if (FRAME_WINDOW_P (it->f)
 	      && valid_image_p (prop))
 	    {
-	      ptrdiff_t id = lookup_image (it->f, prop);
+	      ptrdiff_t id = lookup_image (it->f, prop, it->face_id);
 	      struct image *img = IMAGE_FROM_ID (it->f, id);
 
 	      return OK_PIXELS (width_p ? img->width : img->height);
