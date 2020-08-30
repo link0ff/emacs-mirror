@@ -557,6 +557,9 @@ case-insensitive matching of messages when the old behavior is
 required, but the recommended solution is to use a correctly matching
 regexp instead.
 
+---
+*** Messages from Visual Studio that mention column numbers are now recognized.
+
 ** Hi Lock mode
 
 ---
@@ -777,6 +780,11 @@ directory.
 *** New command 'project-switch-project'.
 This command lets you "switch" to another project and run a project
 command chosen from a dispatch menu.
+
++++
+*** New commands 'project-shell-command' and 'project-async-shell-command'.
+These commands run 'shell-command' and 'async-shell-command' in a
+project's root directory, respectively.
 
 +++
 *** New user option 'project-list-file'.
