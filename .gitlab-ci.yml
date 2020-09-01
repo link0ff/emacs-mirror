@@ -47,9 +47,10 @@ test-all:
       - aclocal.m4
       - autogen.sh
       - configure.ac
+      - lib/*.{h,c}
       - lisp/*.el
       - lisp/**/*.el
-      - src/*.{h,m}
+      - src/*.{h,c}
       - test/lisp/*.el
       - test/lisp/**/*.el
       - test/src/*.el
@@ -61,7 +62,7 @@ test-all:
       # MS Windows
       - lisp/w32*.el
       - lisp/term/w32*.el
-      - src/w32*.{h,m}
+      - src/w32*.{h,c}
       # GNUstep
       - lisp/term/ns-win.el
       - src/ns*.{h,m}
