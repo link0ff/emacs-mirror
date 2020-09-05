@@ -1402,16 +1402,15 @@ See URL `https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input'.")
 	(options nil)
 	(start (point))
 	(max 0))
-    (dolist (elem (dom-non-text-children dom))
-      (when (eq (dom-tag elem) 'option)
-	(when (dom-attr elem 'selected)
-	  (nconc menu (list :value (dom-attr elem 'value))))
-	(let ((display (dom-text elem)))
-	  (setq max (max max (length display)))
-	  (push (list 'item
-		      :value (dom-attr elem 'value)
-		      :display display)
-		options))))
+    (dolist (elem (dom-by-tag dom 'option))
+      (when (dom-attr elem 'selected)
+	(nconc menu (list :value (dom-attr elem 'value))))
+      (let ((display (dom-text elem)))
+	(setq max (max max (length display)))
+	(push (list 'item
+		    :value (dom-attr elem 'value)
+		    :display display)
+	      options)))
     (when options
       (setq options (nreverse options))
       ;; If we have no selected values, default to the first value.
@@ -1452,7 +1451,9 @@ See URL `https://developer.mozilla.org/en-US/docs/Web/HTML/Element/Input'.")
 				     (plist-get (cdr elem) :value))))
 			input)))
 	 (display
-	  (completing-read "Change value: " options nil 'require-match))
+	  (completing-read "Change value: " options nil 'require-match
+                           nil nil (car (rassoc (plist-get input :value)
+                                                options))))
 	 (inhibit-read-only t))
     (plist-put input :value (cdr (assoc-string display options t)))
     (goto-char
