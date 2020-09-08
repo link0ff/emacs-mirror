@@ -322,6 +322,11 @@ tags to be considered as well.
 ** Gnus
 
 +++
+*** New scoring types for the Date header.
+You can now score based on the relative age of an article with the new
+'<' and '>' date scoring types.
+
++++
 *** New backend 'nnselect'.
 The newly added 'nnselect' backend allows creating groups from an
 arbitrary list of articles that may come from multiple groups and
@@ -869,6 +874,10 @@ The 'erc-current-nick-highlight-type', 'erc-pal-highlight-type',
 'erc-dangerous-host-highlight-type' variables now support a 'message'
 type for highlighting the entire message but not the sender's nick.
 
+*** erc-status-sidebar.el is now part of ERC.
+The 'erc-status-sidebar' package which provides a HexChat-like
+activity overview sidebar for joined IRC channels is now part of ERC.
+
 ** Battery
 
 ---
@@ -942,6 +951,12 @@ was always done (and that could lead to odd displays when resizing the
 window after starting).  This variable defaults to nil.
 
 ** Miscellaneous
+
+---
+*** 'icomplete-show-matches-on-no-input' behavior change.
+Previously, choosing a different completion with commands like 'C-.'
+and then hitting  'RET' would choose the default completion.  Doing
+this will now choose the completion under point.
 
 +++
 *** The user can now customize how "default" values are prompted for.
@@ -1069,10 +1084,19 @@ The old names are now obsolete.
 ** D-Bus
 
 +++
+*** Property values can be typed explicitly.
+'dbus-register-property' and 'dbus-set-property' accept now optional
+type symbols.
+
++++
 *** Registered properties can have the new access type ':write'.
 
 +++
 *** In case of problems, handlers can emit proper D-Bus error messages now.
+
+---
+*** D-Bus errors, which have been converted from incoming D-Bus error
+messages, contain the error name of that message now.
 
 
 * New Modes and Packages in Emacs 28.1

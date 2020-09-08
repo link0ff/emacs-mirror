@@ -77,7 +77,7 @@ selection process starts again from the user's $HOME.")
 (defcustom icomplete-show-matches-on-no-input nil
   "When non-nil, show completions when first prompting for input.
 This also means that if you traverse the list of completions with
-commands like `C-.' and just hit `C-j' (enter) without typing any
+commands like `C-.' and just hit RET without typing any
 characters, the match under point will be chosen instead of the
 default."
   :type 'boolean
@@ -157,11 +157,21 @@ icompletion is occurring."
 (defvar icomplete-minibuffer-map
   (let ((map (make-sparse-keymap)))
     (define-key map [?\M-\t] 'icomplete-force-complete)
+    (define-key map [remap minibuffer-complete-and-exit] 'icomplete-ret)
     (define-key map [?\C-j]  'icomplete-force-complete-and-exit)
     (define-key map [?\C-.]  'icomplete-forward-completions)
     (define-key map [?\C-,]  'icomplete-backward-completions)
     map)
   "Keymap used by `icomplete-mode' in the minibuffer.")
+
+(defun icomplete-ret ()
+  "Exit minibuffer for icomplete."
+  (interactive)
+  (if (and icomplete-show-matches-on-no-input
+           (car completion-all-sorted-completions)
+           (eql (icomplete--field-end) (icomplete--field-beg)))
+      (icomplete-force-complete-and-exit)
+    (exit-minibuffer)))
 
 (defun icomplete-force-complete-and-exit ()
   "Complete the minibuffer with the longest possible match and exit.
@@ -755,10 +765,7 @@ matches exist."
 		(push comp prospects)
 	      (setq limit t))))
 	(setq prospects (nreverse prospects))
-        ;; Return the first match if the user hits enter.
-        (when icomplete-show-matches-on-no-input
-          (setq-local completion-content-when-empty (car prospects)))
-        ;; Decorate first of the prospects.
+	;; Decorate first of the prospects.
 	(when prospects
 	  (let ((first (copy-sequence (pop prospects))))
 	    (put-text-property 0 (length first)
