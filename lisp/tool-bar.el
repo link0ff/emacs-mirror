@@ -250,15 +250,6 @@ holds a keymap."
   (setq tool-bar-separator-image-expression
 	(tool-bar--image-expression "separator"))
 
-  (let ((tool-bar-map (default-value 'tool-bar-map)))
-    (tool-bar-add-item "newsticker/narrow"
-		       (lambda ()
-			 (interactive)
-			 (popup-menu (mouse-menu-bar-map)))
-		       'menu-bar
-		       :visible '(zerop (or (frame-parameter nil 'menu-bar-lines) 0))
-		       :vert-only t
-		       :help "Pop up the global menu bar"))
   (tool-bar-add-item-from-menu 'find-file "new" nil :label "New File"
 			       :vert-only t)
   (tool-bar-add-item-from-menu 'menu-find-file-existing "open" nil
@@ -286,13 +277,22 @@ holds a keymap."
   ;;(tool-bar-add-item-from-menu 'compose-mail "mail/compose")
 
   ;; Help button on a tool bar is rather non-standard...
-  (let ((tool-bar-map (default-value 'tool-bar-map)))
-    (tool-bar-add-item "help" (lambda ()
-				(interactive)
-				(popup-menu menu-bar-help-menu))
-		       'help
-		       :help "Pop up the Help menu"))
-)
+  ;; (let ((tool-bar-map (default-value 'tool-bar-map)))
+  ;;   (tool-bar-add-item "help" (lambda ()
+  ;;       			(interactive)
+  ;;       			(popup-menu menu-bar-help-menu))
+  ;;       	       'help
+  ;;       	       :help "Pop up the Help menu"))
+
+  (define-key-after (default-value 'tool-bar-map) [global-menu-bar]
+    `(menu-item (propertize " " 'display '(space :align-to (- right 5)))
+                (lambda ()
+                  (interactive)
+                  (popup-menu (mouse-menu-bar-map)))
+                :image ,(tool-bar--image-expression "newsticker/narrow")
+                ;; :visible '(zerop (or (frame-parameter nil 'menu-bar-lines) 0))
+                ;; :vert-only t
+                :help "Pop up the global menu bar")))
 
 (if (featurep 'move-toolbar)
     (defcustom tool-bar-position 'top
