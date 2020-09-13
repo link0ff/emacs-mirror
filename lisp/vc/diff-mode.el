@@ -911,11 +911,10 @@ like \(diff-merge-strings \"b/foo\" \"b/bar\" \"/a/c/foo\")."
 If the OLD prefix arg is passed, tell the file NAME of the old file."
   (interactive
    (let* ((old current-prefix-arg)
-	  (fs (diff-hunk-file-names current-prefix-arg))
-          (default (diff-find-file-name old 'noprompt)))
+	  (fs (diff-hunk-file-names current-prefix-arg)))
      (unless fs (error "No file name to look for"))
-     (list old (read-file-name (format-prompt "File for %s" default (car fs))
-			       nil default t))))
+     (list old (read-file-name (format "File for %s: " (car fs))
+			       nil (diff-find-file-name old 'noprompt) t))))
   (let ((fs (diff-hunk-file-names old)))
     (unless fs (error "No file name to look for"))
     (push (cons fs name) diff-remembered-files-alist)))
@@ -931,8 +930,12 @@ If the OLD prefix arg is passed, tell the file NAME of the old file."
 		       (progn (diff-hunk-prev) (point))
 		     (error (point-min)))))
 	  (header-files
-           ;; handle filenames with spaces;
+           ;; handle file names with spaces;
            ;; cf. diff-font-lock-keywords / diff-file-header
+           ;; FIXME if there are nonascii characters in the file names,
+           ;; GNU diff displays them as octal escapes.
+           ;; This function should undo that, so as to return file names
+           ;; that are usable in Emacs.
 	   (if (looking-at "[-*][-*][-*] \\([^\t\n]+\\).*\n[-+][-+][-+] \\([^\t\n]+\\)")
 	       (list (if old (match-string 1) (match-string 2))
 		     (if old (match-string 2) (match-string 1)))
