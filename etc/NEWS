@@ -127,6 +127,17 @@ the mouse cursor is on the scroll bars, fringes, margins, header line,
 and mode line.  ('mwheel-mode' is enabled by default on most graphical
 displays.)
 
+---
+** The default value of 'frame-title-format' and icon-title-format' has changed.
+These variables are used to display the title bar of visible frames
+and the title bar of an iconified frame.  They now show the name of
+the current buffer and the text "GNU Emacs" instead of the value of
+'invocation-name'.  To get the old behavior back, add the following to
+your Init file:
+
+    (setq frame-title-format '(multiple-frames "%b"
+                              ("" invocation-name "@" system-name)))
+
 
 * Editing Changes in Emacs 28.1
 
@@ -169,6 +180,11 @@ setting the variable 'auto-save-visited-mode' buffer-locally to nil.
 'widget-describe' (on a widget) will pop up a help buffer and give a
 description of the properties.  Likewise 'button-describe' does the
 same for a button.
+
+** Obsolete commands are no longer hidden from command completion.
+Completion of command names now considers obsolete aliases as
+candidates.  Invoking a command via an obsolete alias now mentions the
+obsolescence fact and shows the new name of the command.
 
 
 * Changes in Specialized Modes and Packages in Emacs 28.1
