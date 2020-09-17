@@ -362,6 +362,11 @@ You can now score based on the relative age of an article with the new
 '<' and '>' date scoring types.
 
 +++
+*** User-defined scoring is now possible.
+The new type is 'score-fn'.  More information in
+(Gnus)Score File Format.
+
++++
 *** New backend 'nnselect'.
 The newly added 'nnselect' backend allows creating groups from an
 arbitrary list of articles that may come from multiple groups and
@@ -471,6 +476,11 @@ authentication mechanism by setting a value for the key 'smtp-auth'.
 
 +++
 *** New command 'describe-keymap' describes keybindings in a keymap.
+
++++
+** New command 'lossage-size'.
+It allows users to set the maximum number of keystrokes and commands
+recorded for the purpose of 'view-lossage'.
 
 ---
 *** The command 'view-lossage' can now be invoked from the menu bar.
@@ -1001,10 +1011,10 @@ window after starting).  This variable defaults to nil.
 +++
 *** New user options to control the look of line/column numbers in the mode line.
 'mode-line-position-line-format' is the line number format (when
-'line-number-mode' is on), and 'mode-line-position-column-format' is
-the column number format (when 'column-number-mode' is on).  These are
-also used if both modes are on, which leads to the default in that
-case going from "(5,9)" to "(L5,C9)".
+'line-number-mode' is on), 'mode-line-position-column-format' is
+the column number format (when 'column-number-mode' is on), and
+'mode-line-position-column-line-format' is the combined format (when
+both modes are on).
 
 +++
 *** New command 'submit-emacs-patch'.
@@ -1168,6 +1178,14 @@ non-nil, even if protected by 'dbus-ignore-errors' otherwise.
 
 ---
 *** D-Bus events keep the type information of their arguments.
+
+** CPerl Mode
+
+---
+*** The command 'cperl-set-style' offers the new value "PBP".
+This value customizes Emacs to use the style recommended in Damian
+Conway's book "Perl Best Practices" for indentation and formatting
+of conditionals.
 
 
 * New Modes and Packages in Emacs 28.1
