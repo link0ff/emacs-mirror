@@ -85,6 +85,13 @@ useful on systems such as FreeBSD which ships only with "etc/termcap".
 
 * Changes in Emacs 28.1
 
+---
+** Support for the 'strike-through' face attribute on TTY frames.
+If your terminal's termcap or terminfo database entry has the 'smxx'
+capability defined, Emacs will now emit the prescribed escape
+sequences necessary to render faces with the 'strike-through'
+attribute on TTY frames.
+
 +++
 *** Emacs now defaults to UTF-8 instead of ISO-8859-1.
 This is only for the default, where the user has set no 'LANG' (or
@@ -186,6 +193,14 @@ Completion of command names now considers obsolete aliases as
 candidates.  Invoking a command via an obsolete alias now mentions the
 obsolescence fact and shows the new name of the command.
 
++++
+** New command 'revert-buffer-with-fine-grain'.
+Revert a buffer trying to be as non-destructive as possible,
+preserving markers, properties and overlays.  The new variable
+'revert-buffer-with-fine-grain-max-seconds' specifies the maximum
+number of seconds that 'revert-buffer-with-fine-grain' should spend
+trying to be non-destructive.
+
 
 * Changes in Specialized Modes and Packages in Emacs 28.1
 
@@ -223,6 +238,9 @@ of the next command to be displayed in a new frame.
 *** The key prefix 'C-x t t' displays next command buffer in a new tab.
 It's bound to the command 'other-tab-prefix' that requests the buffer
 of the next command to be displayed in a new tab.
+
++++
+*** New command 'C-x t C-r' to open file read-only in other tab.
 
 *** The tab bar is frame-local when 'tab-bar-show' is a number.
 Show/hide the tab bar independently for each frame, according to the
@@ -357,14 +375,22 @@ tags to be considered as well.
 ** Gnus
 
 +++
+*** New user option 'gnus-global-groups'.
+Gnus handles private groups differently from public (i.e., NNTP-like)
+groups.  Most importantly, Gnus doesn't download external images from
+mail-like groups.  This can be overridden by putting group names in
+'gnus-global-groups': Any group present in that list will be treated
+like a public group.
+
++++
 *** New scoring types for the Date header.
 You can now score based on the relative age of an article with the new
 '<' and '>' date scoring types.
 
 +++
 *** User-defined scoring is now possible.
-The new type is 'score-fn'.  More information in
-(Gnus)Score File Format.
+The new type is 'score-fn'.  More information in the Gnus manual node
+"(gnus) Score File Format".
 
 +++
 *** New backend 'nnselect'.
@@ -1009,6 +1035,19 @@ window after starting).  This variable defaults to nil.
 ** Miscellaneous
 
 +++
+*** Interactive regular expression search now uses faces for sub-groups.
+E.g., 'C-M-s foo-\([0-9]+\)' will now use the 'isearch-group-1' face
+on the part of the regexp that matches the sub-expression "[0-9]+".
+This is controlled by the 'search-highlight-submatches' variable,
+whose default value is 5.
+
+---
+*** New user option 'reveal-auto-hide'.
+If non-nil (the default), revealed text is automatically hidden when
+point leaves the text.  If nil, the text is not hidden again.  Instead
+'M-x reveal-hide-revealed' can be used to hide all the revealed text.
+
++++
 *** New user options to control the look of line/column numbers in the mode line.
 'mode-line-position-line-format' is the line number format (when
 'line-number-mode' is on), 'mode-line-position-column-format' is
@@ -1132,6 +1171,10 @@ easily bind this menu to 'down-mouse-3' (usually the right mouse button)
 instead of 'mouse-2' (the default) by customizing the new user option
 'flyspell-use-mouse-3-for-menu'.
 
+---
+*** The current dictionary is now displayed in the minor mode lighter.
+Clicking the dictionary name changes the current dictionary.
+
 ** Time
 
 ---
@@ -1162,7 +1205,7 @@ The old names are now obsolete.
 +++
 *** Property values can be typed explicitly.
 'dbus-register-property' and 'dbus-set-property' accept now optional
-type symbols.
+type symbols.  Both functions propagate D-Bus errors.
 
 +++
 *** Registered properties can have the new access type ':write'.
@@ -1172,9 +1215,7 @@ type symbols.
 
 +++
 *** D-Bus errors, which have been converted from incoming D-Bus error
-messages, contain the error name of that message now.  They can be
-made visible by setting user variable 'dbus-show-dbus-errors' to
-non-nil, even if protected by 'dbus-ignore-errors' otherwise.
+messages, contain the error name of that message now.
 
 ---
 *** D-Bus events keep the type information of their arguments.
@@ -1347,6 +1388,12 @@ ledit.el, lmenu.el, lucid.el and old-whitespace.el.
 * Lisp Changes in Emacs 28.1
 
 +++
+*** New function 'process-lines-ignore-status'.
+This is like 'process-lines', but does not signal an error if the
+return status is non-zero.  'process-lines-handling-status' has also
+been added, and takes a callback to handle the return status.
+
++++
 *** New function 'replace-in-string'.
 This function works along the line of 'replace-regexp-in-string', but
 matching on strings instead of regexps, and does not change the global
@@ -1506,6 +1553,9 @@ This feature is experimental, and needs to be turned on to be used.
 To turn this on, set the variable 'w32-use-native-image-API' to a
 non-nil value.  Please report any bugs you find while using the native
 image API via 'M-x report-emacs-bug'.
+
+---
+** The user option 'make-pointer-invisible' is now honored on macOS.
 
 
 ----------------------------------------------------------------------

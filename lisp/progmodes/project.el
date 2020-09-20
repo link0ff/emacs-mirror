@@ -1021,7 +1021,7 @@ Each condition is either:
   The car can be one of the following:
   * `major-mode': the buffer is killed if the buffer's major
     mode is eq to the cons-cell's cdr
-  * `defived-mode': the buffer is killed if the buffer's major
+  * `derived-mode': the buffer is killed if the buffer's major
     mode is derived from the major mode denoted by the cons-cell's
     cdr
   * `not': the cdr is interpreted as a negation of a condition.
@@ -1105,7 +1105,7 @@ identical.  Only the buffers that match a condition in
 `project-kill-buffer-conditions' will be killed.  If NO-CONFIRM
 is non-nil, the command will not ask the user for confirmation.
 NO-CONFIRM is always nil when the command is invoked
-interactivly."
+interactively."
   (interactive)
   (let* ((pr (project-current t))
          (bufs (project--buffers-to-kill pr)))

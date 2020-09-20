@@ -25,8 +25,6 @@
 (defvar dbus-debug nil)
 (declare-function dbus-get-unique-name "dbusbind.c" (bus))
 
-(setq dbus-show-dbus-errors nil)
-
 (defconst dbus--test-enabled-session-bus
   (and (featurep 'dbusbind)
        (dbus-ignore-errors (dbus-get-unique-name :session)))
@@ -222,12 +220,12 @@ This includes initialization and closing the bus."
         ;; The service is not registered yet.
         (should
          (equal
-          (should-error
-           (dbus-call-method
-            :session dbus--test-service dbus--test-path
-            dbus--test-interface method1 :timeout 10 "foo"))
-          `(dbus-error
-            ,dbus-error-service-unknown "The name is not activatable")))
+          (butlast
+           (should-error
+            (dbus-call-method
+             :session dbus--test-service dbus--test-path
+             dbus--test-interface method1 :timeout 10 "foo")))
+           `(dbus-error ,dbus-error-service-unknown)))
 
         ;; Register.
         (should
@@ -283,7 +281,6 @@ This includes initialization and closing the bus."
         (should-not (dbus-unregister-object registered))
         (should
          (equal
-          ;; We don't care the error message text.
           (butlast
            (should-error
             (dbus-call-method
@@ -298,8 +295,12 @@ This includes initialization and closing the bus."
   "Received signal value in `dbus--test-signal-handler'.")
 
 (defun dbus--test-signal-handler (&rest args)
-  "Signal handler for `dbus-test05-register-signal'."
+  "Signal handler for `dbus-test*-signal'."
   (setq dbus--test-signal-received args))
+
+(defun dbus--test-timeout-handler (&rest _ignore)
+  "Timeout handler, reporting a failed test."
+  (ert-fail (format "`%s' timed out" (ert-test-name (ert-running-test)))))
 
 (ert-deftest dbus-test05-register-signal ()
   "Check signal registration for an own service."
@@ -327,8 +328,9 @@ This includes initialization and closing the bus."
         (dbus-send-signal
          :session dbus--test-service dbus--test-path
          dbus--test-interface member "foo")
-        (while (null dbus--test-signal-received)
-          (read-event nil nil 0.1))
+	(with-timeout (1 (dbus--test-timeout-handler))
+          (while (null dbus--test-signal-received)
+            (read-event nil nil 0.1)))
         (should (equal dbus--test-signal-received '("foo")))
 
         ;; Send two arguments, compound types.
@@ -337,8 +339,9 @@ This includes initialization and closing the bus."
          :session dbus--test-service dbus--test-path
          dbus--test-interface member
          '(:array :byte 1 :byte 2 :byte 3) '(:variant :string "bar"))
-        (while (null dbus--test-signal-received)
-          (read-event nil nil 0.1))
+	(with-timeout (1 (dbus--test-timeout-handler))
+          (while (null dbus--test-signal-received)
+            (read-event nil nil 0.1)))
         (should (equal dbus--test-signal-received '((1 2 3) ("bar"))))
 
         ;; Unregister signal.
@@ -378,20 +381,14 @@ This includes initialization and closing the bus."
           "foo"))
         ;; Due to `:read' access type, we don't get a proper reply
         ;; from `dbus-set-property'.
-        (should-not
-         (dbus-set-property
-          :session dbus--test-service dbus--test-path
-          dbus--test-interface property1 "foofoo"))
-        (let ((dbus-show-dbus-errors t))
-          (should
-           (equal
-            ;; We don't care the error message text.
-            (butlast
-             (should-error
-              (dbus-set-property
-               :session dbus--test-service dbus--test-path
-               dbus--test-interface property1 "foofoo")))
-            `(dbus-error ,dbus-error-property-read-only))))
+        (should
+         (equal
+          (butlast
+           (should-error
+            (dbus-set-property
+             :session dbus--test-service dbus--test-path
+             dbus--test-interface property1 "foofoo")))
+          `(dbus-error ,dbus-error-property-read-only)))
         (should
          (string-equal
           (dbus-get-property
@@ -409,30 +406,29 @@ This includes initialization and closing the bus."
             (,dbus--test-service ,dbus--test-path))))
         ;; Due to `:write' access type, we don't get a proper reply
         ;; from `dbus-get-property'.
-        (should-not
-         (dbus-get-property
-          :session dbus--test-service dbus--test-path
-          dbus--test-interface property2))
-        (let ((dbus-show-dbus-errors t))
-          (should
-           (equal
-            ;; We don't care the error message text.
-            (butlast
-             (should-error
-              (dbus-get-property
-               :session dbus--test-service dbus--test-path
-               dbus--test-interface property2)))
-            `(dbus-error ,dbus-error-access-denied))))
+        (should
+         (equal
+          (butlast
+           (should-error
+            (dbus-get-property
+             :session dbus--test-service dbus--test-path
+             dbus--test-interface property2)))
+          `(dbus-error ,dbus-error-access-denied)))
         (should
          (string-equal
           (dbus-set-property
            :session dbus--test-service dbus--test-path
            dbus--test-interface property2 "barbar")
           "barbar"))
-        (should-not ;; Due to `:write' access type.
-         (dbus-get-property
-          :session dbus--test-service dbus--test-path
-          dbus--test-interface property2))
+        ;; Still `:write' access type.
+        (should
+         (equal
+          (butlast
+           (should-error
+            (dbus-get-property
+             :session dbus--test-service dbus--test-path
+             dbus--test-interface property2)))
+          `(dbus-error ,dbus-error-access-denied)))
 
         ;; `:readwrite' property, typed value (Bug#43252).
         (should
@@ -462,34 +458,22 @@ This includes initialization and closing the bus."
           "/baz/baz"))
 
         ;; Not registered property.
-        (should-not
-         (dbus-get-property
-          :session dbus--test-service dbus--test-path
-          dbus--test-interface property4))
-        (let ((dbus-show-dbus-errors t))
-          (should
-           (equal
-            ;; We don't care the error message text.
-            (butlast
-             (should-error
-              (dbus-get-property
-               :session dbus--test-service dbus--test-path
-               dbus--test-interface property4)))
-            `(dbus-error ,dbus-error-unknown-property))))
-        (should-not
-         (dbus-set-property
-          :session dbus--test-service dbus--test-path
-          dbus--test-interface property4 "foobarbaz"))
-        (let ((dbus-show-dbus-errors t))
-          (should
-           (equal
-            ;; We don't care the error message text.
-            (butlast
-             (should-error
-              (dbus-set-property
-               :session dbus--test-service dbus--test-path
-               dbus--test-interface property4 "foobarbaz")))
-            `(dbus-error ,dbus-error-unknown-property))))
+        (should
+         (equal
+          (butlast
+           (should-error
+            (dbus-get-property
+             :session dbus--test-service dbus--test-path
+             dbus--test-interface property4)))
+          `(dbus-error ,dbus-error-unknown-property)))
+        (should
+         (equal
+          (butlast
+           (should-error
+            (dbus-set-property
+             :session dbus--test-service dbus--test-path
+             dbus--test-interface property4 "foobarbaz")))
+          `(dbus-error ,dbus-error-unknown-property)))
 
         ;; `dbus-get-all-properties'.  We cannot retrieve a value for
         ;; the property with `:write' access type.
@@ -515,20 +499,14 @@ This includes initialization and closing the bus."
         ;; Unregister property.
         (should (dbus-unregister-object registered))
         (should-not (dbus-unregister-object registered))
-        (should-not
-         (dbus-get-property
-          :session dbus--test-service dbus--test-path
-          dbus--test-interface property1))
-        (let ((dbus-show-dbus-errors t))
-          (should
-           (equal
-            ;; We don't care the error message text.
-            (butlast
-             (should-error
-              (dbus-get-property
-               :session dbus--test-service dbus--test-path
-               dbus--test-interface property1)))
-            `(dbus-error ,dbus-error-unknown-property)))))
+        (should
+         (equal
+          (butlast
+           (should-error
+            (dbus-get-property
+             :session dbus--test-service dbus--test-path
+             dbus--test-interface property1)))
+          `(dbus-error ,dbus-error-unknown-property))))
 
     ;; Cleanup.
     (dbus-unregister-service :session dbus--test-service)))
@@ -716,8 +694,9 @@ This includes initialization and closing the bus."
            dbus--test-interface property :readwrite "foo" 'emits-signal)
           `((:property :session ,dbus--test-interface ,property)
             (,dbus--test-service ,dbus--test-path))))
-        (while (null dbus--test-signal-received)
-          (read-event nil nil 0.1))
+	(with-timeout (1 (dbus--test-timeout-handler))
+          (while (null dbus--test-signal-received)
+            (read-event nil nil 0.1)))
         ;; It returns two arguments, "changed_properties" (an array of
         ;; dict entries) and "invalidated_properties" (an array of
         ;; strings).
@@ -739,11 +718,12 @@ This includes initialization and closing the bus."
            dbus--test-interface property
            '(:array :byte 1 :byte 2 :byte 3))
           '(1 2 3)))
-        (while (null dbus--test-signal-received)
-          (read-event nil nil 0.1))
+	(with-timeout (1 (dbus--test-timeout-handler))
+          (while (null dbus--test-signal-received)
+            (read-event nil nil 0.1)))
         (should
          (equal
-          dbus--test-signal-received `(((,property ((((1) (2) (3)))))) ())))
+          dbus--test-signal-received `(((,property ((1 2 3)))) ())))
 
         (should
          (equal
