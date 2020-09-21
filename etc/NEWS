@@ -545,9 +545,16 @@ supplied error message.
 which appends a unique suffix to the Edebug name of the current
 definition.
 
-+++
 ** ElDoc
 
++++
+*** New user option 'eldoc-display-truncation-message'.
+If non-nil (the default), eldoc will display a message saying
+something like "(Documentation truncated. Use `M-x eldoc-doc-buffer'
+to see rest" when a message has been truncated.  If nil, truncated
+messages will be marked with just "..." at the end.
+
++++
 *** New hook 'eldoc-documentation-functions'.
 This hook is intended to be used for registering doc string functions.
 These functions don't need to produce the doc string right away, they
@@ -555,6 +562,7 @@ may arrange for it to be produced asynchronously.  The results of all
 doc string functions are accessible to the user through the user
 option 'eldoc-documentation-strategy'.
 
++++
 *** New user option 'eldoc-documentation-strategy'.
 The built-in choices available for this user option let users compose
 the results of 'eldoc-documentation-functions' in various ways, even
@@ -1038,8 +1046,7 @@ window after starting).  This variable defaults to nil.
 *** Interactive regular expression search now uses faces for sub-groups.
 E.g., 'C-M-s foo-\([0-9]+\)' will now use the 'isearch-group-1' face
 on the part of the regexp that matches the sub-expression "[0-9]+".
-This is controlled by the 'search-highlight-submatches' variable,
-whose default value is 5.
+This is controlled by the 'search-highlight-submatches' variable.
 
 ---
 *** New user option 'reveal-auto-hide'.
