@@ -346,9 +346,7 @@
                                    search-ring)
                               (and (eq menu-bar-last-search-type 'regexp)
                                    regexp-search-ring))
-                  :help "Repeat last search backwards"
-                  :keys "\\[isearch-backward] \\<isearch-mode-map>\\[isearch-exit]\
- \\<minibuffer-local-isearch-map>\\[exit-minibuffer]"))
+                  :help "Repeat last search backwards"))
     (bindings--define-key menu [repeat-search-fwd]
       '(menu-item "Repeat Forward"
                   nonincremental-repeat-search-forward
@@ -356,32 +354,26 @@
                                    search-ring)
                               (and (eq menu-bar-last-search-type 'regexp)
                                    regexp-search-ring))
-                  :help "Repeat last search forward"
-                  :keys "\\[isearch-forward] \\<isearch-mode-map>\\[isearch-exit]\
- \\<minibuffer-local-isearch-map>\\[exit-minibuffer]"))
+                  :help "Repeat last search forward"))
     (bindings--define-key menu [separator-repeat-search]
       menu-bar-separator)
 
     (bindings--define-key menu [re-search-backward]
       '(menu-item "Regexp Backwards..."
                   nonincremental-re-search-backward
-                  :help "Search backwards for a regular expression"
-                  :keys "\\[isearch-backward-regexp] \\<isearch-mode-map>\\[isearch-exit]"))
+                  :help "Search backwards for a regular expression"))
     (bindings--define-key menu [re-search-forward]
       '(menu-item "Regexp Forward..."
                   nonincremental-re-search-forward
-                  :help "Search forward for a regular expression"
-                  :keys "\\[isearch-forward-regexp] \\<isearch-mode-map>\\[isearch-exit]"))
+                  :help "Search forward for a regular expression"))
 
     (bindings--define-key menu [search-backward]
       '(menu-item "String Backwards..."
                   nonincremental-search-backward
-                  :help "Search backwards for a string"
-                  :keys "\\[isearch-backward] \\<isearch-mode-map>\\[isearch-exit]"))
+                  :help "Search backwards for a string"))
     (bindings--define-key menu [search-forward]
       '(menu-item "String Forward..." nonincremental-search-forward
-                  :help "Search forward for a string"
-                  :keys "\\[isearch-forward] \\<isearch-mode-map>\\[isearch-exit]"))
+                  :help "Search forward for a string"))
     menu))
 
 ;; The Edit->Replace submenu
