@@ -752,6 +752,8 @@ A negative ARG deletes a pair around the preceding ARG sexps instead."
 				      (if (= (length p) 3) (cdr p) p))
 				    insert-pair-alist))
 	      (error "Not after matching pair"))
+	    (when blink-matching-paren
+	      (sit-for blink-matching-delay))
 	    (delete-char 1)))
 	(delete-char -1))
     (save-excursion
@@ -764,6 +766,8 @@ A negative ARG deletes a pair around the preceding ARG sexps instead."
 				    (if (= (length p) 3) (cdr p) p))
 				  insert-pair-alist))
 	    (error "Not before matching pair"))
+	  (when blink-matching-paren
+	    (sit-for blink-matching-delay))
 	  (delete-char -1)))
       (delete-char 1))))
 
