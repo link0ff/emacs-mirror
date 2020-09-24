@@ -129,7 +129,7 @@ scrolling."
                     (const :tag "Scroll horizontally" :value hscroll)
                     (const :tag "Change face size" :value text-scale)))))
   :set 'mouse-wheel-change-button
-  :version "27.1")
+  :version "28.1")
 
 (defcustom mouse-wheel-progressive-speed t
   "If non-nil, the faster the user moves the wheel, the faster the scrolling.
