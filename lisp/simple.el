@@ -1273,10 +1273,8 @@ If optional argument BUFFER is non-nil, switch to that buffer and
 move to line LINE there.  If called interactively with \\[universal-argument]
 as argument, BUFFER is the most recently selected other buffer.
 
-If optional argument RELATIVE is non-nil, counting starts at (point-min),
-so the line number refers to the contents of the accessible portion of
-the (potentially narrowed) buffer.  If RELATIVE is nil, the default, ignore
-any narrowing, so counting starts from line 1 at beginning of buffer.
+If optional argument RELATIVE is non-nil, counting starts at the beginning
+of the accessible portion of the (potentially narrowed) buffer.
 
 If the variable `widen-automatically' is non-nil, cancel narrowing and
 leave all lines accessible.  If `widen-automatically' is nil, just move
@@ -1321,7 +1319,8 @@ The line number is relative to the accessible portion of the narrowed
 buffer.  The argument BUFFER is the same as in the function `goto-line'."
   (declare (interactive-only forward-line))
   (interactive (goto-line-read-args t))
-  (goto-line line buffer t))
+  (with-suppressed-warnings ((interactive-only goto-line))
+    (goto-line line buffer t)))
 
 (defun count-words-region (start end &optional arg)
   "Count the number of words in the region.
