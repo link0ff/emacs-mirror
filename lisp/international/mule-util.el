@@ -44,9 +44,15 @@
 	(setq i (1+ i)))))
   string)
 
-(defvar truncate-string-ellipsis "..."  ;"…"
+(defvar truncate-string-ellipsis nil
   "String to use to indicate truncation.
 Serves as default value of ELLIPSIS argument to `truncate-string-to-width'.")
+
+(defun truncate-string-ellipsis ()
+  (cond
+   (truncate-string-ellipsis)
+   ((char-displayable-p ?…) "…")
+   ("...")))
 
 ;;;###autoload
 (defun truncate-string-to-width (str end-column
@@ -81,7 +87,7 @@ be truncated, but instead the elided parts will be covered by a
   (or start-column
       (setq start-column 0))
   (when (and ellipsis (not (stringp ellipsis)))
-    (setq ellipsis truncate-string-ellipsis))
+    (setq ellipsis (truncate-string-ellipsis)))
   (let ((str-len (length str))
 	(str-width (string-width str))
 	(ellipsis-width (if ellipsis (string-width ellipsis) 0))
