@@ -316,7 +316,7 @@
    (dbus-check-arguments :session dbus--test-service :double "string")
    :type 'wrong-type-argument)
 
-  ;; `:unix-fd'.  UNIX file descriptors are transfered out-of-band.
+  ;; `:unix-fd'.  UNIX file descriptors are transferred out-of-band.
   ;; We do not support this, and so we cannot do much testing here for
   ;; `:unix-fd' being an argument (which is an index to the file
   ;; descriptor in the array of file descriptors that accompany the
@@ -697,7 +697,7 @@ is in progress."
   "Received signal value in `dbus--test-signal-handler'.")
 
 (defun dbus--test-signal-handler (&rest args)
-  "Signal handler for `dbus-test*-signal'."
+  "Signal handler for `dbus-test*-signal' and `dbus-test08-register-monitor'."
   (setq dbus--test-signal-received args))
 
 (defun dbus--test-timeout-handler (&rest _ignore)
@@ -1829,6 +1829,46 @@ The argument EXPECTED-ARGS is a list of expected arguments for the method."
         ;; Introspection internal timeout is one second.
         (should
          (< 1.0 (float-time (time-since start)))))
+
+    ;; Cleanup.
+    (dbus-unregister-service :session dbus--test-service)))
+
+(ert-deftest dbus-test08-register-monitor ()
+  "Check monitor registration."
+  :tags '(:expensive-test)
+  (skip-unless dbus--test-enabled-session-bus)
+
+  (unwind-protect
+      (let (registered)
+        (should
+         (equal
+          (setq registered
+                (dbus-register-monitor :session #'dbus--test-signal-handler))
+          '((:monitor :session-private)
+	    (nil nil dbus--test-signal-handler))))
+
+        ;; Send a signal, shall be traced.
+        (setq dbus--test-signal-received nil)
+        (dbus-send-signal
+         :session dbus--test-service dbus--test-path
+         dbus--test-interface "Foo" "foo")
+	(with-timeout (1 (dbus--test-timeout-handler))
+          (while (null dbus--test-signal-received)
+            (read-event nil nil 0.1)))
+
+        ;; Unregister monitor.
+        (should (dbus-unregister-object registered))
+        (should-not (dbus-unregister-object registered))
+
+        ;; Send a signal, shall not be traced.
+        (setq dbus--test-signal-received nil)
+        (dbus-send-signal
+         :session dbus--test-service dbus--test-path
+         dbus--test-interface "Foo" "foo")
+	(with-timeout (1 (ignore))
+          (while (null dbus--test-signal-received)
+            (read-event nil nil 0.1)))
+        (should-not dbus--test-signal-received))
 
     ;; Cleanup.
     (dbus-unregister-service :session dbus--test-service)))
