@@ -53,7 +53,9 @@ returned by the function `truncate-string-ellipsis'.")
   "Return a string to use to indicate truncation.
 Use the value of the variable `truncate-string-ellipsis' when it's non-nil.
 Otherwise, return `…' when it's displayable on the selected frame,
-or `...'."
+or `...'.  This function needs to be called on every use of
+`truncate-string-to-width' to decide whether the selected frame
+can display the character `…'."
   (cond
    (truncate-string-ellipsis)
    ((char-displayable-p ?…) "…")
@@ -84,7 +86,7 @@ If ELLIPSIS is non-nil, it should be a string which will replace the
 end of STR (including any padding) if it extends beyond END-COLUMN,
 unless the display width of STR is equal to or less than the display
 width of ELLIPSIS.  If it is non-nil and not a string, then ELLIPSIS
-defaults to `truncate-string-ellipsis'.
+defaults to `truncate-string-ellipsis', or to three dots when it's nil.
 
 If ELLIPSIS-TEXT-PROPERTY is non-nil, a too-long string will not
 be truncated, but instead the elided parts will be covered by a
