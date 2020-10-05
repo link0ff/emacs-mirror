@@ -3663,21 +3663,21 @@ since they have special meaning in a regexp."
 (defvar isearch-overlay nil)
 (defvar isearch-submatches-overlays nil)
 
-(defface isearch-group-odd
+(defface isearch-group-1
   '((((class color) (min-colors 88) (background light))
-     (:background "#ff00ff" :foreground "lightskyblue1"))
+     (:background "#f000f0" :foreground "lightskyblue1"))
     (((class color) (min-colors 88) (background dark))
-     (:background "palevioletred3" :foreground "brown4"))
+     (:background "palevioletred1" :foreground "brown4"))
     (t (:inherit isearch)))
   "Face for highlighting Isearch the odd group matches."
   :group 'isearch
   :version "28.1")
 
-(defface isearch-group-even
+(defface isearch-group-2
   '((((class color) (min-colors 88) (background light))
-     (:background "#800080" :foreground "lightskyblue1"))
+     (:background "#a000a0" :foreground "lightskyblue1"))
     (((class color) (min-colors 88) (background dark))
-     (:background "#905070" :foreground "brown4"))
+     (:background "palevioletred3" :foreground "brown4"))
     (t (:inherit isearch)))
   "Face for highlighting Isearch the even group matches."
   :group 'isearch
@@ -3697,14 +3697,17 @@ since they have special meaning in a regexp."
 	     isearch-regexp)
     (mapc 'delete-overlay isearch-submatches-overlays)
     (setq isearch-submatches-overlays nil)
-    (dotimes (i (/ (length (match-data)) 2))
-      (unless (zerop i)
-	(let ((ov (make-overlay (match-beginning i) (match-end i))))
-	  (overlay-put ov 'face (if (zerop (mod i 2))
-				    'isearch-group-even
-				  'isearch-group-odd))
-	  (overlay-put ov 'priority 1002)
-	  (push ov isearch-submatches-overlays))))))
+    (let ((group 0) ov face)
+      (dotimes (match (1- (/ (length (match-data)) 2)))
+        (setq group (1+ group))
+        (setq ov (make-overlay (match-beginning (1+ match))
+                               (match-end (1+ match)))
+              face (intern-soft (format "isearch-group-%d" group)))
+        (unless (facep face)
+          (setq group 1 face 'isearch-group-1))
+	(overlay-put ov 'face face)
+	(overlay-put ov 'priority 1002)
+	(push ov isearch-submatches-overlays)))))
 
 (defun isearch-dehighlight ()
   (when isearch-overlay
