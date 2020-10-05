@@ -2417,7 +2417,7 @@ It is called with three arguments, as if it were
 
 (defun replace-highlight (match-beg match-end range-beg range-end
 			  search-string regexp-flag delimited-flag
-			  case-fold &optional backward)
+			  case-fold &optional backward _match-data)
   (if query-replace-highlight
       (if replace-overlay
 	  (move-overlay replace-overlay match-beg match-end (current-buffer))
@@ -2705,7 +2705,7 @@ characters."
 		    (replace-highlight
 		     (nth 0 real-match-data) (nth 1 real-match-data)
 		     start end search-string
-		     regexp-flag delimited-flag case-fold-search backward))
+		     regexp-flag delimited-flag case-fold-search backward real-match-data))
 		  (setq noedit
 			(replace-match-maybe-edit
 			 next-replacement nocasify literal
@@ -2730,7 +2730,7 @@ characters."
                   (replace-highlight
 		   (match-beginning 0) (match-end 0)
 		   start end search-string
-		   regexp-flag delimited-flag case-fold-search backward)
+		   regexp-flag delimited-flag case-fold-search backward real-match-data)
                   ;; Obtain the matched groups: needed only when
                   ;; regexp-flag non nil.
                   (when (and last-was-undo regexp-flag)
