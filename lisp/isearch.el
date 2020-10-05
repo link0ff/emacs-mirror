@@ -3438,7 +3438,7 @@ Optional third argument, if t, means if fail just return nil (no error).
 			   (match-beginning 0) (match-end 0)))
 	      (setq retry nil)))
 	(setq isearch-just-started nil)
-	(setq isearch-match-data (butlast (match-data t)))
+	(setq isearch-match-data (cddr (butlast (match-data t))))
 	(if isearch-success
 	    (setq isearch-other-end
 		  (if isearch-forward (match-beginning 0) (match-end 0)))))
@@ -3705,8 +3705,6 @@ since they have special meaning in a regexp."
     (mapc 'delete-overlay isearch-submatches-overlays)
     (setq isearch-submatches-overlays nil)
     (let ((group 0) ov face)
-      (pop match-data)
-      (pop match-data)
       (while match-data
         (setq group (1+ group))
         (setq ov (make-overlay (pop match-data) (pop match-data))
