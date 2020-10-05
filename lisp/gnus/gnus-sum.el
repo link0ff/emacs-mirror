@@ -6240,7 +6240,8 @@ If WHERE is `summary', the summary mode line format will be used."
 	  ;; We might have to chop a bit of the string off...
 	  (when (> (length mode-string) max-len)
 	    (setq mode-string
-		  (truncate-string-to-width mode-string (- max-len 3) nil nil t)))))
+		  (truncate-string-to-width
+		   mode-string (- max-len 3) nil nil t)))))
       ;; Update the mode line.
       (setq mode-line-buffer-identification
 	    (gnus-mode-line-buffer-identification (list mode-string)))

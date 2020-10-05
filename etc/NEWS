@@ -85,6 +85,10 @@ useful on systems such as FreeBSD which ships only with "etc/termcap".
 
 * Changes in Emacs 28.1
 
+*** New var 'redisplay-skip-initial-frame' to enable batch redisplay tests.
+Setting it to nil forces the redisplay to do its job even in the
+initial frame used in batch mode.
+
 ---
 ** Support for the 'strike-through' face attribute on TTY frames.
 If your terminal's termcap or terminfo database entry has the 'smxx'
@@ -1475,10 +1479,10 @@ ledit.el, lmenu.el, lucid.el and old-whitespace.el.
 * Lisp Changes in Emacs 28.1
 
 +++
-** 'truncate-string-ellipsis' uses the character '…' by default.
-Modes that use 'truncate-string-to-width' with non-nil non-string
-argument 'ellipsis', now indicate truncation using '…' when
-the selected frame can display it, and "..." otherwise.
+** 'truncate-string-ellipsis' now uses '…' by default.
+Modes that use 'truncate-string-to-width' with non-nil, non-string
+argument 'ellipsis', will now indicate truncation using '…' when
+the selected frame can display it, and using "..." otherwise.
 
 +++
 *** New command 'make-directory-autoloads'.
@@ -1617,6 +1621,8 @@ convert them to a list '(R G B)' of primary color values.
 This user option can be one of the predefined styles or a function to
 personalize the uniquified buffer name.
 
++++
+** 'inhibit-nul-byte-detection' is renamed to 'inhibit-null-byte-detection'.
 
 
 * Changes in Emacs 28.1 on Non-Free Operating Systems
