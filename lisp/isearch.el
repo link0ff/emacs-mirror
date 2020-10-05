@@ -272,7 +272,11 @@ are `word-search-regexp' \(`\\[isearch-toggle-word]'), `isearch-symbol-regexp'
 (defcustom search-highlight-submatches t
   "Whether to highlight regexp subexpressions of the current regexp match.
 The faces used to do the highlights are named `isearch-group-odd' and
-`isearch-group-even'."
+`isearch-group-even'.
+
+The faces used to do the highlights are named `isearch-group-1',
+`isearch-group-2'.  If you want to use more distinctive colors,
+you have to define more of these faces."
   :type 'boolean
   :version "28.1")
 
@@ -3438,7 +3442,7 @@ Optional third argument, if t, means if fail just return nil (no error).
 			   (match-beginning 0) (match-end 0)))
 	      (setq retry nil)))
 	(setq isearch-just-started nil)
-	(setq isearch-match-data (cddr (butlast (match-data t))))
+	(setq isearch-match-data (match-data t))
 	(if isearch-success
 	    (setq isearch-other-end
 		  (if isearch-forward (match-beginning 0) (match-end 0)))))
@@ -3700,14 +3704,17 @@ since they have special meaning in a regexp."
 	;; 1001 is higher than lazy's 1000 and ediff's 100+
 	(overlay-put isearch-overlay 'priority 1001)
 	(overlay-put isearch-overlay 'face isearch-face)))
+
   (when (and search-highlight-submatches
              isearch-regexp)
     (mapc 'delete-overlay isearch-submatches-overlays)
     (setq isearch-submatches-overlays nil)
-    (let ((group 0) ov face)
-      (while match-data
+    (let ((submatch-data (cddr (butlast match-data)))
+          (group 0)
+          ov face)
+      (while submatch-data
         (setq group (1+ group))
-        (setq ov (make-overlay (pop match-data) (pop match-data))
+        (setq ov (make-overlay (pop submatch-data) (pop submatch-data))
               face (intern-soft (format "isearch-group-%d" group)))
         (unless (facep face)
           (setq group 1 face 'isearch-group-1))
