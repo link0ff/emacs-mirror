@@ -271,12 +271,11 @@ are `word-search-regexp' \(`\\[isearch-toggle-word]'), `isearch-symbol-regexp'
 
 (defcustom search-highlight-submatches t
   "Whether to highlight regexp subexpressions of the current regexp match.
-The faces used to do the highlights are named `isearch-group-odd' and
-`isearch-group-even'.
-
 The faces used to do the highlights are named `isearch-group-1',
-`isearch-group-2'.  If you want to use more distinctive colors,
-you have to define more of these faces."
+`isearch-group-2'.  When there are more matches than faces, then faces are
+recycled from beginning, so the `isearch-group-1' face is used for the
+third match again.  If you want to use more distinctive colors, you have to
+define more of these faces using the same numbering scheme."
   :type 'boolean
   :version "28.1")
 
@@ -3706,7 +3705,7 @@ since they have special meaning in a regexp."
 	(overlay-put isearch-overlay 'face isearch-face)))
 
   (when (and search-highlight-submatches
-             isearch-regexp)
+	     isearch-regexp)
     (mapc 'delete-overlay isearch-submatches-overlays)
     (setq isearch-submatches-overlays nil)
     (let ((submatch-data (cddr (butlast match-data)))
@@ -3716,6 +3715,7 @@ since they have special meaning in a regexp."
         (setq group (1+ group))
         (setq ov (make-overlay (pop submatch-data) (pop submatch-data))
               face (intern-soft (format "isearch-group-%d" group)))
+        ;; Recycle faces from beginning.
         (unless (facep face)
           (setq group 1 face 'isearch-group-1))
         (overlay-put ov 'face face)

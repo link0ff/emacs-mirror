@@ -1987,7 +1987,10 @@ is non-@code{nil}, text that matches @samp{\( @dots{} \)} constructs
 highlighted with distinct faces, named @code{isearch-group-1}
 and @code{isearch-group-2}.  For instance, when searching for
 @samp{foo-\([0-9]+\)}, the part matched by @samp{[0-9]+} will be
-highlighted with the @code{isearch-group-1} face.
+highlighted with the @code{isearch-group-1} face.  When there are
+more matches than faces, then faces are recycled from beginning,
+so the @code{isearch-group-1} face is used for the third match again.
+You can define more faces using the same numbering scheme.
 
 @cindex lazy highlighting customizations
 @vindex isearch-lazy-highlight
