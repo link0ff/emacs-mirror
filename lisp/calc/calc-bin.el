@@ -1,4 +1,4 @@
-;;; calc-bin.el --- binary functions for Calc
+;;; calc-bin.el --- binary functions for Calc  -*- lexical-binding:t -*-
 
 ;; Copyright (C) 1990-1993, 2001-2020 Free Software Foundation, Inc.
 
@@ -403,7 +403,7 @@
 	    (setq a (math-clip a w)))
 	(let ((two-to-sizem1 (math-power-of-2 (1- w)))
 	      (sh (calcFunc-lsh a n w)))
-	  (cond ((Math-natnum-lessp a two-to-sizem1)
+	  (cond ((zerop (logand a two-to-sizem1))
 		 sh)
 		((Math-lessp n (- 1 w))
 		 (math-add (math-mul two-to-sizem1 2) -1))
