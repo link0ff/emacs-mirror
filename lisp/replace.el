@@ -135,6 +135,7 @@ beginning, in a cyclical manner, so the `isearch-group-1' face is
 isreused for the third match.  If you want to use more distinctive colors,
 you can define more of these faces using the same numbering scheme."
   :type 'boolean
+  :group 'matching
   :version "28.1")
 
 (defcustom query-replace-lazy-highlight t
