@@ -1128,7 +1128,7 @@ command before it's run."
 						      (cdr ignore))))))
 				     grep-find-ignored-files
 				     " --exclude=")))
-		       (and grep-use-directories-skip
+		       (and (eq grep-use-directories-skip t)
 			    '("--directories=skip"))))
 	(when command
 	  (if confirm
