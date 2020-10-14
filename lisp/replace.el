@@ -2431,7 +2431,7 @@ It is called with three arguments, as if it were
 
 (defun replace-highlight (match-beg match-end range-beg range-end
 			  search-string regexp-flag delimited-flag
-			  case-fold &optional backward match-data)
+			  case-fold &optional backward)
   (if query-replace-highlight
       (if replace-overlay
 	  (move-overlay replace-overlay match-beg match-end (current-buffer))
@@ -2443,7 +2443,7 @@ It is called with three arguments, as if it were
 	     regexp-flag)
     (mapc 'delete-overlay replace-submatches-overlays)
     (setq replace-submatches-overlays nil)
-    (let ((submatch-data (cddr (butlast match-data)))
+    (let ((submatch-data (cddr (butlast (match-data t))))
           (group 0)
           ov face)
       (while submatch-data
@@ -2741,7 +2741,7 @@ characters."
 		    (replace-highlight
 		     (nth 0 real-match-data) (nth 1 real-match-data)
 		     start end search-string
-		     regexp-flag delimited-flag case-fold-search backward real-match-data))
+		     regexp-flag delimited-flag case-fold-search backward))
 		  (setq noedit
 			(replace-match-maybe-edit
 			 next-replacement nocasify literal
@@ -2766,7 +2766,7 @@ characters."
                   (replace-highlight
 		   (match-beginning 0) (match-end 0)
 		   start end search-string
-		   regexp-flag delimited-flag case-fold-search backward real-match-data)
+		   regexp-flag delimited-flag case-fold-search backward)
                   ;; Obtain the matched groups: needed only when
                   ;; regexp-flag non nil.
                   (when (and last-was-undo regexp-flag)
