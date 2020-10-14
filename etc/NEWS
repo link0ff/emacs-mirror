@@ -238,7 +238,7 @@ trying to be non-destructive.
 +++
 *** New commands to cycle heading visibility.
 Typing 'TAB' on a heading cycles the current section between "hide
-all", "subheadings", and "show all" state. Typing 'S-TAB' anywhere in
+all", "subheadings", and "show all" state.  Typing 'S-TAB' anywhere in
 the buffer cycles the whole buffer between "only top-level headings",
 "all headings and subheadings", and "show all" states.
 
@@ -1108,6 +1108,10 @@ operations such as shifts and bitwise XOR.  A word size of zero, set
 by 'b w', makes the operation have effect on the whole argument values
 and the result is not truncated in any way.
 
+---
+*** The '/' operator now has higher precedence in (La)TeX input mode.
+It no longer has lower precedence than '+' and '-'.
+
 ** term-mode
 
 ---
@@ -1130,6 +1134,16 @@ window after starting).  This variable defaults to nil.
 
 ** Miscellaneous
 
++++
+*** New user option 'next-error-message-highlight'.
+In addition to a fringe arrow, 'next-error' error may now optionally
+highlight the current error message in the 'next-error' buffer.
+
++++
+*** New user option 'tab-first-completion'.
+If 'tab-always-indent' is 'complete', this new option can be used to
+further tweak whether to complete or indent.
+
 ---
 *** 'zap-up-to-char' now uses 'read-char-from-minibuffer'.
 This allows navigating through the history of characters that have
@@ -1148,6 +1162,11 @@ where N are successive numbers above 2.
 This is controlled by the 'search-highlight-submatches' user option.
 This feature is available only on terminals that have enough colors to
 distinguish between sub-expression highlighting.
+
++++
+*** Interactive regular expression replace now uses faces for sub-groups.
+Like 'search-highlight-submatches', this is controlled by the new user option
+'query-replace-highlight-submatches'.
 
 ---
 *** New user option 'reveal-auto-hide'.
@@ -1576,22 +1595,28 @@ file mode specification into symbolic form.
 ** The variable 'force-new-style-backquotes' has been removed.
 This removes the final remaining trace of old-style backquotes.
 
-** The module header 'emacs-module.h' now contains type aliases
+** Changes in handling dynamic modules
+
+*** The module header 'emacs-module.h' now contains type aliases
 'emacs_function' and 'emacs_finalizer' for module functions and
 finalizers, respectively.
 
-** Module functions can now be made interactive.
+*** Module functions can now be made interactive.
 Use 'make_interactive' to give a module function an interactive
 specification.
 
-** Module functions can now install an optional finalizer that is
+*** Module functions can now install an optional finalizer that is
 called when the function object is garbage-collected.  Use
 'set_function_finalizer' to set the finalizer and
 'get_function_finalizer' to retrieve it.
 
-** Modules can now open a channel to an existing pipe process using
+*** Modules can now open a channel to an existing pipe process using
 the new module function 'open_channel'.  Modules can use this
 functionality to asynchronously send data back to Emacs.
+
+*** A new module API 'make_unibyte_string' is provided.
+It can be used to create Lisp strings with arbitrary byte sequences
+(a.k.a. "raw bytes").
 
 ** 'file-modes', 'set-file-modes', and 'set-file-times' now have an
 optional argument specifying whether to follow symbolic links.
