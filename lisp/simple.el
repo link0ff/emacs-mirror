@@ -125,7 +125,7 @@ If non-nil, the value is passed directly to `recenter'."
   :version "28.1")
 
 (defface next-error-message
-  '((t (:inherit highlight)))
+  '((t (:inherit highlight :extend t)))
   "Face used to highlight the current error message in the `next-error' buffer."
   :group 'next-error
   :version "28.1")
