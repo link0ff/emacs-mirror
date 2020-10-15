@@ -204,11 +204,11 @@ mouse-3: Set coding system"
 ;; (setq mode-line-position-column-line-format '(-10 " (%l,%c)"))
 ;; (set-face-attribute 'mode-line nil :inherit 'variable-pitch)
 
-(defface mode-line-monospace
-  '((t :inherit fixed-pitch :foreground "red"))
-  "Basic face for unvisited links."
-  :group 'basic-faces
-  :version "22.1")
+;; (defface mode-line-monospace
+;;   '((t :inherit fixed-pitch :foreground "red"))
+;;   "Basic face for unvisited links."
+;;   :group 'basic-faces
+;;   :version "22.1")
 
 (defvar mode-line-mule-info
   `(""
@@ -221,7 +221,7 @@ mouse-3: Set coding system"
 mouse-2: Disable input method\n\
 mouse-3: Describe current input method"))
 		  local-map ,mode-line-input-method-map
-		  face mode-line-monospace
+		  ;; face mode-line-monospace
 		  mouse-face mode-line-highlight))
     ,(propertize
       "%z"
@@ -272,7 +272,7 @@ mnemonics of the following coding systems:
 	 'help-echo 'mode-line-modified-help-echo
 	 'local-map (purecopy (make-mode-line-mouse-map
 			       'mouse-1 #'mode-line-toggle-modified))
-	 'face 'mode-line-monospace
+	 ;; 'face 'mode-line-monospace
 	 'mouse-face 'mode-line-highlight))
   "Mode line construct for displaying whether current buffer is modified.")
 ;;;###autoload
@@ -477,7 +477,7 @@ column number, which is zero-based if
 
 (defconst mode-line-position--column-line-properties
   (list 'local-map mode-line-column-line-number-mode-map
-        'face 'mode-line-monospace
+        ;; 'face 'mode-line-monospace
         'mouse-face 'mode-line-highlight
         'help-echo "Line number and Column number\n\
 mouse-1: Display Line and Column Mode Menu"))
@@ -486,7 +486,7 @@ mouse-1: Display Line and Column Mode Menu"))
   `((:propertize
      mode-line-percent-position
      local-map ,mode-line-column-line-number-mode-map
-     face mode-line-monospace
+     ;; face mode-line-monospace
      mouse-face mode-line-highlight
      ;; XXX needs better description
      help-echo "Size indication mode\n\
