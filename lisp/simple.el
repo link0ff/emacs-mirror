@@ -484,7 +484,7 @@ buffer causes automatic display of the corresponding source code location."
     (with-current-buffer error-buffer
       (when next-error--message-highlight-overlay
         (delete-overlay next-error--message-highlight-overlay))
-      (let ((ol (make-overlay (line-beginning-position) (line-end-position))))
+      (let ((ol (make-overlay (line-beginning-position) (1+ (line-end-position)))))
         ;; do not override region highlighting
         (overlay-put ol 'priority -50)
         (overlay-put ol 'face 'next-error-message)
