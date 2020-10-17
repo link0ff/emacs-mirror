@@ -120,8 +120,8 @@ If non-nil, the value is passed directly to `recenter'."
 
 (defcustom next-error-message-highlight nil
   "If non-nil, highlight the current error message in the `next-error' buffer.
-If the value is `nil', highlighting is permanent, so all visited error messages
-are highlighted; this helps to see all visited messages."
+If the value is `nil', highlighting is permanent, so all visited error
+messages are highlighted; this helps to see what messages were visited."
   :type '(choice (const :tag "Highlight the current error" t)
                  (const :tag "Highlight all visited errors" keep)
                  (const :tag "No highlighting" nil))
