@@ -14,7 +14,7 @@
       (with-temp-buffer
         (insert-file-contents "/usr/share/X11/locale/en_US.UTF-8/Compose")
         (while (re-search-forward "^<Multi_key> \\([^:]+\\): \"\\([^\"]+\\)\"" nil t)
-          (let* ((to-char (match-string 2))
+          (let* ((to-char (string-to-char (match-string 2)))
                  (from-keys (match-string 1))
                  (from-chars
                   (mapcar (lambda (s)
@@ -23,14 +23,12 @@
                               (string-to-number (gethash s keysymdef "0000") 16)))
                           (split-string from-keys "[<> \t]+" t))))
             (unless (memq 0 from-chars)
-              (define-key map (apply 'vector from-chars)
-                (lambda ()
-                  (interactive)
-                  (insert to-char))))))))
+              (define-key map (apply 'vector from-chars) (vector to-char)))))))
     map)
   "Keymap for keys of the Compose input method.")
 
-(define-key global-map [(control ?+)] x-compose-keymap)
+(define-key key-translation-map [(control ?+)] x-compose-keymap)
+(global-set-key [(control ?+) (control ?+)] 'insert-char)
 
 (provide 'x-compose)
 ;;; x-compose.el ends here
