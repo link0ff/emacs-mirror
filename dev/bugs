@@ -1,5 +1,6 @@
 
 bug#4136: 23.1; delete-pair
+bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
 
 bug#12986: Pressing backspace during isearch exits case-sensitive and word modes
 
