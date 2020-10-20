@@ -1,3 +1,4 @@
+
 
 bug#4136: 23.1; delete-pair
 bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
@@ -20,88 +21,3 @@ bug#43966: Isearch, C-g and f10 interact to leave Isearch in an inconsistent sta
 bug#44001: vc-print-log-setup-buttons leaves point at eob
 
 
-While developing an input method for bug#
-I accidaetnally evaluated ?\u39 and Emacs crashed.
-Here is a reproducible test case:
-
-emacs -Q
-
-insert to the *scratch* buffer:
-
-?\u39
-
-and eval with 'C-x C-e'.
-
-Then Emacs crashes, maybe because is configured with --enable-checking=yes,glyphs
-
-character.h:228: Emacs fatal error: assertion failed: 0 <= c
-
-Thread 1 "emacs" hit Breakpoint 1, terminate_due_to_signal (sig=32767, backtrace_limit=-22624) at emacs.c:377
-377	{
-(gdb) bt
-#0  terminate_due_to_signal (sig=32767, backtrace_limit=-22624) at emacs.c:377
-#1  0x00005555557dc50d in die (msg=0x555555996c0e "0 <= c", file=0x555555996c02 "character.h", line=228) at alloc.c:7341
-#2  0x00005555558a678f in CHAR_STRING (c=-1, p=0x7fffffffa65a "") at character.h:228
-#3  0x00005555558a79a6 in doprnt (buffer=0x7fffffffa8e0 "Non-hex character used for Unicode escape: UUU", bufsize=3999, format=0x55555598f288 "Non-hex character used for Unicode escape: %c (%d)", format_end=0x55555598f2ba "", ap=0x7fffffffa870)
-    at doprnt.c:431
-#4  0x00005555558a7d64 in evxprintf
-    (buf=0x7fffffffa8c0, bufsize=0x7fffffffa8b8, nonheapbuf=0x7fffffffa8e0 "Non-hex character used for Unicode escape: UUU", bufsize_max=2305843009213693952, format=0x55555598f288 "Non-hex character used for Unicode escape: %c (%d)", ap=0x7fffffffb8e0)
-    at doprnt.c:540
-#5  0x00005555558159dd in vformat_string (m=0x55555598f288 "Non-hex character used for Unicode escape: %c (%d)", ap=0x7fffffffb8e0) at eval.c:1876
-#6  0x0000555555815a6b in verror (m=0x55555598f288 "Non-hex character used for Unicode escape: %c (%d)", ap=0x7fffffffb8e0) at eval.c:1888
-#7  0x0000555555815b38 in error (m=0x55555598f288 "Non-hex character used for Unicode escape: %c (%d)") at eval.c:1899
-#8  0x000055555585bcfe in read_escape (readcharfun=XIL(0x7ffff25566fd), stringp=false) at lread.c:2580
-#9  0x000055555585e52e in read1 (readcharfun=XIL(0x7ffff25566fd), pch=0x7fffffffbe24, first_in_list=false) at lread.c:3333
-#10 0x000055555585b30b in read0 (readcharfun=XIL(0x7ffff25566fd)) at lread.c:2331
-#11 0x000055555585b1c2 in read_internal_start (stream=XIL(0x7ffff25566fd), start=XIL(0), end=XIL(0)) at lread.c:2297
-#12 0x000055555585ae48 in Fread (stream=XIL(0x7ffff25566fd)) at lread.c:2234
-#13 0x00005555558190d7 in funcall_subr (subr=0x555555dfcd20 <Sread>, numargs=1, args=0x7fffffffc038) at eval.c:2879
-#14 0x0000555555818b46 in Ffuncall (nargs=2, args=0x7fffffffc030) at eval.c:2806
-#15 0x0000555555876632 in exec_byte_code (bytestr=XIL(0x7ffff25ef54c), vector=XIL(0x7ffff25edc55), maxdepth=make_fixnum(12), args_template=make_fixnum(0), nargs=0, args=0x7fffffffc648) at bytecode.c:632
-#16 0x0000555555819386 in fetch_and_exec_byte_code (fun=XIL(0x7ffff25edc25), syms_left=make_fixnum(0), nargs=0, args=0x7fffffffc648) at eval.c:2928
-#17 0x0000555555819889 in funcall_lambda (fun=XIL(0x7ffff25edc25), nargs=0, arg_vector=0x7fffffffc648) at eval.c:3009
-#18 0x0000555555818b8a in Ffuncall (nargs=1, args=0x7fffffffc640) at eval.c:2808
-#19 0x0000555555876632 in exec_byte_code (bytestr=XIL(0x7ffff27478f4), vector=XIL(0x7ffff27473a5), maxdepth=make_fixnum(18), args_template=make_fixnum(257), nargs=1, args=0x7fffffffcb00) at bytecode.c:632
-#20 0x0000555555819386 in fetch_and_exec_byte_code (fun=XIL(0x7ffff2747375), syms_left=make_fixnum(257), nargs=1, args=0x7fffffffcaf8) at eval.c:2928
-#21 0x0000555555819889 in funcall_lambda (fun=XIL(0x7ffff2747375), nargs=1, arg_vector=0x7fffffffcaf8) at eval.c:3009
-#22 0x0000555555818b8a in Ffuncall (nargs=2, args=0x7fffffffcaf0) at eval.c:2808
-#23 0x0000555555876632 in exec_byte_code (bytestr=XIL(0x7ffff2747a44), vector=XIL(0x7ffff274731d), maxdepth=make_fixnum(4), args_template=make_fixnum(257), nargs=1, args=0x7fffffffd0e8) at bytecode.c:632
-#24 0x0000555555819386 in fetch_and_exec_byte_code (fun=XIL(0x7ffff27472e5), syms_left=make_fixnum(257), nargs=1, args=0x7fffffffd0e0) at eval.c:2928
-#25 0x0000555555819889 in funcall_lambda (fun=XIL(0x7ffff27472e5), nargs=1, arg_vector=0x7fffffffd0e0) at eval.c:3009
-#26 0x0000555555818b8a in Ffuncall (nargs=2, args=0x7fffffffd0d8) at eval.c:2808
-#27 0x000055555580c79d in Ffuncall_interactively (nargs=2, args=0x7fffffffd0d8) at callint.c:253
-#28 0x0000555555818fac in funcall_subr (subr=0x555555df98a0 <Sfuncall_interactively>, numargs=2, args=0x7fffffffd0d8) at eval.c:2859
-#29 0x0000555555818b46 in Ffuncall (nargs=3, args=0x7fffffffd0d0) at eval.c:2806
-#30 0x000055555580effe in Fcall_interactively (function=XIL(0x2aaa9c8d4170), record_flag=XIL(0), keys=XIL(0x7ffff2befead)) at callint.c:779
-#31 0x000055555581912a in funcall_subr (subr=0x555555df98e0 <Scall_interactively>, numargs=3, args=0x7fffffffd470) at eval.c:2884
-#32 0x0000555555818b46 in Ffuncall (nargs=4, args=0x7fffffffd468) at eval.c:2806
-#33 0x0000555555876632 in exec_byte_code (bytestr=XIL(0x7ffff26ad2a4), vector=XIL(0x7ffff26acfad), maxdepth=make_fixnum(13), args_template=make_fixnum(1025), nargs=1, args=0x7fffffffd9c0) at bytecode.c:632
-#34 0x0000555555819386 in fetch_and_exec_byte_code (fun=XIL(0x7ffff26acf7d), syms_left=make_fixnum(1025), nargs=1, args=0x7fffffffd9b8) at eval.c:2928
-#35 0x0000555555819889 in funcall_lambda (fun=XIL(0x7ffff26acf7d), nargs=1, arg_vector=0x7fffffffd9b8) at eval.c:3009
-#36 0x0000555555818b8a in Ffuncall (nargs=2, args=0x7fffffffd9b0) at eval.c:2808
-#37 0x0000555555818346 in call1 (fn=XIL(0x43b0), arg1=XIL(0x2aaa9c8d4170)) at eval.c:2666
-#38 0x000055555573182a in command_loop_1 () at keyboard.c:1467
-#39 0x00005555558145ff in internal_condition_case (bfun=0x555555730f69 <command_loop_1>, handlers=XIL(0x90), hfun=0x555555730521 <cmd_error>) at eval.c:1356
-#40 0x0000555555730b2e in command_loop_2 (ignore=XIL(0)) at keyboard.c:1095
-#41 0x00005555558139e5 in internal_catch (tag=XIL(0xd6b0), func=0x555555730afd <command_loop_2>, arg=XIL(0)) at eval.c:1117
-#42 0x0000555555730ac9 in command_loop () at keyboard.c:1074
-#43 0x000055555572ffea in recursive_edit_1 () at keyboard.c:718
-#44 0x00005555557301e9 in Frecursive_edit () at keyboard.c:790
-#45 0x000055555572be7c in main (argc=3, argv=0x7fffffffdea8) at emacs.c:2047
-
-Lisp Backtrace:
-"read" (0xffffc038)
-"elisp--preceding-sexp" (0xffffc648)
-"elisp--eval-last-sexp" (0xffffcaf8)
-"eval-last-sexp" (0xffffd0e0)
-"funcall-interactively" (0xffffd0d8)
-"call-interactively" (0xffffd470)
-"command-execute" (0xffffd9b8)
-
-In GNU Emacs 28.0.50 (build 1, x86_64-pc-linux-gnu, cairo version 1.16.0) of 2020-10-19
-Windowing system distributor 'The X.Org Foundation', version 11.0.12008000
-System Description: Linux Mint 20
-
-Configured using:
- 'configure --with-x-toolkit=no --enable-checking=yes,glyphs
- --enable-check-lisp-object-type 'CFLAGS=-O0 -g3''
