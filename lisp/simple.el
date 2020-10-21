@@ -1705,7 +1705,7 @@ display the result of expression evaluation."
     (let ((char-string
            (and (characterp value)
                 (<= value eval-expression-print-maximum-character)
-                (char-displayable-p value)
+                (char-displayable-p value) ; TODO: add this as well
                 (prin1-char value))))
       (if char-string
           (format " (#o%o, #x%x, %s)" value value char-string)

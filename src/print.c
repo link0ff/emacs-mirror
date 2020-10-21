@@ -1908,8 +1908,16 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
     {
     case_Lisp_Int:
       {
-	int len = sprintf (buf, "%"pI"d", XFIXNUM (obj));
-	strout (buf, len, len, printcharfun);
+        if (!NILP (Vprint_integers_as_chars) && CHARACTERP (obj))
+          {
+            int len = sprintf (buf, "%s", SDATA (call1 (intern ("prin1-char"), obj)));
+            strout (buf, len, len, printcharfun);
+          }
+        else
+          {
+            int len = sprintf (buf, "%"pI"d", XFIXNUM (obj));
+            strout (buf, len, len, printcharfun);
+          }
       }
       break;
 
@@ -2246,6 +2254,10 @@ decimal point.  0 is not allowed with `e' or `g'.
 A value of nil means to use the shortest notation
 that represents the number without losing information.  */);
   Vfloat_output_format = Qnil;
+
+  DEFVAR_LISP ("print-integers-as-chars", Vprint_integers_as_chars,
+	       doc: /* Print integers as characters.  */);
+  Vprint_integers_as_chars = Qnil;
 
   DEFVAR_LISP ("print-length", Vprint_length,
 	       doc: /* Maximum length of list to print before abbreviating.
