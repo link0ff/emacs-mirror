@@ -1,5 +1,25 @@
 #+TODO: TODO | DONE | WONTFIX
 
+* print-integers-as-characters
+
+(let ((print-integers-as-characters t))
+  (pp '(("'A" . [?Á])
+        ("'E" . [?É])
+        ("'I" . [?Í])
+        ("'O" . [?Ó])
+        ("'U" . [?Ú])
+        ("'Y" . [?Ý]))
+      (current-buffer)))
+
+(let ((print-integers-as-characters t))
+  (format "%S" [?Á]))
+
+but what if someone will want to print integers not in 10-base,
+but as binary, octal, hex?
+
+maybe better to provide ‘integer-output-format’ like ‘float-output-format’
+with values ‘character’, ‘binary’, ‘octal’, ‘hex’
+
 * vc-annotate
 
 vc-annotate should align two windows by setting window-start (in addition to window-point)

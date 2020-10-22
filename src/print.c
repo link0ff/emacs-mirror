@@ -1908,10 +1908,10 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
     {
     case_Lisp_Int:
       {
-        if (!NILP (Vprint_integers_as_chars) && CHARACTERP (obj))
+        if (print_integers_as_characters && CHARACTERP (obj))
           {
-            int len = sprintf (buf, "%s", SDATA (call1 (intern ("prin1-char"), obj)));
-            strout (buf, len, len, printcharfun);
+            printchar ('?', printcharfun);
+            print_string (CALLN (Fstring, obj), printcharfun);
           }
         else
           {
@@ -2255,9 +2255,9 @@ A value of nil means to use the shortest notation
 that represents the number without losing information.  */);
   Vfloat_output_format = Qnil;
 
-  DEFVAR_LISP ("print-integers-as-chars", Vprint_integers_as_chars,
+  DEFVAR_BOOL ("print-integers-as-characters", print_integers_as_characters,
 	       doc: /* Print integers as characters.  */);
-  Vprint_integers_as_chars = Qnil;
+  print_integers_as_characters = 0;
 
   DEFVAR_LISP ("print-length", Vprint_length,
 	       doc: /* Maximum length of list to print before abbreviating.

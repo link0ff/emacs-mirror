@@ -34,9 +34,6 @@
               (prin1 to-chars buffer))
             (princ ")\n" buffer)))))))
 
-;; (let ((print-integers-as-chars t))
-;;   (format "%S" [?Á]))
-
 ;; (define-key key-translation-map [(control ?+)] x-compose-keymap)
 ;; (global-set-key [(control ?+) (control ?+)] 'insert-char)
 
