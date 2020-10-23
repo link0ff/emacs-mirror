@@ -1911,7 +1911,7 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
         if (print_integers_as_characters && CHARACTERP (obj))
           {
             printchar ('?', printcharfun);
-            print_string (CALLN (Fstring, obj), printcharfun);
+            print_string (Fchar_to_string (obj), printcharfun);
           }
         else
           {
