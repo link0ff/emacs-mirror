@@ -1909,7 +1909,8 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
     case_Lisp_Int:
       {
         EMACS_INT c = XFIXNUM (obj);
-        if (print_integers_as_characters && CHARACTERP (obj) && c < 4194176)
+
+        if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj) && c < 4194176)
           {
             printchar ('?', printcharfun);
 
@@ -1918,6 +1919,12 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
                     || c == '[' || c == ']' || c == '\"' || c == '\'' || c == '\\'))
               printchar ('\\', printcharfun);
             print_string (Fchar_to_string (obj), printcharfun);
+          }
+        else if (INTEGERP (Vinteger_output_format)
+                 && XFIXNUM (Vinteger_output_format) == 16 && c >= 0)
+          {
+            int len = sprintf (buf, "#x%"pI"x", (EMACS_UINT) c);
+            strout (buf, len, len, printcharfun);
           }
         else
           {
@@ -2261,9 +2268,12 @@ A value of nil means to use the shortest notation
 that represents the number without losing information.  */);
   Vfloat_output_format = Qnil;
 
-  DEFVAR_BOOL ("print-integers-as-characters", print_integers_as_characters,
-	       doc: /* Print integers as characters.  */);
-  print_integers_as_characters = 0;
+  DEFVAR_LISP ("integer-output-format", Vinteger_output_format,
+	       doc: /* The format used to print integers.
+When 't', print integers as characters.
+When a number 16, print numbers in hex format.
+Otherwise, print integers in decimal format.  */);
+  Vinteger_output_format = Qnil;
 
   DEFVAR_LISP ("print-length", Vprint_length,
 	       doc: /* Maximum length of list to print before abbreviating.
