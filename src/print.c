@@ -1908,14 +1908,20 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
     {
     case_Lisp_Int:
       {
-        if (print_integers_as_characters && CHARACTERP (obj))
+        EMACS_INT c = XFIXNUM (obj);
+        if (print_integers_as_characters && CHARACTERP (obj) && c < 4194176)
           {
             printchar ('?', printcharfun);
+
+            if (escapeflag
+                && (c == ';' || c == '(' || c == ')' || c == '{' || c == '}'
+                    || c == '[' || c == ']' || c == '\"' || c == '\'' || c == '\\'))
+              printchar ('\\', printcharfun);
             print_string (Fchar_to_string (obj), printcharfun);
           }
         else
           {
-            int len = sprintf (buf, "%"pI"d", XFIXNUM (obj));
+            int len = sprintf (buf, "%"pI"d", c);
             strout (buf, len, len, printcharfun);
           }
       }
