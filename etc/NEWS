@@ -308,6 +308,9 @@ and variables.
 
 ** Archive mode
 
+---
+*** Archive Mode can now parse .squashfs files.
+
 *** Can now modify members of 'ar' archives.
 
 *** Display of summaries unified between backends.
@@ -633,7 +636,7 @@ definition.
 ** ElDoc
 
 +++
-*** New user option 'eldoc-display-truncation-message'.
+*** New user option 'eldoc-echo-area-display-truncation-message'.
 If non-nil (the default), eldoc will display a message saying
 something like "(Documentation truncated. Use `M-x eldoc-doc-buffer'
 to see rest)" when a message has been truncated.  If nil, truncated
@@ -646,6 +649,13 @@ These functions don't need to produce the doc string right away, they
 may arrange for it to be produced asynchronously.  The results of all
 doc string functions are accessible to the user through the user
 option 'eldoc-documentation-strategy'.
+
+*** New hook 'eldoc-display-functions'.
+This hook is intended to be used for displaying doc string.  The
+functions receive the docstrings composed according to
+`eldoc-documentation-strategy' and are tasked with displaying it to
+the user.  Examples of such functions would use the echo area, a
+separate buffer or a tooltip.
 
 +++
 *** New user option 'eldoc-documentation-strategy'.
@@ -1322,6 +1332,16 @@ to 'tab-bar-new-tab-choice' for new tabs to show the bookmark list.
 'gomoku-move-sw' and 'gomoku-move-ne' now work correctly, and
 horizontal movements now stop at the edge of the board.
 
+** xterm-mouse mode
+
+---
+*** TTY menu navigation is now supported in 'xterm-mouse-mode'.
+TTY menus support mouse navigation and selection when xterm-mouse-mode
+is active.  When run on a terminal, clicking on the menu bar with the
+mouse now pops up a TTY menu by default instead of running the command
+'tmm-menubar'.  To restore the old behavior, set the variable
+'tty-menu-open-use-tmm' to non-nil.
+
 ** xwidget-webkit mode
 
 *** New xwidget commands.
@@ -1744,6 +1764,14 @@ convert them to a list '(R G B)' of primary color values.
 ** User option 'uniquify-buffer-name-style' can now be a function.
 This user option can be one of the predefined styles or a function to
 personalize the uniquified buffer name.
+
++++
+** New variable 'tty-menu-calls-mouse-position-function'.
+This controls whether 'mouse-position-function' is called by functions
+that retrieve the mouse position when that happens during TTY menu
+handling.  Lisp programs that set 'mouse-position-function' should
+also set this variable non-nil if they are compatible with the tty
+menu handling.
 
 +++
 ** 'inhibit-nul-byte-detection' is renamed to 'inhibit-null-byte-detection'.
