@@ -1908,27 +1908,28 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
     {
     case_Lisp_Int:
       {
-        EMACS_INT c = XFIXNUM (obj);
+        int c = XFIXNUM (obj);
+        intmax_t i;
 
-        if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj) && c < 4194176)
+        if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj) && ! CHAR_BYTE8_P (c))
           {
             printchar ('?', printcharfun);
-
             if (escapeflag
                 && (c == ';' || c == '(' || c == ')' || c == '{' || c == '}'
                     || c == '[' || c == ']' || c == '\"' || c == '\'' || c == '\\'))
               printchar ('\\', printcharfun);
-            print_string (Fchar_to_string (obj), printcharfun);
+            printchar (c, printcharfun);
           }
         else if (INTEGERP (Vinteger_output_format)
-                 && XFIXNUM (Vinteger_output_format) == 16 && c >= 0)
+                 && integer_to_intmax (Vinteger_output_format, &i)
+                 && i == 16 && XFIXNUM (obj) >= 0)
           {
-            int len = sprintf (buf, "#x%"pI"x", (EMACS_UINT) c);
+            int len = sprintf (buf, "#x%"pI"x", (EMACS_UINT) XFIXNUM (obj));
             strout (buf, len, len, printcharfun);
           }
         else
           {
-            int len = sprintf (buf, "%"pI"d", c);
+            int len = sprintf (buf, "%"pI"d", XFIXNUM (obj));
             strout (buf, len, len, printcharfun);
           }
       }
@@ -2270,8 +2271,8 @@ that represents the number without losing information.  */);
 
   DEFVAR_LISP ("integer-output-format", Vinteger_output_format,
 	       doc: /* The format used to print integers.
-When 't', print integers as characters.
-When a number 16, print numbers in hex format.
+When 't', print characters from integers that represent characters.
+When a number 16, print non-negative numbers in hex format.
 Otherwise, print integers in decimal format.  */);
   Vinteger_output_format = Qnil;
 
