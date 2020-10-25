@@ -78,6 +78,45 @@ There can be any number of :example/:result elements."
                                   shortdoc--groups))
      (push (cons ',group ',functions) shortdoc--groups)))
 
+(define-short-documentation-group alist
+  "Alist Basics"
+  (assoc
+   :eval (assoc 'foo '((foo . bar) (zot . baz))))
+  (rassoc
+   :eval (rassoc 'bar '((foo . bar) (zot . baz))))
+  (assq
+   :eval (assq 'foo '((foo . bar) (zot . baz))))
+  (rassq
+   :eval (rassq 'bar '((foo . bar) (zot . baz))))
+  (assoc-string
+   :eval (assoc-string "foo" '(("foo" . "bar") ("zot" "baz"))))
+  "Manipulating Alists"
+  (assoc-delete-all
+   :eval (assoc-delete-all "foo" '(("foo" . "bar") ("zot" . "baz")) #'equal))
+  (assq-delete-all
+   :eval (assq-delete-all 'foo '((foo . bar) (zot . baz))))
+  (rassq-delete-all
+   :eval (rassq-delete-all 'bar '((foo . bar) (zot . baz))))
+  (alist-get
+   :eval (let ((foo '((bar . baz))))
+           (setf (alist-get 'bar foo) 'zot)
+           foo))
+  "Misc"
+  (assoc-default
+   :eval (assoc-default "foobar" '(("foo" . baz)) #'string-match))
+  (copy-alist
+   :eval (let* ((old '((foo . bar)))
+                (new (copy-alist old)))
+           (eq old new)))
+  ;; FIXME: Outputs "\.rose" for the symbol `.rose'.
+  ;; (let-alist
+  ;;     :eval (let ((colors '((rose . red)
+  ;;                           (lily . white))))
+  ;;             (let-alist colors
+  ;;               (if (eq .rose 'red)
+  ;;                   .lily))))
+  )
+
 (define-short-documentation-group string
   "Making Strings"
   (make-string
@@ -380,6 +419,37 @@ There can be any number of :example/:result elements."
    :no-eval (set-file-acl "/tmp/foo" "group::rxx")
    :eg-result t))
 
+(define-short-documentation-group hash-table
+  "Hash Table Basics"
+  (make-hash-table
+   :no-eval (make-hash-table)
+   :result-string "#s(hash-table ...)")
+  (puthash
+   :no-eval (puthash 'key "value" table))
+  (gethash
+   :no-eval (gethash 'key table)
+   :eg-result "value")
+  (remhash
+   :no-eval (remhash 'key table)
+   :result nil)
+  (clrhash
+   :no-eval (clrhash table)
+   :result-string "#s(hash-table ...)")
+  (maphash
+   :no-eval (maphash (lambda (key value) (message value)) table)
+   :result nil)
+  "Other Hash Table Functions"
+  (hash-table-p
+   :eval (hash-table-p 123))
+  (copy-hash-table
+   :no-eval (copy-hash-table table)
+   :result-string "#s(hash-table ...)")
+  (hash-table-count
+   :no-eval (hash-table-count table)
+   :eg-result 15)
+  (hash-table-size
+   :no-eval (hash-table-size table)
+   :eg-result 65))
 
 (define-short-documentation-group list
   "Making Lists"
