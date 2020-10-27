@@ -1,26 +1,36 @@
-;;; compose.el --- Quail package for Compose Multi-key input -*-coding: utf-8;-*-
+;;; compose.el --- Quail package for multi-key character composition -*-coding: utf-8;-*-
 
-;; Copyright (C) 2020  Juri
+;; Copyright (C) 2020 Free Software Foundation, Inc.
 
-;; Author: Juri <juri@t480>
-;; Keywords: multilingual, input method
+;; Author: Juri Linkov <juri@linkov.net>
+;; Keywords: i18n, input method, multilingual
 
 ;; This file is part of GNU Emacs.
 
-;; This program is free software; you can redistribute it and/or modify
+;; GNU Emacs is free software: you can redistribute it and/or modify
 ;; it under the terms of the GNU General Public License as published by
 ;; the Free Software Foundation, either version 3 of the License, or
 ;; (at your option) any later version.
 
-;; This program is distributed in the hope that it will be useful,
+;; GNU Emacs is distributed in the hope that it will be useful,
 ;; but WITHOUT ANY WARRANTY; without even the implied warranty of
 ;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 ;; GNU General Public License for more details.
 
 ;; You should have received a copy of the GNU General Public License
-;; along with this program.  If not, see <https://www.gnu.org/licenses/>.
+;; along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 ;;; Commentary:
+
+;; This file provides the `compose' input method that supports the
+;; same compose sequences as defined by the standard Multi_key:
+;; https://en.wikipedia.org/wiki/Compose_key
+
+;; You can enable this input method transiently with `C-u C-x \ compose RET'.
+;; Then typing `C-x \' will enable this input method temporarily, and
+;; after typing a key sequence it will be disabled.  So typing
+;; e.g. `C-x \ E =' will insert the Euro sign character and disable
+;; the input method afterwards.
 
 ;;; Code:
 
@@ -33,10 +43,12 @@ These characters are from the charsets used by the `utf-8' coding
 system, including many technical ones.  Examples:
  E = -> €"
 
- '(("\t" . quail-completion))
+ '(("\t" . quail-completion)
+   ("\n" . insert-char))
  t t nil nil nil nil nil nil nil t)
 
 (quail-define-rules
+ ("?\n" insert-char)
  ("''" ?´)
  ("-^" ?¯)
  ("^-" ?¯)
