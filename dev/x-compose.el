@@ -3,6 +3,8 @@
 ;; https://cgit.freedesktop.org/xorg/proto/x11proto/plain/keysymdef.h
 ;; https://cgit.freedesktop.org/xorg/lib/libX11/plain/nls/en_US.UTF-8/Compose.pre
 ;; https://help.ubuntu.com/community/ComposeKey
+;; https://en.wikipedia.org/wiki/Compose_key
+;; https://en.wikipedia.org/wiki/Unicode_input
 
 ;;; Code:
 

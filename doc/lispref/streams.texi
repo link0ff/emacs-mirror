@@ -906,7 +906,7 @@ you can use, see the variable's documentation string.
 @defvar integer-output-format
 This variable specifies how to print integer numbers.  The default is
 @code{nil}, meaning use the decimal format.  When bound to @code{t},
-print characters from integers that represent a character
+print integers as characters when an integer represents a character
 (@pxref{Basic Char Syntax}).  When bound to the number @code{16},
 print non-negative integers in the hexadecimal format.
 @end defvar

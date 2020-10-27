@@ -37,7 +37,7 @@
 
 (quail-define-package
  "compose" "UTF-8" "+" t
- "Compose-like input method with the same key sequences as with X Multi_key.
+ "Compose-like input method with the same key sequences as X Multi_key.
 Examples:
  E = -> €   1 2 -> ½   ^ 3 -> ³"
  '(("\t" . quail-completion)
