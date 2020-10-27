@@ -1,9 +1,9 @@
-;;; compose.el --- Quail package for multi-key character composition -*-coding: utf-8;-*-
+;;; compose.el --- Quail package for Multi_key character composition -*-coding: utf-8;-*-
 
 ;; Copyright (C) 2020 Free Software Foundation, Inc.
 
 ;; Author: Juri Linkov <juri@linkov.net>
-;; Keywords: i18n, input method, multilingual
+;; Keywords: multilingual, input method, i18n
 
 ;; This file is part of GNU Emacs.
 
@@ -22,15 +22,14 @@
 
 ;;; Commentary:
 
-;; This file provides the `compose' input method that supports the
-;; same compose sequences as defined by the standard Multi_key:
-;; https://en.wikipedia.org/wiki/Compose_key
+;; This input method supports the same key sequences as defined by the
+;; standard X Multi_key: https://en.wikipedia.org/wiki/Compose_key
 
 ;; You can enable this input method transiently with `C-u C-x \ compose RET'.
 ;; Then typing `C-x \' will enable this input method temporarily, and
 ;; after typing a key sequence it will be disabled.  So typing
 ;; e.g. `C-x \ E =' will insert the Euro sign character and disable
-;; the input method afterwards.
+;; this input method afterwards.
 
 ;;; Code:
 
@@ -38,17 +37,15 @@
 
 (quail-define-package
  "compose" "UTF-8" "+" t
- "Compose Multi-key input method for many characters.
-These characters are from the charsets used by the `utf-8' coding
-system, including many technical ones.  Examples:
- E = -> €"
-
+ "Compose-like input method with the same key sequences as with X Multi_key.
+Examples:
+ E = -> €   1 2 -> ½   ^ 3 -> ³"
  '(("\t" . quail-completion)
    ("\n" . insert-char))
- t t nil nil nil nil nil nil nil t)
+ t nil nil nil nil nil nil nil nil t)
 
 (quail-define-rules
- ("?\n" insert-char)
+ ;; ("?\n" insert-char) ;; a function symbol which returns a Quail map
  ("''" ?´)
  ("-^" ?¯)
  ("^-" ?¯)
