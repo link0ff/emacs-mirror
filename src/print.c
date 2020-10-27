@@ -1908,10 +1908,11 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
     {
     case_Lisp_Int:
       {
-        int c = XFIXNUM (obj);
+        int c;
         intmax_t i;
 
-        if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj) && ! CHAR_BYTE8_P (c))
+        if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj)
+            && (c = XFIXNUM (obj)) && ! CHAR_BYTE8_P (c))
           {
             printchar ('?', printcharfun);
             if (escapeflag
@@ -1922,7 +1923,7 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
           }
         else if (INTEGERP (Vinteger_output_format)
                  && integer_to_intmax (Vinteger_output_format, &i)
-                 && i == 16 && XFIXNUM (obj) >= 0)
+                 && i == 16 && Fnatnump (obj))
           {
             int len = sprintf (buf, "#x%"pI"x", (EMACS_UINT) XFIXNUM (obj));
             strout (buf, len, len, printcharfun);
@@ -2271,9 +2272,9 @@ that represents the number without losing information.  */);
 
   DEFVAR_LISP ("integer-output-format", Vinteger_output_format,
 	       doc: /* The format used to print integers.
-When 't', print characters from integers that represent characters.
-When a number 16, print non-negative numbers in hex format.
-Otherwise, print integers in decimal format.  */);
+When t, print characters from integers that represent a character.
+When a number 16, print non-negative integers in the hexadecimal format.
+Otherwise, by default print integers in the decimal format.  */);
   Vinteger_output_format = Qnil;
 
   DEFVAR_LISP ("print-length", Vprint_length,
