@@ -1,6 +1,8 @@
 ;;; x-compose.el --- Compose input method from X11   -*- lexical-binding: t; -*-
 
 ;; https://cgit.freedesktop.org/xorg/proto/x11proto/plain/keysymdef.h
+;; https://cgit.freedesktop.org/xorg/lib/libX11/plain/nls/en_US.UTF-8/Compose.pre
+;; https://help.ubuntu.com/community/ComposeKey
 
 ;;; Code:
 
@@ -40,7 +42,7 @@
                   (if (= (length to-chars) 1)
                       (let ((integer-output-format t))
                         (princ (format "%S" (string-to-char to-chars)) buffer))
-                    (prin1 to-chars buffer))
+                    (prin1 (vector to-chars) buffer))
                   (princ ")\n" buffer)))
             (princ (format ";; %s\n" line) buffer)))))))
 
