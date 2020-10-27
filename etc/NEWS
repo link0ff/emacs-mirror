@@ -403,6 +403,14 @@ their 'default-directory' under VC.
 
 *** New command 'vc-dir-root' uses the root directory without asking.
 
+---
+*** The responsible VC backend is now the most specific one.
+'vc-responsible-backend' loops over the backends in
+'vc-handled-backends' to determine which backend is responsible for a
+specific (unregistered) file.  Previously the first matching backend
+was chosen, but now the one with the most specific path is chosen (in
+case there's a directory handled by one backend inside another).
+
 *** New commands 'vc-dir-mark-registered-files' (bound to '* r') and
 'vc-dir-mark-unregistered-files'.
 
@@ -1186,6 +1194,13 @@ list.
 ** Miscellaneous
 
 ---
+*** 'global-display-fill-column-indicator-mode' skips some buffers.
+By default, turning on 'global-display-fill-column-indicator-mode'
+doesn't turn on 'display-fill-column-indicator-mode' in special-mode
+buffers.  This can be controlled by customizing the variable
+'global-display-fill-column-indicator-modes'.
+
+---
 *** New user option 'compilation-search-all-directories'.
 When doing parallel builds, directories and compilation errors may
 arrive in the *compilation* buffer out-of-order.  If this variable is
@@ -1615,6 +1630,11 @@ ledit.el, lmenu.el, lucid.el and old-whitespace.el.
 
 
 * Lisp Changes in Emacs 28.1
+
++++
+** 'define-globalized-minor-mode' now takes a :predicate parameter.
+This can be used to control which major modes the minor mode should be
+used in.
 
 +++
 ** 'truncate-string-ellipsis' now uses '…' by default.
