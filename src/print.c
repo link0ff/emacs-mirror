@@ -1923,7 +1923,7 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
           }
         else if (INTEGERP (Vinteger_output_format)
                  && integer_to_intmax (Vinteger_output_format, &i)
-                 && i == 16 && Fnatnump (obj))
+                 && i == 16 && !NILP (Fnatnump (obj)))
           {
             int len = sprintf (buf, "#x%"pI"x", (EMACS_UINT) XFIXNUM (obj));
             strout (buf, len, len, printcharfun);

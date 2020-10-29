@@ -1351,10 +1351,10 @@ rather than line counts."
         (save-restriction
           (widen)
           (goto-char p))
-      (when (and (buffer-narrowed-p)
-                 (not relative)
-                 ;; Don't widen when point is in narrowed region.
-                 (and (<= (point-min) p) (<= p (point-max))))
+      (unless (or (not (buffer-narrowed-p))
+                  relative
+                  ;; Don't widen when point is in narrowed region.
+                  (and (<= (point-min) p) (<= p (point-max))))
         (widen))
       (goto-char p))))
 
