@@ -130,6 +130,9 @@ characters.  In particular, this significantly improves word-wrapping
 for CJK text mixed with Latin text.
 
 ---
+** New input method 'compose' based on X Multi_key sequences.
+
+---
 ** Improved language transliteration in Malayalam input methods.
 Added a new Mozhi scheme.  The inapplicable ITRANS scheme is now
 deprecated.  Errors in the Inscript method were corrected.
@@ -1641,7 +1644,7 @@ ledit.el, lmenu.el, lucid.el and old-whitespace.el.
 
 * Lisp Changes in Emacs 28.1
 
-** New variable 'integer-output-format' defines the format of integers.
+** New variable 'integer-output-format' determines how to print integer values.
 When this variable is bound to the value 't', integers are printed by
 printing functions as characters when an integer represents a character.
 When bound to the number 16, non-negative integers are printed in the
