@@ -214,7 +214,9 @@ speed is linked to how fast you move the wheel.  This mode also
 supports increasing or decreasing the height of the default face, by
 default bound to scrolling with the @key{Ctrl} modifier.
 
-Emacs also supports horizontal scrolling with the @key{Shift} modifier.
+Emacs also supports horizontal scrolling with the @key{Shift}
+modifier.  Typing a numeric prefix arg (e.g. @kbd{C-u 5}) before
+starting horizontal scrolling changes its step value.
 
 @vindex mouse-wheel-tilt-scroll
 @vindex mouse-wheel-flip-direction

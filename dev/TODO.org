@@ -1,5 +1,15 @@
 #+TODO: TODO | DONE | WONTFIX
 
+* infoman
+
+tried to browse sql.el docstrings in two renamed *Help* buffers, but quickly lost
+
+infoman-help.el should render docstring using standard help functions
+in a temporary *Help*-like buffer, then post-process its output
+by changing known links to Info links
+
+infoman-man.el should use synchronous man.el (to be implemented in some bug#)
+
 * vc-annotate
 
 vc-annotate should align two windows by setting window-start (in addition to window-point)
