@@ -1912,7 +1912,7 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
         intmax_t i;
 
         if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj)
-            && (c = XFIXNUM (obj)) && ! CHAR_BYTE8_P (c))
+            && (c = XFIXNUM (obj)))
           {
             printchar ('?', printcharfun);
             if (escapeflag
