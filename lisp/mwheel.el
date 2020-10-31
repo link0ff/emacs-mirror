@@ -147,7 +147,9 @@ face height."
   :type 'boolean)
 
 (defcustom mouse-wheel-scroll-horizontal-step 1
-  "Time in seconds to inhibit clicking on mouse wheel button after scroll."
+  "Amount to scroll windows horizontally.
+Its value can be changed dynamically by using a numeric prefix argument
+before starting horizontal scrolling."
   :group 'mouse
   :type 'number
   :version "28.1")
