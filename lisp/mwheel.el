@@ -146,7 +146,11 @@ face height."
   :group 'mouse
   :type 'boolean)
 
-(defvar mwheel-scroll-horizontal-step 1)
+(defcustom mouse-wheel-scroll-horizontal-step 1
+  "Time in seconds to inhibit clicking on mouse wheel button after scroll."
+  :group 'mouse
+  :type 'number
+  :version "28.1")
 
 ;;; For tilt-scroll
 ;;;
@@ -281,11 +285,11 @@ scrolling.  The arg numeric value can be typed before starting to scroll."
 	    (let ((button (mwheel-event-button event)))
               (cond ((and (eq amt 'hscroll) (eq button mouse-wheel-down-event))
                      (when (and (natnump arg) (> arg 0))
-                       (setq mwheel-scroll-horizontal-step arg))
+                       (setq mouse-wheel-scroll-horizontal-step arg))
                      (funcall (if mouse-wheel-flip-direction
                                   mwheel-scroll-left-function
                                 mwheel-scroll-right-function)
-                              mwheel-scroll-horizontal-step))
+                              mouse-wheel-scroll-horizontal-step))
                     ((eq button mouse-wheel-down-event)
                      (condition-case nil (funcall mwheel-scroll-down-function amt)
                        ;; Make sure we do indeed scroll to the beginning of
@@ -303,11 +307,11 @@ scrolling.  The arg numeric value can be typed before starting to scroll."
                           (set-window-start (selected-window) (point-min))))))
                     ((and (eq amt 'hscroll) (eq button mouse-wheel-up-event))
                      (when (and (natnump arg) (> arg 0))
-                       (setq mwheel-scroll-horizontal-step arg))
+                       (setq mouse-wheel-scroll-horizontal-step arg))
                      (funcall (if mouse-wheel-flip-direction
                                   mwheel-scroll-right-function
                                 mwheel-scroll-left-function)
-                              mwheel-scroll-horizontal-step))
+                              mouse-wheel-scroll-horizontal-step))
                     ((eq button mouse-wheel-up-event)
                      (condition-case nil (funcall mwheel-scroll-up-function amt)
                        ;; Make sure we do indeed scroll to the end of the buffer.

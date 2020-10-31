@@ -1062,7 +1062,8 @@ if `inhibit-field-text-motion' is non-nil."
 
 (define-key goto-map    "c" 'goto-char)
 (define-key goto-map    "g" 'goto-line)
-(define-key goto-map "\M-g" 'goto-line)
+(define-key goto-map "\M-g" 'goto-line-relative)
+(define-key goto-map "\M-G" 'goto-line)
 (define-key goto-map    "n" 'next-error)
 (define-key goto-map "\M-n" 'next-error)
 (define-key goto-map    "p" 'previous-error)
