@@ -1134,7 +1134,11 @@ is supplied, or Transient Mark mode is enabled and the mark is active."
 	 ;; If the end of the buffer is not already on the screen,
 	 ;; then scroll specially to put it near, but not at, the bottom.
 	 (overlay-recenter (point))
-	 (recenter -3))))
+	 ;; FIXME: Arguably if `scroll-conservatively' is set, then
+         ;; we should pass -1 to `recenter'.
+	 (recenter (if (and scroll-minibuffer-conservatively
+	                    (window-minibuffer-p))
+	               -1 -3)))))
 
 (defcustom delete-active-region t
   "Whether single-char deletion commands delete an active region.
@@ -8018,6 +8022,7 @@ The function should return non-nil if the two tokens do not match.")
 	   (blinkpos
             (save-excursion
               (save-restriction
+		(syntax-propertize (point))
                 (if blink-matching-paren-distance
                     (narrow-to-region
                      (max (minibuffer-prompt-end) ;(point-min) unless minibuf.
@@ -8028,7 +8033,6 @@ The function should return non-nil if the two tokens do not match.")
                             (not blink-matching-paren-dont-ignore-comments))))
                   (condition-case ()
                       (progn
-			(syntax-propertize (point))
                         (forward-sexp -1)
                         ;; backward-sexp skips backward over prefix chars,
                         ;; so move back to the matching paren.

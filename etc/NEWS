@@ -85,6 +85,9 @@ useful on systems such as FreeBSD which ships only with "etc/termcap".
 
 * Changes in Emacs 28.1
 
+** Minibuffer scrolling is now conservative by default.
+This is controlled by the new variable 'scroll-minibuffer-conservatively'.
+
 +++
 ** New system for displaying documentation for groups of function.
 This can either be used by saying 'M-x shortdoc-display-group' and
@@ -166,6 +169,12 @@ your init file:
 
     (setq frame-title-format '(multiple-frames "%b"
                               ("" invocation-name "@" system-name)))
+
++++
+** 'nobreak-char-display' now also affects all non-ASCII space characters.
+Previously, this was limited only to NO-BREAK-SPACE and hyphen
+characters.  Now it also covers the rest of the non-ASCII Unicode
+space characters.
 
 
 * Editing Changes in Emacs 28.1
@@ -1206,7 +1215,23 @@ them, using the DEL and INS buttons respectively.  This is useful in
 Custom buffers, for example, to change the order of the elements in a
 list.
 
+** Diff
+
+---
+*** New 'diff-mode' font locking face 'diff-error'.
+This face is used for error messages from diff.
+
++++
+*** New command 'diff-refresh-hunk'.
+This new command (bound to 'C-c C-l') regenerates the current hunk.
+
+
 ** Miscellaneous
+
++++
+*** 'format-seconds' can now be used for sub-second times.
+The new optional "," parameter has been added, and
+(format-seconds "%mm %,1ss" 66.4) will now result in "1m 6.4s".
 
 ---
 *** 'global-display-fill-column-indicator-mode' skips some buffers.
@@ -1300,10 +1325,6 @@ prompts.  This means that prompts that look like "Enter a number
 number [10]", or not have the default displayed at all, like "Enter a
 number".  (This requires that all callers are altered to use
 'format-prompt', though.)
-
----
-*** New 'diff-mode' font locking face 'diff-error'.
-This face is used for error messages from diff.
 
 +++
 *** New global mode 'global-goto-address-mode'.
@@ -1826,6 +1847,11 @@ file can affect code in another.  For details, see the manual section
 
 ---
 ** 'unload-feature' now also tries to undo additions to buffer-local hooks.
+
+---
+** Some functions are no longer considered safe by 'unsafep':
+'replace-regexp-in-string', 'catch', 'throw', 'error', 'signal'
+and 'play-sound-file'.
 
 
 * Changes in Emacs 28.1 on Non-Free Operating Systems

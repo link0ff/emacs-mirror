@@ -7555,7 +7555,7 @@ get_next_display_element (struct it *it)
 	     non-ASCII spaces and hyphens specially.  */
 	  if (! ASCII_CHAR_P (c) && ! NILP (Vnobreak_char_display))
 	    {
-	      if (c == NO_BREAK_SPACE)
+	      if (blankp (c))
 		nonascii_space_p = true;
 	      else if (c == SOFT_HYPHEN || c == HYPHEN
 		       || c == NON_BREAKING_HYPHEN)
@@ -18825,6 +18825,7 @@ redisplay_window (Lisp_Object window, bool just_this_one_p)
 
   /* Try to scroll by specified few lines.  */
   if ((0 < scroll_conservatively
+       || (scroll_minibuffer_conservatively && MINI_WINDOW_P (w))
        || 0 < emacs_scroll_step
        || temp_scroll_step
        || NUMBERP (BVAR (current_buffer, scroll_up_aggressively))
@@ -18835,7 +18836,10 @@ redisplay_window (Lisp_Object window, bool just_this_one_p)
       /* The function returns -1 if new fonts were loaded, 1 if
 	 successful, 0 if not successful.  */
       int ss = try_scrolling (window, just_this_one_p,
-			      scroll_conservatively,
+			      ((scroll_minibuffer_conservatively
+			        && MINI_WINDOW_P (w))
+			       ? SCROLL_LIMIT + 1
+			       : scroll_conservatively),
 			      emacs_scroll_step,
 			      temp_scroll_step, last_line_misfit);
       switch (ss)
@@ -34543,8 +34547,15 @@ syms_of_xdisp (void)
 
   DEFSYM (Qredisplay_internal_xC_functionx, "redisplay_internal (C function)");
 
+  DEFVAR_BOOL ("scroll-minibuffer-conservatively",
+               scroll_minibuffer_conservatively,
+               doc: /* Non-nil means scroll conservatively in minibuffer windows.
+When the value is nil, scrolling in minibuffer windows obeys the
+settings of `scroll-conservatively'.  */);
+  scroll_minibuffer_conservatively = true; /* bug#44070 */
+
   DEFSYM (Qinhibit_message, "inhibit-message");
-  DEFVAR_BOOL("inhibit-message", inhibit_message,
+  DEFVAR_BOOL ("inhibit-message", inhibit_message,
               doc:  /* Non-nil means calls to `message' are not displayed.
 They are still logged to the *Messages* buffer.
 
@@ -34552,7 +34563,7 @@ Do NOT set this globally to a non-nil value, as doing that will
 disable messages everywhere, including in I-search and other
 places where they are necessary.  This variable is intended to
 be let-bound around code that needs to disable messages temporarily. */);
-  inhibit_message = 0;
+  inhibit_message = false;
 
   message_dolog_marker1 = Fmake_marker ();
   staticpro (&message_dolog_marker1);
@@ -34753,7 +34764,8 @@ If the value is t, Emacs highlights non-ASCII chars which have the
 same appearance as an ASCII space or hyphen, using the `nobreak-space'
 or `nobreak-hyphen' face respectively.
 
-U+00A0 (no-break space), U+00AD (soft hyphen), U+2010 (hyphen), and
+All of the non-ASCII characters in the Unicode horizontal whitespace
+character class, as well as U+00AD (soft hyphen), U+2010 (hyphen), and
 U+2011 (non-breaking hyphen) are affected.
 
 Any other non-nil value means to display these characters as an escape

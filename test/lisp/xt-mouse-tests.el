@@ -52,11 +52,10 @@
          (xterm-mouse-mode 0)))))
 
 (ert-deftest xt-mouse-tracking-basic ()
-  :expected-result :failed              ; FIXME
   (should (equal (xterm-mouse-tracking-enable-sequence)
-                 "\e[?1000h\e[?1002h\e[?1006h"))
+                 "\e[?1000h\e[?1003h\e[?1006h"))
   (should (equal (xterm-mouse-tracking-disable-sequence)
-                 "\e[?1006l\e[?1002l\e[?1000l"))
+                 "\e[?1006l\e[?1003l\e[?1000l"))
   (with-xterm-mouse-mode
     (should xterm-mouse-mode)
     (should (terminal-parameter nil 'xterm-mouse-mode))
@@ -72,12 +71,11 @@
           (should (equal xy '(184 . 95))))))))
 
 (ert-deftest xt-mouse-tracking-utf-8 ()
-  :expected-result :failed              ; FIXME
   (let ((xterm-mouse-utf-8 t))
     (should (equal (xterm-mouse-tracking-enable-sequence)
-                   "\e[?1000h\e[?1002h\e[?1005h\e[?1006h"))
+                   "\e[?1000h\e[?1003h\e[?1005h\e[?1006h"))
     (should (equal (xterm-mouse-tracking-disable-sequence)
-                   "\e[?1006l\e[?1005l\e[?1002l\e[?1000l"))
+                   "\e[?1006l\e[?1005l\e[?1003l\e[?1000l"))
     (with-xterm-mouse-mode
       (should xterm-mouse-mode)
       (should (terminal-parameter nil 'xterm-mouse-mode))
