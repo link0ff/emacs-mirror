@@ -1908,31 +1908,31 @@ print_object (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag)
     {
     case_Lisp_Int:
       {
-        int c;
-        intmax_t i;
+	int c;
+	intmax_t i;
 
-        if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj)
-            && (c = XFIXNUM (obj)))
-          {
-            printchar ('?', printcharfun);
-            if (escapeflag
-                && (c == ';' || c == '(' || c == ')' || c == '{' || c == '}'
-                    || c == '[' || c == ']' || c == '\"' || c == '\'' || c == '\\'))
-              printchar ('\\', printcharfun);
-            printchar (c, printcharfun);
-          }
-        else if (INTEGERP (Vinteger_output_format)
-                 && integer_to_intmax (Vinteger_output_format, &i)
-                 && i == 16 && !NILP (Fnatnump (obj)))
-          {
-            int len = sprintf (buf, "#x%"pI"x", (EMACS_UINT) XFIXNUM (obj));
-            strout (buf, len, len, printcharfun);
-          }
-        else
-          {
-            int len = sprintf (buf, "%"pI"d", XFIXNUM (obj));
-            strout (buf, len, len, printcharfun);
-          }
+	if (EQ (Vinteger_output_format, Qt) && CHARACTERP (obj)
+	    && (c = XFIXNUM (obj)))
+	  {
+	    printchar ('?', printcharfun);
+	    if (escapeflag
+		&& (c == ';' || c == '(' || c == ')' || c == '{' || c == '}'
+		    || c == '[' || c == ']' || c == '\"' || c == '\'' || c == '\\'))
+	      printchar ('\\', printcharfun);
+	    printchar (c, printcharfun);
+	  }
+	else if (INTEGERP (Vinteger_output_format)
+		 && integer_to_intmax (Vinteger_output_format, &i)
+		 && i == 16 && !NILP (Fnatnump (obj)))
+	  {
+	    int len = sprintf (buf, "#x%"pI"x", (EMACS_UINT) XFIXNUM (obj));
+	    strout (buf, len, len, printcharfun);
+	  }
+	else
+	  {
+	    int len = sprintf (buf, "%"pI"d", XFIXNUM (obj));
+	    strout (buf, len, len, printcharfun);
+	  }
       }
       break;
 
