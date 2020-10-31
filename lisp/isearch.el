@@ -3278,8 +3278,6 @@ the word mode."
 		    (multi-isearch-file-list "multi-file ")
 		    (multi-isearch-buffer-list "multi-buffer ")
 		    (t ""))
-		   (if (and (not isearch-success) (buffer-narrowed-p) widen-automatically)
-		       "narrowed-buffer " "")
 		   (or isearch-message-prefix-add "")
 		   (if nonincremental "search" "I-search")
 		   (if isearch-forward "" " backward")
