@@ -3263,7 +3263,7 @@ the word mode."
 		       "over")
 		   (if isearch-wrapped "wrapped ")
                    (if (and (not isearch-success) (buffer-narrowed-p) widen-automatically)
-                       "narrowed-buffer " "")
+                       "narrowed " "")
                    (if (and (not isearch-success) (not isearch-case-fold-search))
                        "case-sensitive ")
                    (let ((prefix ""))
