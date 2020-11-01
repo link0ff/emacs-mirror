@@ -566,7 +566,8 @@ function @code{quail-translation-keymap}, using @code{define-key}.
   Another facility for typing characters not on your keyboard is by
 using @kbd{C-x 8 @key{RET}} (@code{insert-char}) to insert a single
 character based on its Unicode name or code-point; see @ref{Inserting
-Text}.
+Text}.  But you can insert the same characters by temporarily activating
+the @code{iso-transl} input method.
 
 @node Select Input Method
 @section Selecting an Input Method
@@ -577,6 +578,11 @@ Enable or disable use of the selected input method (@code{toggle-input-method}).
 
 @item C-x @key{RET} C-\ @var{method} @key{RET}
 Select a new input method for the current buffer (@code{set-input-method}).
+
+@item C-x \ @var{method} @key{RET}
+Temporarily enable the selected transient input method, and
+automatically disable it after inserting a single character
+(@code{transient-input-method}).
 
 @item C-h I @var{method} @key{RET}
 @itemx C-h C-\ @var{method} @key{RET}
@@ -674,6 +680,16 @@ character.
   @kbd{M-x list-input-methods} displays a list of all the supported
 input methods.  The list gives information about each input method,
 including the string that stands for it in the mode line.
+
+@findex transient-input-method
+@kindex C-x \
+  To insert only a single character using a transient input method you
+can first select a transient input method by typing @kbd{C-u C-x \}.
+Then typing @kbd{C-x \} (@code{transient-input-method}) will
+temporarily enable the selected transient input method, and disable it
+automatically after using the activated input method to insert
+a single character.  This is useful to insert a character from input
+methods with rare Unicode characters.
 
 @node Coding Systems
 @section Coding Systems
@@ -1753,6 +1769,9 @@ they too are defined to compose with the following character, once
 
 Use @kbd{C-x 8 C-h} to list all the available @kbd{C-x 8} translations.
 @end itemize
+
+Alternatively, you can use @kbd{C-u C-x \} to select the
+@code{iso-transl} input method.
 
 @node Charsets
 @section Charsets
