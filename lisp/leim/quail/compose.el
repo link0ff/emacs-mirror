@@ -28,8 +28,8 @@
 ;; You can enable this input method transiently with `C-u C-x \ compose RET'.
 ;; Then typing `C-x \' will enable this input method temporarily, and
 ;; after typing a key sequence it will be disabled.  So typing
-;; e.g. `C-x \ E =' will insert the Euro sign character and disable
-;; this input method afterwards.
+;; e.g. `C-x \ E =' will insert the Euro sign character, and disable
+;; this input method automatically afterwards.
 
 ;;; Code:
 
