@@ -2610,8 +2610,7 @@ keyboard-quit events while waiting for a valid input."
   (unless (consp chars)
     (error "Called `read-char-choice' without valid char choices"))
   (let (char done show-help (helpbuf " *Char Help*"))
-    (let ((cursor-in-echo-area t)
-          (executing-kbd-macro executing-kbd-macro)
+    (let ((executing-kbd-macro executing-kbd-macro)
 	  (esc-flag nil))
       (save-window-excursion	      ; in case we call help-form-show
 	(while (not done)
