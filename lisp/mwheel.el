@@ -146,10 +146,12 @@ face height."
   :group 'mouse
   :type 'boolean)
 
-(defcustom mouse-wheel-scroll-horizontal-step 1
+(defcustom mouse-wheel-scroll-amount-horizontal 1
   "Amount to scroll windows horizontally.
 Its value can be changed dynamically by using a numeric prefix argument
-before starting horizontal scrolling."
+before starting horizontal scrolling.
+It has effect when `mouse-wheel-scroll-amount' binds the value `hscroll'
+to one of modifiers (`Shift' by default)."
   :group 'mouse
   :type 'number
   :version "28.1")
@@ -257,7 +259,8 @@ This should be bound only to mouse buttons 4, 5, 6, and 7 on
 non-Windows systems.
 
 An optional prefix ARG can be used to change the step of horizontal
-scrolling.  The arg numeric value can be typed before starting to scroll."
+scrolling.  The arg numeric value can be typed before starting to scroll.
+The value is saved in the variable `mouse-wheel-scroll-amount-horizontal'."
   (interactive (list last-input-event current-prefix-arg))
   (let* ((selected-window (selected-window))
          (scroll-window (mouse-wheel--get-scroll-window event))
@@ -287,11 +290,11 @@ scrolling.  The arg numeric value can be typed before starting to scroll."
 	    (let ((button (mwheel-event-button event)))
               (cond ((and (eq amt 'hscroll) (eq button mouse-wheel-down-event))
                      (when (and (natnump arg) (> arg 0))
-                       (setq mouse-wheel-scroll-horizontal-step arg))
+                       (setq mouse-wheel-scroll-amount-horizontal arg))
                      (funcall (if mouse-wheel-flip-direction
                                   mwheel-scroll-left-function
                                 mwheel-scroll-right-function)
-                              mouse-wheel-scroll-horizontal-step))
+                              mouse-wheel-scroll-amount-horizontal))
                     ((eq button mouse-wheel-down-event)
                      (condition-case nil (funcall mwheel-scroll-down-function amt)
                        ;; Make sure we do indeed scroll to the beginning of
@@ -309,11 +312,11 @@ scrolling.  The arg numeric value can be typed before starting to scroll."
                           (set-window-start (selected-window) (point-min))))))
                     ((and (eq amt 'hscroll) (eq button mouse-wheel-up-event))
                      (when (and (natnump arg) (> arg 0))
-                       (setq mouse-wheel-scroll-horizontal-step arg))
+                       (setq mouse-wheel-scroll-amount-horizontal arg))
                      (funcall (if mouse-wheel-flip-direction
                                   mwheel-scroll-right-function
                                 mwheel-scroll-left-function)
-                              mouse-wheel-scroll-horizontal-step))
+                              mouse-wheel-scroll-amount-horizontal))
                     ((eq button mouse-wheel-up-event)
                      (condition-case nil (funcall mwheel-scroll-up-function amt)
                        ;; Make sure we do indeed scroll to the end of the buffer.
