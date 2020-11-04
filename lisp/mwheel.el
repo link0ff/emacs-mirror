@@ -146,6 +146,15 @@ face height."
   :group 'mouse
   :type 'boolean)
 
+(defcustom mouse-wheel-scroll-amount-vertical 1
+  "Amount to scroll windows vertically.
+Its value can be changed dynamically by using a numeric prefix argument
+before starting vertical scrolling.
+It overrides the default numeric value 1 in `mouse-wheel-scroll-amount'."
+  :group 'mouse
+  :type 'number
+  :version "28.1")
+
 (defcustom mouse-wheel-scroll-amount-horizontal 1
   "Amount to scroll windows horizontally.
 Its value can be changed dynamically by using a numeric prefix argument
@@ -258,7 +267,12 @@ active window."
 This should be bound only to mouse buttons 4, 5, 6, and 7 on
 non-Windows systems.
 
-An optional prefix ARG can be used to change the step of horizontal
+An optional prefix ARG can be used to change the step of vertical
+scrolling.  The arg numeric value can be typed before starting to scroll.
+The value is saved in the variable `mouse-wheel-scroll-amount-vertical'.
+It overrides the default numeric value 1 in `mouse-wheel-scroll-amount'.
+
+Also an optional prefix ARG can be used to change the step of horizontal
 scrolling.  The arg numeric value can be typed before starting to scroll.
 The value is saved in the variable `mouse-wheel-scroll-amount-horizontal'."
   (interactive (list last-input-event current-prefix-arg))
