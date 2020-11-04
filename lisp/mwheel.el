@@ -267,14 +267,17 @@ active window."
 This should be bound only to mouse buttons 4, 5, 6, and 7 on
 non-Windows systems.
 
-An optional prefix ARG can be used to change the step of vertical
-scrolling.  The arg numeric value can be typed before starting to scroll.
-The value is saved in the variable `mouse-wheel-scroll-amount-vertical'.
+Optional argument ARG (interactively, prefix numeric argument) controls
+the step of vertical scrolling.
 It overrides the default numeric value 1 in `mouse-wheel-scroll-amount'.
+The variable `mouse-wheel-scroll-amount-vertical' records the last
+value of ARG, and the command uses it in subsequent scrolls."
 
-Also an optional prefix ARG can be used to change the step of horizontal
-scrolling.  The arg numeric value can be typed before starting to scroll.
-The value is saved in the variable `mouse-wheel-scroll-amount-horizontal'."
+Also optional argument ARG (interactively, prefix numeric argument) controls
+the step of horizontal scrolling.
+
+The variable `mouse-wheel-scroll-amount-horizontal' records the last
+value of ARG, and the command uses it in subsequent scrolls."
   (interactive (list last-input-event current-prefix-arg))
   (let* ((selected-window (selected-window))
          (scroll-window (mouse-wheel--get-scroll-window event))
