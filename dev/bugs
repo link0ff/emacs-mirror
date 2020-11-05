@@ -1,4 +1,10 @@
 
+ALSO support transient input method in isearch
+
+CHECK branches:
+icomplete-vertical
+highlight-completions
+completions-highlight-modifications
 
 bug#4136: 23.1; delete-pair
 bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
