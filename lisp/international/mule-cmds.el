@@ -55,7 +55,7 @@
 
 ;; Keep "C-x C-m ..." for mule specific commands.
 (define-key ctl-x-map "\C-m" mule-keymap)
-(define-key ctl-x-map "\\" 'transient-input-method)
+(define-key ctl-x-map "\\" 'activate-transient-input-method)
 
 (defvar describe-language-environment-map
   (let ((map (make-sparse-keymap "Describe Language Environment")))
@@ -1345,16 +1345,28 @@ This is the input method activated automatically by the command
                  mule-input-method-string)
   :set-after '(current-language-environment))
 
-(defcustom transient-input-method nil
+(defcustom default-transient-input-method nil
   "Default transient input method.
 This is the input method activated by the command
-`transient-input-method' (\\[transient-input-method])."
+`activate-transient-input-method' (\\[activate-transient-input-method])."
   :link  '(custom-manual "(emacs)Input Methods")
   :group 'mule
   :type '(choice (const nil)
                  mule-input-method-string)
   :set-after '(current-language-environment)
   :version "28.1")
+
+(defvar current-transient-input-method nil
+  "The current input method temporarily enabled by `activate-transient-input-method'.
+If nil, that means no transient input method is activated now.")
+(make-variable-buffer-local 'current-transient-input-method)
+(put 'current-transient-input-method 'permanent-local t)
+
+(defvar previous-transient-input-method nil
+  "The input method that was active before enabling the transient input method.
+If nil, that means no previous input method was active.")
+(make-variable-buffer-local 'previous-transient-input-method)
+(put 'previous-transient-input-method 'permanent-local t)
 
 (put 'input-method-function 'permanent-local t)
 
@@ -1531,35 +1543,42 @@ To deactivate it programmatically, use `deactivate-input-method'."
 (defvar toggle-input-method-active nil
   "Non-nil inside `toggle-input-method'.")
 
-(defun transient-input-method (&optional arg interactive)
+(defun activate-transient-input-method (&optional arg interactive)
   "Enable a transient input method for the current buffer.
-If `transient-input-method' was not yet defined, prompt for it."
+If `default-transient-input-method' was not yet defined, prompt for it."
   (interactive "P\np")
-  (when (or arg (not transient-input-method))
+  (when (or arg (not default-transient-input-method))
     (let* ((default (or (car input-method-history) default-input-method))
            (input-method
             (read-input-method-name
              (if default "Transient input method (default %s): " "Transient input method: ")
              default t)))
-      (setq transient-input-method input-method)
+      (setq default-transient-input-method input-method)
       (when interactive
-        (customize-mark-as-set 'transient-input-method))))
-  (let* ((previous-input-method current-input-method)
-         (history input-method-history)
-         (clearfun (make-symbol "clear-transient-input-method"))
+        (customize-mark-as-set 'default-transient-input-method))))
+  (let* ((clearfun (make-symbol "clear-transient-input-method"))
          (exitfun
           (lambda ()
-            (deactivate-input-method)
-            (when previous-input-method
-              (activate-input-method previous-input-method))
-            (setq input-method-history history)
+            (deactivate-transient-input-method)
             (remove-hook 'input-method-after-insert-chunk-hook clearfun))))
     (fset clearfun (lambda () (funcall exitfun)))
     (add-hook 'input-method-after-insert-chunk-hook clearfun)
-    (when previous-input-method
-      (deactivate-input-method))
-    (activate-input-method transient-input-method)
+    (let ((input-method-history input-method-history))
+      (setq previous-transient-input-method current-input-method)
+      (when previous-transient-input-method
+        (deactivate-input-method))
+      (activate-input-method default-transient-input-method)
+      (setq current-transient-input-method default-transient-input-method))
     exitfun))
+
+(defun deactivate-transient-input-method ()
+  (when current-transient-input-method
+    (let ((input-method-history input-method-history))
+      (deactivate-input-method)
+      (when previous-transient-input-method
+        (activate-input-method previous-transient-input-method)
+        (setq previous-transient-input-method nil))
+      (setq current-transient-input-method nil))))
 
 (defun toggle-input-method (&optional arg interactive)
   "Enable or disable multilingual text input method for the current buffer.
