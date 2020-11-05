@@ -1,4 +1,4 @@
-;;; iso-transl-im.el --- Quail package based on `C-x 8' key sequences -*-coding: utf-8;-*-
+;;; iso-transl8.el --- Quail package based on `C-x 8' key sequences -*-coding: utf-8;-*-
 
 ;; Copyright (C) 2020 Free Software Foundation, Inc.
 
@@ -40,7 +40,7 @@ Examples:
 
 (eval-when-compile
   (require 'iso-transl)
-  (defmacro iso-transl-im--define-rules ()
+  (defmacro iso-transl8--define-rules ()
     `(quail-define-rules
       ,@(mapcar (lambda (rule)
                   (let ((from (car rule))
@@ -49,7 +49,7 @@ Examples:
                                    (vector to) to))))
                 iso-transl-char-map))))
 
-(iso-transl-im--define-rules)
+(iso-transl8--define-rules)
 
-(provide 'iso-transl-im)
-;;; iso-transl-im.el ends here
+(provide 'iso-transl8)
+;;; iso-transl8.el ends here
