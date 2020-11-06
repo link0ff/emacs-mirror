@@ -1502,7 +1502,8 @@ If INPUT-METHOD is nil, deactivate any current input method."
 (defun deactivate-input-method ()
   "Turn off the current input method."
   (when current-input-method
-    (add-to-history 'input-method-history current-input-method)
+    (unless current-transient-input-method
+      (add-to-history 'input-method-history current-input-method))
     (unwind-protect
 	(progn
 	  (setq input-method-function nil
@@ -1564,7 +1565,9 @@ which marks the variable `default-input-method' as set for Custom buffers."
   (if toggle-input-method-active
       (error "Recursive use of `toggle-input-method'"))
   (if (and current-input-method (not arg))
-      (deactivate-input-method)
+      (if current-transient-input-method
+          (deactivate-transient-input-method)
+        (deactivate-input-method))
     (let ((toggle-input-method-active t)
 	  (default (or (car input-method-history) default-input-method)))
       (if (and arg default (equal current-input-method default)
@@ -1603,23 +1606,21 @@ If `default-transient-input-method' was not yet defined, prompt for it."
             (remove-hook 'input-method-after-insert-chunk-hook clearfun))))
     (fset clearfun (lambda () (funcall exitfun)))
     (add-hook 'input-method-after-insert-chunk-hook clearfun)
-    (let ((input-method-history input-method-history))
-      (setq previous-transient-input-method current-input-method)
-      (when previous-transient-input-method
-        (deactivate-input-method))
-      (activate-input-method default-transient-input-method)
-      (setq current-transient-input-method default-transient-input-method))
+    (setq previous-transient-input-method current-input-method)
+    (when previous-transient-input-method
+      (deactivate-input-method))
+    (activate-input-method default-transient-input-method)
+    (setq current-transient-input-method default-transient-input-method)
     exitfun))
 
 (defun deactivate-transient-input-method ()
   "Disable currently active transient input method for the current buffer."
   (when current-transient-input-method
-    (let ((input-method-history input-method-history))
-      (deactivate-input-method)
-      (when previous-transient-input-method
-        (activate-input-method previous-transient-input-method)
-        (setq previous-transient-input-method nil))
-      (setq current-transient-input-method nil))))
+    (deactivate-input-method)
+    (when previous-transient-input-method
+      (activate-input-method previous-transient-input-method)
+      (setq previous-transient-input-method nil))
+    (setq current-transient-input-method nil)))
 
 (autoload 'help-buffer "help-mode")
 
