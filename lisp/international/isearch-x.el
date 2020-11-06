@@ -55,13 +55,12 @@
 (defun isearch-transient-input-method ()
   "Activate transient input method in interactive search."
   (interactive)
-  (when default-transient-input-method
-    (let ((overriding-terminal-local-map nil))
-      (activate-transient-input-method))
-    (setq isearch-input-method-function input-method-function
-	  isearch-input-method-local-p t)
-    (setq input-method-function nil)
-    (isearch-update)))
+  (let ((overriding-terminal-local-map nil))
+    (activate-transient-input-method))
+  (setq isearch-input-method-function input-method-function
+	isearch-input-method-local-p t)
+  (setq input-method-function nil)
+  (isearch-update))
 
 (defvar isearch-minibuffer-local-map
   (let ((map (copy-keymap minibuffer-local-map)))
