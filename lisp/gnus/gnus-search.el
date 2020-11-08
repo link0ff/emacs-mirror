@@ -701,7 +701,7 @@ return one word."
 
 (defun gnus-search-query-end-of-input ()
   "Are we at the end of input?"
-  (skip-chars-forward "[[:blank:]]")
+  (skip-chars-forward "[:blank:]")
   (looking-at "$"))
 
 ;;; Search engines
@@ -782,8 +782,7 @@ the files in ARTLIST by that search key.")
 (cl-defmethod shared-initialize ((engine gnus-search-process)
 				 slots)
   (setq slots (plist-put slots :proc-buffer
-			 (get-buffer-create
-			  (generate-new-buffer-name " *gnus-search-"))))
+			 (generate-new-buffer " *gnus-search-")))
   (cl-call-next-method engine slots))
 
 (defclass gnus-search-imap (gnus-search-engine)
@@ -1964,25 +1963,29 @@ remaining string, then adds all that to the top-level spec."
 (defun gnus-search-server-to-engine (srv)
   (let* ((method (gnus-server-to-method srv))
 	 (engine-config (assoc 'gnus-search-engine (cddr method)))
-	 (server
-	  (or (nth 1 engine-config)
-	      (cdr-safe (assoc (car method) gnus-search-default-engines))
-	      (when-let ((old (assoc 'nnir-search-engine
-				     (cddr method))))
-		(nnheader-message
-		 8 "\"nnir-search-engine\" is no longer a valid parameter")
-		(pcase (nth 1 old)
-		  ('notmuch 'gnus-search-notmuch)
-		  ('namazu 'gnus-search-namazu)
-		  ('find-grep 'gnus-search-find-grep)))))
-	 (inst
+	 (server (or (nth 1 engine-config)
+		     (cdr-safe (assoc (car method) gnus-search-default-engines))
+		     (when-let ((old (assoc 'nnir-search-engine
+					    (cddr method))))
+		       (nnheader-message
+			8 "\"nnir-search-engine\" is no longer a valid parameter")
+		       (nth 1 old))))
+	 inst)
+    (setq server
+	  (pcase server
+	    ('notmuch 'gnus-search-notmuch)
+	    ('namazu 'gnus-search-namazu)
+	    ('find-grep 'gnus-search-find-grep)
+	    ('imap 'gnus-search-imap)
+	    (_ server))
+	  inst
 	  (cond
 	   ((null server) nil)
 	   ((eieio-object-p server)
 	    server)
 	   ((class-p server)
 	    (make-instance server))
-	   (t nil))))
+	   (t nil)))
     (if inst
 	(when (cddr engine-config)
 	  ;; We're not being completely backward-compatible here,
@@ -1995,7 +1998,7 @@ remaining string, then adds all that to the top-level spec."
 	       (nnheader-message
 		5 "Invalid search engine parameter: (%s %s)"
 		key value)))))
-      (nnheader-message 5 "No search engine defined for %s" srv))
+      (error "No search engine defined for %s" srv))
     inst))
 
 (declare-function gnus-registry-get-id-key "gnus-registry" (id key))
@@ -2127,7 +2130,8 @@ article came from is also searched."
 	      (minibuffer-with-setup-hook
 		  (lambda ()
 		    (add-hook 'completion-at-point-functions
-			      #'gnus-search--complete-key-data))
+			      #'gnus-search--complete-key-data
+			      nil t))
 		(read-from-minibuffer
 		 "Query: " nil gnus-search-minibuffer-map
 		 nil 'gnus-search-history)))
