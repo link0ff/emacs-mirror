@@ -51,7 +51,8 @@
 (defvar org-babel-default-header-args:ruby '())
 
 (defvar org-babel-ruby-command "ruby"
-  "Name of command to use for executing ruby code.")
+  "Name of command to use for executing ruby code.
+It's possible to override it by using a header argument `:ruby'")
 
 (defcustom org-babel-ruby-hline-to "nil"
   "Replace hlines in incoming tables with this when translating to ruby."
@@ -161,10 +162,10 @@ then create one.  Return the initialized session."
   (unless (string= session "none")
     (require 'inf-ruby)
     (let* ((cmd (cdr (or (and (assq :console params) ;; e.g. `auto' or `rails'
-                              (inf-ruby-console-command (assq :console params)))
-                         (assq :ruby params)
-                         (assoc inf-ruby-default-implementation
-			        inf-ruby-implementations))))
+			      (inf-ruby-console-command (assq :console params)))
+			 (assq :ruby params)
+			 (assoc inf-ruby-default-implementation
+				inf-ruby-implementations))))
 	   (buffer (get-buffer (format "*%s*" session)))
 	   (session-buffer (or buffer (save-window-excursion
 					(run-ruby cmd session)
