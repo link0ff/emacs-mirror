@@ -566,8 +566,7 @@ function @code{quail-translation-keymap}, using @code{define-key}.
   Another facility for typing characters not on your keyboard is by
 using @kbd{C-x 8 @key{RET}} (@code{insert-char}) to insert a single
 character based on its Unicode name or code-point; see @ref{Inserting
-Text}.  But you can insert the same characters by temporarily activating
-the @code{iso-transl} input method.
+Text}.
 
 @node Select Input Method
 @section Selecting an Input Method
@@ -1774,9 +1773,6 @@ they too are defined to compose with the following character, once
 
 Use @kbd{C-x 8 C-h} to list all the available @kbd{C-x 8} translations.
 @end itemize
-
-Alternatively, you can use @kbd{C-u C-x \} to select the
-@code{iso-transl} input method.
 
 @node Charsets
 @section Charsets
