@@ -162,6 +162,7 @@ then create one.  Return the initialized session."
   (unless (string= session "none")
     (require 'inf-ruby)
     (let* ((cmd (cdr (or (and (assq :console params) ;; e.g. `auto' or `rails'
+                              (fboundp 'inf-ruby-console-command)
 			      (inf-ruby-console-command (assq :console params)))
 			 (assq :ruby params)
 			 (assoc inf-ruby-default-implementation
