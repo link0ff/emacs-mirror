@@ -662,10 +662,11 @@ builtins.")
     ;; assignments
     ;; support for a = b = c = 5
     (,(lambda (limit)
-        (let ((re (python-rx (group (+ (any word ?. ?_)))
-                             (? ?\[ (+ (not (any  ?\]))) ?\]) (* space)
-                             ;; A type, like " : int ".
-                             (? ?: (* space) (+ (any word ?. ?_)) (* space))
+        (let ((re (python-rx (group symbol-name)
+                             ;; subscript, like "[5]"
+                             (? ?\[ (+ (not ?\])) ?\]) (* space)
+                             ;; type hint, like ": int" or ": Mapping[int, str]"
+                             (? ?: (* space) (+ not-simple-operator) (* space))
                              assignment-operator))
               (res nil))
           (while (and (setq res (re-search-forward re limit t))
@@ -675,9 +676,9 @@ builtins.")
      (1 font-lock-variable-name-face nil nil))
     ;; support for a, b, c = (1, 2, 3)
     (,(lambda (limit)
-        (let ((re (python-rx (group (+ (any word ?. ?_))) (* space)
-                             (* ?, (* space) (+ (any word ?. ?_)) (* space))
-                             ?, (* space) (+ (any word ?. ?_)) (* space)
+        (let ((re (python-rx (group symbol-name) (* space)
+                             (* ?, (* space) symbol-name (* space))
+                             ?, (* space) symbol-name (* space)
                              assignment-operator))
               (res nil))
           (while (and (setq res (re-search-forward re limit t))
