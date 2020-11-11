@@ -38,9 +38,6 @@
 (quail-define-package
  "compose" "UTF-8" "+" t
  "Compose-like input method with the same key sequences as X Multi_key.
-Using it as a transient input method with `C-u C-x \ compose RET'
-allows typing e.g. `C-x \ E =' to insert a single character,
-and automatically disabling the input method afterwards.
 Examples:
  E = -> €   1 2 -> ½   ^ 3 -> ³"
  '(("\t" . quail-completion)
@@ -2934,8 +2931,6 @@ Examples:
 (quail-define-package
  "iso-transl" "UTF-8" "X8" t
  "Use the same key sequences as in `C-x 8' keymap defined in iso-transl.el.
-When it's enabled as a transient input method with `C-u C-x \ iso-transl RET',
-the corresponding keybindings such as `C-x 8 [' can be typed as `C-x \ ['.
 Examples:
  * E -> €   1 / 2 -> ½   ^ 3 -> ³"
  '(("\t" . quail-completion))
