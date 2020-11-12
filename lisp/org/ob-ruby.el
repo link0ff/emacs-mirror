@@ -44,6 +44,8 @@
 
 (defvar inf-ruby-default-implementation)
 (defvar inf-ruby-implementations)
+(defvar inf-ruby-buffer)
+(defvar inf-ruby-buffers)
 
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("ruby" . "rb"))
