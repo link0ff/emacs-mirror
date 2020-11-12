@@ -1,9 +1,19 @@
 
+https://github.com/dgutov/diff-hl/issues
 
+(define-minor-mode diff-hl-mode
+  "Toggle VC diff highlighting."
+  :lighter diff-hl-lighter
+  :keymap `(([remap vc-diff] . diff-hl-diff-goto-hunk)
+            (,diff-hl-command-prefix . diff-hl-command-map))
+
+(defun vc-diff (&optional historic not-urgent)
+(defun diff-hl-diff-goto-hunk ()
+
+
 CHECK branches:
-icomplete-vertical
-highlight-completions
-completions-highlight-modifications
+origin/feature/icomplete-vertical
+origin/feature/completions-highlight-modifications
 
 bug#4136: 23.1; delete-pair
 bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
