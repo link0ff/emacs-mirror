@@ -5089,9 +5089,9 @@ visual feedback indicating the extent of the region being copied."
 
 (defun indicate-copied-region (&optional message-len)
   "Indicate that the region text has been copied interactively.
-If the mark is visible in the selected window, blink the cursor
-between point and mark if there is currently no active region
-highlighting.
+If the mark is visible in the selected window, blink the cursor between
+point and mark if there is currently no active region highlighting.
+The option `copy-region-blink-delay' can disable blinking.
 
 If the mark lies outside the selected window, display an
 informative message containing a sample of the copied text.  The
@@ -5106,11 +5106,13 @@ of this sample text; it defaults to 40."
 	;; Swap point-and-mark quickly so as to show the region that
 	;; was selected.  Don't do it if the region is highlighted.
 	(unless (and (region-active-p)
-		     (face-background 'region nil t))
+		     (face-background 'region nil t)
+		     (natnump copy-region-blink-delay)
+		     (> copy-region-blink-delay 0))
 	  ;; Swap point and mark.
 	  (set-marker (mark-marker) (point) (current-buffer))
 	  (goto-char mark)
-	  (sit-for blink-matching-delay)
+	  (sit-for copy-region-blink-delay)
 	  ;; Swap back.
 	  (set-marker (mark-marker) mark (current-buffer))
 	  (goto-char point)
@@ -8137,6 +8139,13 @@ More precisely, a char with closeparen syntax is self-inserted.")
           ;; `sit-for'. That's also the reason it get a `priority' prop
           ;; of 100.
           'append)
+
+(defcustom copy-region-blink-delay blink-matching-delay
+  "Time in seconds to delay after showing a pair character to delete.
+No timeout in case of 0."
+  :type 'number
+  :group 'killing
+  :version "28.1")
 
 ;; This executes C-g typed while Emacs is waiting for a command.
 ;; Quitting out of a program does not go through here;
