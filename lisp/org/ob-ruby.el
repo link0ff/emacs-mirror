@@ -169,7 +169,8 @@ then create one.  Return the initialized session."
 				inf-ruby-implementations))))
 	   (buffer (get-buffer (format "*%s*" session)))
 	   (session-buffer (or buffer (save-window-excursion
-					(run-ruby cmd session)
+					(let (inf-ruby-buffer inf-ruby-buffers)
+                                          (run-ruby cmd session))
 					(current-buffer)))))
       (if (org-babel-comint-buffer-livep session-buffer)
 	  (progn (sit-for .25) session-buffer)
