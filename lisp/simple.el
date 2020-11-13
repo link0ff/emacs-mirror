@@ -5133,12 +5133,12 @@ of this sample text; it defaults to 40."
 	(if (< point mark)
 	    ;; Don't say "killed" or "saved"; that is misleading.
 	    (message "Copied text until \"%s\""
-                     ;; Don't show newlines literally
+		     ;; Don't show newlines literally
 		     (query-replace-descr
-                      (buffer-substring-no-properties (- mark len) mark)))
+		      (buffer-substring-no-properties (- mark len) mark)))
 	  (message "Copied text from \"%s\""
 		   (query-replace-descr
-                    (buffer-substring-no-properties mark (+ mark len)))))))))
+		    (buffer-substring-no-properties mark (+ mark len)))))))))
 
 (defun append-next-kill (&optional interactive)
   "Cause following command, if it kills, to add to previous kill.
