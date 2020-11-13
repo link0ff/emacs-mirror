@@ -786,8 +786,9 @@ This command assumes point is not in a string or comment."
 
 (defcustom delete-pair-blink-delay blink-matching-delay
   "Time in seconds to delay after showing a pair character to delete.
-No timeout in case of 0."
+The value 0 disables blinking."
   :type 'number
+  :set-after '(blink-matching-delay)
   :group 'lisp
   :version "28.1")
 
@@ -810,7 +811,7 @@ The option `delete-pair-blink-delay' can disable blinking."
 				      (if (= (length p) 3) (cdr p) p))
 				    insert-pair-alist))
 	      (error "Not after matching pair"))
-	    (when (and (natnump delete-pair-blink-delay)
+	    (when (and (numberp delete-pair-blink-delay)
 		       (> delete-pair-blink-delay 0))
 	      (sit-for delete-pair-blink-delay))
 	    (delete-char 1)))
@@ -825,7 +826,7 @@ The option `delete-pair-blink-delay' can disable blinking."
 				    (if (= (length p) 3) (cdr p) p))
 				  insert-pair-alist))
 	    (error "Not before matching pair"))
-	  (when (and (natnump delete-pair-blink-delay)
+	  (when (and (numberp delete-pair-blink-delay)
 		     (> delete-pair-blink-delay 0))
 	    (sit-for delete-pair-blink-delay))
 	  (delete-char -1)))

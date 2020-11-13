@@ -5087,6 +5087,14 @@ visual feedback indicating the extent of the region being copied."
   (if (called-interactively-p 'interactive)
       (indicate-copied-region)))
 
+(defcustom copy-region-blink-delay blink-matching-delay
+  "Time in seconds to delay after showing a pair character to delete.
+The value 0 disables blinking."
+  :type 'number
+  :set-after '(blink-matching-delay)
+  :group 'killing
+  :version "28.1")
+
 (defun indicate-copied-region (&optional message-len)
   "Indicate that the region text has been copied interactively.
 If the mark is visible in the selected window, blink the cursor between
@@ -5105,10 +5113,10 @@ of this sample text; it defaults to 40."
     (if (pos-visible-in-window-p mark (selected-window))
 	;; Swap point-and-mark quickly so as to show the region that
 	;; was selected.  Don't do it if the region is highlighted.
-	(unless (and (region-active-p)
-		     (face-background 'region nil t)
-		     (natnump copy-region-blink-delay)
-		     (> copy-region-blink-delay 0))
+	(when (and (numberp copy-region-blink-delay)
+		   (> copy-region-blink-delay 0)
+		   (or (not (region-active-p))
+		       (not (face-background 'region nil t))))
 	  ;; Swap point and mark.
 	  (set-marker (mark-marker) (point) (current-buffer))
 	  (goto-char mark)
@@ -5123,11 +5131,12 @@ of this sample text; it defaults to 40."
       (let ((len (min (abs (- mark point))
 		      (or message-len 40))))
 	(if (< point mark)
-	    ;; Don't say "killed"; that is misleading.
-	    (message "Saved text until \"%s\""
+	    ;; Don't say "killed" or "saved"; that is misleading.
+	    (message "Copied text until \"%s\""
+                     ;; Don't show newlines literally
 		     (query-replace-descr
                       (buffer-substring-no-properties (- mark len) mark)))
-	  (message "Saved text from \"%s\""
+	  (message "Copied text from \"%s\""
 		   (query-replace-descr
                     (buffer-substring-no-properties mark (+ mark len)))))))))
 
@@ -8139,13 +8148,6 @@ More precisely, a char with closeparen syntax is self-inserted.")
           ;; `sit-for'. That's also the reason it get a `priority' prop
           ;; of 100.
           'append)
-
-(defcustom copy-region-blink-delay blink-matching-delay
-  "Time in seconds to delay after showing a pair character to delete.
-No timeout in case of 0."
-  :type 'number
-  :group 'killing
-  :version "28.1")
 
 ;; This executes C-g typed while Emacs is waiting for a command.
 ;; Quitting out of a program does not go through here;
