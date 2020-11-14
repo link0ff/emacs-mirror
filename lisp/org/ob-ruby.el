@@ -44,8 +44,6 @@
 
 (defvar inf-ruby-default-implementation)
 (defvar inf-ruby-implementations)
-(defvar inf-ruby-buffer)
-(defvar inf-ruby-buffers)
 
 (defvar org-babel-tangle-lang-exts)
 (add-to-list 'org-babel-tangle-lang-exts '("ruby" . "rb"))
@@ -161,8 +159,7 @@ then create one.  Return the initialized session."
 				inf-ruby-implementations))))
 	   (buffer (get-buffer (format "*%s*" session)))
 	   (session-buffer (or buffer (save-window-excursion
-					(let (inf-ruby-buffer inf-ruby-buffers)
-                                          (run-ruby cmd session))
+					(run-ruby cmd session)
 					(current-buffer)))))
       (if (org-babel-comint-buffer-livep session-buffer)
 	  (progn (sit-for .25) session-buffer)
