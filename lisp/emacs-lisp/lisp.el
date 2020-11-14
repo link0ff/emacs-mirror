@@ -788,7 +788,6 @@ This command assumes point is not in a string or comment."
   "Time in seconds to delay after showing a pair character to delete.
 The value 0 disables blinking."
   :type 'number
-  :set-after '(blink-matching-delay)
   :group 'lisp
   :version "28.1")
 
