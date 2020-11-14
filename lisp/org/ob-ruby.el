@@ -77,13 +77,6 @@ This function is called by `org-babel-execute-src-block'."
 		   (cdr (assq :session params)) params))
          (result-params (cdr (assq :result-params params)))
          (result-type (cdr (assq :result-type params)))
-	 ;; https://github.com/nonsequitur/inf-ruby/issues/121
-	 ;; https://orgmode.org/list/873623ontm.fsf@gnu.org/
-	 (org-babel-ruby-command
-	  (or (cdr (assq :ruby params))
-	      org-babel-ruby-command))
-	 ;; ALSO suggest S-RET to eval and create similar code block below,
-	 ;; it's currently does a similar thing, but only in tables `org-table-copy-down'
          (full-body (org-babel-expand-body:generic
 		     body params (org-babel-variable-assignments:ruby params)))
          (result (if (member "xmp" result-params)
@@ -163,10 +156,7 @@ If there is not a current inferior-process-buffer in SESSION
 then create one.  Return the initialized session."
   (unless (string= session "none")
     (require 'inf-ruby)
-    (let* ((cmd (cdr (or (and (assq :console params) ;; e.g. `auto' or `rails'
-                              (fboundp 'inf-ruby-console-command)
-			      (inf-ruby-console-command (assq :console params)))
-			 (assq :ruby params)
+    (let* ((cmd (cdr (or (assq :ruby params)
 			 (assoc inf-ruby-default-implementation
 				inf-ruby-implementations))))
 	   (buffer (get-buffer (format "*%s*" session)))
