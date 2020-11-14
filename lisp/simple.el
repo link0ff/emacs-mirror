@@ -5087,11 +5087,10 @@ visual feedback indicating the extent of the region being copied."
   (if (called-interactively-p 'interactive)
       (indicate-copied-region)))
 
-(defcustom copy-region-blink-delay blink-matching-delay
+(defcustom copy-region-blink-delay 1
   "Time in seconds to delay after showing a pair character to delete.
 The value 0 disables blinking."
   :type 'number
-  :set-after '(blink-matching-delay)
   :group 'killing
   :version "28.1")
 
