@@ -2825,7 +2825,7 @@ If the caller has set `help-form', there is no need to explicitly add
 
     (define-key map [remap skip] 'y-or-n-p-insert-n)
 
-    (dolist (symbol '(help backup undo undo-all edit edit-replacement
+    (dolist (symbol '(backup undo undo-all edit edit-replacement
                       delete-and-edit ignore self-insert-command))
       (define-key map (vector 'remap symbol) 'y-or-n-p-insert-other))
 

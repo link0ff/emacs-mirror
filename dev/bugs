@@ -11,6 +11,11 @@ https://github.com/dgutov/diff-hl/issues
 (defun diff-hl-diff-goto-hunk ()
 
 
+TRY:
+ivy, ivy-rich, ivy-posframe, counsel
+helm
+selectrum
+
 CHECK branches:
 origin/feature/icomplete-vertical
 origin/feature/completions-highlight-modifications

@@ -5088,7 +5088,9 @@ visual feedback indicating the extent of the region being copied."
       (indicate-copied-region)))
 
 (defcustom copy-region-blink-delay 1
-  "Time in seconds to delay after showing a pair character to delete.
+  "Time in seconds to delay after showing the other end of the region.
+It's used by the command `kill-ring-save' and the function
+`indicate-copied-region' to blink the cursor between point and mark.
 The value 0 disables blinking."
   :type 'number
   :group 'killing

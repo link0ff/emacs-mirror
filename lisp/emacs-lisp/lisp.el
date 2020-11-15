@@ -785,8 +785,8 @@ This command assumes point is not in a string or comment."
   (insert-pair arg ?\( ?\)))
 
 (defcustom delete-pair-blink-delay blink-matching-delay
-  "Time in seconds to delay after showing a pair character to delete.
-The value 0 disables blinking."
+  "Time in seconds to delay after showing a paired character to delete.
+It's used by the command `delete-pair'.  The value 0 disables blinking."
   :type 'number
   :group 'lisp
   :version "28.1")

@@ -11074,7 +11074,7 @@ message3 (Lisp_Object m)
       message_dolog (buffer, nbytes, true, multibyte);
       SAFE_FREE ();
     }
-  if (! inhibit_message && (!SYMBOLP (Vthis_command) || NILP (Fget (Vthis_command, Qinhibit_message))))
+  if (! inhibit_message)
     message3_nolog (m);
 }
 
@@ -34567,7 +34567,6 @@ When the value is nil, scrolling in minibuffer windows obeys the
 settings of `scroll-conservatively'.  */);
   scroll_minibuffer_conservatively = true; /* bug#44070 */
 
-  DEFSYM (Qinhibit_message, "inhibit-message");
   DEFVAR_BOOL ("inhibit-message", inhibit_message,
               doc:  /* Non-nil means calls to `message' are not displayed.
 They are still logged to the *Messages* buffer.
