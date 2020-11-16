@@ -1,14 +1,11 @@
 
-https://github.com/dgutov/diff-hl/issues
+https://github.com/dgutov/diff-hl/issues/149
+Subject: bug#36526: Open diff at current location (feature request with suggested code)
 
-(define-minor-mode diff-hl-mode
-  "Toggle VC diff highlighting."
-  :lighter diff-hl-lighter
-  :keymap `(([remap vc-diff] . diff-hl-diff-goto-hunk)
-            (,diff-hl-command-prefix . diff-hl-command-map))
-
-(defun vc-diff (&optional historic not-urgent)
-(defun diff-hl-diff-goto-hunk ()
+
+https://github.com/nonsequitur/inf-ruby/issues/121
+"Can org-babel find its buffer based on the value of :session?
+Then it could call run-ruby-or-pop-to-buffer."
 
 
 TRY:
