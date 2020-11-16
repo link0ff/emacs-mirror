@@ -8,6 +8,10 @@ https://github.com/nonsequitur/inf-ruby/issues/121
 Then it could call run-ruby-or-pop-to-buffer."
 
 
+implement command 'insert-completion-to-minibuffer' and bind to C-RET
+also implement the same for icomplete-mode
+
+
 TRY:
 ivy, ivy-rich, ivy-posframe, counsel
 helm
