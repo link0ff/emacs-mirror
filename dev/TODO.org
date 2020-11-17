@@ -1,5 +1,60 @@
 #+TODO: TODO | DONE | WONTFIX
 
+* ob-ruby
+
+https://github.com/nonsequitur/inf-ruby/issues/121
+"Then you probably want to call run-ruby-new directly."
+
+* diff-goto-line
+
+https://github.com/dgutov/diff-hl/issues/149
+Subject: bug#36526: Open diff at current location (feature request with suggested code)
+https://www.reddit.com/r/emacs/comments/efu71g/announce_diffatpoint_now_available_in_melpa/
+
+1. https://gitlab.com/ideasman42/emacs-diff-at-point
+2. (qv "~/.emacs.d/elpa/diff-hl-20200701.2141/diff-hl.el"
+    "(defun diff-hl-diff-skip-to (line)")
+3. https://lists.gnu.org/archive/html/emacs-devel/2016-02/msg01066.html
+
+diff-goto-line doesn't work with 'C-x v D'
+should be customizable?
+
+* inhibit-messages
+
+bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
+[[file://test.el][./test.el]]
+
+* insert-completion-to-minibuffer
+
+implement command 'insert-completion-to-minibuffer' and bind to C-RET
+also implement the same for icomplete-mode
+
+* try
+
+** completion packages
+
+ivy, ivy-rich, ivy-posframe, counsel
+helm
+selectrum
+
+** completion branches
+
+CHECK branches:
+origin/feature/icomplete-vertical
+origin/feature/completions-highlight-modifications
+
+* debbugs
+
+bug#12986: Pressing backspace during isearch exits case-sensitive and word modes
+
+bug#42052: 28.0.50; tab-bar-mode should be frame-local
+
+bug#43405: Tool bar item doesn't align to the right edge
+
+bug#43830: keyboard layout handling incompatible with rest of the OS
+
+bug#44001: vc-print-log-setup-buttons leaves point at eob
+
 * infoman
 
 tried to browse sql.el docstrings in two renamed *Help* buffers, but quickly lost
