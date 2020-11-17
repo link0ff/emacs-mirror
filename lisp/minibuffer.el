@@ -117,6 +117,9 @@ This metadata is an alist.  Currently understood keys are:
 - `annotation-function': function to add annotations in *Completions*.
    Takes one argument (STRING), which is a possible completion and
    returns a string to append to STRING.
+- `display-function': function to display entries in *Completions*.
+   Takes one argument (COMPLETIONS) and should return a list
+   of completions with a placeholder that separates prefix/suffix.
 - `display-sort-function': function to sort entries in *Completions*.
    Takes one argument (COMPLETIONS) and should return a new list
    of completions.  Can operate destructively.
@@ -1885,6 +1888,9 @@ These include:
    completion).  The function can access the completion data via
    `minibuffer-completion-table' and related variables.
 
+`:display-function': Function to display completions.
+   The function must accept one argument, a list of completions.
+
 `:exit-function': Function to run after completion is performed.
 
    The function must accept two arguments, STRING and STATUS.
@@ -1971,6 +1977,9 @@ variables.")
                        (plist-get completion-extra-properties
                                   :annotation-function)
                        completion-annotate-function))
+             (dfun (or (completion-metadata-get all-md 'display-function)
+                       (plist-get completion-extra-properties
+                                  :display-function)))
              (mainbuf (current-buffer))
              ;; If the *Completions* buffer is shown in a new
              ;; window, mark it as softly-dedicated, so bury-buffer in
@@ -2017,6 +2026,9 @@ variables.")
                                         (let ((ann (funcall afun s)))
                                           (if ann (list s ann) s)))
                                       completions)))
+                      (when dfun
+                        (setq completions
+                              (funcall dfun completions)))
 
                       (with-current-buffer standard-output
                         (set (make-local-variable 'completion-base-position)
