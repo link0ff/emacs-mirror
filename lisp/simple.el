@@ -8760,11 +8760,9 @@ select the completion near point.\n\n"))))))
 (defun switch-to-completions ()
   "Select the completion list window."
   (interactive)
-  (minibuffer-completion-help)
-  (let ((window (or (get-buffer-window "*Completions*" 0)
-		    ;; Make sure we have a completions window.
-                    (progn (minibuffer-completion-help)
-                           (get-buffer-window "*Completions*" 0)))))
+  (let ((window ;; Make sure we have an updated completions window.
+                (progn (minibuffer-completion-help)
+                       (get-buffer-window "*Completions*" 0))))
     (when window
       (select-window window)
       ;; In the new buffer, go to the first completion.

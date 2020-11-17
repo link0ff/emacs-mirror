@@ -2511,6 +2511,8 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
        (funcall setup-buttons-func backend files retval)
        (message "vc-log-internal-common: shrink-window-if-larger-than-buffer")
        ;; (shrink-window-if-larger-than-buffer)
+       ;; TODO: maybe all these should be added to `vc-log-finish-functions'
+       ;; e.g. '(shrink-window-if-larger-than-buffer goto-location ...)
        (when goto-location-func
          (funcall goto-location-func backend)
          (setq vc-sentinel-movepoint (point)) ; cf with annotate

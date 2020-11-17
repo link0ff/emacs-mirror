@@ -66,9 +66,6 @@
 ;;     the provided string (as is the case in filecache.el), in which
 ;;     case partial-completion (for example) doesn't make any sense
 ;;     and neither does the completions-first-difference highlight.
-;;   - indicate how to display the completions in *Completions* (turn
-;;     \n into something else, add special boundaries between
-;;     completions).  E.g. when completing from the kill-ring.
 
 ;; - case-sensitivity currently confuses two issues:
 ;;   - whether or not a particular completion table should be case-sensitive
@@ -83,7 +80,6 @@
 
 ;; - add support for ** to pcm.
 ;; - Add vc-file-name-completion-table to read-file-name-internal.
-;; - A feature like completing-help.el.
 
 ;;; Code:
 
@@ -1678,7 +1674,7 @@ If the value is `vertical', display completions sorted vertically
 in columns in the *Completions* buffer.
 If the value is `horizontal', display completions sorted
 horizontally in alphabetical order, rather than down the screen."
-  :type '(choice (const horizontal) (const vertical))
+  :type '(choice (const horizontal) (const vertical) (const vertical-only) (const detailed))
   :version "23.2")
 
 (defun completion--insert-strings (strings)
@@ -1754,13 +1750,22 @@ It also eliminates runs of equal strings."
             (if (not (consp str))
                 (put-text-property (point) (progn (insert str) (point))
                                    'mouse-face 'highlight)
-              (put-text-property (point) (progn (insert (car str)) (point))
-                                 'mouse-face 'highlight)
-              (let ((beg (point))
-                    (end (progn (insert (cadr str)) (point))))
-                (put-text-property beg end 'mouse-face nil)
-                (font-lock-prepend-text-property beg end 'face
-                                                 'completions-annotations)))
+              (let* ((split (split-string (cadr str) "%s"))
+                     (prefix (when (cadr split) (car split)))
+                     (suffix (or (cadr split) (car split))))
+                (when prefix
+                  (let ((beg (point))
+                        (end (progn (insert prefix) (point))))
+                    (put-text-property beg end 'mouse-face nil)
+                    (font-lock-prepend-text-property beg end 'face
+                                                     'completions-annotations)))
+                (put-text-property (point) (progn (insert (car str)) (point))
+                                   'mouse-face 'highlight)
+                (let ((beg (point))
+                      (end (progn (insert suffix) (point))))
+                  (put-text-property beg end 'mouse-face nil)
+                  (font-lock-prepend-text-property beg end 'face
+                                                   'completions-annotations))))
 	    (cond
 	     ((eq completions-format 'vertical)
 	      ;; Vertical format
@@ -3034,19 +3039,6 @@ the commands start with a \"-\" or a SPC."
   :version "24.1"
   :type 'boolean)
 
-(defcustom minibuffer-default-prompt-format " (default %s)"
-  "Format string used to output \"default\" values.
-When prompting for input, there will often be a default value,
-leading to prompts like \"Number of articles (default 50): \".
-The \"default\" part of that prompt is controlled by this
-variable, and can be set to, for instance, \" [%s]\" if you want
-a shorter displayed prompt, or \"\", if you don't want to display
-the default at all.
-
-This variable is used by the `format-prompt' function."
-  :version "28.1"
-  :type 'string)
-
 (defun completion-pcm--pattern-trivial-p (pattern)
   (and (stringp (car pattern))
        ;; It can be followed by `point' and "" and still be trivial.
@@ -3863,6 +3855,19 @@ the minibuffer was activated, and execute the forms."
   (interactive "^P")
   (with-minibuffer-selected-window
     (scroll-other-window-down arg)))
+
+(defcustom minibuffer-default-prompt-format " (default %s)"
+  "Format string used to output \"default\" values.
+When prompting for input, there will often be a default value,
+leading to prompts like \"Number of articles (default 50): \".
+The \"default\" part of that prompt is controlled by this
+variable, and can be set to, for instance, \" [%s]\" if you want
+a shorter displayed prompt, or \"\", if you don't want to display
+the default at all.
+
+This variable is used by the `format-prompt' function."
+  :version "28.1"
+  :type 'string)
 
 (defun format-prompt (prompt default &rest format-args)
   "Format PROMPT with DEFAULT according to `minibuffer-default-prompt-format'.

@@ -127,16 +127,30 @@ with the current prefix.  The files are chosen according to
   :version "26.3")
 
 (defun help--symbol-completion-table (string pred action)
-  (when help-enable-completion-autoload
-    (let ((prefixes (radix-tree-prefixes (help-definition-prefixes) string)))
-      (help--load-prefixes prefixes)))
-  (let ((prefix-completions
-         (and help-enable-completion-autoload
-              (mapcar #'intern (all-completions string definition-prefixes)))))
-    (complete-with-action action obarray string
-                          (if pred (lambda (sym)
-                                     (or (funcall pred sym)
-                                         (memq sym prefix-completions)))))))
+  (if (eq action 'metadata)
+      '(metadata
+	(annotation-function
+         . (lambda (c)
+             (let* ((s (intern c))
+                    (doc (condition-case nil (documentation s) (error nil)))
+                    (doc (and doc (substring doc 0 (string-match "\n" doc)))))
+               (format "%s %%s%s"
+                       (propertize (cond ((commandp s) "c")
+                                         ((fboundp s) "f")
+                                         ((boundp s) "v")
+                                         " ")
+                                   'face 'shadow)
+                       (if doc (propertize (format " -- %s" doc) 'face 'shadow) ""))))))
+    (when help-enable-completion-autoload
+      (let ((prefixes (radix-tree-prefixes (help-definition-prefixes) string)))
+        (help--load-prefixes prefixes)))
+    (let ((prefix-completions
+           (and help-enable-completion-autoload
+                (mapcar #'intern (all-completions string definition-prefixes)))))
+      (complete-with-action action obarray string
+                            (if pred (lambda (sym)
+                                       (or (funcall pred sym)
+                                           (memq sym prefix-completions))))))))
 
 (defvar describe-function-orig-buffer nil
   "Buffer that was current when `describe-function' was invoked.
