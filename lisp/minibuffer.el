@@ -1697,7 +1697,7 @@ It also eliminates runs of equal strings."
     (let* ((length (apply #'max
 			  (mapcar (lambda (s)
 				    (if (consp s)
-                                        (cl-reduce #'+ (mapcar #'string-width s))
+					(apply #'+ (mapcar #'string-width s))
 				      (string-width s)))
 				  strings)))
 	   (window (get-buffer-window (current-buffer) 0))
@@ -1722,11 +1722,11 @@ It also eliminates runs of equal strings."
           ;; FIXME: `string-width' doesn't pay attention to
           ;; `display' properties.
           (let ((length (if (consp str)
-                            (cl-reduce #'+ (mapcar #'string-width str))
+                            (apply #'+ (mapcar #'string-width str))
                           (string-width str))))
             (cond
              ((and completions-detailed (= (length str) 3))
-	      ;; Detailed view
+              ;; Detailed view
               ;; When `str' contains prefix and suffix this means
               ;; that caller specified `affix-function'.
               )
@@ -1781,12 +1781,12 @@ It also eliminates runs of equal strings."
                   (font-lock-prepend-text-property beg end 'face
                                                    'completions-annotations))))
 	    (cond
-             ((and completions-detailed (= (length str) 3))
+	     ((and completions-detailed (= (length str) 3))
 	      ;; Detailed view
-              (when (zerop row) (setq truncate-lines t))
-              (insert "\n")
-              (setq row (1+ row)))
-             ((eq completions-format 'vertical)
+	      (when (zerop row) (setq truncate-lines t))
+	      (insert "\n")
+	      (setq row (1+ row)))
+	     ((eq completions-format 'vertical)
 	      ;; Vertical format
 	      (if (> column 0)
 		  (forward-line)
