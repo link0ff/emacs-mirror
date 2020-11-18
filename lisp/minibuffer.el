@@ -117,9 +117,9 @@ This metadata is an alist.  Currently understood keys are:
 - `annotation-function': function to add annotations in *Completions*.
    Takes one argument (STRING), which is a possible completion and
    returns a string to append to STRING.
-- `display-function': function to display entries in *Completions*.
+- `affix-function': function to prepend/append a prefix/suffix to entries.
    Takes one argument (COMPLETIONS) and should return a list
-   of completions with a placeholder that separates prefix/suffix.
+   of completions with a completion, its prefix and suffix.
 - `display-sort-function': function to sort entries in *Completions*.
    Takes one argument (COMPLETIONS) and should return a new list
    of completions.  Can operate destructively.
@@ -1668,7 +1668,7 @@ Return nil if there is no valid completion, else t."
     (#b000 nil)
       (_     t))))
 
-(defface completions-annotations '((t :inherit italic))
+(defface completions-annotations '((t :inherit (italic shadow)))
   "Face to use for annotations in the *Completions* buffer.")
 
 (defcustom completions-format 'horizontal
@@ -1677,8 +1677,17 @@ If the value is `vertical', display completions sorted vertically
 in columns in the *Completions* buffer.
 If the value is `horizontal', display completions sorted
 horizontally in alphabetical order, rather than down the screen."
-  :type '(choice (const horizontal) (const vertical) (const vertical-only) (const detailed))
+  :type '(choice (const horizontal) (const vertical))
   :version "23.2")
+
+(defcustom completions-detailed nil
+  "When non-nil, display completions vertically with one completion per row.
+This option overrides another related option `completions-format'.
+Some commands might provide a detailed view with more information added
+to completions.  When the used completion function doesn't provide
+a detailed view, then fall back to the value defined by `completions-format'."
+  :type 'boolean
+  :version "28.1")
 
 (defun completion--insert-strings (strings)
   "Insert a list of STRINGS into the current buffer.
@@ -1688,8 +1697,7 @@ It also eliminates runs of equal strings."
     (let* ((length (apply #'max
 			  (mapcar (lambda (s)
 				    (if (consp s)
-					(+ (string-width (car s))
-                                           (string-width (cadr s)))
+                                        (cl-reduce #'+ (mapcar #'string-width s))
 				      (string-width s)))
 				  strings)))
 	   (window (get-buffer-window (current-buffer) 0))
@@ -1714,10 +1722,14 @@ It also eliminates runs of equal strings."
           ;; FIXME: `string-width' doesn't pay attention to
           ;; `display' properties.
           (let ((length (if (consp str)
-                            (+ (string-width (car str))
-                               (string-width (cadr str)))
+                            (cl-reduce #'+ (mapcar #'string-width str))
                           (string-width str))))
             (cond
+             ((and completions-detailed (= (length str) 3))
+	      ;; Detailed view
+              ;; When `str' contains prefix and suffix this means
+              ;; that caller specified `affix-function'.
+              )
 	     ((eq completions-format 'vertical)
 	      ;; Vertical format
 	      (when (> row rows)
@@ -1753,9 +1765,8 @@ It also eliminates runs of equal strings."
             (if (not (consp str))
                 (put-text-property (point) (progn (insert str) (point))
                                    'mouse-face 'highlight)
-              (let* ((split (split-string (cadr str) "%s"))
-                     (prefix (when (cadr split) (car split)))
-                     (suffix (or (cadr split) (car split))))
+              (let* ((prefix (when (nth 2 str) (nth 1 str)))
+                     (suffix (or (nth 2 str) (nth 1 str))))
                 (when prefix
                   (let ((beg (point))
                         (end (progn (insert prefix) (point))))
@@ -1770,7 +1781,12 @@ It also eliminates runs of equal strings."
                   (font-lock-prepend-text-property beg end 'face
                                                    'completions-annotations))))
 	    (cond
-	     ((eq completions-format 'vertical)
+             ((and completions-detailed (= (length str) 3))
+	      ;; Detailed view
+              (when (zerop row) (setq truncate-lines t))
+              (insert "\n")
+              (setq row (1+ row)))
+             ((eq completions-format 'vertical)
 	      ;; Vertical format
 	      (if (> column 0)
 		  (forward-line)
@@ -1888,7 +1904,7 @@ These include:
    completion).  The function can access the completion data via
    `minibuffer-completion-table' and related variables.
 
-`:display-function': Function to display completions.
+`:affix-function': Function to prepend/append a prefix/suffix to completions.
    The function must accept one argument, a list of completions.
 
 `:exit-function': Function to run after completion is performed.
@@ -1977,9 +1993,9 @@ variables.")
                        (plist-get completion-extra-properties
                                   :annotation-function)
                        completion-annotate-function))
-             (dfun (or (completion-metadata-get all-md 'display-function)
+             (xfun (or (completion-metadata-get all-md 'affix-function)
                        (plist-get completion-extra-properties
-                                  :display-function)))
+                                  :affix-function)))
              (mainbuf (current-buffer))
              ;; If the *Completions* buffer is shown in a new
              ;; window, mark it as softly-dedicated, so bury-buffer in
@@ -2026,9 +2042,9 @@ variables.")
                                         (let ((ann (funcall afun s)))
                                           (if ann (list s ann) s)))
                                       completions)))
-                      (when dfun
+                      (when xfun
                         (setq completions
-                              (funcall dfun completions)))
+                              (funcall xfun completions)))
 
                       (with-current-buffer standard-output
                         (set (make-local-variable 'completion-base-position)

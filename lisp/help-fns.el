@@ -128,28 +128,34 @@ with the current prefix.  The files are chosen according to
 
 (defun help--symbol-completion-table (string pred action)
   (if (eq action 'metadata)
-      '(metadata
-	(display-function
-         . (lambda (completions)
-             (mapcar (lambda (c)
-                       (let* ((s (intern c))
-                              (doc (condition-case nil (documentation s) (error nil)))
-                              (doc (and doc (substring doc 0 (string-match "\n" doc)))))
-                         (list c (format "%s %%s%s"
-                                         (propertize (cond ((commandp s)
-                                                            "c")
-                                                           ((eq (car-safe (symbol-function s)) 'macro)
-                                                            "m")
-                                                           ((fboundp s)
-                                                            "f")
-                                                           ((custom-variable-p s)
-                                                            "u") ; user option
-                                                           ((boundp s)
-                                                            "v")
-                                                           (" "))
-                                                     'face 'shadow)
-                                         (if doc (propertize (format " -- %s" doc) 'face 'shadow) "")))))
-                     completions))))
+      (when completions-detailed
+        '(metadata
+	  (affix-function
+           . (lambda (completions)
+               (mapcar (lambda (c)
+                         (let* ((s (intern c))
+                                (doc (condition-case nil (documentation s) (error nil)))
+                                (doc (and doc (substring doc 0 (string-match "\n" doc)))))
+                           (list c (concat (cond ((commandp s)
+                                                  "c")
+                                                 ((eq (car-safe (symbol-function s)) 'macro)
+                                                  "m")
+                                                 ((fboundp s)
+                                                  "f")
+                                                 ((custom-variable-p s)
+                                                  "u") ; user option
+                                                 ((boundp s)
+                                                  "v")
+                                                 ((facep s)
+                                                  "a")
+                                                 ((and (fboundp 'cl-find-class)
+                                                       (cl-find-class s))
+                                                  "t") ; CL type
+                                                 (" "))
+                                           " ")
+                                 (if doc (propertize (format " -- %s" doc) 'face 'shadow) ""))))
+                       completions)))))
+
     (when help-enable-completion-autoload
       (let ((prefixes (radix-tree-prefixes (help-definition-prefixes) string)))
         (help--load-prefixes prefixes)))
