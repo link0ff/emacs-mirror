@@ -5449,6 +5449,55 @@ See also the command `yank-pop' (\\[yank-pop])."
 With ARG, rotate that many kills forward (or backward, if negative)."
   (interactive "p")
   (current-kill arg))
+
+(defvar yank-from-kill-ring-history)
+(defun yank-from-kill-ring (string)
+  "Insert the kill-ring item selected from the minibuffer history.
+Use minibuffer navigation and search commands to browse the kill-ring
+in the minibuffer history before typing RET to insert the item,
+or use completion on the elements of the kill-ring."
+  (interactive
+   (list (let* ((history-add-new-input nil)
+                ;; Remove keymaps from text properties of copied string,
+                ;; because typing RET in the minibuffer might call
+                ;; an irrelevant command from the map of copied string.
+                (yank-from-kill-ring-history
+                 (mapcar (lambda (s)
+                           (remove-list-of-text-properties
+                            0 (length s)
+                            '(
+                              keymap local-map action mouse-action
+                              button category help-args)
+                            s)
+                           s)
+                         kill-ring))
+                (completions
+                 (mapcar (lambda (s)
+                           (let* ((s (query-replace-descr s))
+                                  (b 0))
+                             ;; Add ellipsis on leading whitespace
+                             (when (string-match "\\`[[:space:]]+" s)
+                               (setq b (match-end 0))
+                               (add-text-properties 0 b `(display "…") s))
+                             (when (> (length s) (- 40 b))
+                               (add-text-properties
+                                (min (+ b 40) (length s)) (length s)
+                                `(display "…") s))
+                             s))
+                         yank-from-kill-ring-history)))
+           (completing-read "Yank from kill-ring: "
+                            (lambda (string pred action)
+                              (if (eq action 'metadata)
+                                  ;; Keep sorted by recency
+	                          '(metadata (display-sort-function . identity))
+                                (complete-with-action action completions string pred)))
+                            nil nil nil
+                            'yank-from-kill-ring-history))))
+  (setq yank-window-start (window-start))
+  (push-mark)
+  (insert-for-yank string))
+
+(global-set-key "\M-\C-y" 'yank-from-kill-ring)
 
 ;; Some kill commands.
 

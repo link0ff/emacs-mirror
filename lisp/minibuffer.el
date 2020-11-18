@@ -1685,7 +1685,8 @@ horizontally in alphabetical order, rather than down the screen."
 This option overrides another related option `completions-format'.
 Some commands might provide a detailed view with more information added
 to completions.  When the used completion function doesn't provide
-a detailed view, then fall back to the value defined by `completions-format'."
+a detailed view via `affix-function', then fall back to the value
+defined by `completions-format'."
   :type 'boolean
   :version "28.1")
 

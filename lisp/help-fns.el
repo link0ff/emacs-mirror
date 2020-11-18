@@ -153,7 +153,7 @@ with the current prefix.  The files are chosen according to
                                                   "t") ; CL type
                                                  (" "))
                                            " ")
-                                 (if doc (propertize (format " -- %s" doc) 'face 'shadow) ""))))
+                                 (if doc (format " -- %s" doc) ""))))
                        completions)))))
 
     (when help-enable-completion-autoload
