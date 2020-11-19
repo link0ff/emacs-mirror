@@ -54,8 +54,6 @@
 ;; of other details.
 
 ;; The mode information (on C-h m) provides some customization help.
-;; If you use font-lock feature of this mode, it is advisable to use
-;; either lazy-lock-mode or fast-lock-mode.  I prefer lazy-lock.
 
 ;; Faces used now: three faces for first-class and second-class keywords
 ;; and control flow words, one for each: comments, string, labels,
@@ -402,7 +400,7 @@ Font for POD headers."
   :version "21.1"
   :group 'cperl-faces)
 
-(defcustom cperl-pod-here-fontify '(featurep 'font-lock)
+(defcustom cperl-pod-here-fontify t
   "Not-nil after evaluation means to highlight POD and here-docs sections."
   :type 'boolean
   :group 'cperl-faces)
@@ -6604,6 +6602,9 @@ Use as
 "
   (cperl-write-tags nil nil t t))
 
+(defvar cperl-tags-file-name "TAGS"
+  "TAGS file name to use in `cperl-write-tags'.")
+
 (defun cperl-write-tags (&optional file erase recurse dir inbuffer noxs topdir)
   ;; If INBUFFER, do not select buffer, and do not save
   ;; If ERASE is `ignore', do not erase, and do not try to delete old info.
@@ -6613,7 +6614,7 @@ Use as
     (if (and (not dir) (buffer-modified-p)) (error "Save buffer first!")))
   (or topdir
       (setq topdir default-directory))
-  (let ((tags-file-name "TAGS")
+  (let ((tags-file-name cperl-tags-file-name)
         (inhibit-read-only t)
 	(case-fold-search nil)
 	xs rel)
