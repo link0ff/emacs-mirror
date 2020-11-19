@@ -1772,15 +1772,17 @@ It also eliminates runs of equal strings."
                   (let ((beg (point))
                         (end (progn (insert prefix) (point))))
                     (put-text-property beg end 'mouse-face nil)
-                    (font-lock-prepend-text-property beg end 'face
-                                                     'completions-annotations)))
+                    (unless prefix
+                      (font-lock-prepend-text-property beg end 'face
+                                                       'completions-annotations))))
                 (put-text-property (point) (progn (insert (car str)) (point))
                                    'mouse-face 'highlight)
                 (let ((beg (point))
                       (end (progn (insert suffix) (point))))
                   (put-text-property beg end 'mouse-face nil)
-                  (font-lock-prepend-text-property beg end 'face
-                                                   'completions-annotations))))
+                  (unless prefix
+                    (font-lock-prepend-text-property beg end 'face
+                                                     'completions-annotations)))))
 	    (cond
 	     ((and completions-detailed (= (length str) 3))
 	      ;; Detailed view
