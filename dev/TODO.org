@@ -1,9 +1,20 @@
 #+TODO: TODO | DONE | WONTFIX
 
+* xref complete-read
+
+strip common dir prefix and leave relative paths
+
+* affixation-function
+
+DONE: for C-x 8 RET group by Unicode blocks
+
 * ob-ruby
 
 https://github.com/nonsequitur/inf-ruby/issues/121
 "Then you probably want to call run-ruby-new directly."
+
+Answer: when `session` is `nil`, then better to reuse the same buffer
+from the same root dir (returned by the function `inf-ruby-buffer`)
 
 * diff-goto-line
 
@@ -29,21 +40,26 @@ bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
 
 * insert-completion-to-minibuffer
 
-implement command 'insert-completion-to-minibuffer' and bind to C-RET
-also implement the same for icomplete-mode
+** DONE implement command 'insert-completion-to-minibuffer' and bind to C-RET
+
+** TODO also implement the same for icomplete-mode
 
 * try
 
+** IDE packages
+
+lsp-mode, lsp-ui, company-lsp, helm-lsp
+magit
+
 ** completion packages
 
-ivy, ivy-rich, ivy-posframe, counsel
+company, company-posframe
 helm
 selectrum
 
 ** completion branches
 
 CHECK branches:
-origin/feature/icomplete-vertical
 origin/feature/completions-highlight-modifications
 
 * debbugs

@@ -126,40 +126,39 @@ with the current prefix.  The files are chosen according to
   :group 'help
   :version "26.3")
 
+(defun help--symbol-completion-table-affixation (completions)
+  (mapcar (lambda (c)
+            (let* ((s (intern c))
+                   (doc (condition-case nil (documentation s) (error nil)))
+                   (doc (and doc (substring doc 0 (string-match "\n" doc)))))
+              (list c (propertize
+                       (concat (cond ((commandp s)
+                                      "c")
+                                     ((eq (car-safe (symbol-function s)) 'macro)
+                                      "m")
+                                     ((fboundp s)
+                                      "f")
+                                     ((custom-variable-p s)
+                                      "u") ; user option
+                                     ((boundp s)
+                                      "v")
+                                     ((facep s)
+                                      "a")
+                                     ((and (fboundp 'cl-find-class)
+                                           (cl-find-class s))
+                                      "t") ; CL type
+                                     (" "))
+                               " ")
+                       'face 'completions-annotations)
+                    (if doc (propertize (format " -- %s" doc)
+                                        'face 'completions-annotations)
+                      ""))))
+          completions))
+
 (defun help--symbol-completion-table (string pred action)
   (if (eq action 'metadata)
       (when completions-detailed
-        '(metadata
-	  (affix-function
-           . (lambda (completions)
-               (mapcar (lambda (c)
-                         (let* ((s (intern c))
-                                (doc (condition-case nil (documentation s) (error nil)))
-                                (doc (and doc (substring doc 0 (string-match "\n" doc)))))
-                           (list c (propertize
-                                    (concat (cond ((commandp s)
-                                                   "c")
-                                                  ((eq (car-safe (symbol-function s)) 'macro)
-                                                   "m")
-                                                  ((fboundp s)
-                                                   "f")
-                                                  ((custom-variable-p s)
-                                                   "u") ; user option
-                                                  ((boundp s)
-                                                   "v")
-                                                  ((facep s)
-                                                   "a")
-                                                  ((and (fboundp 'cl-find-class)
-                                                        (cl-find-class s))
-                                                   "t") ; CL type
-                                                  (" "))
-                                            " ")
-                                    'face 'completions-annotations)
-                                 (if doc (propertize (format " -- %s" doc)
-                                                     'face 'completions-annotations)
-                                   ""))))
-                       completions)))))
-
+        '(metadata (affix-function . help--symbol-completion-table-affixation)))
     (when help-enable-completion-autoload
       (let ((prefixes (radix-tree-prefixes (help-definition-prefixes) string)))
         (help--load-prefixes prefixes)))

@@ -3085,12 +3085,51 @@ on encoding."
         (setq ucs-names names))))
 
 (defun mule--ucs-names-annotation (name)
-  ;; FIXME: It would be much better to add this annotation before rather than
+  ;; DONE: It would be much better to add this annotation before rather than
   ;; after the char name, so the annotations are aligned.
-  ;; FIXME: The default behavior of displaying annotations in italics
+  ;; DONE: The default behavior of displaying annotations in italics
   ;; doesn't work well here.
   (let ((char (gethash name ucs-names)))
     (when char (format " (%c)" char))))
+
+(defun mule--ucs-names-affixation-no-group (names)
+  (mapcar (lambda (name)
+            (let ((char (gethash name ucs-names)))
+              (list name (if char (format "%c " char) "  ") "")))
+          names))
+
+;; TEST WITH: *SHARP
+(defun mule--ucs-names-affixation-by-group (names)
+  (let* ((names-chars
+          (mapcar (lambda (name) (cons name (gethash name ucs-names))) names))
+         (groups-names
+          (seq-group-by
+           (lambda (name-char)
+             (let ((script (aref char-script-table (cdr name-char))))
+               (if script (symbol-name script) "ungrouped")))
+           names-chars))
+         names-headers header)
+    (dolist (group groups-names)
+      (setq header t)
+      (dolist (name-char (cdr group))
+        (push (list (car name-char)
+                    (concat
+                     ;; header
+                     (if header
+                         (progn
+                           (setq header nil)
+                           (concat "\n" (propertize
+                                         (format "* %s\n" (car group))
+                                         'face 'header-line)))
+                       "")
+                     ;; prefix
+                     ;; describe-char-padded-string doesn't help to aling
+                     (if (cdr name-char) (describe-char-padded-string (cdr name-char)) " ")
+                     " ")
+                    ;; suffix
+                    "")
+              names-headers)))
+    (nreverse names-headers)))
 
 (defun char-from-name (string &optional ignore-case)
   "Return a character as a number from its Unicode name STRING.
@@ -3139,7 +3178,8 @@ as names, not numbers."
 	   (lambda (string pred action)
 	     (if (eq action 'metadata)
 		 '(metadata
-		   (annotation-function . mule--ucs-names-annotation)
+		   ;; (annotation-function . mule--ucs-names-annotation)
+		   (affix-function . mule--ucs-names-affixation-by-group)
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
