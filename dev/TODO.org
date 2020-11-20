@@ -1,9 +1,5 @@
 #+TODO: TODO | DONE | WONTFIX
 
-* xref complete-read
-
-strip common dir prefix and leave relative paths
-
 * affixation-function
 
 DONE: for C-x 8 RET group by Unicode blocks

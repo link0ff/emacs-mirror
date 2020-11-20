@@ -1489,7 +1489,7 @@ Such as the current syntax table and the applied syntax properties."
           (cons file (get-file-buffer file))))
   (cdr xref--last-file-buffer))
 
-(defun my-xref--show-defs-minibuffer (fetcher alist)
+(defun xref--show-defs-minibuffer (fetcher alist)
   (let* ((xrefs (funcall fetcher))
          (xref-alist (xref--analyze xrefs))
          xref-alist-with-line-info
@@ -1497,20 +1497,26 @@ Such as the current syntax table and the applied syntax properties."
 
     (cl-loop for ((group . xrefs) . more1) on xref-alist
              do
-             (cl-loop for (xref . more2) on xrefs do
-                      (with-slots (summary location) xref
-                        (let ((line (xref-location-line location)))
-                          (push (cons (format "%s:%s:%s" group line summary) xref)
-                                xref-alist-with-line-info)))))
+             (let ((show-summary (> (length xrefs) 1)))
+               (cl-loop for (xref . more2) on xrefs do
+                        (with-slots (summary location) xref
+                          (let* ((line (xref-location-line location))
+                                 (line-fmt (if line (format "%s:" line) ""))
+                                 (candidate
+                                  (if show-summary
+                                      (format "%s:%s%s" group line-fmt summary)
+                                    (format "%s" group))))
+                            (push (cons candidate xref) xref-alist-with-line-info))))))
 
     (setq xref (if (not (cdr xrefs))
                    (car xrefs)
-                 (cdr (assoc (completing-read "Jump to definition: " xref-alist-with-line-info)
+                 (cdr (assoc (completing-read "Jump to definition: "
+                                              (reverse xref-alist-with-line-info))
                              xref-alist-with-line-info))))
 
     (xref-pop-to-location xref (assoc-default 'display-action alist))))
 
-(setq xref-show-definitions-function 'my-xref--show-defs-minibuffer)
+(setq xref-show-definitions-function 'xref--show-defs-minibuffer)
 
 (provide 'xref)
 
