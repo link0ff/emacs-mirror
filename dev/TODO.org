@@ -1,16 +1,8 @@
 #+TODO: TODO | DONE | WONTFIX
 
-* affixation-function
-
-DONE: for C-x 8 RET group by Unicode blocks
-
 * ob-ruby
 
 https://github.com/nonsequitur/inf-ruby/issues/121
-"Then you probably want to call run-ruby-new directly."
-
-Answer: when `session` is `nil`, then better to reuse the same buffer
-from the same root dir (returned by the function `inf-ruby-buffer`)
 
 * diff-goto-line
 

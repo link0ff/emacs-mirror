@@ -3123,7 +3123,6 @@ on encoding."
                                          'face 'header-line)))
                        "")
                      ;; prefix
-                     ;; describe-char-padded-string doesn't help to aling
                      (if (cdr name-char) (format "%c" (cdr name-char)) " ")
                      " ")
                     ;; suffix
