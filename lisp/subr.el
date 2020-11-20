@@ -2902,7 +2902,13 @@ is nil and `use-dialog-box' is non-nil."
 		    (concat prompt
 			    (if (or (zerop l) (eq ?\s (aref prompt (1- l))))
 				"" " ")
-			    (if dialog "" "(y or n) "))))))
+			    (if dialog ""
+                              (if help-form
+                                  (format "(y, n or %s) "
+		                          (key-description
+                                           (vector help-char)))
+                                  "(y or n) "
+                                  )))))))
     (cond
      (noninteractive
       (setq prompt (funcall padded prompt))
@@ -2911,6 +2917,7 @@ is nil and `use-dialog-box' is non-nil."
 	  (let ((str (read-string temp-prompt)))
 	    (cond ((member str '("y" "Y")) (setq answer 'act))
 		  ((member str '("n" "N")) (setq answer 'skip))
+		  ((and (member str '("h" "H")) help-form) (print help-form))
 		  (t (setq temp-prompt (concat "Please answer y or n.  "
 					       prompt))))))))
      ((and (display-popup-menus-p)
@@ -2923,10 +2930,18 @@ is nil and `use-dialog-box' is non-nil."
       (setq prompt (funcall padded prompt))
       (let* ((empty-history '())
              (enable-recursive-minibuffers t)
+             (msg help-form)
+             (keymap (let ((map (make-composed-keymap
+                                 y-or-n-p-map query-replace-map)))
+                       (when help-form
+                         (define-key map (vector help-char)
+                           (lambda ()
+                             (interactive)
+                             (let ((help-form msg)) ; lexically bound msg
+                               (help-form-show)))))
+                       map))
              (str (read-from-minibuffer
-                   prompt nil
-                   (make-composed-keymap y-or-n-p-map query-replace-map)
-                   nil
+                   prompt nil keymap nil
                    (or y-or-n-p-history-variable 'empty-history))))
         (setq answer (if (member str '("y" "Y")) 'act 'skip)))))
     (let ((ret (eq answer 'act)))
