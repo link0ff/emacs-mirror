@@ -3124,7 +3124,7 @@ on encoding."
                        "")
                      ;; prefix
                      ;; describe-char-padded-string doesn't help to aling
-                     (if (cdr name-char) (describe-char-padded-string (cdr name-char)) " ")
+                     (if (cdr name-char) (format "%c" (cdr name-char)) " ")
                      " ")
                     ;; suffix
                     "")
@@ -3177,9 +3177,10 @@ as names, not numbers."
 	   prompt
 	   (lambda (string pred action)
 	     (if (eq action 'metadata)
-		 '(metadata
-		   ;; (annotation-function . mule--ucs-names-annotation)
-		   (affix-function . mule--ucs-names-affixation-by-group)
+		 `(metadata
+		   ,(if completions-detailed
+                        '(affix-function . mule--ucs-names-affixation-by-group)
+                      '(annotation-function . mule--ucs-names-annotation))
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
