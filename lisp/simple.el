@@ -5421,17 +5421,24 @@ or use completion on the elements of the kill-ring."
                                 (min (+ b 40) (length s)) (length s)
                                 `(display ,ellipsis) s))
                              s))
-                         yank-from-kill-ring-history))
-                ;; Allow ‘SPC’ to be inserted literally.
-                (minibuffer-completing-file-name t))
-           (completing-read "Yank from kill-ring: "
-                            (lambda (string pred action)
-                              (if (eq action 'metadata)
-                                  ;; Keep sorted by recency
-                                  '(metadata (display-sort-function . identity))
-                                (complete-with-action action completions string pred)))
-                            nil nil nil
-                            'yank-from-kill-ring-history))))
+                         yank-from-kill-ring-history)))
+           (minibuffer-with-setup-hook
+               (lambda ()
+                 ;; Allow ‘SPC’ to be inserted literally.
+                 (use-local-map
+                  (let ((map (make-sparse-keymap)))
+                    (set-keymap-parent map (current-local-map))
+                    (define-key map " " nil)
+                    (define-key map "?" nil)
+                    map)))
+             (completing-read "Yank from kill-ring: "
+                              (lambda (string pred action)
+                                (if (eq action 'metadata)
+                                    ;; Keep sorted by recency
+                                    '(metadata (display-sort-function . identity))
+                                  (complete-with-action action completions string pred)))
+                              nil nil nil
+                              'yank-from-kill-ring-history)))))
   (setq yank-window-start (window-start))
   (push-mark)
   (insert-for-yank string))
