@@ -1726,12 +1726,7 @@ It also eliminates runs of equal strings."
                             (apply #'+ (mapcar #'string-width str))
                           (string-width str))))
             (cond
-             ((and completions-detailed (= (length str) 3))
-              ;; Detailed view
-              ;; When `str' contains prefix and suffix this means
-              ;; that caller specified `affix-function'.
-              )
-	     ((eq completions-format 'vertical)
+             ((eq completions-format 'vertical)
 	      ;; Vertical format
 	      (when (> row rows)
 		(forward-line (- -1 rows))
@@ -1784,11 +1779,6 @@ It also eliminates runs of equal strings."
                     (font-lock-prepend-text-property beg end 'face
                                                      'completions-annotations)))))
 	    (cond
-	     ((and completions-detailed (= (length str) 3))
-	      ;; Detailed view
-	      (when (zerop row) (setq truncate-lines t))
-	      (insert "\n")
-	      (setq row (1+ row)))
 	     ((eq completions-format 'vertical)
 	      ;; Vertical format
 	      (if (> column 0)

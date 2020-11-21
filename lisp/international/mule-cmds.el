@@ -3124,7 +3124,7 @@ on encoding."
                        "")
                      ;; prefix
                      (if (cdr name-char) (format "%c" (cdr name-char)) " ")
-                     " ")
+                     "\t") ; TODO
                     ;; suffix
                     "")
               names-headers)))
@@ -3177,9 +3177,11 @@ as names, not numbers."
 	   (lambda (string pred action)
 	     (if (eq action 'metadata)
 		 `(metadata
-		   ,(if completions-detailed
-                        '(affix-function . mule--ucs-names-affixation-by-group)
-                      '(annotation-function . mule--ucs-names-annotation))
+		   ,@(if completions-detailed
+                         '((display-sort-function . identity)
+                           (format . horizontal) ; TODO
+                           (affix-function . mule--ucs-names-affixation-by-group))
+                       '((annotation-function . mule--ucs-names-annotation)))
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
