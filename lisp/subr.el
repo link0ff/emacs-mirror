@@ -2934,6 +2934,8 @@ is nil and `use-dialog-box' is non-nil."
              (keymap (let ((map (make-composed-keymap
                                  y-or-n-p-map query-replace-map)))
                        (when help-form
+                         ;; Create a new map before modifying
+                         (setq map (copy-keymap map))
                          (define-key map (vector help-char)
                            (lambda ()
                              (interactive)
