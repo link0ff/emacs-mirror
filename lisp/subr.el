@@ -2606,7 +2606,11 @@ This function is used by the `interactive' code letter `n'."
 Any input that is not one of CHARS is ignored.
 
 If optional argument INHIBIT-KEYBOARD-QUIT is non-nil, ignore
-keyboard-quit events while waiting for a valid input."
+keyboard-quit events while waiting for a valid input.
+
+If you bind the variable `help-form' to a non-nil value
+while calling this function, then pressing `help-char'
+causes it to evaluate `help-form' and display the result."
   (unless (consp chars)
     (error "Called `read-char-choice' without valid char choices"))
   (let (char done show-help (helpbuf " *Char Help*"))
@@ -2767,8 +2771,11 @@ Optional argument HISTORY, if non-nil, should be a symbol that
 specifies the history list variable to use for navigating in input
 history using `M-p' and `M-n', with `RET' to select a character from
 history.
-If the caller has set `help-form', there is no need to explicitly add
-`help-char' to chars.  It's bound automatically to `help-form-show'."
+If you bind the variable `help-form' to a non-nil value
+while calling this function, then pressing `help-char'
+causes it to evaluate `help-form' and display the result.
+There is no need to explicitly add `help-char' to CHARS;
+`help-char' is bound automatically to `help-form-show'."
   (let* ((empty-history '())
          (map (if (consp chars)
                   (or (gethash (list help-form (cons help-char chars))
@@ -2879,6 +2886,12 @@ Also discard all previous input in the minibuffer."
 Return t if answer is \"y\" and nil if it is \"n\".
 PROMPT is the string to display to ask the question.  It should
 end in a space; `y-or-n-p' adds \"(y or n) \" to it.
+
+If you bind the variable `help-form' to a non-nil value
+while calling this function, then pressing `help-char'
+causes it to evaluate `help-form' and display the result.
+PROMPT is also updated to show `help-char' like \"(y, n or C-h) \",
+where `help-char' is automatically bound to `help-form-show'.
 
 No confirmation of the answer is requested; a single character is
 enough.  SPC also means yes, and DEL means no.
