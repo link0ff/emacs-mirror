@@ -2311,62 +2311,51 @@ the various files."
 			    (memq major-mode '(hexl-mode image-mode)))
 		  (if (buffer-modified-p)
 		      (if (let ((help-form
-                                 (format-message
-                                  (if rawfile "\
+				 (format-message
+				  (if rawfile "\
 The file %s is already visited normally,
 and you have edited the buffer.  Now you have asked to visit it literally,
 meaning no coding system handling, format conversion, or local variables.
 Emacs can visit a file in only one way at a time."
-                                    "\
+				    "\
 The file %s is already visited literally,
 meaning no coding system handling, format conversion, or local variables.
 You have edited the buffer.  Now you have asked to visit the file normally,
 but Emacs can visit a file in only one way at a time.")
-                                  (file-name-nondirectory filename))))
-                            (y-or-n-p
-			     (format
-			      (if rawfile
-				  "\
-Do you want to save the file, and visit it literally instead? "
-				"\
-Do you want to save the file, and visit it normally instead? ")
-			      (file-name-nondirectory filename))))
+				  (file-name-nondirectory filename))))
+			    (y-or-n-p
+			     (if rawfile "\
+Do you want to save the file, and visit it literally instead? " "\
+Do you want to save the file, and visit it normally instead? ")))
 			  (progn
 			    (save-buffer)
 			    (find-file-noselect-1 buf filename nowarn
 						  rawfile truename number))
 			(if (y-or-n-p
-			     (format
-			      (if rawfile
-				  "\
-Do you want to discard your changes, and visit the file literally now? "
-				"\
-Do you want to discard your changes, and visit the file normally now? ")))
+			     (if rawfile "\
+Do you want to discard your changes, and visit the file literally now? " "\
+Do you want to discard your changes, and visit the file normally now? "))
 			    (find-file-noselect-1 buf filename nowarn
 						  rawfile truename number)
 			  (error (if rawfile "File already visited non-literally"
 				   "File already visited literally"))))
 		    (if (let ((help-form
-                               (format-message
-                                (if rawfile "\
+			       (format-message
+				(if rawfile "\
 The file %s is already visited normally.
 You have asked to visit it literally,
 meaning no coding system decoding, format conversion, or local variables.
 But Emacs can visit a file in only one way at a time."
-                                  "\
+				  "\
 The file %s is already visited literally,
 meaning no coding system decoding, format conversion, or local variables.
 You have asked to visit it normally,
 but Emacs can visit a file in only one way at a time.")
-                                (file-name-nondirectory filename))))
-                          (y-or-n-p
-			   (format
-			    (if rawfile
-			        "\
-Do you want to revisit the file literally now? "
-			      "\
-Do you want to revisit the file normally now? ")
-			    (file-name-nondirectory filename))))
+				(file-name-nondirectory filename))))
+			  (y-or-n-p
+			   (if rawfile "\
+Do you want to revisit the file literally now? " "\
+Do you want to revisit the file normally now? ")))
 			(find-file-noselect-1 buf filename nowarn
 					      rawfile truename number)
 		      (error (if rawfile "File already visited non-literally"
