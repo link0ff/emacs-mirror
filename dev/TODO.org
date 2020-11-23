@@ -4,6 +4,21 @@
 
 https://github.com/nonsequitur/inf-ruby/issues/121
 
+A: I see no problem with checking command names in run-ruby-or-pop-to-buffer.
+If a user uses different commands in case of nil `session` then
+it's fine to check that the commands should be the same.
+
+For example, if one code blocks uses
+`:session :ruby "bundle exec rails console -e development"`
+but another code block uses
+`:session :ruby "bundle exec rails console -e test"`
+then it would the right thing to raise the error that commands are different
+to avoid damage of code execution in the wrong environment.
+
+However, when the user gives names to `:session` then it should be
+user's responsibility to name sessions accordingly, e.g. `:session development`
+and `:session test`.
+
 * diff-goto-line
 
 https://github.com/dgutov/diff-hl/issues/149
