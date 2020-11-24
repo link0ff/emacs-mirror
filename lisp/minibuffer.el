@@ -1726,7 +1726,7 @@ It also eliminates runs of equal strings."
                             (apply #'+ (mapcar #'string-width str))
                           (string-width str))))
             (cond
-             ((eq completions-format 'vertical)
+	     ((eq completions-format 'vertical)
 	      ;; Vertical format
 	      (when (> row rows)
 		(forward-line (- -1 rows))

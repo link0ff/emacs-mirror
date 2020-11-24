@@ -5344,7 +5344,7 @@ Normally set from the UNDO element of a yank-handler; see `insert-for-yank'.")
 
 (defun yank-pop (&optional arg)
   "Replace just-yanked stretch of killed text with a different stretch.
-This command is allowed only immediately after a `yank' or a
+The main use of this command is immediately after a `yank' or a
 `yank-pop'.  At such a time, the region contains a stretch of
 reinserted previously-killed text.  `yank-pop' deletes that text
 and inserts in its place a different stretch of killed text by
@@ -5359,7 +5359,13 @@ comes the newest one.
 
 This command honors the `yank-handled-properties' and
 `yank-excluded-properties' variables, and the `yank-handler' text
-property, in the way that `yank' does."
+property, in the way that `yank' does.
+
+When this command is called not immediately after a `yank' or a
+`yank-pop', then it activates the minibuffer with its completion
+and history filled with previously-killed items from the
+`kill-ring' variable, and reads a string to yank at point.
+See `yank-from-kill-ring' for more details."
   (interactive "p")
   (if (not (eq last-command 'yank))
       (call-interactively 'yank-from-kill-ring)
@@ -5453,11 +5459,16 @@ With ARG, rotate that many kills forward (or backward, if negative)."
   (current-kill arg))
 
 (defvar yank-from-kill-ring-history)
-(defun yank-from-kill-ring (string)
-  "Insert the kill-ring item selected from the minibuffer history.
-Use minibuffer navigation and search commands to browse the kill-ring
-in the minibuffer history before typing RET to insert the item,
-or use completion on the elements of the kill-ring."
+(defun yank-from-kill-ring (string &optional arg)
+  "Insert the `kill-ring' item selected from the minibuffer history.
+Use minibuffer navigation and search commands to browse the
+previously-killed items from the `kill-ring' variable in the
+minibuffer history before typing RET to insert the selected item,
+or use completion on the elements of `kill-ring'.  You can edit
+the item in the minibuffer before inserting it.
+
+With \\[universal-argument] as argument, put point at beginning,
+and mark at end, like `yank' does."
   (interactive
    (list (let* ((history-add-new-input nil)
                 (ellipsis (if (char-displayable-p ?…) "…" "..."))
@@ -5482,32 +5493,38 @@ or use completion on the elements of the kill-ring."
                              (when (string-match "\\`[[:space:]]+" s)
                                (setq b (match-end 0))
                                (add-text-properties 0 b `(display ,ellipsis) s))
-                             (when (> (length s) (- 40 b))
+                             ;; Add ellipsis at the end of a long string
+                             (when (> (length s) (+ 40 b))
                                (add-text-properties
-                                (min (+ b 40) (length s)) (length s)
+                                (min (+ 40 b) (length s)) (length s)
                                 `(display ,ellipsis) s))
                              s))
                          yank-from-kill-ring-history)))
            (minibuffer-with-setup-hook
                (lambda ()
-                 ;; Allow ‘SPC’ to be inserted literally.
+                 ;; Allow ‘SPC’ to be self-inserting
                  (use-local-map
                   (let ((map (make-sparse-keymap)))
                     (set-keymap-parent map (current-local-map))
                     (define-key map " " nil)
                     (define-key map "?" nil)
                     map)))
-             (completing-read "Yank from kill-ring: "
-                              (lambda (string pred action)
-                                (if (eq action 'metadata)
-                                    ;; Keep sorted by recency
-                                    '(metadata (display-sort-function . identity))
-                                  (complete-with-action action completions string pred)))
-                              nil nil nil
-                              'yank-from-kill-ring-history)))))
-  (setq yank-window-start (window-start))
+             (completing-read
+              "Yank from kill-ring: "
+              (lambda (string pred action)
+                (if (eq action 'metadata)
+                    ;; Keep sorted by recency
+                    '(metadata (display-sort-function . identity))
+                  (complete-with-action action completions string pred)))
+              nil nil nil
+              'yank-from-kill-ring-history)))
+         current-prefix-arg))
   (push-mark)
-  (insert-for-yank string))
+  (insert-for-yank string)
+  (if (consp arg)
+      ;; Swap point and mark like in `yank'.
+      (goto-char (prog1 (mark t)
+		   (set-marker (mark-marker) (point) (current-buffer))))))
 
 (put 'yank-from-kill-ring 'delete-selection t)
 
