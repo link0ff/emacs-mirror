@@ -159,7 +159,7 @@ with the current prefix.  The files are chosen according to
   (if (eq action 'metadata)
       (when completions-detailed
         '(metadata
-          (affix-function . help--symbol-completion-table-affixation)))
+          (affixation-function . help--symbol-completion-table-affixation)))
     (when help-enable-completion-autoload
       (let ((prefixes (radix-tree-prefixes (help-definition-prefixes) string)))
         (help--load-prefixes prefixes)))

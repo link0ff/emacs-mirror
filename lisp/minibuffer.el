@@ -66,6 +66,9 @@
 ;;     the provided string (as is the case in filecache.el), in which
 ;;     case partial-completion (for example) doesn't make any sense
 ;;     and neither does the completions-first-difference highlight.
+;;   - indicate how to display the completions in *Completions* (turn
+;;     \n into something else, add special boundaries between
+;;     completions).  E.g. when completing from the kill-ring.
 
 ;; - case-sensitivity currently confuses two issues:
 ;;   - whether or not a particular completion table should be case-sensitive
@@ -117,7 +120,7 @@ This metadata is an alist.  Currently understood keys are:
 - `annotation-function': function to add annotations in *Completions*.
    Takes one argument (STRING), which is a possible completion and
    returns a string to append to STRING.
-- `affix-function': function to prepend/append a prefix/suffix to entries.
+- `affixation-function': function to prepend/append a prefix/suffix to entries.
    Takes one argument (COMPLETIONS) and should return a list
    of completions with a completion, its prefix and suffix.
 - `display-sort-function': function to sort entries in *Completions*.
@@ -1685,7 +1688,7 @@ horizontally in alphabetical order, rather than down the screen."
 This option overrides another related option `completions-format'.
 Some commands might provide a detailed view with more information added
 to completions.  When the used completion function doesn't provide
-a detailed view via `affix-function', then fall back to the value
+a detailed view via `affixation-function', then fall back to the value
 defined by `completions-format'."
   :type 'boolean
   :version "28.1")
@@ -1897,7 +1900,7 @@ These include:
    completion).  The function can access the completion data via
    `minibuffer-completion-table' and related variables.
 
-`:affix-function': Function to prepend/append a prefix/suffix to completions.
+`:affixation-function': Function to prepend/append a prefix/suffix to completions.
    The function must accept one argument, a list of completions.
 
 `:exit-function': Function to run after completion is performed.
@@ -1982,13 +1985,13 @@ variables.")
                                            base-size md
                                            minibuffer-completion-table
                                            minibuffer-completion-predicate))
-             (afun (or (completion-metadata-get all-md 'annotation-function)
-                       (plist-get completion-extra-properties
-                                  :annotation-function)
-                       completion-annotate-function))
-             (xfun (or (completion-metadata-get all-md 'affix-function)
-                       (plist-get completion-extra-properties
-                                  :affix-function)))
+             (ann-fun (or (completion-metadata-get all-md 'annotation-function)
+                          (plist-get completion-extra-properties
+                                     :annotation-function)
+                          completion-annotate-function))
+             (aff-fun (or (completion-metadata-get all-md 'affixation-function)
+                          (plist-get completion-extra-properties
+                                     :affixation-function)))
              (mainbuf (current-buffer))
              ;; If the *Completions* buffer is shown in a new
              ;; window, mark it as softly-dedicated, so bury-buffer in
@@ -2029,15 +2032,15 @@ variables.")
                               (if sort-fun
                                   (funcall sort-fun completions)
                                 (sort completions 'string-lessp))))
-                      (when afun
+                      (when ann-fun
                         (setq completions
                               (mapcar (lambda (s)
-                                        (let ((ann (funcall afun s)))
+                                        (let ((ann (funcall ann-fun s)))
                                           (if ann (list s ann) s)))
                                       completions)))
-                      (when xfun
+                      (when aff-fun
                         (setq completions
-                              (funcall xfun completions)))
+                              (funcall aff-fun completions)))
 
                       (with-current-buffer standard-output
                         (set (make-local-variable 'completion-base-position)

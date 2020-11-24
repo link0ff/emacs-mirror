@@ -3180,7 +3180,7 @@ as names, not numbers."
 		   ,@(if completions-detailed
                          '((display-sort-function . identity)
                            (format . horizontal) ; TODO
-                           (affix-function . mule--ucs-names-affixation-by-group))
+                           (affixation-function . mule--ucs-names-affixation-by-group))
                        '((annotation-function . mule--ucs-names-annotation)))
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
