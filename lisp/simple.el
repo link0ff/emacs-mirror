@@ -5368,7 +5368,7 @@ and history filled with previously-killed items from the
 See `yank-from-kill-ring' for more details."
   (interactive "p")
   (if (not (eq last-command 'yank))
-      (call-interactively 'yank-from-kill-ring)
+      (yank-from-kill-ring (read-from-kill-ring) current-prefix-arg)
     (setq this-command 'yank)
     (unless arg (setq arg 1))
     (let ((inhibit-read-only t)
