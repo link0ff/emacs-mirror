@@ -40,8 +40,6 @@
 (require 'org-macs)
 
 (declare-function run-ruby "ext:inf-ruby" (&optional command name))
-(declare-function run-ruby-or-pop-to-buffer "ext:inf-ruby" (command &optional name buffer))
-(declare-function inf-ruby-buffer "ext:inf-ruby" ())
 (declare-function xmp "ext:rcodetools" (&optional option))
 
 (defvar inf-ruby-default-implementation)
@@ -77,9 +75,6 @@ This function is called by `org-babel-execute-src-block'."
 		   (cdr (assq :session params)) params))
          (result-params (cdr (assq :result-params params)))
          (result-type (cdr (assq :result-type params)))
-         (org-babel-ruby-command
-	  (or (cdr (assq :ruby params))
-	      org-babel-ruby-command))
          (full-body (org-babel-expand-body:generic
 		     body params (org-babel-variable-assignments:ruby params)))
          (result (if (member "xmp" result-params)
@@ -164,10 +159,7 @@ then create one.  Return the initialized session."
 				inf-ruby-implementations))))
 	   (buffer (get-buffer (format "*%s*" session)))
 	   (session-buffer (or buffer (save-window-excursion
-					(run-ruby-or-pop-to-buffer
-					 cmd (or session "ruby")
-					 (unless session
-					   (inf-ruby-buffer)))
+					(run-ruby cmd session)
 					(current-buffer)))))
       (if (org-babel-comint-buffer-livep session-buffer)
 	  (progn (sit-for .25) session-buffer)
