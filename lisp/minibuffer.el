@@ -120,9 +120,10 @@ This metadata is an alist.  Currently understood keys are:
 - `annotation-function': function to add annotations in *Completions*.
    Takes one argument (STRING), which is a possible completion and
    returns a string to append to STRING.
-- `affixation-function': function to prepend/append a prefix/suffix to entries.
-   Takes one argument (COMPLETIONS) and should return a list
-   of completions with a completion, its prefix and suffix.
+- `affixation-function': function to prepend/append a prefix/suffix to
+   entries.  Takes one argument (COMPLETIONS) and should return a list
+   of completions with a list of three elements: completion, its prefix
+   and suffix.
 - `display-sort-function': function to sort entries in *Completions*.
    Takes one argument (COMPLETIONS) and should return a new list
    of completions.  Can operate destructively.
@@ -1684,12 +1685,9 @@ horizontally in alphabetical order, rather than down the screen."
   :version "23.2")
 
 (defcustom completions-detailed nil
-  "When non-nil, display completions vertically with one completion per row.
-This option overrides another related option `completions-format'.
-Some commands might provide a detailed view with more information added
-to completions.  When the used completion function doesn't provide
-a detailed view via `affixation-function', then fall back to the value
-defined by `completions-format'."
+  "When non-nil, display completions with details added as prefix/suffix.
+Some commands might provide a detailed view with more information prepended
+or appended to completions."
   :type 'boolean
   :version "28.1")
 
@@ -1764,23 +1762,33 @@ It also eliminates runs of equal strings."
             (if (not (consp str))
                 (put-text-property (point) (progn (insert str) (point))
                                    'mouse-face 'highlight)
+              ;; If `str' is a list that has 2 elements,
+              ;; then the second element is a suffix.
+              ;; If `str' has 3 elements, then the second element
+              ;; is a prefix, and the third element is a suffix.
               (let* ((prefix (when (nth 2 str) (nth 1 str)))
                      (suffix (or (nth 2 str) (nth 1 str))))
                 (when prefix
                   (let ((beg (point))
                         (end (progn (insert prefix) (point))))
                     (put-text-property beg end 'mouse-face nil)
+                    ;; When both prefix and suffix are added
+                    ;; by the caller via affixation-function,
+                    ;; then allow the caller to decide
+                    ;; what faces to put on prefix and suffix.
                     (unless prefix
-                      (font-lock-prepend-text-property beg end 'face
-                                                       'completions-annotations))))
+                      (font-lock-prepend-text-property
+                       beg end 'face 'completions-annotations))))
                 (put-text-property (point) (progn (insert (car str)) (point))
                                    'mouse-face 'highlight)
                 (let ((beg (point))
                       (end (progn (insert suffix) (point))))
                   (put-text-property beg end 'mouse-face nil)
+                  ;; Put the predefined face only when suffix
+                  ;; is added via annotation-function.
                   (unless prefix
-                    (font-lock-prepend-text-property beg end 'face
-                                                     'completions-annotations)))))
+                    (font-lock-prepend-text-property
+                     beg end 'face 'completions-annotations)))))
 	    (cond
 	     ((eq completions-format 'vertical)
 	      ;; Vertical format
@@ -1900,8 +1908,10 @@ These include:
    completion).  The function can access the completion data via
    `minibuffer-completion-table' and related variables.
 
-`:affixation-function': Function to prepend/append a prefix/suffix to completions.
-   The function must accept one argument, a list of completions.
+`:affixation-function': Function to prepend/append a prefix/suffix to
+   completions.  The function must accept one argument, a list of
+   completions, and return a list where each element is a list of
+   three elements: a completion, a prefix and a suffix.
 
 `:exit-function': Function to run after completion is performed.
 

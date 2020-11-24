@@ -133,22 +133,22 @@ with the current prefix.  The files are chosen according to
                    (doc (and doc (substring doc 0 (string-match "\n" doc)))))
               (list c (propertize
                        (concat (cond ((commandp s)
-                                      "c")
+                                      "c") ; command
                                      ((eq (car-safe (symbol-function s)) 'macro)
-                                      "m")
+                                      "m") ; macro
                                      ((fboundp s)
-                                      "f")
+                                      "f") ; function
                                      ((custom-variable-p s)
                                       "u") ; user option
                                      ((boundp s)
-                                      "v")
+                                      "v") ; variable
                                      ((facep s)
-                                      "a")
+                                      "a") ; fAce
                                      ((and (fboundp 'cl-find-class)
                                            (cl-find-class s))
-                                      "t") ; CL type
-                                     (" "))
-                               " ")
+                                      "t")  ; CL type
+                                     (" ")) ; something else
+                               " ")         ; prefix separator
                        'face 'completions-annotations)
                     (if doc (propertize (format " -- %s" doc)
                                         'face 'completions-annotations)
@@ -156,10 +156,8 @@ with the current prefix.  The files are chosen according to
           completions))
 
 (defun help--symbol-completion-table (string pred action)
-  (if (eq action 'metadata)
-      (when completions-detailed
-        '(metadata
-          (affixation-function . help--symbol-completion-table-affixation)))
+  (if (and completions-detailed (eq action 'metadata))
+      '(metadata (affixation-function . help--symbol-completion-table-affixation))
     (when help-enable-completion-autoload
       (let ((prefixes (radix-tree-prefixes (help-definition-prefixes) string)))
         (help--load-prefixes prefixes)))
