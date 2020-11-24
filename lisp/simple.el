@@ -5458,7 +5458,58 @@ With ARG, rotate that many kills forward (or backward, if negative)."
   (interactive "p")
   (current-kill arg))
 
-(defvar yank-from-kill-ring-history)
+(defvar read-from-kill-ring-history)
+(defun read-from-kill-ring ()
+  "Read a string from `kill-ring' using completion and history."
+  (let* ((history-add-new-input nil)
+         (ellipsis (if (char-displayable-p ?…) "…" "..."))
+         ;; Remove keymaps from text properties of copied string,
+         ;; because typing RET in the minibuffer might call
+         ;; an irrelevant command from the map of copied string.
+         (read-from-kill-ring-history
+          (mapcar (lambda (s)
+                    (remove-list-of-text-properties
+                     0 (length s)
+                     '(
+                       keymap local-map action mouse-action
+                       button category help-args)
+                     s)
+                    s)
+                  kill-ring))
+         (completions
+          (mapcar (lambda (s)
+                    (let* ((s (query-replace-descr s))
+                           (b 0))
+                      ;; Add ellipsis on leading whitespace
+                      (when (string-match "\\`[[:space:]]+" s)
+                        (setq b (match-end 0))
+                        (add-text-properties 0 b `(display ,ellipsis) s))
+                      ;; Add ellipsis at the end of a long string
+                      (when (> (length s) (+ 40 b))
+                        (add-text-properties
+                         (min (+ 40 b) (length s)) (length s)
+                         `(display ,ellipsis) s))
+                      s))
+                  read-from-kill-ring-history)))
+    (minibuffer-with-setup-hook
+        (lambda ()
+          ;; Allow ‘SPC’ to be self-inserting
+          (use-local-map
+           (let ((map (make-sparse-keymap)))
+             (set-keymap-parent map (current-local-map))
+             (define-key map " " nil)
+             (define-key map "?" nil)
+             map)))
+      (completing-read
+       "Yank from kill-ring: "
+       (lambda (string pred action)
+         (if (eq action 'metadata)
+             ;; Keep sorted by recency
+             '(metadata (display-sort-function . identity))
+           (complete-with-action action completions string pred)))
+       nil nil nil
+       'read-from-kill-ring-history))))
+
 (defun yank-from-kill-ring (string &optional arg)
   "Insert the `kill-ring' item selected from the minibuffer history.
 Use minibuffer navigation and search commands to browse the
@@ -5470,61 +5521,13 @@ the item in the minibuffer before inserting it.
 With \\[universal-argument] as argument, put point at beginning,
 and mark at end, like `yank' does."
   (interactive
-   (list (let* ((history-add-new-input nil)
-                (ellipsis (if (char-displayable-p ?…) "…" "..."))
-                ;; Remove keymaps from text properties of copied string,
-                ;; because typing RET in the minibuffer might call
-                ;; an irrelevant command from the map of copied string.
-                (yank-from-kill-ring-history
-                 (mapcar (lambda (s)
-                           (remove-list-of-text-properties
-                            0 (length s)
-                            '(
-                              keymap local-map action mouse-action
-                              button category help-args)
-                            s)
-                           s)
-                         kill-ring))
-                (completions
-                 (mapcar (lambda (s)
-                           (let* ((s (query-replace-descr s))
-                                  (b 0))
-                             ;; Add ellipsis on leading whitespace
-                             (when (string-match "\\`[[:space:]]+" s)
-                               (setq b (match-end 0))
-                               (add-text-properties 0 b `(display ,ellipsis) s))
-                             ;; Add ellipsis at the end of a long string
-                             (when (> (length s) (+ 40 b))
-                               (add-text-properties
-                                (min (+ 40 b) (length s)) (length s)
-                                `(display ,ellipsis) s))
-                             s))
-                         yank-from-kill-ring-history)))
-           (minibuffer-with-setup-hook
-               (lambda ()
-                 ;; Allow ‘SPC’ to be self-inserting
-                 (use-local-map
-                  (let ((map (make-sparse-keymap)))
-                    (set-keymap-parent map (current-local-map))
-                    (define-key map " " nil)
-                    (define-key map "?" nil)
-                    map)))
-             (completing-read
-              "Yank from kill-ring: "
-              (lambda (string pred action)
-                (if (eq action 'metadata)
-                    ;; Keep sorted by recency
-                    '(metadata (display-sort-function . identity))
-                  (complete-with-action action completions string pred)))
-              nil nil nil
-              'yank-from-kill-ring-history)))
-         current-prefix-arg))
+   (list (read-from-kill-ring) current-prefix-arg))
   (push-mark)
   (insert-for-yank string)
   (if (consp arg)
       ;; Swap point and mark like in `yank'.
       (goto-char (prog1 (mark t)
-		   (set-marker (mark-marker) (point) (current-buffer))))))
+                   (set-marker (mark-marker) (point) (current-buffer))))))
 
 (put 'yank-from-kill-ring 'delete-selection t)
 
