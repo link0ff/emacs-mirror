@@ -5390,8 +5390,6 @@ See `yank-from-kill-ring' for more details."
                        (set-marker (mark-marker) (point) (current-buffer))))))
     nil))
 
-(put 'yank-pop 'delete-selection t)
-
 (defun yank (&optional arg)
   "Reinsert (\"paste\") the last stretch of killed text.
 More precisely, reinsert the most recent kill, which is the stretch of
@@ -5460,7 +5458,7 @@ With ARG, rotate that many kills forward (or backward, if negative)."
 
 (defvar read-from-kill-ring-history)
 (defun read-from-kill-ring ()
-  "Read a string from `kill-ring' using completion and history."
+  "Read a string from `kill-ring' using completion and minibuffer history."
   (let* ((history-add-new-input nil)
          (ellipsis (if (char-displayable-p ?…) "…" "..."))
          ;; Remove keymaps from text properties of copied string,
@@ -5520,16 +5518,13 @@ the item in the minibuffer before inserting it.
 
 With \\[universal-argument] as argument, put point at beginning,
 and mark at end, like `yank' does."
-  (interactive
-   (list (read-from-kill-ring) current-prefix-arg))
+  (interactive (list (read-from-kill-ring) current-prefix-arg))
   (push-mark)
   (insert-for-yank string)
   (if (consp arg)
       ;; Swap point and mark like in `yank'.
       (goto-char (prog1 (mark t)
                    (set-marker (mark-marker) (point) (current-buffer))))))
-
-(put 'yank-from-kill-ring 'delete-selection t)
 
 ;; Some kill commands.
 
