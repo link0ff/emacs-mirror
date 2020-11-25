@@ -3124,7 +3124,7 @@ on encoding."
                        "")
                      ;; prefix
                      (if (cdr name-char) (format "%c" (cdr name-char)) " ")
-                     "\t") ; TODO
+                     (propertize "\t" 'display '(space :width 5))) ; TODO
                     ;; suffix
                     "")
               names-headers)))
