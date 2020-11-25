@@ -1763,7 +1763,7 @@ It also eliminates runs of equal strings."
                 (put-text-property (point) (progn (insert str) (point))
                                    'mouse-face 'highlight)
               ;; If `str' is a list that has 2 elements,
-              ;; then the second element is a suffix.
+              ;; then the second element is a suffix annotation.
               ;; If `str' has 3 elements, then the second element
               ;; is a prefix, and the third element is a suffix.
               (let* ((prefix (when (nth 2 str) (nth 1 str)))
