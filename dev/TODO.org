@@ -42,6 +42,9 @@ magit
 
 ** completion packages
 
+TRY completions as wide as or wider than the frame in Ivy's minibuffer
+counsel-yank-pop
+
 company, company-posframe
 helm
 selectrum

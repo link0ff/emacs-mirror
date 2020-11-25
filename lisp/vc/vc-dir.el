@@ -308,6 +308,7 @@ See `run-hooks'."
     (define-key map "Q" 'vc-dir-query-replace-regexp)
     (define-key map (kbd "M-s a C-s")   'vc-dir-isearch)
     (define-key map (kbd "M-s a M-C-s") 'vc-dir-isearch-regexp)
+    (define-key map (kbd "M-s a M-C-%") 'vc-dir-query-replace-regexp)
     (define-key map "G" 'vc-dir-ignore)
 
     (let ((branch-map (make-sparse-keymap)))

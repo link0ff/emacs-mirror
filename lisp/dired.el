@@ -1932,6 +1932,7 @@ Do so according to the former subdir alist OLD-SUBDIR-ALIST."
     ;; isearch
     (define-key map (kbd "M-s a C-s")   'dired-do-isearch)
     (define-key map (kbd "M-s a M-C-s") 'dired-do-isearch-regexp)
+    (define-key map (kbd "M-s a M-C-%") 'dired-do-query-replace-regexp)
     (define-key map (kbd "M-s f C-s")   'dired-isearch-filenames)
     (define-key map (kbd "M-s f M-C-s") 'dired-isearch-filenames-regexp)
     ;; misc
@@ -2214,8 +2215,11 @@ Do so according to the former subdir alist OLD-SUBDIR-ALIST."
     (define-key map [menu-bar operate dashes-3]
       '("--"))
 
-    (define-key map [menu-bar operate query-replace]
-      '(menu-item "Query Replace in Files..." dired-do-find-regexp-and-replace
+    (define-key map [menu-bar operate find-regexp-and-replace]
+      '(menu-item "Replace Regexp in Files..." dired-do-find-regexp-and-replace
+		  :help "Replace regexp matches in marked files"))
+    (define-key map [menu-bar operate query-replace-regexp]
+      '(menu-item "Query Replace in Files..." dired-do-query-replace-regexp
 		  :help "Replace regexp matches in marked files"))
     (define-key map [menu-bar operate search]
       '(menu-item "Search Files..." dired-do-find-regexp

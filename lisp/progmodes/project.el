@@ -598,7 +598,7 @@ DIRS must contain directory names."
     (define-key map "p" 'project-switch-project)
     (define-key map "g" 'project-find-regexp)
     (define-key map "G" 'project-or-external-find-regexp)
-    (define-key map "r" 'project-query-replace-regexp)
+    (define-key map [?\C-\M-%] 'project-query-replace-regexp)
     map)
   "Keymap for project commands.")
 
