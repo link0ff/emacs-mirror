@@ -1778,7 +1778,7 @@ Return t if the buffer had changes, nil otherwise."
               ;; Diff it against /dev/null.
               (apply #'vc-do-command buffer
                      (if async 'async 1) "diff" file
-                     (append (vc-switches nil 'diff) '("/dev/null"))))))
+                     (append (vc-switches nil 'diff) `(,(null-device)))))))
         (setq files (nreverse filtered))))
     (unless rev2    ; remember the position in the or a current buffer
       (let ((f files))
