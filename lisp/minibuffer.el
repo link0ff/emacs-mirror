@@ -1719,7 +1719,8 @@ It also eliminates runs of equal strings."
 	   (row 0)
            (first t)
 	   (laststring nil))
-      (unless (or tab-stop-list (zerop (mod colwidth completion-tab-width)))
+      (unless (or tab-stop-list (null completion-tab-width)
+                  (zerop (mod colwidth completion-tab-width)))
         ;; Align to tab positions for the case
         ;; when the caller uses tabs inside prefix.
         (setq colwidth (- colwidth (mod colwidth completion-tab-width))))
