@@ -1720,13 +1720,9 @@ It also eliminates runs of equal strings."
            (first t)
 	   (laststring nil))
       (unless (or tab-stop-list (zerop (mod colwidth completion-tab-width)))
-        (message "? colwidth=%S tab-width=%S" colwidth completion-tab-width)
-        ;; Adjust to tab positions for the case
+        ;; Align to tab positions for the case
         ;; when the caller uses tabs inside prefix.
-        (setq colwidth (+ colwidth (- completion-tab-width
-                                      (mod colwidth completion-tab-width))))
-        (message "! colwidth=%S" colwidth)
-        )
+        (setq colwidth (- colwidth (mod colwidth completion-tab-width))))
       ;; The insertion should be "sensible" no matter what choices were made
       ;; for the parameters above.
       (dolist (str strings)
