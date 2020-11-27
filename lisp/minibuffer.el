@@ -1718,6 +1718,17 @@ It also eliminates runs of equal strings."
 	   (row 0)
            (first t)
 	   (laststring nil))
+      (unless (or tab-stop-list (zerop (mod colwidth tab-width)))
+        (message "? colwidth=%S tab-width=%S" colwidth tab-width)
+        ;; Adjust to tab positions for the case
+        ;; when the caller uses tabs inside prefix.
+        (setq colwidth (+ colwidth (- tab-width (mod colwidth tab-width))))
+        (message "! colwidth=%S" colwidth)
+        ;; (+ 1 (- tab-width (mod 1 tab-width)))
+        ;; (+ 2 (- tab-width (mod 2 tab-width)))
+        ;; (+ 7 (- tab-width (mod 7 tab-width)))
+        ;; (+ 8 (- tab-width (mod 8 tab-width)))
+        )
       ;; The insertion should be "sensible" no matter what choices were made
       ;; for the parameters above.
       (dolist (str strings)

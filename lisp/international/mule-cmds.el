@@ -3084,21 +3084,12 @@ on encoding."
         (puthash "BELL (BEL)" ?\a names)
         (setq ucs-names names))))
 
-(defun mule--ucs-names-annotation (name)
-  ;; DONE: It would be much better to add this annotation before rather than
-  ;; after the char name, so the annotations are aligned.
-  ;; DONE: The default behavior of displaying annotations in italics
-  ;; doesn't work well here.
-  (let ((char (gethash name ucs-names)))
-    (when char (format " (%c)" char))))
-
-(defun mule--ucs-names-affixation-no-group (names)
+(defun mule--ucs-names-affixation (names)
   (mapcar (lambda (name)
             (let ((char (gethash name ucs-names)))
-              (list name (if char (format "%c " char) "  ") "")))
+              (list name (concat (if char (format "%c" char) " ") "\t") "")))
           names))
 
-;; TEST WITH: *SHARP
 (defun mule--ucs-names-affixation-by-group (names)
   (let* ((names-chars
           (mapcar (lambda (name) (cons name (gethash name ucs-names))) names))
@@ -3124,7 +3115,8 @@ on encoding."
                        "")
                      ;; prefix
                      (if (cdr name-char) (format "%c" (cdr name-char)) " ")
-                     (propertize "\t" 'display '(space :width 5))) ; TODO
+                     "\t" ;; (propertize "\t" 'display '(space :width 5))
+                     )
                     ;; suffix
                     "")
               names-headers)))
@@ -3171,19 +3163,28 @@ octal).  Treat otherwise-ambiguous strings like \"BED\" (U+1F6CF)
 as names, not numbers."
   (let* ((enable-recursive-minibuffers t)
 	 (completion-ignore-case t)
+	 (tab-width 4) ;; TODO: add (defvar completion-tab-width 8)
 	 (input
-	  (completing-read
-	   prompt
-	   (lambda (string pred action)
-	     (if (eq action 'metadata)
-		 `(metadata
-		   ,@(if completions-detailed
-                         '((display-sort-function . identity)
-                           (format . horizontal) ; TODO
-                           (affixation-function . mule--ucs-names-affixation-by-group))
-                       '((annotation-function . mule--ucs-names-annotation)))
-		   (category . unicode-name))
-	       (complete-with-action action (ucs-names) string pred)))))
+          (minibuffer-with-setup-hook
+              (lambda ()
+                ;; (setq tab-width 4)
+                (add-hook 'completion-setup-hook
+                          (lambda ()
+                            (with-current-buffer standard-output
+                              (setq tab-width 4)))
+                          1 t))
+            (completing-read
+             prompt
+             (lambda (string pred action)
+               (if (eq action 'metadata)
+                   `(metadata
+                     ,@(if completions-detailed
+                           '((display-sort-function . identity)
+                             (format . horizontal) ; or `one-column'
+                             (affixation-function . mule--ucs-names-affixation-by-group))
+                         '((affixation-function . mule--ucs-names-affixation)))
+                     (category . unicode-name))
+                 (complete-with-action action (ucs-names) string pred))))))
 	 (char
           (cond
            ((char-from-name input t))
