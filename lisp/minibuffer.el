@@ -1134,6 +1134,7 @@ completion candidates than this number."
 (defvar-local completion-all-sorted-completions nil)
 (defvar-local completion--all-sorted-completions-location nil)
 (defvar completion-cycling nil)      ;Function that takes down the cycling map.
+(defvar completion-tab-width nil)
 
 (defvar completion-fail-discreetly nil
   "If non-nil, stay quiet when there  is no match.")
@@ -1718,16 +1719,13 @@ It also eliminates runs of equal strings."
 	   (row 0)
            (first t)
 	   (laststring nil))
-      (unless (or tab-stop-list (zerop (mod colwidth tab-width)))
-        (message "? colwidth=%S tab-width=%S" colwidth tab-width)
+      (unless (or tab-stop-list (zerop (mod colwidth completion-tab-width)))
+        (message "? colwidth=%S tab-width=%S" colwidth completion-tab-width)
         ;; Adjust to tab positions for the case
         ;; when the caller uses tabs inside prefix.
-        (setq colwidth (+ colwidth (- tab-width (mod colwidth tab-width))))
+        (setq colwidth (+ colwidth (- completion-tab-width
+                                      (mod colwidth completion-tab-width))))
         (message "! colwidth=%S" colwidth)
-        ;; (+ 1 (- tab-width (mod 1 tab-width)))
-        ;; (+ 2 (- tab-width (mod 2 tab-width)))
-        ;; (+ 7 (- tab-width (mod 7 tab-width)))
-        ;; (+ 8 (- tab-width (mod 8 tab-width)))
         )
       ;; The insertion should be "sensible" no matter what choices were made
       ;; for the parameters above.
@@ -1769,9 +1767,10 @@ It also eliminates runs of equal strings."
 		  ;; already past the goal column, there is still
 		  ;; a space displayed.
 		  (set-text-properties (1- (point)) (point)
-				       ;; We can't just set tab-width, because
-				       ;; completion-setup-function will kill
-				       ;; all local variables :-(
+				       ;; We can set tab-width using
+				       ;; completion-tab-width, but
+				       ;; the caller can prefer using
+				       ;; \t to align prefixes.
 				       `(display (space :align-to ,column)))
 		  nil))))
             (setq first nil)

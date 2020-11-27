@@ -3090,38 +3090,6 @@ on encoding."
               (list name (concat (if char (format "%c" char) " ") "\t") "")))
           names))
 
-(defun mule--ucs-names-affixation-by-group (names)
-  (let* ((names-chars
-          (mapcar (lambda (name) (cons name (gethash name ucs-names))) names))
-         (groups-names
-          (seq-group-by
-           (lambda (name-char)
-             (let ((script (aref char-script-table (cdr name-char))))
-               (if script (symbol-name script) "ungrouped")))
-           names-chars))
-         names-headers header)
-    (dolist (group groups-names)
-      (setq header t)
-      (dolist (name-char (cdr group))
-        (push (list (car name-char)
-                    (concat
-                     ;; header
-                     (if header
-                         (progn
-                           (setq header nil)
-                           (concat "\n" (propertize
-                                         (format "* %s\n" (car group))
-                                         'face 'header-line)))
-                       "")
-                     ;; prefix
-                     (if (cdr name-char) (format "%c" (cdr name-char)) " ")
-                     "\t" ;; (propertize "\t" 'display '(space :width 5))
-                     )
-                    ;; suffix
-                    "")
-              names-headers)))
-    (nreverse names-headers)))
-
 (defun char-from-name (string &optional ignore-case)
   "Return a character as a number from its Unicode name STRING.
 If optional IGNORE-CASE is non-nil, ignore case in STRING.
@@ -3163,28 +3131,16 @@ octal).  Treat otherwise-ambiguous strings like \"BED\" (U+1F6CF)
 as names, not numbers."
   (let* ((enable-recursive-minibuffers t)
 	 (completion-ignore-case t)
-	 (tab-width 4) ;; TODO: add (defvar completion-tab-width 8)
+	 (completion-tab-width 4)
 	 (input
-          (minibuffer-with-setup-hook
-              (lambda ()
-                ;; (setq tab-width 4)
-                (add-hook 'completion-setup-hook
-                          (lambda ()
-                            (with-current-buffer standard-output
-                              (setq tab-width 4)))
-                          1 t))
-            (completing-read
-             prompt
-             (lambda (string pred action)
-               (if (eq action 'metadata)
-                   `(metadata
-                     ,@(if completions-detailed
-                           '((display-sort-function . identity)
-                             (format . horizontal) ; or `one-column'
-                             (affixation-function . mule--ucs-names-affixation-by-group))
-                         '((affixation-function . mule--ucs-names-affixation)))
-                     (category . unicode-name))
-                 (complete-with-action action (ucs-names) string pred))))))
+	  (completing-read
+	   prompt
+	   (lambda (string pred action)
+	     (if (eq action 'metadata)
+		 '(metadata
+		   (affixation-function . mule--ucs-names-affixation)
+		   (category . unicode-name))
+	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
           (cond
            ((char-from-name input t))
