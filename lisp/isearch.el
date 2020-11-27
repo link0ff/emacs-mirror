@@ -3962,7 +3962,7 @@ Attempt to do the search exactly the way the pending Isearch would."
 				  (and isearch-lazy-count search-invisible)))
 	    (retry t)
 	    (success nil))
-        (when isearch-regexp
+        (when (and isearch-regexp (not (member "*Choices*" (mapcar #'buffer-name (mapcar #'window-buffer (window-list))))))
           (lazy-highlight-cleanup t)
           (error "LAZY"))
 	;; Use a loop like in `isearch-search'.
