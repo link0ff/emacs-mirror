@@ -551,5 +551,28 @@ See https://debbugs.gnu.org/cgi/bugreport.cgi?bug=19350."
   (should (equal (replace-regexp-in-string "\\`\\|x" "z" "--xx--")
                  "z--zz--")))
 
+(ert-deftest subr-tests--change-group-33341 ()
+  (with-temp-buffer
+    (buffer-enable-undo)
+    (insert "0\n")
+    (let ((g (prepare-change-group)))
+      (activate-change-group g)
+      (insert "b\n")
+      (insert "c\n")
+      (cancel-change-group g))
+    (should (equal (buffer-string) "0\n"))
+    (erase-buffer)
+    (setq buffer-undo-list nil)
+    (insert "0\n")
+    (let ((g (prepare-change-group)))
+      (activate-change-group g)
+      (insert "b\n")
+      (insert "c\n")
+      (accept-change-group g))
+    (should (equal (buffer-string) "0\nb\nc\n"))
+    (undo-boundary)
+    (undo)
+    (should (equal (buffer-string) ""))))
+
 (provide 'subr-tests)
 ;;; subr-tests.el ends here
