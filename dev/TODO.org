@@ -36,6 +36,8 @@ bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
 
 ** IDE packages
 
+https://old.reddit.com/r/emacs/comments/k2ba3h/what_do_you_recommend_for_ruby/
+
 lsp-mode, lsp-ui, company-lsp, helm-lsp
 projectile
 magit
