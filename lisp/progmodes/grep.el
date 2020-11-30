@@ -466,7 +466,7 @@ buffer `default-directory'."
     (define-key map [down-mouse-2] 'mouse-set-point)
     (define-key map [mouse-2] 'grep-find-toggle-abbreviation)
     (define-key map "\C-m" 'grep-find-toggle-abbreviation)
-    `(face nil display ,ellipsis mouse-face highlight
+    `(face shadow display ,ellipsis mouse-face highlight
       help-echo "RET, mouse-2: show unabbreviated command"
       keymap ,map abbreviated-command t))
   "Properties of button-like ellipsis on part of rgrep command line.")
@@ -486,6 +486,9 @@ buffer `default-directory'."
       (0 '(face nil compilation-message nil help-echo nil mouse-face nil) t)
       (1 grep-error-face)
       (2 grep-error-face nil t))
+     ;; Hide excessive part of grep output
+     ("^.+?:.\\{,64\\}\\(.*\\).\\{10\\}$"
+      1 grep-find-abbreviate-properties)
      ;; "filename-linenumber-" format is used for context lines in GNU grep,
      ;; "filename=linenumber=" for lines with function names in "git grep -p".
      ("^.+?\\([-=\0]\\)[0-9]+\\([-=]\\).*\n"

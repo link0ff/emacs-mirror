@@ -1,5 +1,10 @@
 #+TODO: TODO | DONE | WONTFIX
 
+* grep font-lock
+
+(defcustom grep-limit
+  number or nil)
+
 * ob-ruby
 
 https://github.com/nonsequitur/inf-ruby/issues/121
@@ -21,6 +26,13 @@ Issues:
 2. 'C-c C-d' (log-edit-show-diff) leaves point at end, should leave at beginning
 3. should be customizable?
 
+1.
+2.
+3. on the last hunk it signals the error: "user-error: No next hunk"
+4. compilation warnings:
+vc/diff-mode.el:706:1: Warning: Unused lexical variable `i'
+vc/diff-mode.el:733:30: Warning: reference to free variable
+
 * inhibit-messages
 
 bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
@@ -38,7 +50,16 @@ bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
 
 https://old.reddit.com/r/emacs/comments/k2ba3h/what_do_you_recommend_for_ruby/
 
-lsp-mode, lsp-ui, company-lsp, helm-lsp
+https://github.com/emacs-lsp/lsp-mode/
+https://emacs-lsp.github.io/lsp-mode/page/main-features/
+https://emacs-lsp.github.io/lsp-mode/page/lsp-solargraph/
+~/.emacs.d/elpa/lsp-mode-20201129.1832/lsp-solargraph.el
+(qv "~/.emacs" "(require 'lsp-ui)")
+
+lsp-mode, lsp-ui, company-lsp (FROM docs: "note that company-lsp
+is no longer supported, use company-capf / completion-at-point")
+helm-lsp: refs from https://emacs-lsp.github.io/lsp-mode/
+
 projectile
 magit
 
@@ -47,8 +68,6 @@ magit
 TRY completions as wide as or wider than the frame in Ivy's minibuffer
 counsel-yank-pop
 
-company, company-posframe
-helm
 selectrum
 
 https://old.reddit.com/r/emacs/comments/k3c0u7/consult_counselswiper_alternative_for/

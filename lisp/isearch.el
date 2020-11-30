@@ -1203,6 +1203,8 @@ The arg REGEXP-FUNCTION, if non-nil, should be a function.  It is
 used to set the value of `isearch-regexp-function'."
 
   ;; Initialize global vars.
+  (when regexp
+    (error "MODE"))
   (setq isearch-forward forward
 	isearch-regexp (or regexp
                            (and (not regexp-function)
