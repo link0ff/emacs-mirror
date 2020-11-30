@@ -51,6 +51,8 @@ company, company-posframe
 helm
 selectrum
 
+https://old.reddit.com/r/emacs/comments/k3c0u7/consult_counselswiper_alternative_for/
+
 ** other
 
 try to install from melpa:
