@@ -486,15 +486,15 @@ buffer `default-directory'."
       (0 '(face nil compilation-message nil help-echo nil mouse-face nil) t)
       (1 grep-error-face)
       (2 grep-error-face nil t))
-     ;; Hide excessive part of grep output
-     ("^.+?:.\\{,64\\}\\(.*\\).\\{10\\}$"
-      1 grep-find-abbreviate-properties)
      ;; "filename-linenumber-" format is used for context lines in GNU grep,
      ;; "filename=linenumber=" for lines with function names in "git grep -p".
      ("^.+?\\([-=\0]\\)[0-9]+\\([-=]\\).*\n"
       (0 grep-context-face)
       (1 (if (eq (char-after (match-beginning 1)) ?\0)
              `(face nil display ,(match-string 2)))))
+     ;; Hide excessive parts of grep output lines
+     ("^.+?:.\\{,64\\}\\(.*\\).\\{10\\}$"
+      1 grep-find-abbreviate-properties)
      ;; Hide excessive part of rgrep command
      ("^find \\(\\. -type d .*\\\\)\\)"
       (1 (if grep-find-abbreviate grep-find-abbreviate-properties
