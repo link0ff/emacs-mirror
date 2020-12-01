@@ -26,12 +26,24 @@ Issues:
 2. 'C-c C-d' (log-edit-show-diff) leaves point at end, should leave at beginning
 3. should be customizable?
 
-1.
-2.
+Problems
+
+This feature is unusable with 'C-c C-d' (log-edit-show-diff):
+
+1. Often when committing a change 'C-c C-d' (log-edit-show-diff)
+   displays only the end of the diff buffer, so some parts of the diff
+   might be committed unnoticed.  This is because 'diff-goto-line'
+   moves point to some random place in the diff output.  It's difficult
+   to understand its logic, why it decides to move to the middle of the
+   multi-file diff.
+2. 'C-c C-d' (log-edit-show-diff)
+   read-file-name("Use file /dev/null: " "/dev/" "/dev/null" t "null")
+   diff-find-file-name()
+   diff-goto-line("Makefile" 33 0)
 3. on the last hunk it signals the error: "user-error: No next hunk"
 4. compilation warnings:
-vc/diff-mode.el:706:1: Warning: Unused lexical variable `i'
-vc/diff-mode.el:733:30: Warning: reference to free variable
+   vc/diff-mode.el:706:1: Warning: Unused lexical variable `i'
+   vc/diff-mode.el:733:30: Warning: reference to free variable
 
 * inhibit-messages
 

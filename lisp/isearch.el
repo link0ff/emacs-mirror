@@ -1203,6 +1203,10 @@ The arg REGEXP-FUNCTION, if non-nil, should be a function.  It is
 used to set the value of `isearch-regexp-function'."
 
   ;; Initialize global vars.
+  ;; Often after 'C-M-left' (left-word) I wrongly type C-M-s instead Of C-s
+  ;; TODO: make add-advice from this in emacs_init.org
+  (when (and regexp (eq last-command 'left-word))
+    (setq regexp nil))
   (when regexp
     (error "MODE"))
   (setq isearch-forward forward

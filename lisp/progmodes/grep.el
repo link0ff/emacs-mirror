@@ -616,6 +616,7 @@ This function is called from `compilation-filter-hook'."
           (cl-incf grep-num-matches-found))
         ;; Delete all remaining escape sequences
         (goto-char beg)
+        ;; MAYBE truncate long lines?
         (while (re-search-forward "\033\\[[0-9;]*[mK]" end 1)
           (replace-match "" t t))))))
 
