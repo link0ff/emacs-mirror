@@ -1203,12 +1203,6 @@ The arg REGEXP-FUNCTION, if non-nil, should be a function.  It is
 used to set the value of `isearch-regexp-function'."
 
   ;; Initialize global vars.
-  ;; Often after 'C-M-left' (left-word) I wrongly type C-M-s instead Of C-s
-  ;; TODO: make add-advice from this in emacs_init.org
-  (when (and regexp (eq last-command 'left-word))
-    (setq regexp nil))
-  (when regexp
-    (error "MODE"))
   (setq isearch-forward forward
 	isearch-regexp (or regexp
                            (and (not regexp-function)
@@ -2035,8 +2029,6 @@ Turning on character-folding turns off regexp mode.")
 
 (isearch-define-mode-toggle regexp "r" nil nil
   (setq isearch-regexp (not isearch-regexp))
-  (when isearch-regexp
-    (error "TOGGLE"))
   (if isearch-regexp (setq isearch-regexp-function nil)))
 
 (defvar isearch-message-properties minibuffer-prompt-properties
@@ -3953,7 +3945,7 @@ by other Emacs features."
 (defun isearch-lazy-highlight-search (string bound)
   "Search ahead for the next or previous match, for lazy highlighting.
 Attempt to do the search exactly the way the pending Isearch would."
-  ;; (condition-case nil
+  (condition-case nil
       (let ((case-fold-search isearch-lazy-highlight-case-fold-search)
 	    (isearch-regexp isearch-lazy-highlight-regexp)
 	    (isearch-regexp-function isearch-lazy-highlight-regexp-function)
@@ -3968,9 +3960,6 @@ Attempt to do the search exactly the way the pending Isearch would."
 				  (and isearch-lazy-count search-invisible)))
 	    (retry t)
 	    (success nil))
-        (when (and isearch-regexp (not (member "*Choices*" (mapcar #'buffer-name (mapcar #'window-buffer (window-list))))))
-          (lazy-highlight-cleanup t)
-          (error "LAZY"))
 	;; Use a loop like in `isearch-search'.
 	(while retry
 	  (setq success (isearch-search-string string bound t))
@@ -3983,8 +3972,7 @@ Attempt to do the search exactly the way the pending Isearch would."
 			   (match-beginning 0) (match-end 0)))
 	      (setq retry nil)))
 	success)
-    ;; (error nil))
-  )
+    (error nil)))
 
 (defun isearch-lazy-highlight-match (mb me)
   (let ((ov (make-overlay mb me)))
