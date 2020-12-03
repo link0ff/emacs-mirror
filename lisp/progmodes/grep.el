@@ -466,7 +466,7 @@ buffer `default-directory'."
     (define-key map [down-mouse-2] 'mouse-set-point)
     (define-key map [mouse-2] 'grep-find-toggle-abbreviation)
     (define-key map "\C-m" 'grep-find-toggle-abbreviation)
-    `(face shadow display ,ellipsis mouse-face highlight
+    `(face nil display ,ellipsis mouse-face highlight
       help-echo "RET, mouse-2: show unabbreviated command"
       keymap ,map abbreviated-command t))
   "Properties of button-like ellipsis on part of rgrep command line.")
@@ -492,9 +492,6 @@ buffer `default-directory'."
       (0 grep-context-face)
       (1 (if (eq (char-after (match-beginning 1)) ?\0)
              `(face nil display ,(match-string 2)))))
-     ;; Hide excessive parts of grep output lines
-     ("^.+?:.\\{,64\\}\\(.*\\).\\{10\\}$"
-      1 grep-find-abbreviate-properties)
      ;; Hide excessive part of rgrep command
      ("^find \\(\\. -type d .*\\\\)\\)"
       (1 (if grep-find-abbreviate grep-find-abbreviate-properties
@@ -616,7 +613,6 @@ This function is called from `compilation-filter-hook'."
           (cl-incf grep-num-matches-found))
         ;; Delete all remaining escape sequences
         (goto-char beg)
-        ;; MAYBE truncate long lines?
         (while (re-search-forward "\033\\[[0-9;]*[mK]" end 1)
           (replace-match "" t t))))))
 
