@@ -372,9 +372,9 @@ elements is negated: these commands will NOT prompt."
                  (const :tag "Prompt if no identifier at point" nil)
                  (set :menu-tag "Prompt according to command"
                       :tag "Prompt according to command"
-		      :value (not)
-		      (const :tag "Except for commands listed below" not)
-		      (repeat :inline t (symbol :tag "command")))))
+                      :value (not)
+                      (const :tag "Except for commands listed below" not)
+                      (repeat :inline t (symbol :tag "command")))))
 
 (defcustom xref-after-jump-hook '(recenter
                                   xref-pulse-momentarily)
@@ -1460,12 +1460,12 @@ Such as the current syntax table and the applied syntax properties."
                                  (point-max)
                                  syntax-needed)))))
 
+;; TODO: try matches in xref-query-replace
 (defun xref--collect-matches-1 (regexp file line line-beg line-end syntax-needed)
-  (let (matches)
+  (let ((summary (buffer-substring line-beg line-end))
+        matches)
     (when syntax-needed
       (syntax-propertize line-end))
-    ;; FIXME: This results in several lines with the same
-    ;; summary. Solve with composite pattern?
     (while (and
             ;; REGEXP might match an empty string.  Or line.
             (or (null matches)
@@ -1473,12 +1473,12 @@ Such as the current syntax table and the applied syntax properties."
             (re-search-forward regexp line-end t))
       (let* ((beg-column (- (match-beginning 0) line-beg))
              (end-column (- (match-end 0) line-beg))
-             (loc (xref-make-file-location file line beg-column))
-             (summary (buffer-substring line-beg line-end)))
+             (loc (xref-make-file-location file line beg-column)))
         (add-face-text-property beg-column end-column 'xref-match
                                 t summary)
-        (push (xref-make-match summary loc (- end-column beg-column))
-              matches)))
+        (unless matches
+          (push (xref-make-match summary loc (- end-column beg-column))
+                matches))))
     (nreverse matches)))
 
 (defun xref--find-file-buffer (file)
