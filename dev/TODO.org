@@ -16,6 +16,39 @@ string-match (or rather a new function) should return MATCH-DATA
 customized grep-find-template to
 "find <D> <X> -type f <F> -print0 | sort -z | xargs -0 -e grep <C> --color=always -inH -e <R> | cut -c -200"
 
+* xref-query-replace-in-results
+
+~xref--alistify~
+~seq-group-by~
+
+#+BEGIN_SRC emacs-lisp
+#s(xref-match-item
+   #(" '(dired-dwim-target 'dired-dwim-target-recent)" 9 20 (face xref-match))
+   #s(xref-file-location "/home/juri/src/emacs/emacs-init/emacs.custom.el" 73 9)
+   11)
+#s(xref-match-item
+   #(" '(dired-dwim-target 'dired-dwim-target-recent)" 28 39 (face xref-match))
+   #s(xref-file-location "/home/juri/src/emacs/emacs-init/emacs.custom.el" 73 28)
+   11)
+#+END_SRC
+
+#+BEGIN_SRC emacs-lisp
+(insert (propertize "a" 'xref-item 1)
+        (propertize "a" 'xref-item 2))
+
+(progn (insert "aa")
+       (add-text-properties (- (point) 2) (- (point) 1) '(xref-item 1))
+       (add-text-properties (- (point) 1) (point) '(xref-item 2)))
+
+(progn (insert "aa")
+       (add-text-properties (- (point) 2) (point) '(xref-item 1)))
+
+(progn (goto-char (point-min))
+       (xref--search-property 'xref-item)
+       (xref--search-property 'xref-item)
+       (xref--search-property 'xref-item))
+#+END_SRC
+
 * ob-ruby
 
 https://github.com/nonsequitur/inf-ruby/issues/121

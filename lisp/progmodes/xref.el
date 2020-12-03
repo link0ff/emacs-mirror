@@ -832,12 +832,14 @@ GROUP is a string for decoration purposes and XREF is an
                                (length (and line (format "%d" line)))))
            for line-format = (and max-line-width
                                   (format "%%%dd: " max-line-width))
+           with prev-line = nil
            do
            (xref--insert-propertized '(face xref-file-header xref-group t)
                                      group "\n")
            (cl-loop for (xref . more2) on xrefs do
-                    (with-slots (summary location) xref
+                    (with-slots (summary location length) xref
                       (let* ((line (xref-location-line location))
+                             (column (xref-file-location-column location))
                              (prefix
                               (if line
                                   (propertize (format line-format line)
@@ -850,7 +852,8 @@ GROUP is a string for decoration purposes and XREF is an
                                'help-echo
                                (concat "mouse-2: display in another window, "
                                        "RET or mouse-1: follow reference"))
-                         prefix summary)))
+                         prefix summary)
+                        (setq prev-line line)))
                     (insert "\n"))))
 
 (defun xref--analyze (xrefs)
@@ -1460,12 +1463,12 @@ Such as the current syntax table and the applied syntax properties."
                                  (point-max)
                                  syntax-needed)))))
 
-;; TODO: try matches in xref-query-replace
 (defun xref--collect-matches-1 (regexp file line line-beg line-end syntax-needed)
-  (let ((summary (buffer-substring line-beg line-end))
-        matches)
+  (let (matches)
     (when syntax-needed
       (syntax-propertize line-end))
+    ;; FIXME: This results in several lines with the same
+    ;; summary. Solve with composite pattern?
     (while (and
             ;; REGEXP might match an empty string.  Or line.
             (or (null matches)
@@ -1473,12 +1476,12 @@ Such as the current syntax table and the applied syntax properties."
             (re-search-forward regexp line-end t))
       (let* ((beg-column (- (match-beginning 0) line-beg))
              (end-column (- (match-end 0) line-beg))
-             (loc (xref-make-file-location file line beg-column)))
+             (loc (xref-make-file-location file line beg-column))
+             (summary (buffer-substring line-beg line-end)))
         (add-face-text-property beg-column end-column 'xref-match
                                 t summary)
-        (unless matches
-          (push (xref-make-match summary loc (- end-column beg-column))
-                matches))))
+        (push (xref-make-match summary loc (- end-column beg-column))
+              matches)))
     (nreverse matches)))
 
 (defun xref--find-file-buffer (file)
