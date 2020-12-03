@@ -58,13 +58,11 @@
 ;;; Code:
 
 (require 'cl-lib)
-(require 'button)
 (require 'debug)
 (require 'backtrace)
 (require 'easymenu)
 (require 'ewoc)
 (require 'find-func)
-(require 'help)
 (require 'pp)
 
 ;;; UI customization options.
