@@ -1,21 +1,5 @@
 #+TODO: TODO | DONE | WONTFIX
 
-* regexp
-
-https://ruby-doc.org/core-2.7.2/MatchData.html
-string-match (or rather a new function) should return MATCH-DATA
-(match-beginning SUBEXP &optional MATCH-DATA)
-(match-end SUBEXP &optional MATCH-DATA)
-(match-string NUM &optional STRING MATCH-DATA)
-
-* grep font-lock
-
-(defcustom grep-limit
-  number or nil)
-
-customized grep-find-template to
-"find <D> <X> -type f <F> -print0 | sort -z | xargs -0 -e grep <C> --color=always -inH -e <R> | cut -c -200"
-
 * xref-query-replace-in-results
 
 ~xref--alistify~

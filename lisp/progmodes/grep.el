@@ -534,7 +534,6 @@ This variable's value takes effect when `grep-compute-defaults' is called."
                  (const :tag "find -exec {} +" exec-plus)
                  (const :tag "find -print0 | xargs -0" gnu)
                  (const :tag "find -print0 | sort -z | xargs -0'" gnu-sort)
-                 (const :tag "find -print0 | sort -z | xargs -0' ... | cut -c -200" gnu-sort-cut)
                  string
 		 (const :tag "Not Set" nil))
   :set #'grep-apply-setting
@@ -723,8 +722,7 @@ The value depends on `grep-command', `grep-template',
 		     (goto-char (point-min))
 		     (search-forward "--color" nil t))
 		   ;; Windows and DOS pipes fail `isatty' detection in Grep.
-		   (if (or (eq grep-find-use-xargs 'gnu-sort-cut)
-                           (memq system-type '(windows-nt ms-dos)))
+		   (if (memq system-type '(windows-nt ms-dos))
 		       'always 'auto)))))
 
     (unless (and grep-command grep-find-command
@@ -777,9 +775,6 @@ The value depends on `grep-command', `grep-template',
 		      ((eq grep-find-use-xargs 'gnu-sort)
 		       (format "%s . -type f -print0 | sort -z | \"%s\" -0 %s"
 			       find-program xargs-program grep-command))
-		      ((eq grep-find-use-xargs 'gnu-sort-cut)
-		       (format "%s . -type f -print0 | sort -z | \"%s\" -0 %s | cut -c -200"
-			       find-program xargs-program grep-command))
 		      ((memq grep-find-use-xargs '(exec exec-plus))
 		       (let ((cmd0 (format "%s . -type f -exec %s"
 					   find-program grep-command))
@@ -807,9 +802,6 @@ The value depends on `grep-command', `grep-template',
 				 find-program xargs-program gcmd))
 			((eq grep-find-use-xargs 'gnu-sort)
 			 (format "%s <D> <X> -type f <F> -print0 | sort -z | \"%s\" -0 %s"
-				 find-program xargs-program gcmd))
-			((eq grep-find-use-xargs 'gnu-sort-cut)
-			 (format "%s <D> <X> -type f <F> -print0 | sort -z | \"%s\" -0 %s | cut -c -200"
 				 find-program xargs-program gcmd))
 			((eq grep-find-use-xargs 'exec)
 			 (format "%s <D> <X> -type f <F> -exec %s %s %s%s"
