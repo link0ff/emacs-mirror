@@ -1187,6 +1187,11 @@ project's root directory, respectively.
 So typing 'C-u RET' in the "*xref*" buffer quits its window
 before navigating to the selected location.
 
+*** New options xref-search-program and xref-search-program-alist.
+So far Grep and ripgrep are supported.  ripgrep seems to offer better
+performance in certain cases, in particular for case-insensitive
+searches.
+
 ** json.el
 
 ---
@@ -1346,6 +1351,12 @@ This face is used for error messages from 'diff'.
 This new command (bound to 'C-c C-l') regenerates the current hunk.
 
 ** Miscellaneous
+
+---
+*** iso-transl is now preloaded.
+This means that keystrokes like 'Alt-[' are defined by default,
+instead of only becoming available after doing (for instance)
+'C-x 8 <letter>'.
 
 *** New user option 'completions-detailed'.
 When non-nil, some commands like 'describe-symbol' show more detailed
@@ -1816,6 +1827,8 @@ ledit.el, lmenu.el, lucid.el and old-whitespace.el.
 
 
 * Lisp Changes in Emacs 28.1
+
+** New function `garbage-collect-maybe` to trigger GC early
 
 ---
 ** 'defvar' detects the error of defining a variable currently lexically bound.
