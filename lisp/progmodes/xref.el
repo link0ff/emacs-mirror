@@ -839,7 +839,8 @@ GROUP is a string for decoration purposes and XREF is an
            (cl-loop for (xref . more2) on xrefs do
                     (with-slots (summary location length) xref
                       (let* ((line (xref-location-line location))
-                             (column (xref-file-location-column location))
+                             ;; cl-no-applicable-method xref-file-location-column
+                             ;; (column (xref-file-location-column location))
                              (prefix
                               (if line
                                   (propertize (format line-format line)
@@ -1580,35 +1581,6 @@ Such as the current syntax table and the applied syntax properties."
           ;; especially on remote files.
           (cons file (get-file-buffer file))))
   (cdr xref--last-file-buffer))
-
-(defun xref--show-defs-minibuffer (fetcher alist)
-  (let* ((xrefs (funcall fetcher))
-         (xref-alist (xref--analyze xrefs))
-         xref-alist-with-line-info
-         xref)
-
-    (cl-loop for ((group . xrefs) . more1) on xref-alist
-             do
-             (let ((show-summary (> (length xrefs) 1)))
-               (cl-loop for (xref . more2) on xrefs do
-                        (with-slots (summary location) xref
-                          (let* ((line (xref-location-line location))
-                                 (line-fmt (if line (format "%s:" line) ""))
-                                 (candidate
-                                  (if show-summary
-                                      (format "%s:%s%s" group line-fmt summary)
-                                    (format "%s" group))))
-                            (push (cons candidate xref) xref-alist-with-line-info))))))
-
-    (setq xref (if (not (cdr xrefs))
-                   (car xrefs)
-                 (cdr (assoc (completing-read "Jump to definition: "
-                                              (reverse xref-alist-with-line-info))
-                             xref-alist-with-line-info))))
-
-    (xref-pop-to-location xref (assoc-default 'display-action alist))))
-
-(setq xref-show-definitions-function 'xref--show-defs-minibuffer)
 
 (provide 'xref)
 
