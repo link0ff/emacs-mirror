@@ -846,7 +846,6 @@ GROUP is a string for decoration purposes and XREF is an
                                               'face 'xref-line-number)
                                 "  ")))
                         (when (equal prev-line-key line-key)
-                          ;; cl-no-applicable-method xref-file-location-column for etags
                           (let ((column (xref-file-location-column location)))
                             (delete-region
                              (save-excursion
