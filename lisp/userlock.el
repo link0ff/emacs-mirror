@@ -153,7 +153,7 @@ The buffer in question is current when this function is called."
 	   (format "%s changed on disk; \
 really edit the buffer? (y, n, r or C-h) "
 		   (file-name-nondirectory filename)))
-	  (choices '(?y ?n ?r ?? ?\C-h))
+	  (choices '(?y ?n ?r ?? ?\C-h)) ;; ??
 	  answer)
       (when noninteractive
 	(message "%s" prompt)
