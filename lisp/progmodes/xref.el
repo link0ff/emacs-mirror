@@ -832,20 +832,29 @@ GROUP is a string for decoration purposes and XREF is an
                                (length (and line (format "%d" line)))))
            for line-format = (and max-line-width
                                   (format "%%%dd: " max-line-width))
-           with prev-line = nil
+           with prev-line-key = nil
            do
            (xref--insert-propertized '(face xref-file-header xref-group t)
                                      group "\n")
            (cl-loop for (xref . more2) on xrefs do
-                    (with-slots (summary location length) xref
+                    (with-slots (summary location) xref
                       (let* ((line (xref-location-line location))
-                             ;; cl-no-applicable-method xref-file-location-column
-                             ;; (column (xref-file-location-column location))
+                             (line-key (list (xref-location-group location) line))
                              (prefix
                               (if line
                                   (propertize (format line-format line)
                                               'face 'xref-line-number)
                                 "  ")))
+                        (when (equal prev-line-key line-key)
+                          ;; cl-no-applicable-method xref-file-location-column for etags
+                          (let ((column (xref-file-location-column location)))
+                            (delete-region
+                             (save-excursion
+                               (forward-line -1)
+                               (move-to-column (+ (length prefix) column))
+                               (point))
+                             (point))
+                            (setq summary (substring summary column) prefix "")))
                         (xref--insert-propertized
                          (list 'xref-item xref
                                'mouse-face 'highlight
@@ -854,7 +863,7 @@ GROUP is a string for decoration purposes and XREF is an
                                (concat "mouse-2: display in another window, "
                                        "RET or mouse-1: follow reference"))
                          prefix summary)
-                        (setq prev-line line)))
+                        (setq prev-line-key line-key)))
                     (insert "\n"))))
 
 (defun xref--analyze (xrefs)

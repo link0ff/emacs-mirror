@@ -1,42 +1,5 @@
 #+TODO: TODO | DONE | WONTFIX
 
-* xref-query-replace-in-results
-
-~xref--alistify~
-~seq-group-by~
-
-#+BEGIN_SRC emacs-lisp
-#s(xref-match-item
-   #(" '(dired-dwim-target 'dired-dwim-target-recent)" 9 20 (face xref-match))
-   #s(xref-file-location "/home/juri/src/emacs/emacs-init/emacs.custom.el" 73 9)
-   11)
-#s(xref-match-item
-   #(" '(dired-dwim-target 'dired-dwim-target-recent)" 28 39 (face xref-match))
-   #s(xref-file-location "/home/juri/src/emacs/emacs-init/emacs.custom.el" 73 28)
-   11)
-#+END_SRC
-
-#+BEGIN_SRC emacs-lisp
-(insert (propertize "a" 'xref-item 1)
-        (propertize "a" 'xref-item 2))
-
-(progn (insert "aa")
-       (add-text-properties (- (point) 2) (- (point) 1) '(xref-item 1))
-       (add-text-properties (- (point) 1) (point) '(xref-item 2)))
-
-(progn (insert "aa")
-       (add-text-properties (- (point) 2) (point) '(xref-item 1)))
-
-(progn (goto-char (point-min))
-       (xref--search-property 'xref-item)
-       (xref--search-property 'xref-item)
-       (xref--search-property 'xref-item))
-#+END_SRC
-
-* ob-ruby
-
-https://github.com/nonsequitur/inf-ruby/issues/121
-
 * diff-goto-line
 
 https://github.com/dgutov/diff-hl/issues/149
