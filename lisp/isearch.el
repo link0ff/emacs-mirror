@@ -1418,8 +1418,8 @@ NOPUSH is t and EDIT is t."
 	(set-window-group-start (selected-window) found-start t))))
 
   (setq isearch-mode nil)
-  (if isearch-input-method-local-p
-      (setq input-method-function isearch-input-method-function)
+  (if isearch-input-method-function
+      (setq-local input-method-function isearch-input-method-function)
     (kill-local-variable 'input-method-function))
 
   (if isearch-tool-bar-old-map
