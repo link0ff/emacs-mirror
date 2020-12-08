@@ -97,11 +97,6 @@ bug#43830: keyboard layout handling incompatible with rest of the OS
 
 bug#44001: vc-print-log-setup-buttons leaves point at eob
 
-* isearch bug
-
-(add-hook 'isearch-mode-end-hook
-              (message "! isearch-mode-end-hook %S %S" last-input-event (car search-ring))
-
 * infoman
 
 tried to browse sql.el docstrings in two renamed *Help* buffers, but quickly lost
