@@ -1583,10 +1583,10 @@ The following key bindings are currently in effect in the buffer:
   (auto-fill-mode -1)
   (setq imenu-generic-expression (list (list nil Man-heading-regexp 0)))
   (imenu-add-to-menubar man-imenu-title)
-  (set (make-local-variable 'outline-regexp) Man-heading-regexp)
-  (set (make-local-variable 'outline-level) (lambda () 1))
-  (set (make-local-variable 'bookmark-make-record-function)
-       'Man-bookmark-make-record)
+  (setq-local outline-regexp Man-heading-regexp)
+  (setq-local outline-level (lambda () 1))
+  (setq-local bookmark-make-record-function
+              #'Man-bookmark-make-record)
   ;; (when Man-fit-to-window-on-window-resize ;; something like ‘image-auto-resize-on-window-resize’
   (add-hook 'window-state-change-functions #'Man--window-state-change nil t))
 
