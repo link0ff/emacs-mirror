@@ -146,6 +146,9 @@ icompletion is occurring."
 (defvar icomplete-overlay (make-overlay (point-min) (point-min) nil t t)
   "Overlay used to display the list of completions.")
 
+(defvar icomplete-initial nil
+  "Initial input in the minibuffer.")
+
 (defun icomplete-pre-command-hook ()
  (let ((non-essential t))
    (icomplete-tidy)))
@@ -442,6 +445,7 @@ Conditions are:
 Usually run by inclusion in `minibuffer-setup-hook'."
   (when (and icomplete-mode (icomplete-simple-completing-p))
     (set (make-local-variable 'completion-show-inline-help) nil)
+    (setq-local icomplete-initial (minibuffer-contents))
     (use-local-map (make-composed-keymap icomplete-minibuffer-map
     					 (current-local-map)))
     (add-hook 'pre-command-hook  #'icomplete-pre-command-hook  nil t)
@@ -579,7 +583,9 @@ See `icomplete-mode' and `minibuffer-setup-hook'."
         (goto-char (point-max))
                                         ; Insert the match-status information:
         (when (and (or icomplete-show-matches-on-no-input
-                       (> (icomplete--field-end) (icomplete--field-beg)))
+                       (if (stringp icomplete-initial)
+                           (not (equal icomplete-initial (minibuffer-contents)))
+                         (> (icomplete--field-end) (icomplete--field-beg))))
                    (or
                     ;; Don't bother with delay after certain number of chars:
                     (> (- (point) (icomplete--field-beg))
