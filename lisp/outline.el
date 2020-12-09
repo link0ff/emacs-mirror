@@ -175,10 +175,8 @@ in the file it applies to.")
 				   outline-mode-menu-bar-map))))))
     map))
 
-(defvar outline-mode-map
+(defvar outline-mode-cycle-map
   (let ((map (make-sparse-keymap)))
-    (define-key map "\C-c" outline-mode-prefix-map)
-    (define-key map [menu-bar] outline-mode-menu-bar-map)
     ;; Only takes effect if point is on a heading.
     (define-key map (kbd "TAB")
       `(menu-item "" outline-cycle
@@ -187,11 +185,22 @@ in the file it applies to.")
     (define-key map (kbd "<backtab>") #'outline-cycle-buffer)
     map))
 
+(defvar outline-mode-map
+  (let ((map (make-sparse-keymap)))
+    (set-keymap-parent map outline-mode-cycle-map)
+    (define-key map "\C-c" outline-mode-prefix-map)
+    (define-key map [menu-bar] outline-mode-menu-bar-map)
+    map))
+
 (defvar outline-font-lock-keywords
   '(
     ;; Highlight headings according to the level.
     (eval . (list (concat "^\\(?:" outline-regexp "\\).+")
-		  0 '(outline-font-lock-face) nil t)))
+		  0 '(if outline-minor-mode-cycle
+			 (list 'face (outline-font-lock-face)
+			       'local-map outline-mode-cycle-map)
+		       (outline-font-lock-face))
+		  nil t)))
   "Additional expressions to highlight in Outline mode.")
 
 (defface outline-1
@@ -305,6 +314,19 @@ After that, changing the prefix key requires manipulating keymaps."
          (define-key outline-minor-mode-map val outline-mode-prefix-map)
          (set-default sym val)))
 
+(defvar outline-minor-mode-font-lock nil
+  "Enable outline font-lock in `outline-minor-mode'.
+Non-nil value works well only when outline font-lock keywords
+don't conflict with the major mode's font-lock keywords.")
+;;;###autoload(put 'outline-minor-mode-font-lock 'safe-local-variable 'booleanp)
+(defvar outline-minor-mode-cycle nil
+  "Enable heading cycle in `outline-minor-mode'.
+When point is on a heading line, then typing 'TAB' cycles between `hide all',
+`headings only' and `show all' (`outline-cycle').  Typing 'S-TAB' on
+a heading line cycles the whole buffer (`outline-cycle-buffer').
+Typing these keys anywhere outside heading lines uses their default bindings.")
+;;;###autoload(put 'outline-minor-mode-cycle 'safe-local-variable 'booleanp)
+
 ;;;###autoload
 (define-minor-mode outline-minor-mode
   "Toggle Outline minor mode.
@@ -314,6 +336,9 @@ See the command `outline-mode' for more information on this mode."
 		    (cons outline-minor-mode-prefix outline-mode-prefix-map))
   (if outline-minor-mode
       (progn
+        (when outline-minor-mode-font-lock
+          (font-lock-add-keywords nil outline-font-lock-keywords)
+          (font-lock-flush))
 	;; Turn off this mode if we change major modes.
 	(add-hook 'change-major-mode-hook
 		  (lambda () (outline-minor-mode -1))
@@ -321,6 +346,9 @@ See the command `outline-mode' for more information on this mode."
 	(set (make-local-variable 'line-move-ignore-invisible) t)
 	;; Cause use of ellipses for invisible text.
 	(add-to-invisibility-spec '(outline . t)))
+    (when outline-minor-mode-font-lock
+      (font-lock-remove-keywords nil outline-font-lock-keywords)
+      (font-lock-flush))
     (setq line-move-ignore-invisible nil)
     ;; Cause use of ellipses for invisible text.
     (remove-from-invisibility-spec '(outline . t))
