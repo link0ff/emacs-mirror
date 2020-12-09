@@ -108,6 +108,7 @@ where:
 (defvar-local tabulated-list-use-header-line t
   "Whether the Tabulated List buffer should use a header line.")
 
+;; rg tabulated-list-entries
 (defvar-local tabulated-list-entries nil
   "Entries displayed in the current Tabulated List buffer.
 This should be either a function, or a list.

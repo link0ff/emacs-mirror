@@ -100,7 +100,10 @@ To change the default value, use \\[customize] or call the function
   :set #'grep-apply-setting
   :version "22.1")
 
-(defcustom grep-match-regexp "\033\\[[0-9]*m\033\\[[0-9]*1m\033\\[[0-9]*1m\\(.*?\\)\033\\[[0-9]*0m"
+;; (defcustom grep-match-regexp "\033\\[0?1;31m\\(.*?\\)\033\\[[0-9]*m"
+;; (defcustom grep-match-regexp "\033\\[[0-9]*m\033\\[[0-9]*1m\033\\[[0-9]*1m\\(.*?\\)\033\\[[0-9]*0m"
+;; (defcustom grep-match-regexp "\\(?:\033\\[[0-9;]*m\\)+\\(.*?\\)\033\\[[0-9]*0?m"
+(defcustom grep-match-regexp "\033\\[\\(?:0?1;\\)?31m\\(.*?\\)\033\\[[0-9]*m"
   "Regular expression matching grep markers to highlight.
 It matches SGR ANSI escape sequences which are emitted by grep to
 color its output.  This variable is used in `grep-filter'."
@@ -942,7 +945,8 @@ list is empty)."
   (compilation-start (if (and grep-use-null-device null-device (null-device))
 			 (concat command-args " " (null-device))
 		       command-args)
-		     #'grep-mode))
+		     #'grep-mode ; t
+                     ))
 
 
 ;;;###autoload

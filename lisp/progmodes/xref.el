@@ -1352,7 +1352,7 @@ IGNORES is a list of glob patterns for files to ignore."
      ;; without the '| sort ...' part if GNU sort is not available on
      ;; your system and/or stable ordering is not important to you.
      ;; Note#2: '!*/' is there to filter out dirs (e.g. submodules).
-     "xargs -0 rg <C> -nH --no-messages -g '!*/' -e <R> | sort -t: -k1,1 -k2n,2"
+     "xargs -0 rg <C> -nH --no-messages -g '!*/' -e <R> | sort -t: -k1,1 -k2n,2" ;; TODO: "--sort path"
      ))
   "Associative list mapping program identifiers to command templates.
 
@@ -1596,7 +1596,10 @@ Such as the current syntax table and the applied syntax properties."
       (let* ((beg-column (- (match-beginning 0) line-beg))
              (end-column (- (match-end 0) line-beg))
              (loc (xref-make-file-location file line beg-column))
-             (summary (buffer-substring line-beg line-end)))
+             (summary (progn
+                        (unless syntax-needed
+                          (font-lock-ensure line-beg line-end))
+                        (buffer-substring line-beg line-end))))
         (add-face-text-property beg-column end-column 'xref-match
                                 t summary)
         (push (xref-make-match summary loc (- end-column beg-column))
