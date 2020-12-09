@@ -1592,17 +1592,6 @@ make_image_cache (void)
   return c;
 }
 
-/* Compare two lists (one of which must be proper), comparing each
-   element with `eq'.  */
-static bool
-equal_lists (Lisp_Object a, Lisp_Object b)
-{
-  while (CONSP (a) && CONSP (b) && EQ (XCAR (a), XCAR (b)))
-    a = XCDR (a), b = XCDR (b);
-
-  return EQ (a, b);
-}
-
 /* Find an image matching SPEC in the cache, and return it.  If no
    image is found, return NULL.  */
 static struct image *
@@ -1630,7 +1619,7 @@ search_image_cache (struct frame *f, Lisp_Object spec, EMACS_UINT hash,
 
   for (img = c->buckets[i]; img; img = img->next)
     if (img->hash == hash
-	&& equal_lists (img->spec, spec)
+	&& !NILP (Fequal (img->spec, spec))
 	&& (ignore_colors || (img->face_foreground == foreground
                               && img->face_background == background)))
       break;
@@ -1644,12 +1633,13 @@ static void
 uncache_image (struct frame *f, Lisp_Object spec)
 {
   struct image *img;
+  EMACS_UINT hash = sxhash (spec);
 
   /* Because the background colors are based on the current face, we
      can have multiple copies of an image with the same spec. We want
      to remove them all to ensure the user doesn't see an old version
      of the image when the face changes.  */
-  while ((img = search_image_cache (f, spec, sxhash (spec), 0, 0, true)))
+  while ((img = search_image_cache (f, spec, hash, 0, 0, true)))
     {
       free_image (f, img);
       /* As display glyphs may still be referring to the image ID, we
