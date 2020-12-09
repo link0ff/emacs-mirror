@@ -36,7 +36,7 @@
   (let ((overriding-terminal-local-map nil))
     (toggle-input-method t))
   (setq isearch-input-method-function input-method-function)
-  (setq input-method-function nil)
+  (setq-local input-method-function nil)
   (isearch-update))
 
 ;;;###autoload
@@ -46,7 +46,7 @@
   (let ((overriding-terminal-local-map nil))
     (toggle-input-method))
   (setq isearch-input-method-function input-method-function)
-  (setq input-method-function nil)
+  (setq-local input-method-function nil)
   (isearch-update))
 
 ;;;###autoload
@@ -56,7 +56,7 @@
   (let ((overriding-terminal-local-map nil))
     (activate-transient-input-method))
   (setq isearch-input-method-function input-method-function)
-  (setq input-method-function nil)
+  (setq-local input-method-function nil)
   (isearch-update))
 
 (defvar isearch-minibuffer-local-map

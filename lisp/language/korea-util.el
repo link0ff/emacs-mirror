@@ -71,7 +71,7 @@
   (let ((overriding-terminal-local-map nil))
     (toggle-korean-input-method))
   (setq isearch-input-method-function input-method-function)
-  (setq input-method-function nil)
+  (setq-local input-method-function nil)
   (isearch-update))
 
 (defun isearch-hangul-switch-symbol-ksc ()
@@ -79,7 +79,7 @@
   (let ((overriding-terminal-local-map nil))
     (quail-hangul-switch-symbol-ksc))
   (setq isearch-input-method-function input-method-function)
-  (setq input-method-function nil)
+  (setq-local input-method-function nil)
   (isearch-update))
 
 (defun isearch-hangul-switch-hanja ()
@@ -87,7 +87,7 @@
   (let ((overriding-terminal-local-map nil))
     (quail-hangul-switch-hanja))
   (setq isearch-input-method-function input-method-function)
-  (setq input-method-function nil)
+  (setq-local input-method-function nil)
   (isearch-update))
 
 ;; Information for setting and exiting Korean environment.

@@ -1254,9 +1254,7 @@ used to set the value of `isearch-regexp-function'."
   ;; We must bypass input method while reading key.  When a user type
   ;; printable character, appropriate input method is turned on in
   ;; minibuffer to read multibyte characters.
-  (unless (local-variable-p 'input-method-function)
-    (make-local-variable 'input-method-function))
-  (setq input-method-function nil)
+  (setq-local input-method-function nil)
 
   (looking-at "")
   (setq isearch-window-configuration
