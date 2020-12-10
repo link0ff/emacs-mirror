@@ -49,17 +49,89 @@ bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
 
 * try
 
-** IDE packages
-
-https://github.com/joaotavora/eglot
-
-https://github.com/bbatsov/projectile/
-magit
-
 ** completion branches
 
 CHECK branches:
 origin/feature/completions-highlight-modifications
+
+** IDE packages
+
+magit
+
+** project vs projectile
+
+C-x p ! - project-shell-command
+C-x p & - project-async-shell-command
+C-z p ! - projectile-run-shell-command-in-root
+C-z p & - projectile-run-async-shell-command-in-root
+
+C-x p F - project-or-external-find-file
+C-x p G - project-or-external-find-regexp
+C-x p b - project-switch-to-buffer
+C-x p c - project-compile
+C-x p d - project-dired
+C-x p e - project-eshell
+C-x p f - project-find-file
+C-x p g - project-find-regexp
+C-x p k - project-kill-buffers
+C-x p p - project-switch-project
+C-x p r - project-query-replace-regexp
+C-x p s - project-shell
+C-x p v - project-vc-dir
+
+needs:
+project-find-file-name
+project-find-directory
+
+C-z p d - projectile-find-dir
+C-z p D - projectile-dired
+
+C-z p ESC - projectile-project-buffers-other-buffer
+C-z p C - projectile-configure-project
+C-z p E - projectile-edit-dir-locals
+C-z p F - projectile-find-file-in-known-projects
+C-z p I - projectile-ibuffer
+C-z p K - projectile-package-project
+C-z p L - projectile-install-project
+C-z p P - projectile-test-project
+C-z p R - projectile-regenerate-tags
+C-z p S - projectile-save-project-buffers
+C-z p T - projectile-find-test-file
+C-z p V - projectile-browse-dirty-projects
+C-z p a - projectile-find-other-file
+C-z p b - projectile-switch-to-buffer
+C-z p c - projectile-compile-project
+C-z p e - projectile-recentf
+C-z p f - projectile-find-file
+C-z p g - projectile-find-file-dwim
+C-z p i - projectile-invalidate-cache
+C-z p j - projectile-find-tag
+C-z p k - projectile-kill-buffers
+C-z p l - projectile-find-file-in-directory
+C-z p m - projectile-commander
+C-z p o - projectile-multi-occur
+C-z p p - projectile-switch-project
+C-z p q - projectile-switch-open-project
+C-z p r - projectile-replace
+C-z p s - Prefix Command
+C-z p t - projectile-toggle-between-implementation-and-test
+C-z p u - projectile-run-project
+C-z p v - projectile-vc
+C-z p x - Prefix Command
+C-z p z - projectile-cache-current-file
+C-z p <left> - projectile-previous-project-buffer
+C-z p <right> - projectile-next-project-buffer
+
+C-z p x e - projectile-run-eshell
+C-z p x g - projectile-run-gdb
+C-z p x i - projectile-run-ielm
+C-z p x s - projectile-run-shell
+C-z p x t - projectile-run-term
+C-z p x v - projectile-run-vterm
+
+C-z p s g - projectile-grep
+C-z p s r - projectile-ripgrep
+C-z p s s - projectile-ag
 
 * debbugs
 

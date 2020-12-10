@@ -1200,12 +1200,12 @@ Type q to remove the list of window configurations from the display.
 The first column shows `D' for a window configuration you have
 marked for deletion."
   (interactive)
-  (let ((dir default-directory)
-        (minibuf (minibuffer-selected-window)))
+  (let ((dir default-directory))
     (let ((tab-bar-show nil)) ; don't enable tab-bar-mode if it's disabled
       (tab-bar-new-tab))
     ;; Handle the case when it's called in the active minibuffer.
-    (when minibuf (select-window (minibuffer-selected-window)))
+    (when (minibuffer-selected-window)
+      (select-window (minibuffer-selected-window)))
     (delete-other-windows)
     ;; Create a new window to replace the existing one, to not break the
     ;; window parameters (e.g. prev/next buffers) of the window just saved
