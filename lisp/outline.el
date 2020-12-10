@@ -197,10 +197,15 @@ in the file it applies to.")
     ;; Highlight headings according to the level.
     (eval . (list (concat "^\\(?:" outline-regexp "\\).+")
 		  0 '(if outline-minor-mode-cycle
-			 (list 'face (outline-font-lock-face)
-			       'local-map outline-mode-cycle-map)
+			 (if outline-minor-mode-font-lock
+                             (list 'face (outline-font-lock-face)
+			           'local-map outline-mode-cycle-map)
+                           (list 'face nil 'local-map outline-mode-cycle-map))
 		       (outline-font-lock-face))
-		  nil t)))
+		  nil
+                  (if (or outline-minor-mode-font-lock outline-minor-mode-cycle)
+                      'append
+                    t))))
   "Additional expressions to highlight in Outline mode.")
 
 (defface outline-1
@@ -336,7 +341,7 @@ See the command `outline-mode' for more information on this mode."
 		    (cons outline-minor-mode-prefix outline-mode-prefix-map))
   (if outline-minor-mode
       (progn
-        (when outline-minor-mode-font-lock
+        (when (or outline-minor-mode-font-lock outline-minor-mode-cycle)
           (font-lock-add-keywords nil outline-font-lock-keywords)
           (font-lock-flush))
 	;; Turn off this mode if we change major modes.
@@ -346,7 +351,7 @@ See the command `outline-mode' for more information on this mode."
         (setq-local line-move-ignore-invisible t)
 	;; Cause use of ellipses for invisible text.
 	(add-to-invisibility-spec '(outline . t)))
-    (when outline-minor-mode-font-lock
+    (when (or outline-minor-mode-font-lock outline-minor-mode-cycle)
       (font-lock-remove-keywords nil outline-font-lock-keywords)
       (font-lock-flush))
     (setq line-move-ignore-invisible nil)
