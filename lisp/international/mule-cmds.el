@@ -1505,8 +1505,8 @@ If INPUT-METHOD is nil, deactivate any current input method."
       (add-to-history 'input-method-history current-input-method))
     (unwind-protect
 	(progn
-	  (setq input-method-function nil
-		current-input-method-title nil)
+	  (kill-local-variable 'input-method-function)
+	  (setq current-input-method-title nil)
 	  (funcall deactivate-current-input-method-function))
       (unwind-protect
 	  (run-hooks 'input-method-deactivate-hook)
