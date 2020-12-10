@@ -51,36 +51,10 @@ bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
 
 ** IDE packages
 
-https://old.reddit.com/r/emacs/comments/k2ba3h/what_do_you_recommend_for_ruby/
+https://github.com/joaotavora/eglot
 
-https://github.com/emacs-lsp/lsp-mode/
-https://emacs-lsp.github.io/lsp-mode/page/main-features/
-https://emacs-lsp.github.io/lsp-mode/page/lsp-solargraph/
-~/.emacs.d/elpa/lsp-mode-20201129.1832/lsp-solargraph.el
-(qv "~/.emacs" "(require 'lsp-ui)")
-
-lsp-mode, lsp-ui, company-lsp (FROM docs: "note that company-lsp
-is no longer supported, use company-capf / completion-at-point")
-helm-lsp: refs from https://emacs-lsp.github.io/lsp-mode/
-
-projectile
+https://github.com/bbatsov/projectile/
 magit
-
-** completion packages
-
-TRY completions as wide as or wider than the frame in Ivy's minibuffer
-counsel-yank-pop
-
-selectrum
-https://github.com/raxod502/selectrum
-https://github.com/raxod502/prescient.el
-
-https://old.reddit.com/r/emacs/comments/k3c0u7/consult_counselswiper_alternative_for/
-
-** other
-
-try to install from melpa:
-https://github.com/akermu/emacs-libvterm
 
 ** completion branches
 

@@ -178,7 +178,7 @@ in the file it applies to.")
 (defvar outline-mode-cycle-map
   (let ((map (make-sparse-keymap)))
     ;; Only takes effect if point is on a heading.
-    (define-key map (kbd "TAB")
+    (define-key map [tab] ;; (kbd "TAB")
       `(menu-item "" outline-cycle
                   :filter ,(lambda (cmd)
                              (when (outline-on-heading-p) cmd))))
@@ -199,8 +199,12 @@ in the file it applies to.")
 		  0 '(if outline-minor-mode-cycle
 			 (if outline-minor-mode-font-lock
                              (list 'face (outline-font-lock-face)
-			           'local-map outline-mode-cycle-map)
-                           (list 'face nil 'local-map outline-mode-cycle-map))
+			           'local-map (make-composed-keymap
+                                               outline-mode-cycle-map
+                                               (current-local-map)))
+                           (list 'face nil 'local-map (make-composed-keymap
+                                                       outline-mode-cycle-map
+                                                       (current-local-map))))
 		       (outline-font-lock-face))
 		  nil
                   (if (or outline-minor-mode-font-lock outline-minor-mode-cycle)
