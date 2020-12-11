@@ -177,12 +177,14 @@ in the file it applies to.")
 
 (defvar outline-mode-cycle-map
   (let ((map (make-sparse-keymap)))
-    ;; Only takes effect if point is on a heading.
-    (define-key map [tab] ;; (kbd "TAB")
-      `(menu-item "" outline-cycle
-                  :filter ,(lambda (cmd)
-                             (when (outline-on-heading-p) cmd))))
-    (define-key map (kbd "<backtab>") #'outline-cycle-buffer)
+    (let ((binding `(menu-item
+                     "" outline-cycle
+                     ;; Only takes effect if point is on a heading.
+                     :filter ,(lambda (cmd)
+                                (when (outline-on-heading-p) cmd)))))
+      (define-key map (kbd "TAB") binding)
+      (define-key map [tab] binding)
+      (define-key map (kbd "<backtab>") #'outline-cycle-buffer))
     map))
 
 (defvar outline-mode-map

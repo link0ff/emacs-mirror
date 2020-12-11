@@ -2114,6 +2114,7 @@ variables.")
 (defun exit-minibuffer ()
   "Terminate this minibuffer argument."
   (interactive)
+  (minibuffer-hide-completions)
   ;; If the command that uses this has made modifications in the minibuffer,
   ;; we don't want them to cause deactivation of the mark in the original
   ;; buffer.
@@ -2243,6 +2244,7 @@ Also respects the obsolete wrapper hook `completion-in-region-functions'.
       (progn
         (setq completion-in-region--data nil)
         (unless (equal "*Completions*" (buffer-name (window-buffer)))
+          ;; for bug#45072
           (minibuffer-hide-completions)))
     ;; (add-hook 'pre-command-hook #'completion-in-region--prech)
     (cl-assert completion-in-region-mode-predicate)

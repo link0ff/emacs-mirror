@@ -749,18 +749,6 @@ called."
   :group 'tab-bar
   :version "27.1")
 
-(defmacro tab-bar-with-new-tab (&rest body)
-  "Clean up windows for the new tab."
-  `(progn
-     ;; Handle the case when it's called in the active minibuffer.
-     (when (minibuffer-selected-window)
-       (select-window (minibuffer-selected-window)))
-     (delete-other-windows)
-     ,@body
-     ;; Create a new window to replace the existing one, to get rid of
-     ;; old window parameters (e.g. prev/next buffers).
-     (split-window) (delete-window)))
-
 (defun tab-bar-new-tab-to (&optional to-index)
   "Add a new tab at the absolute position TO-INDEX.
 TO-INDEX counts from 1.  If no TO-INDEX is specified, then add
@@ -774,15 +762,21 @@ After the tab is created, the hooks in
          (from-tab (tab-bar--tab)))
 
     (when tab-bar-new-tab-choice
-      (tab-bar-with-new-tab
-       (let ((buffer
-              (if (functionp tab-bar-new-tab-choice)
-                  (funcall tab-bar-new-tab-choice)
-                (if (stringp tab-bar-new-tab-choice)
-                    (or (get-buffer tab-bar-new-tab-choice)
-                        (find-file-noselect tab-bar-new-tab-choice))))))
-         (when (buffer-live-p buffer)
-           (switch-to-buffer buffer)))))
+      ;; Handle the case when it's called in the active minibuffer.
+      (when (minibuffer-selected-window)
+        (select-window (minibuffer-selected-window)))
+      (delete-other-windows)
+      ;; Create a new window to get rid of old window parameters
+      ;; (e.g. prev/next buffers) of old window.
+      (split-window) (delete-window)
+      (let ((buffer
+             (if (functionp tab-bar-new-tab-choice)
+                 (funcall tab-bar-new-tab-choice)
+               (if (stringp tab-bar-new-tab-choice)
+                   (or (get-buffer tab-bar-new-tab-choice)
+                       (find-file-noselect tab-bar-new-tab-choice))))))
+        (when (buffer-live-p buffer)
+          (switch-to-buffer buffer))))
 
     (when from-index
       (setf (nth from-index tabs) from-tab))
@@ -1208,12 +1202,13 @@ The first column shows `D' for a window configuration you have
 marked for deletion."
   (interactive)
   (let ((dir default-directory))
-    (let ((tab-bar-show nil)) ; don't enable tab-bar-mode if it's disabled
+    (let ((tab-bar-new-tab-choice t)
+          ;; Don't enable tab-bar-mode if it's disabled
+          (tab-bar-show nil))
       (tab-bar-new-tab))
-    (tab-bar-with-new-tab
-     (let ((switch-to-buffer-preserve-window-point nil))
-       (switch-to-buffer (tab-switcher-noselect)))
-     (setq default-directory dir)))
+    (let ((switch-to-buffer-preserve-window-point nil))
+      (switch-to-buffer (tab-switcher-noselect)))
+    (setq default-directory dir))
   (message "Commands: d, x; RET; q to quit; ? for help."))
 
 (defun tab-switcher-noselect ()

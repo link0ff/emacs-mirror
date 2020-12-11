@@ -75,7 +75,9 @@ everything preceding the ~/ is discarded so the interactive
 selection process starts again from the user's $HOME.")
 
 (defcustom icomplete-show-matches-on-no-input nil
-  "When non-nil, show completions when the minibuffer is empty.
+  "When non-nil, show completions when first prompting for input.
+This means to show completions even when the current minibuffer contents
+is not the same as was the initial input after minibuffer activation.
 This also means that if you traverse the list of completions with
 commands like `C-.' and just hit RET without typing any
 characters, the match under point will be chosen instead of the
@@ -148,7 +150,7 @@ icompletion is occurring."
 
 (defvar icomplete-initial-input nil
   "Initial input in the minibuffer when icomplete-mode was activated.
-Used to support `icomplete-show-matches-on-no-input'.")
+Used to implement the option `icomplete-show-matches-on-no-input'.")
 
 (defun icomplete-pre-command-hook ()
  (let ((non-essential t))
@@ -445,7 +447,7 @@ Conditions are:
   "Run in minibuffer on activation to establish incremental completion.
 Usually run by inclusion in `minibuffer-setup-hook'."
   (when (and icomplete-mode (icomplete-simple-completing-p))
-    (setq-local icomplete-initial-input (minibuffer-contents))
+    (setq-local icomplete-initial-input (icomplete--field-string))
     (setq-local completion-show-inline-help nil)
     (use-local-map (make-composed-keymap icomplete-minibuffer-map
     					 (current-local-map)))
@@ -584,9 +586,8 @@ See `icomplete-mode' and `minibuffer-setup-hook'."
         (goto-char (point-max))
                                         ; Insert the match-status information:
         (when (and (or icomplete-show-matches-on-no-input
-                       (if (stringp icomplete-initial-input)
-                           (not (equal icomplete-initial-input (minibuffer-contents)))
-                         (> (icomplete--field-end) (icomplete--field-beg))))
+                       (not (equal (icomplete--field-string)
+                                   icomplete-initial-input)))
                    (or
                     ;; Don't bother with delay after certain number of chars:
                     (> (- (point) (icomplete--field-beg))
