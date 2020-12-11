@@ -401,17 +401,23 @@ value."
   (ring-insert xref--marker-ring (or m (point-marker))))
 
 ;;;###autoload
-(defun xref-pop-marker-stack ()
-  "Pop back to where \\[xref-find-definitions] was last invoked."
-  (interactive)
+(defun xref-pop-marker-stack (&optional kill)
+  "Pop back to where \\[xref-find-definitions] was last invoked.
+With prefix argument KILL non-nil, kill the previous buffer instead of
+burying it."
+  (interactive "P")
   (let ((ring xref--marker-ring))
     (when (ring-empty-p ring)
       (user-error "Marker stack is empty"))
-    (let ((marker (ring-remove ring 0)))
-      (switch-to-buffer (or (marker-buffer marker)
-                            (user-error "The marked buffer has been deleted")))
+    (let* ((marker (ring-remove ring 0))
+           (new-buffer (or (marker-buffer marker)
+                           (user-error "The marked buffer has been deleted")))
+           (old-buffer (current-buffer)))
+      (switch-to-buffer new-buffer)
       (goto-char (marker-position marker))
       (set-marker marker nil nil)
+      (when (and kill (not (eq old-buffer new-buffer)))
+        (kill-buffer old-buffer))
       (run-hooks 'xref-after-return-hook))))
 
 (defvar xref--current-item nil)
