@@ -1792,6 +1792,55 @@ which is then usually a filename.  */)
   return Qnil;
 }
 
+static size_t
+image_frame_cache_size (struct frame *f)
+{
+  size_t total = 0;
+#if defined USE_CAIRO
+  struct image_cache *c = FRAME_IMAGE_CACHE (f);
+
+  if (!c)
+    return 0;
+
+  for (ptrdiff_t i = 0; i < c->used; ++i)
+    {
+      struct image *img = c->images[i];
+
+      if (img && img->pixmap && img->pixmap != NO_PIXMAP)
+	total += img->pixmap->width * img->pixmap->height  *
+	  img->pixmap->bits_per_pixel / 8;
+    }
+#elif defined HAVE_NTGUI
+  struct image_cache *c = FRAME_IMAGE_CACHE (f);
+
+  if (!c)
+    return 0;
+
+  for (ptrdiff_t i = 0; i < c->used; ++i)
+    {
+      struct image *img = c->images[i];
+
+      if (img && img->pixmap && img->pixmap != NO_PIXMAP)
+	total += w32_image_size (img);
+    }
+#endif
+  return total;
+}
+
+DEFUN ("image-cache-size", Fimage_cache_size, Simage_cache_size, 0, 0, 0,
+       doc: /* Return the size of the image cache.  */)
+  (void)
+{
+  Lisp_Object tail, frame;
+  size_t total = 0;
+
+  FOR_EACH_FRAME (tail, frame)
+    if (FRAME_WINDOW_P (XFRAME (frame)))
+      total += image_frame_cache_size (XFRAME (frame));
+
+  return make_int (total);
+}
+
 
 DEFUN ("image-flush", Fimage_flush, Simage_flush,
        1, 2, 0,
@@ -9443,6 +9492,7 @@ enum svg_keyword_index
   SVG_TYPE,
   SVG_DATA,
   SVG_FILE,
+  SVG_BASE_URI,
   SVG_ASCENT,
   SVG_MARGIN,
   SVG_RELIEF,
@@ -9462,6 +9512,7 @@ static const struct image_keyword svg_format[SVG_LAST] =
   {":type",		IMAGE_SYMBOL_VALUE,			1},
   {":data",		IMAGE_STRING_VALUE,			0},
   {":file",		IMAGE_STRING_VALUE,			0},
+  {":base-uri",		IMAGE_STRING_VALUE,			0},
   {":ascent",		IMAGE_ASCENT_VALUE,			0},
   {":margin",		IMAGE_NON_NEGATIVE_INTEGER_VALUE_OR_PAIR, 0},
   {":relief",		IMAGE_INTEGER_VALUE,			0},
@@ -9534,6 +9585,9 @@ DEF_DLL_FN (gboolean, rsvg_handle_write,
 DEF_DLL_FN (gboolean, rsvg_handle_close, (RsvgHandle *, GError **));
 #  endif
 
+DEF_DLL_FN (void, rsvg_handle_set_dpi_x_y,
+	    (RsvgHandle * handle, double dpi_x, double dpi_y));
+
 #  if LIBRSVG_CHECK_VERSION (2, 46, 0)
 DEF_DLL_FN (void, rsvg_handle_get_intrinsic_dimensions,
             (RsvgHandle *, gboolean *, RsvgLength *, gboolean *,
@@ -9590,6 +9644,7 @@ init_svg_functions (void)
   LOAD_DLL_FN (library, rsvg_handle_write);
   LOAD_DLL_FN (library, rsvg_handle_close);
 #endif
+  LOAD_DLL_FN (library, rsvg_handle_set_dpi_x_y);
 #if LIBRSVG_CHECK_VERSION (2, 46, 0)
   LOAD_DLL_FN (library, rsvg_handle_get_intrinsic_dimensions);
   LOAD_DLL_FN (library, rsvg_handle_get_geometry_for_layer);
@@ -9645,6 +9700,7 @@ init_svg_functions (void)
 #   undef rsvg_handle_set_base_uri
 #   undef rsvg_handle_write
 #  endif
+#  undef rsvg_handle_set_dpi_x_y
 
 #  define gdk_pixbuf_get_bits_per_sample fn_gdk_pixbuf_get_bits_per_sample
 #  define gdk_pixbuf_get_colorspace fn_gdk_pixbuf_get_colorspace
@@ -9678,6 +9734,7 @@ init_svg_functions (void)
 #   define rsvg_handle_set_base_uri fn_rsvg_handle_set_base_uri
 #   define rsvg_handle_write fn_rsvg_handle_write
 #  endif
+#  define rsvg_handle_set_dpi_x_y fn_rsvg_handle_set_dpi_x_y
 
 # endif /* !WINDOWSNT  */
 
@@ -9688,10 +9745,11 @@ static bool
 svg_load (struct frame *f, struct image *img)
 {
   bool success_p = 0;
-  Lisp_Object file_name;
+  Lisp_Object file_name, base_uri;
 
   /* If IMG->spec specifies a file name, create a non-file spec from it.  */
   file_name = image_spec_value (img->spec, QCfile, NULL);
+  base_uri = image_spec_value (img->spec, QCbase_uri, NULL);
   if (STRINGP (file_name))
     {
       int fd;
@@ -9711,15 +9769,16 @@ svg_load (struct frame *f, struct image *img)
 	  return 0;
 	}
       /* If the file was slurped into memory properly, parse it.  */
-      success_p = svg_load_image (f, img, contents, size,
-				  SSDATA (ENCODE_FILE (file)));
+      if (!STRINGP (base_uri))
+        base_uri = ENCODE_FILE (file);
+      success_p = svg_load_image (f, img, contents, size, SSDATA (base_uri));
       xfree (contents);
     }
   /* Else it's not a file, it's a Lisp object.  Load the image from a
      Lisp object rather than a file.  */
   else
     {
-      Lisp_Object data, original_filename;
+      Lisp_Object data;
 
       data = image_spec_value (img->spec, QCdata, NULL);
       if (!STRINGP (data))
@@ -9727,10 +9786,10 @@ svg_load (struct frame *f, struct image *img)
 	  image_error ("Invalid image data `%s'", data);
 	  return 0;
 	}
-      original_filename = BVAR (current_buffer, filename);
+      if (!STRINGP (base_uri))
+        base_uri = BVAR (current_buffer, filename);
       success_p = svg_load_image (f, img, SSDATA (data), SBYTES (data),
-                                  (NILP (original_filename) ? NULL
-				   : SSDATA (original_filename)));
+                                  (NILP (base_uri) ? NULL : SSDATA (base_uri)));
     }
 
   return success_p;
@@ -9738,11 +9797,8 @@ svg_load (struct frame *f, struct image *img)
 
 #if LIBRSVG_CHECK_VERSION (2, 46, 0)
 static double
-svg_css_length_to_pixels (RsvgLength length)
+svg_css_length_to_pixels (RsvgLength length, double dpi)
 {
-  /* FIXME: 96 appears to be a pretty standard DPI but we should
-     probably use the real DPI if we can get it.  */
-  double dpi = 96;
   double value = length.length;
 
   switch (length.unit)
@@ -9816,6 +9872,9 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
   rsvg_handle = rsvg_handle_new_from_stream_sync (input_stream, base_file,
 						  RSVG_HANDLE_FLAGS_NONE,
 						  NULL, &err);
+  rsvg_handle_set_dpi_x_y (rsvg_handle, FRAME_DISPLAY_INFO (f)->resx,
+                           FRAME_DISPLAY_INFO (f)->resy);
+
   if (base_file)
     g_object_unref (base_file);
   g_object_unref (input_stream);
@@ -9827,7 +9886,11 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
   rsvg_handle = rsvg_handle_new ();
   eassume (rsvg_handle);
 
+  rsvg_handle_set_dpi_x_y (rsvg_handle, FRAME_DISPLAY_INFO (f)->resx,
+                           FRAME_DISPLAY_INFO (f)->resy);
+
   /* Set base_uri for properly handling referenced images (via 'href').
+     Can be explicitly specified using `:base_uri' image property.
      See rsvg bug 596114 - "image refs are relative to curdir, not .svg file"
      <https://gitlab.gnome.org/GNOME/librsvg/issues/33>. */
   if (filename)
@@ -9850,6 +9913,7 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
   /* Try the instrinsic dimensions first.  */
   gboolean has_width, has_height, has_viewbox;
   RsvgLength iwidth, iheight;
+  double dpi = FRAME_DISPLAY_INFO (f)->resx;
 
   rsvg_handle_get_intrinsic_dimensions (rsvg_handle,
                                         &has_width, &iwidth,
@@ -9859,19 +9923,19 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
   if (has_width && has_height)
     {
       /* Success!  We can use these values directly.  */
-      viewbox_width = svg_css_length_to_pixels (iwidth);
-      viewbox_height = svg_css_length_to_pixels (iheight);
+      viewbox_width = svg_css_length_to_pixels (iwidth, dpi);
+      viewbox_height = svg_css_length_to_pixels (iheight, dpi);
     }
   else if (has_width && has_viewbox)
     {
-      viewbox_width = svg_css_length_to_pixels (iwidth);
-      viewbox_height = svg_css_length_to_pixels (iwidth)
+      viewbox_width = svg_css_length_to_pixels (iwidth, dpi);
+      viewbox_height = svg_css_length_to_pixels (iwidth, dpi)
         * viewbox.width / viewbox.height;
     }
   else if (has_height && has_viewbox)
     {
-      viewbox_height = svg_css_length_to_pixels (iheight);
-      viewbox_width = svg_css_length_to_pixels (iheight)
+      viewbox_height = svg_css_length_to_pixels (iheight, dpi);
+      viewbox_width = svg_css_length_to_pixels (iheight, dpi)
         * viewbox.height / viewbox.width;
     }
   else if (has_viewbox)
@@ -9980,6 +10044,10 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
   rsvg_handle = rsvg_handle_new_from_stream_sync (input_stream, base_file,
 						  RSVG_HANDLE_FLAGS_NONE,
 						  NULL, &err);
+
+  rsvg_handle_set_dpi_x_y (rsvg_handle, FRAME_DISPLAY_INFO (f)->resx,
+                           FRAME_DISPLAY_INFO (f)->resy);
+
   if (base_file)
     g_object_unref (base_file);
   g_object_unref (input_stream);
@@ -9991,7 +10059,11 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
   rsvg_handle = rsvg_handle_new ();
   eassume (rsvg_handle);
 
+  rsvg_handle_set_dpi_x_y (rsvg_handle, FRAME_DISPLAY_INFO (f)->resx,
+                           FRAME_DISPLAY_INFO (f)->resy);
+
   /* Set base_uri for properly handling referenced images (via 'href').
+     Can be explicitly specified using `:base_uri' image property.
      See rsvg bug 596114 - "image refs are relative to curdir, not .svg file"
      <https://gitlab.gnome.org/GNOME/librsvg/issues/33>. */
   if (filename)
@@ -10674,6 +10746,7 @@ non-numeric, there is no explicit limit on the size of images.  */);
 
 #if defined (HAVE_RSVG)
   DEFSYM (Qsvg, "svg");
+  DEFSYM (QCbase_uri, ":base-uri");
   add_image_type (Qsvg);
 #ifdef HAVE_NTGUI
   /* Other libraries used directly by svg code.  */
@@ -10703,6 +10776,7 @@ non-numeric, there is no explicit limit on the size of images.  */);
   defsubr (&Simage_size);
   defsubr (&Simage_mask_p);
   defsubr (&Simage_metadata);
+  defsubr (&Simage_cache_size);
 
 #ifdef GLYPH_DEBUG
   defsubr (&Simagep);
