@@ -148,7 +148,7 @@ icompletion is occurring."
 (defvar icomplete-overlay (make-overlay (point-min) (point-min) nil t t)
   "Overlay used to display the list of completions.")
 
-(defvar icomplete-initial-input nil
+(defvar icomplete--initial-input nil
   "Initial input in the minibuffer when icomplete-mode was activated.
 Used to implement the option `icomplete-show-matches-on-no-input'.")
 
@@ -175,7 +175,7 @@ Used to implement the option `icomplete-show-matches-on-no-input'.")
   (interactive)
   (if (and icomplete-show-matches-on-no-input
            (car completion-all-sorted-completions)
-           (equal (icomplete--field-string) icomplete-initial-input))
+           (equal (icomplete--field-string) icomplete--initial-input))
       (icomplete-force-complete-and-exit)
     (minibuffer-complete-and-exit)))
 
@@ -195,7 +195,7 @@ the default otherwise."
   (if (or
        ;; there's some input, meaning the default in off the table by
        ;; definition; OR
-       (not (equal (icomplete--field-string) icomplete-initial-input))
+       (not (equal (icomplete--field-string) icomplete--initial-input))
        ;; there's no input, but there's also no minibuffer default
        ;; (and the user really wants to see completions on no input,
        ;; meaning he expects a "force" to be at least attempted); OR
@@ -447,7 +447,7 @@ Conditions are:
   "Run in minibuffer on activation to establish incremental completion.
 Usually run by inclusion in `minibuffer-setup-hook'."
   (when (and icomplete-mode (icomplete-simple-completing-p))
-    (setq-local icomplete-initial-input (icomplete--field-string))
+    (setq-local icomplete--initial-input (icomplete--field-string))
     (setq-local completion-show-inline-help nil)
     (use-local-map (make-composed-keymap icomplete-minibuffer-map
     					 (current-local-map)))
@@ -493,7 +493,7 @@ Usually run by inclusion in `minibuffer-setup-hook'."
        ;; `completing-read' invocations, described below:
        for fn in (cond ((and minibuffer-default
                              (stringp minibuffer-default) ; bug#38992
-                             (equal (icomplete--field-string) icomplete-initial-input))
+                             (equal (icomplete--field-string) icomplete--initial-input))
                         ;; Here, we have a non-nil string default and
                         ;; no input whatsoever.  We want to make sure
                         ;; that the default is bubbled to the top so
@@ -587,7 +587,7 @@ See `icomplete-mode' and `minibuffer-setup-hook'."
                                         ; Insert the match-status information:
         (when (and (or icomplete-show-matches-on-no-input
                        (not (equal (icomplete--field-string)
-                                   icomplete-initial-input)))
+                                   icomplete--initial-input)))
                    (or
                     ;; Don't bother with delay after certain number of chars:
                     (> (- (point) (icomplete--field-beg))
