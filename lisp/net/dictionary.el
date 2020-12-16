@@ -323,8 +323,9 @@ is utf-8"
     (define-key map "l" 'dictionary-previous)
     (define-key map "n" 'forward-button)
     (define-key map "p" 'backward-button)
-    (define-key map " " 'scroll-up)
-    (define-key map (read-kbd-macro "M-SPC") 'scroll-down)
+    (define-key map " " 'scroll-up-command)
+    (define-key map [?\S-\ ] 'scroll-down-command)
+    (define-key map (read-kbd-macro "M-SPC") 'scroll-down-command)
     map)
   "Keymap for the dictionary mode.")
 
@@ -848,7 +849,7 @@ The word is taken from the buffer, the DICTIONARY is given as argument."
     (unless (equal word displayed-word)
       (make-button start end :type 'dictionary-link
                    'callback call
-                   'data (cons word dictionary)
+                   'data (cons word "*")
                    'help-echo (concat "Press Mouse-2 to lookup \""
                                       word "\" in \"" dictionary "\"")))))
 
@@ -1119,9 +1120,11 @@ If PATTERN is omitted, it defaults to \"[ \\f\\t\\n\\r\\v]+\"."
 ;; - if region is active returns its contents
 ;; - otherwise return the word near the point
 (defun dictionary-search-default ()
-  (if (use-region-p)
-      (buffer-substring-no-properties (region-beginning) (region-end))
-    (current-word t)))
+  (cond
+   ((use-region-p)
+    (buffer-substring-no-properties (region-beginning) (region-end)))
+   ((car (get-char-property (point) 'data)))
+   (t (current-word t))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; User callable commands
