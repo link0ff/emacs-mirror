@@ -509,7 +509,28 @@ or a buffer name."
     ;; Be aware that `describe-buffer-bindings' puts its output into
     ;; the current buffer.
     (with-current-buffer (help-buffer)
-      (describe-buffer-bindings buffer prefix))))
+      (describe-buffer-bindings buffer prefix)
+
+      (save-excursion
+        (let ((inhibit-read-only t))
+          (goto-char (point-min))
+          (insert "Type TAB or S-TAB on headings to cycle their visibility.\n\n")
+          ;; (while (re-search-forward "^\^L$" nil t)
+          ;;   (forward-char 1)
+          ;;   (insert "* "))
+          ))
+
+      (setq-local outline-regexp ".*:$")
+      (setq-local outline-level (lambda () 1))
+      (setq-local outline-minor-mode-cycle t)
+      (setq-local outline-minor-mode-highlight t)
+      (setq-local outline-minor-mode-font-lock t)
+      (outline-minor-mode +1)
+      (save-excursion
+        (goto-char (point-min))
+        (when (re-search-forward "Key translations" nil t)
+          (outline-cycle)))
+      (font-lock-ensure))))
 
 ;; This function used to be in keymap.c.
 (defun describe-bindings-internal (&optional menus prefix)
