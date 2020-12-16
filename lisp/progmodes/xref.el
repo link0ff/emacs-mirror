@@ -581,16 +581,26 @@ SELECT is `quit', also quit the *xref* window."
     (when xref
       (xref--show-location (xref-item-location xref)))))
 
+(defun xref-next-line-no-select ()
+  "Move to the next xref but don't display its source."
+  (interactive)
+  (xref--search-property 'xref-item))
+
 (defun xref-next-line ()
   "Move to the next xref and display its source in the appropriate window."
   (interactive)
-  (xref--search-property 'xref-item)
+  (xref-next-line-no-select)
   (xref-show-location-at-point))
+
+(defun xref-prev-line-no-select ()
+  "Move to the previous xref but don't display its source."
+  (interactive)
+  (xref--search-property 'xref-item t))
 
 (defun xref-prev-line ()
   "Move to the previous xref and display its source in the appropriate window."
   (interactive)
-  (xref--search-property 'xref-item t)
+  (xref-prev-line-no-select)
   (xref-show-location-at-point))
 
 (defun xref-next-group ()
@@ -761,7 +771,8 @@ references displayed in the current *xref* buffer."
     (define-key map (kbd "P") #'xref-prev-group)
     (define-key map (kbd "r") #'xref-query-replace-in-results)
     (define-key map (kbd "RET") #'xref-goto-xref)
-    (define-key map (kbd "TAB")  #'xref-quit-and-goto-xref)
+    (define-key map "\t" 'xref-next-line-no-select) ; like compilation-next-error
+    (define-key map [backtab] 'xref-prev-line-no-select) ; like compilation-previous-error
     (define-key map (kbd "C-o") #'xref-show-location-at-point)
     ;; suggested by Johan Claesson "to further reduce finger movement":
     (define-key map (kbd ".") #'xref-next-line)
@@ -855,7 +866,7 @@ GROUP is a string for decoration purposes and XREF is an
                                   (format "%%%dd: " max-line-width))
            with prev-line-key = nil
            do
-           (xref--insert-propertized '(face xref-file-header xref-group t)
+           (xref--insert-propertized '(font-lock-face xref-file-header xref-group t)
                                      group "\n")
            (cl-loop for (xref . more2) on xrefs do
                     (with-slots (summary location) xref
@@ -864,7 +875,7 @@ GROUP is a string for decoration purposes and XREF is an
                              (prefix
                               (if line
                                   (propertize (format line-format line)
-                                              'face 'xref-line-number)
+                                              'font-lock-face 'xref-line-number)
                                 "  ")))
                         (when (equal prev-line-key line-key)
                           (let ((column (xref-file-location-column location)))
@@ -932,7 +943,7 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
          (insert
           (propertize
            (error-message-string err)
-           'face 'error))))
+           'font-lock-face 'error))))
       (goto-char (point-min)))))
 
 (defun xref--show-defs-buffer (fetcher alist)
@@ -985,13 +996,13 @@ local keymap that binds `RET' to `xref-quit-and-goto-xref'."
                         (let* ((line (xref-location-line location))
                                (line-fmt
                                 (if line
-                                    (format #("%d:" 0 2 (face xref-line-number))
+                                    (format #("%d:" 0 2 (font-lock-face xref-line-number))
                                             line)
                                   ""))
                                (group-fmt
                                 (propertize
                                  (substring group group-prefix-length)
-                                 'face 'xref-file-header))
+                                 'font-lock-face 'xref-file-header))
                                (candidate
                                 (format "%s:%s%s" group-fmt line-fmt summary)))
                           (push (cons candidate xref) xref-alist-with-line-info)))))
@@ -1352,7 +1363,7 @@ IGNORES is a list of glob patterns for files to ignore."
      ;; without the '| sort ...' part if GNU sort is not available on
      ;; your system and/or stable ordering is not important to you.
      ;; Note#2: '!*/' is there to filter out dirs (e.g. submodules).
-     "xargs -0 rg <C> -nH --no-messages -g '!*/' -e <R> | sort -t: -k1,1 -k2n,2"
+     "xargs -0 rg <C> -nH --sort path --no-messages -g '!*/' -e <R>"
      ))
   "Associative list mapping program identifiers to command templates.
 
@@ -1604,8 +1615,8 @@ Such as the current syntax table and the applied syntax properties."
                         (unless syntax-needed
                           (font-lock-ensure line-beg line-end))
                         (buffer-substring line-beg line-end))))
-        (add-face-text-property beg-column end-column 'xref-match
-                                t summary)
+        (add-text-properties beg-column end-column '(font-lock-face xref-match)
+                             summary)
         (push (xref-make-match summary loc (- end-column beg-column))
               matches)))
     (nreverse matches)))
