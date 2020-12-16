@@ -199,11 +199,9 @@ in the file it applies to.")
     ;; Highlight headings according to the level.
     (eval . (list (concat "^\\(?:" outline-regexp "\\).+")
 		  0 '(if outline-minor-mode-cycle
-			 (let ((map (copy-keymap outline-mode-cycle-map)))
-                           (set-keymap-parent map (current-local-map))
-                           (if outline-minor-mode-font-lock
-                               (list 'face (outline-font-lock-face) 'local-map map)
-                             (list 'face nil 'local-map map)))
+			 (if outline-minor-mode-font-lock
+                             (list 'face (outline-font-lock-face) 'keymap outline-mode-cycle-map)
+                           (list 'face nil 'keymap outline-mode-cycle-map))
 		       (outline-font-lock-face))
 		  nil
                   (if (or outline-minor-mode-font-lock outline-minor-mode-cycle)
