@@ -199,14 +199,11 @@ in the file it applies to.")
     ;; Highlight headings according to the level.
     (eval . (list (concat "^\\(?:" outline-regexp "\\).+")
 		  0 '(if outline-minor-mode-cycle
-			 (if outline-minor-mode-font-lock
-                             (list 'face (outline-font-lock-face)
-			           'local-map (make-composed-keymap
-                                               outline-mode-cycle-map
-                                               (current-local-map)))
-                           (list 'face nil 'local-map (make-composed-keymap
-                                                       outline-mode-cycle-map
-                                                       (current-local-map))))
+			 (let ((map (copy-keymap outline-mode-cycle-map)))
+                           (set-keymap-parent map (current-local-map))
+                           (if outline-minor-mode-font-lock
+                               (list 'face (outline-font-lock-face) 'local-map map)
+                             (list 'face nil 'local-map map)))
 		       (outline-font-lock-face))
 		  nil
                   (if (or outline-minor-mode-font-lock outline-minor-mode-cycle)
@@ -348,6 +345,8 @@ See the command `outline-mode' for more information on this mode."
   (if outline-minor-mode
       (progn
         (when (or outline-minor-mode-font-lock outline-minor-mode-cycle)
+          (unless font-lock-defaults
+            (setq-local font-lock-defaults '(nil t)))
           (font-lock-add-keywords nil outline-font-lock-keywords)
           (font-lock-flush))
 	;; Turn off this mode if we change major modes.
