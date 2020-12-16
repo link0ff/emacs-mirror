@@ -323,8 +323,7 @@ After that, changing the prefix key requires manipulating keymaps."
          (set-default sym val)))
 
 (defvar outline-minor-mode-highlight nil
-  "Highlight headings in `outline-minor-mode'.
-Use font-lock keywords when font-lock is supported by major mode.
+  "Highlight headings in `outline-minor-mode' using font-lock keywords.
 Non-nil value works well only when outline font-lock keywords
 don't conflict with the major mode's font-lock keywords.")
 ;;;###autoload(put 'outline-minor-mode-highlight 'safe-local-variable 'booleanp)
@@ -346,21 +345,10 @@ See the command `outline-mode' for more information on this mode."
   (if outline-minor-mode
       (progn
         (when (or outline-minor-mode-highlight outline-minor-mode-cycle)
-          (if t ;; (and font-lock-mode (font-lock-specified-p major-mode))
-              (progn
-                (unless font-lock-defaults
-                  (setq-local font-lock-defaults '(nil t)))
-                (font-lock-add-keywords nil outline-font-lock-keywords t)
-                (font-lock-flush))
-            (save-excursion
-              (goto-char (point-min))
-              (while (re-search-forward outline-regexp nil t)
-                (let ((overlay (make-overlay (match-beginning 0)
-                                             (match-end 0))))
-                  (overlay-put overlay 'hi-lock-overlay t)
-                  (overlay-put overlay 'hi-lock-overlay-regexp (or lighter regexp))
-                  (overlay-put overlay 'face face))
-                (goto-char (match-end 0))))))
+          (unless font-lock-defaults
+            (setq-local font-lock-defaults '(nil t)))
+          (font-lock-add-keywords nil outline-font-lock-keywords t)
+          (font-lock-flush))
 	;; Turn off this mode if we change major modes.
 	(add-hook 'change-major-mode-hook
 		  (lambda () (outline-minor-mode -1))
