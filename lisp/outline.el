@@ -198,7 +198,7 @@ in the file it applies to.")
   '(
     ;; Highlight headings according to the level.
     (eval . (list (concat "^\\(?:" outline-regexp "\\)"
-                          (if (or outline-minor-mode-highlight outline-minor-mode-cycle)
+                          (if (string-match-p "\\$$" outline-regexp)
                               "" ".+"))
 		  0 '(if outline-minor-mode-cycle
 			 (if outline-minor-mode-highlight

@@ -520,7 +520,9 @@ or a buffer name."
         (let ((inhibit-read-only t))
           (goto-char (point-min))
           (insert "Type TAB or S-TAB on headings to cycle their visibility.\n\n")
-          (when (re-search-forward "Key translations" nil t)
+          ;; Hide the longest body
+          (when (and (re-search-forward "Key translations" nil t)
+                     (fboundp 'outline-cycle))
             (outline-cycle))))
       (font-lock-ensure))))
 
