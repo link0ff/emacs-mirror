@@ -1145,7 +1145,6 @@ EVENT is a D-Bus event, see `dbus-check-event'.  HANDLER, being
 part of the event, is called with arguments ARGS (without type information).
 If the HANDLER returns a `dbus-error', it is propagated as return message."
   (interactive "e")
-  ;; (let ((noninteractive t)) (message "DBUS: %S" event))
   (condition-case err
       (let (monitor args result)
 	;; We ignore not well-formed events.
