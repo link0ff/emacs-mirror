@@ -1022,8 +1022,8 @@ See `tramp-file-name-structure'."
    5 6 7 8 1))
 
 (defvar tramp-file-name-structure nil ;Initialized when defining `tramp-syntax'!
-  "List of six elements (REGEXP METHOD USER HOST FILE HOP), detailing \
-the Tramp file name structure.
+  "List detailing the Tramp file name structure.
+This is a list of six elements (REGEXP METHOD USER HOST FILE HOP).
 
 The first element REGEXP is a regular expression matching a Tramp file
 name.  The regex should contain parentheses around the method name,
@@ -3789,6 +3789,15 @@ It does not support `:stderr'."
 	  (signal 'wrong-type-argument (list #'functionp sentinel)))
 	(unless (or (null stderr) (bufferp stderr))
 	  (signal 'wrong-type-argument (list #'bufferp stderr)))
+
+	;; Quote shell command.
+	(when (and (= (length command) 3)
+		   (stringp (nth 0 command))
+		   (string-match-p "sh$" (nth 0 command))
+		   (stringp (nth 1 command))
+		   (string-equal "-c" (nth 1 command))
+		   (stringp (nth 2 command)))
+	  (setcar (cddr command) (tramp-shell-quote-argument (nth 2 command))))
 
 	(let* ((buffer
 		(if buffer

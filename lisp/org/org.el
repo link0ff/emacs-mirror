@@ -8,7 +8,7 @@
 ;; Keywords: outlines, hypermedia, calendar, wp
 ;; Homepage: https://orgmode.org
 
-;; Version: 9.4.2
+;; Version: 9.4.3
 
 ;; This file is part of GNU Emacs.
 ;;
@@ -4112,7 +4112,8 @@ groups carry important information:
   "Regular expression to match a timestamp time or time range.
 After a match, the following groups carry important information:
 0  the full match
-1  date plus weekday, for back referencing to make sure both times are on the same day
+1  date plus weekday, for back referencing to make sure
+     both times are on the same day
 2  the first time, range or not
 4  the second time, if it is a range.")
 
@@ -21213,9 +21214,5 @@ Started from `gnus-info-find-node'."
 (provide 'org)
 
 (run-hooks 'org-load-hook)
-
-;; Local variables:
-;; generated-autoload-file: "org-loaddefs.el"
-;; End:
 
 ;;; org.el ends here
