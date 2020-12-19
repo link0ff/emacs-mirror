@@ -712,12 +712,7 @@ actual image."
   :group 'image
   :version "22.1"
   (if image-minor-mode
-      (progn
-        (add-hook 'change-major-mode-hook (lambda () (image-minor-mode -1)) nil t)
-        (add-function :before-while (local 'isearch-filter-predicate)
-                      #'image-mode-isearch-filter))
-    (remove-function (local 'isearch-filter-predicate)
-                     #'image-mode-isearch-filter)))
+      (add-hook 'change-major-mode-hook (lambda () (image-minor-mode -1)) nil t)))
 
 ;;;###autoload
 (defun image-mode-to-text ()
@@ -811,7 +806,7 @@ was inserted."
   (let* ((filename (buffer-file-name))
 	 (data-p (not (and filename
 			   (file-readable-p filename)
-			   (not (file-remote-p filename)) ; TODO: remove?
+			   (not (file-remote-p filename))
 			   (not (buffer-modified-p))
 			   (not (and (boundp 'archive-superior-buffer)
 				     archive-superior-buffer))
@@ -970,8 +965,7 @@ Otherwise, display the image by calling `image-mode'."
   ;; the costly operation of image resizing should happen only once.
   (when (numberp image-auto-resize-on-window-resize)
     (when image-auto-resize-timer
-      (cancel-timer image-auto-resize-timer)
-      (setq image-auto-resize-timer nil))
+      (cancel-timer image-auto-resize-timer))
     (setq image-auto-resize-timer
           (run-with-idle-timer image-auto-resize-on-window-resize nil
                                #'image-fit-to-window window))))
