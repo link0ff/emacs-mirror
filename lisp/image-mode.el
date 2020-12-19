@@ -792,9 +792,10 @@ Remove text properties that display the image."
 
 (defun image-mode-isearch-filter (_beg _end)
   "Show image as text when trying to search in the image buffer."
-  (when (and (derived-mode-p 'image-mode)
-             (image-get-display-property))
-    (image-mode-as-text))
+  (save-match-data
+    (when (and (derived-mode-p 'image-mode)
+               (image-get-display-property))
+      (image-mode-as-text)))
   t)
 
 (defvar archive-superior-buffer)
