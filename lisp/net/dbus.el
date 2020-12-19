@@ -1071,7 +1071,7 @@ when it is called during event handling in `dbus-handle-event'.
 
 This function signals a `dbus-error' if the event is not well
 formed."
-  (when dbus-debug (message "DBus-Event %s" event))
+  (when dbus-debug (let ((inhibit-message t)) (message "DBus-Event %s" event)))
   (unless (and (listp event)
 	       (eq (car event) 'dbus-event)
 	       ;; Bus keyword.
