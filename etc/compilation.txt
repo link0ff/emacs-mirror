@@ -695,8 +695,6 @@ COPYING PERMISSIONS:
 
 
 ;;; Local Variables:
-;;; outline-minor-mode-cycle: t
-;;; outline-minor-mode-highlight: t
 ;;; outline-regexp: "\\*\\_>"
-;;; eval: (outline-minor-mode 1)
+;;; eval: (outline-cycle-highlight-minor-mode)
 ;;; End:
