@@ -707,6 +707,7 @@ means list those buffers and no others."
                     :right-align t)
 		  `("Mode" ,Buffer-menu-mode-width t)
 		  '("File" 1 t)))
+    ;; (setq tubulated-cats-format)
     (setq tabulated-list-use-header-line Buffer-menu-use-header-line)
     (setq tabulated-list-entries (nreverse entries)))
   (tabulated-list-init-header))
