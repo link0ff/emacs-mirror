@@ -513,9 +513,7 @@ or a buffer name."
 
       (setq-local outline-regexp ".*:$")
       (setq-local outline-level (lambda () 1))
-      (setq-local outline-minor-mode-cycle t)
-      (setq-local outline-minor-mode-highlight t)
-      (outline-minor-mode +1)
+      (outline-cycle-highlight-minor-mode +1)
       (save-excursion
         (let ((inhibit-read-only t))
           (goto-char (point-min))
