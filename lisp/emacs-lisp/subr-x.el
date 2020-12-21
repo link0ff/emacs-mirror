@@ -264,6 +264,83 @@ carriage return."
       (substring string 0 (- (length string) (length suffix)))
     string))
 
+(defun string-clean-whitespace (string)
+  "Clean up whitespace in STRING.
+All sequences of whitespaces in STRING are collapsed into a
+single space character, and leading/trailing whitespace is
+removed."
+  (string-trim (replace-regexp-in-string "[ \t\n\r]+" " " string)))
+
+(defun string-fill (string length)
+  "Try to word-wrap STRING so that no lines are longer than LENGTH.
+Wrapping is done where there is whitespace.  If there are
+individual words in STRING that are longer than LENGTH, the
+result will have lines that are longer than LENGTH."
+  (with-temp-buffer
+    (insert string)
+    (goto-char (point-min))
+    (let ((fill-column length)
+          (adaptive-fill-mode nil))
+      (fill-region (point-min) (point-max)))
+    (buffer-string)))
+
+(defun string-limit (string length)
+  "Return (up to) a LENGTH substring of STRING.
+If STRING is shorter than or equal to LENGTH, the entire string
+is returned unchanged.  If STRING is longer than LENGTH, and
+LENGTH is a positive number, return a substring consisting of the
+first LENGTH characters of STRING.  If LENGTH is negative, return
+a substring consisting of the last LENGTH characters of STRING."
+  (cond
+   ((<= (length string) (abs length)) string)
+   ((>= length 0) (substring string 0 length))
+   ((substring string length))))
+
+(defun string-lines (string &optional omit-nulls)
+  "Split STRING into a list of lines.
+If OMIT-NULLS, empty lines will be removed from the results."
+  (split-string string "\n" omit-nulls))
+
+(defun string-slice (string regexp)
+  "Split STRING at REGEXP boundaries and return a list of slices.
+The boundaries that match REGEXP are included in the result."
+  (let ((start-substring 0)
+        (start-search 0)
+        (result nil))
+    (save-match-data
+      (while (string-match regexp string start-search)
+        (if (zerop (match-beginning 0))
+            (setq start-search (match-end 0))
+          (push (substring string start-substring (match-beginning 0)) result)
+          (setq start-substring (match-beginning 0)
+                start-search (match-end 0))))
+      (push (substring string start-substring) result)
+      (nreverse result))))
+
+(defun string-pad (string length &optional padding)
+  "Pad STRING to LENGTH using PADDING.
+If PADDING is nil, the space character is used.  If not nil, it
+should be a character.
+
+If STRING is longer than the absolute value of LENGTH, no padding
+is done.
+
+If LENGTH is positive, the padding is done to the end of the
+string, and if it's negative, padding is done to the start of the
+string."
+  (let ((pad-length (- (abs length) (length string))))
+    (if (< pad-length 0)
+        string
+      (concat (and (< length 0)
+                   (make-string pad-length (or padding ?\s)))
+              string
+              (and (> length 0)
+                   (make-string pad-length (or padding ?\s)))))))
+
+(defun string-chop-newline (string)
+  "Remove the final newline (if any) from STRING."
+  (replace-regexp-in-string "\n\\'" "" string))
+
 (defun replace-region-contents (beg end replace-fn
                                     &optional max-secs max-costs)
   "Replace the region between BEG and END using REPLACE-FN.
