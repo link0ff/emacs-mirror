@@ -269,7 +269,9 @@ carriage return."
 All sequences of whitespaces in STRING are collapsed into a
 single space character, and leading/trailing whitespace is
 removed."
-  (string-trim (replace-regexp-in-string "[ \t\n\r]+" " " string)))
+  (let ((blank "[[:blank:]\r\n]+"))
+    (string-trim (replace-regexp-in-string blank " " string t t)
+                 blank blank)))
 
 (defun string-fill (string length)
   "Try to word-wrap STRING so that no lines are longer than LENGTH.
@@ -284,17 +286,20 @@ result will have lines that are longer than LENGTH."
       (fill-region (point-min) (point-max)))
     (buffer-string)))
 
-(defun string-limit (string length)
+(defun string-limit (string length &optional end)
   "Return (up to) a LENGTH substring of STRING.
 If STRING is shorter than or equal to LENGTH, the entire string
-is returned unchanged.  If STRING is longer than LENGTH, and
-LENGTH is a positive number, return a substring consisting of the
-first LENGTH characters of STRING.  If LENGTH is negative, return
-a substring consisting of the last LENGTH characters of STRING."
+is returned unchanged.
+
+If STRING is longer than LENGTH, return a substring consisting of
+the first LENGTH characters of STRING.  If END is non-nil, return
+the last LENTGH characters instead."
+  (unless (natnump length)
+    (signal 'wrong-type-argument (list 'natnump length)))
   (cond
-   ((<= (length string) (abs length)) string)
-   ((>= length 0) (substring string 0 length))
-   ((substring string length))))
+   ((<= (length string) length) string)
+   (end (substring string (- (length string) length)))
+   (t (substring string 0 length))))
 
 (defun string-lines (string &optional omit-nulls)
   "Split STRING into a list of lines.
@@ -317,7 +322,7 @@ The boundaries that match REGEXP are included in the result."
       (push (substring string start-substring) result)
       (nreverse result))))
 
-(defun string-pad (string length &optional padding)
+(defun string-pad (string length &optional padding start)
   "Pad STRING to LENGTH using PADDING.
 If PADDING is nil, the space character is used.  If not nil, it
 should be a character.
@@ -325,21 +330,23 @@ should be a character.
 If STRING is longer than the absolute value of LENGTH, no padding
 is done.
 
-If LENGTH is positive, the padding is done to the end of the
-string, and if it's negative, padding is done to the start of the
+If START is nil (or not present), the padding is done to the end
+of the string, and non-nil, padding is done to the start of the
 string."
-  (let ((pad-length (- (abs length) (length string))))
+  (unless (natnump length)
+    (signal 'wrong-type-argument (list 'natnump length)))
+  (let ((pad-length (- length (length string))))
     (if (< pad-length 0)
         string
-      (concat (and (< length 0)
+      (concat (and start
                    (make-string pad-length (or padding ?\s)))
               string
-              (and (> length 0)
+              (and (not start)
                    (make-string pad-length (or padding ?\s)))))))
 
 (defun string-chop-newline (string)
   "Remove the final newline (if any) from STRING."
-  (replace-regexp-in-string "\n\\'" "" string))
+  (string-remove-suffix "\n" string))
 
 (defun replace-region-contents (beg end replace-fn
                                     &optional max-secs max-costs)

@@ -584,7 +584,7 @@
 
 (ert-deftest subr-clean-whitespace ()
   (should (equal (string-clean-whitespace " foo ") "foo"))
-  (should (equal (string-clean-whitespace " foo   \n\t Bar") "foo Bar")))
+  (should (equal (string-clean-whitespace " foo   \r\n\t  Bar") "foo Bar")))
 
 (ert-deftest subr-string-fill ()
   (should (equal (string-fill "foo" 10) "foo"))
@@ -595,9 +595,10 @@
 (ert-deftest subr-string-limit ()
   (should (equal (string-limit "foo" 10) "foo"))
   (should (equal (string-limit "foo" 2) "fo"))
-  (should (equal (string-limit "foo" -2) "oo"))
-  (should (equal (string-limit "abc" -10) "abc"))
-  (should (equal (string-limit "foo" 0) "")))
+  (should (equal (string-limit "foo" 2 t) "oo"))
+  (should (equal (string-limit "abc" 10 t) "abc"))
+  (should (equal (string-limit "foo" 0) ""))
+  (should-error (string-limit "foo" -1)))
 
 (ert-deftest subr-string-lines ()
   (should (equal (string-lines "foo") '("foo")))
@@ -612,7 +613,7 @@
 (ert-deftest subr-string-pad ()
   (should (equal (string-pad "foo" 5) "foo  "))
   (should (equal (string-pad "foo" 5 ?-) "foo--"))
-  (should (equal (string-pad "foo" -5 ?-) "--foo"))
+  (should (equal (string-pad "foo" 5 ?- t) "--foo"))
   (should (equal (string-pad "foo" 2 ?-) "foo")))
 
 (ert-deftest subr-string-chop-newline ()
