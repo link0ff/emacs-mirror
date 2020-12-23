@@ -400,8 +400,10 @@ column.  Negate the predicate that would be returned if
    "Return maximum entry widths at column COL around current row.
 Check the current row, the previous one and the next row."
   (apply #'max (mapcar (lambda (x)
-                         (let ((nt (elt x col)))
-                           (string-width (if (stringp nt) nt (car nt)))))
+                         (if (and (seqp x) (not (stringp x)))
+                             (let ((nt (elt x col)))
+                               (string-width (if (stringp nt) nt (car nt))))
+                           0))
                        tabulated-list--near-rows)))
 
 (defun tabulated-list-print (&optional remember-pos update)

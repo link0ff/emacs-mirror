@@ -642,7 +642,9 @@ means list those buffers and no others."
       (setq Buffer-menu-files-only
 	    (and files-only (>= (prefix-numeric-value files-only) 0)))
       (list-buffers--refresh buffer-list old-buffer)
-      (tabulated-list-print))
+      (tabulated-list-print)
+      (outline-cycle-highlight-minor-mode +1)
+      (font-lock-ensure))
     buffer))
 
 (defun Buffer-menu-mouse-select (event)
@@ -709,8 +711,20 @@ means list those buffers and no others."
 		  '("File" 1 t)))
     ;; (setq tubulated-cats-format)
     (setq tabulated-list-use-header-line Buffer-menu-use-header-line)
-    (setq tabulated-list-entries (nreverse entries)))
+    (setq tabulated-list-printer
+          (lambda (id cols)
+            (if (vectorp cols)
+                (tabulated-list-print-entry id cols)
+              (insert cols)
+              (insert ?\n))))
+    (setq entries (nreverse entries))
+    (setf (nthcdr 1 entries) (cons '(1 "* 1. Text") (nthcdr 1 entries)))
+    (setf (nthcdr 3 entries) (cons '(1 "** 1.1. Text") (nthcdr 3 entries)))
+    (setf (nthcdr 5 entries) (cons '(1 "** 1.2. Text") (nthcdr 5 entries)))
+    (setq tabulated-list-entries entries))
   (tabulated-list-init-header))
+
+;; (let ((l '(a b c d e f))) (setf (nthcdr 3 l) (cons 'x (nthcdr 3 l))) l)
 
 (defun tabulated-list-entry-size-> (entry1 entry2)
   (> (string-to-number (aref (cadr entry1) 4))
