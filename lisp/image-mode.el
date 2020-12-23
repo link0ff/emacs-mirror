@@ -786,7 +786,7 @@ Remove text properties that display the image."
 	(message "Repeat this command to go back to displaying the image"))))
 
 (defun image-mode-isearch-filter (_beg _end)
-  "Show image as text when trying to search in the image buffer."
+  "Show image as text when trying to search/replace in the image buffer."
   (save-match-data
     (when (and (derived-mode-p 'image-mode)
                (image-get-display-property))

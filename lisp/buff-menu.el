@@ -609,7 +609,7 @@ This behaves like invoking \\[read-only-mode] in that buffer."
 	   (save-excursion
 	     (let ((elt (tabulated-list-delete-entry)))
 	       (goto-char (point-max))
-	       (apply 'tabulated-list-print-entry elt)))
+	       (apply tabulated-list-printer elt)))
 	   (message "Buffer buried."))
 	  (t
 	   (tabulated-list-delete-entry)

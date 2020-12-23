@@ -481,7 +481,7 @@ errors.  Perhaps we could arrange to display these error indications
 on top of the scroll bar itself.  That depends on to what extent
 toolkit scroll bars are extensible.
 
-** Provide user-friendly ways to list all available font families
+** [MAYBE in infoman] Provide user-friendly ways to list all available font families
 Also for listing fonts, displaying a font as a sample, etc.
 
 ** Provide a convenient way to select a color with the mouse
@@ -662,7 +662,7 @@ The idea is to recognize patterns of commands which could be replaced
 with a simpler common command.  It should not make more than one
 suggestion per 10 minutes.
 
-** Add a way to define input methods by computing them
+** (no need anymore) Add a way to define input methods by computing them
 When an input method is first used, redefine C-x 8 to use a
 user-selected input method, with the default being the union of
 latin-1-prefix and latin-1-postfix.
@@ -674,7 +674,7 @@ kinds of text where one language is embedded in another language.  See
 http://www.loveshack.ukfsn.org/emacs/multi-mode.el and also mmm-mode,
 as reference for approaches taken by others.
 
-** A more convenient use of input methods in search
+** (ask if still needed?) A more convenient use of input methods in search
 Arrange a way for an input method to return the first character
 immediately, then replace it later.  So that C-s a with input method
 latin-1-postfix would immediately search for an a.
@@ -848,10 +848,10 @@ conversion servers so that they can be used from the input method
 "japanese".  Currently, most Japanese users are using external
 packages (e.g. tamago, anthy) or an input method via XIM.
 
-** Let LEIM handle the Mode_switch key like XIM does
+** (ask to clarify) Let LEIM handle the Mode_switch key like XIM does
 I.e. a toggle like C-\ but which can also be used as a modifier.
 
-** Improve Help buffers
+** (infoman) Improve Help buffers
 Change the face of previously visited links (like Info, but also with
 regard to namespace), and give the value of lisp expressions, e.g
 auto-mode-alist, the right face.
@@ -1701,7 +1701,7 @@ stored in the Lisp_Object itself.
 Currently, it mixes up the predicate to apply when doing completion
 and the one to use when terminating the selection.
 
-** Merge ibuffer.el and buff-menu.el
+** (no need to merge! ibuffer is a separate fancy package, move to ELPA?) Merge ibuffer.el and buff-menu.el
 More specifically do what's needed to make ibuffer.el the default, or
 just an extension of buff-menu.el.
 
