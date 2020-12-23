@@ -293,7 +293,11 @@ is returned unchanged.
 
 If STRING is longer than LENGTH, return a substring consisting of
 the first LENGTH characters of STRING.  If END is non-nil, return
-the last LENGTH characters instead."
+the last LENGTH characters instead.
+
+When shortening strings for display purposes,
+`truncate-string-to-width' is almost always a better alternative
+than this function."
   (unless (natnump length)
     (signal 'wrong-type-argument (list 'natnump length)))
   (cond
@@ -308,19 +312,16 @@ If OMIT-NULLS, empty lines will be removed from the results."
 
 (defun string-slice (string regexp)
   "Split STRING at REGEXP boundaries and return a list of slices.
-The boundaries that match REGEXP are included in the result."
-  (let ((start-substring 0)
-        (start-search 0)
-        (result nil))
-    (save-match-data
-      (while (string-match regexp string start-search)
-        (if (zerop (match-beginning 0))
-            (setq start-search (match-end 0))
-          (push (substring string start-substring (match-beginning 0)) result)
-          (setq start-substring (match-beginning 0)
-                start-search (match-end 0))))
-      (push (substring string start-substring) result)
-      (nreverse result))))
+The boundaries that match REGEXP are included in the result.
+
+Also see `split-string'."
+  (if (zerop (length string))
+      (list "")
+    (let ((i (string-match-p regexp string 1)))
+      (if i
+          (cons (substring string 0 i)
+                (string-slice (substring string i) regexp))
+        (list string)))))
 
 (defun string-pad (string length &optional padding start)
   "Pad STRING to LENGTH using PADDING.
