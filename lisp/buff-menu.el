@@ -711,20 +711,16 @@ means list those buffers and no others."
 		  '("File" 1 t)))
     ;; (setq tubulated-cats-format)
     (setq tabulated-list-use-header-line Buffer-menu-use-header-line)
-    (setq tabulated-list-printer
-          (lambda (id cols)
-            (if (vectorp cols)
-                (tabulated-list-print-entry id cols)
-              (insert cols)
-              (insert ?\n))))
     (setq entries (nreverse entries))
-    (setf (nthcdr 1 entries) (cons '(1 "* 1. Text") (nthcdr 1 entries)))
-    (setf (nthcdr 3 entries) (cons '(1 "** 1.1. Text") (nthcdr 3 entries)))
-    (setf (nthcdr 5 entries) (cons '(1 "** 1.2. Text") (nthcdr 5 entries)))
-    (setq tabulated-list-entries entries))
+    ;; (setq tabulated-list-entries entries)
+    (setq tabulated-list-groups
+          `(("* 1. Text"
+             ,@entries)
+            ("** 1.1. Text"
+             ,@entries)
+            ("** 1.2. Text"
+             ,@entries))))
   (tabulated-list-init-header))
-
-;; (let ((l '(a b c d e f))) (setf (nthcdr 3 l) (cons 'x (nthcdr 3 l))) l)
 
 (defun tabulated-list-entry-size-> (entry1 entry2)
   (> (string-to-number (aref (cadr entry1) 4))
