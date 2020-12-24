@@ -2881,6 +2881,21 @@ read_char (int commandflag, Lisp_Object map,
   if (!NILP (tem))
     {
       struct buffer *prev_buffer = current_buffer;
+
+#ifdef HAVE_DBUS
+      if (CONSP (c) && EQ (XCAR (c), Qdbus_event))
+	{
+	  char s[4096];
+	  AUTO_STRING (format, "%s");
+	  if (!noninteractive)
+	    printf ("!!!\n");
+	  snprintf (s, sizeof s, "D Event: %s", SSDATA (CALLN (Fformat, format, c)));
+	  if (!noninteractive)
+	    printf ("! %s: %s\n", __func__, s);
+	  /* message ("! %s: %s", __func__, s); */
+	}
+#endif
+
       last_input_event = c;
       call4 (Qcommand_execute, tem, Qnil, Fvector (1, &last_input_event), Qt);
 

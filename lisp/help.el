@@ -512,6 +512,7 @@ or a buffer name."
       (describe-buffer-bindings buffer prefix)
 
       (setq-local outline-regexp ".*:$")
+      (setq-local outline-heading-end-regexp ":\n")
       (setq-local outline-level (lambda () 1))
       (outline-cycle-highlight-minor-mode +1)
       (save-excursion
