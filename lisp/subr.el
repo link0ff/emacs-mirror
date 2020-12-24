@@ -2736,7 +2736,6 @@ If there is a natural number at point, use it as default."
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map minibuffer-local-map)
 
-    ;; FIXME: what’s the use of this binding?
     (define-key map [remap self-insert-command] 'read-char-from-minibuffer-insert-char)
 
     (define-key map [remap recenter-top-bottom] 'minibuffer-recenter-top-bottom)
