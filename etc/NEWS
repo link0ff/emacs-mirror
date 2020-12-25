@@ -1820,6 +1820,11 @@ first).
 
 * Incompatible Editing Changes in Emacs 28.1
 
+** In xref, 'TAB' now moves to the next xref instead of quitting *xref* buffer.
+Using 'TAB' / 'S-TAB' key bindings to navigate the search results
+is more in the line with other modes like grep mode.  The command
+'xref-quit-and-goto-xref' is now bound to 'C-j' like in icomplete.
+
 ** In 'nroff-mode', 'center-line' is now bound to 'M-o M-s'.
 The original key binding was 'M-s', which interfered with I-search,
 since the latter uses 'M-s' as a prefix key of the search prefix map.

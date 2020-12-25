@@ -775,6 +775,7 @@ references displayed in the current *xref* buffer."
     (define-key map (kbd "P") #'xref-prev-group)
     (define-key map (kbd "r") #'xref-query-replace-in-results)
     (define-key map (kbd "RET") #'xref-goto-xref)
+    (define-key map (kbd "C-j")  #'xref-quit-and-goto-xref)
     (define-key map "\t" 'xref-next-line-no-select) ; like compilation-next-error
     (define-key map [backtab] 'xref-prev-line-no-select) ; like compilation-previous-error
     (define-key map (kbd "C-o") #'xref-show-location-at-point)
