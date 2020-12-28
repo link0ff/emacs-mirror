@@ -111,7 +111,7 @@ the number of bytes in the string; it is the number of characters.
 To get the number of bytes, use `string-bytes'.
 
 If the length of a list is being computed to compare to a (small)
-number, the `string<', `string>' and `string=' functions may be more
+number, the `length<', `length>' and `length=' functions may be more
 efficient.  */)
   (Lisp_Object sequence)
 {
@@ -202,7 +202,7 @@ counted.  */)
 }
 
 DEFUN ("length=", Flength_equal, Slength_equal, 2, 2, 0,
-       doc: /* Return non-nil if SEQUENCE is equal to LENGTH.
+       doc: /* Return non-nil if SEQUENCE has length equal to LENGTH.
 See `length' for allowed values of SEQUENCE and how elements are
 counted.  */)
   (Lisp_Object sequence, Lisp_Object length)
