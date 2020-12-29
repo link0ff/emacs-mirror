@@ -3508,6 +3508,12 @@ kbd_buffer_nr_stored (void)
 void
 kbd_buffer_store_event (register struct input_event *event)
 {
+  char s[4096];
+  AUTO_STRING (format, "%s");
+  snprintf (s, sizeof s, "%s", SSDATA (CALLN (Fformat, format, event->arg)));
+  if (!noninteractive)
+    printf ("??? %s: %u %s\n", __func__, event->kind, s);
+
   kbd_buffer_store_event_hold (event, 0);
 }
 
