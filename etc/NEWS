@@ -1615,6 +1615,12 @@ the column number format (when 'column-number-mode' is on), and
 both modes are on).
 
 +++
+*** New user option 'mode-line-compact'.
+If non-nil, repeating spaces are compressed into a single space.  If
+'long', this is only done when the mode line is longer than the
+current window width (in characters).
+
++++
 *** New command 'submit-emacs-patch'.
 This works like 'report-emacs-bug', but is more geared towards sending
 patches to the Emacs issue tracker.
@@ -1731,6 +1737,11 @@ height of lines or width of chars.
 *** New user option 'xwidget-webkit-bookmark-jump-new-session'.
 When non-nil, use a new xwidget webkit session after bookmark jump.
 Otherwise, it will use 'xwidget-webkit-last-session'.
+
+** Flymake mode
+
++++
+*** New user option 'flymake-mode-line-indicator-format'.
 
 ** Flyspell mode
 
@@ -2183,6 +2194,11 @@ In order for the two functions to behave more consistently,
 'format-spec' now pads and truncates based on string width rather than
 length, and also supports format specifications that include a
 truncating precision field, such as "%.2a".
+
++++
+** 'format-spec' now takes an optional SPLIT parameter.
+If non-nil, 'format-spec' will split the resulting string into a list
+of strings, based on where the format specs (and expansions) were.
 
 ---
 ** New function 'color-values-from-color-spec'.
