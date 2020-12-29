@@ -304,7 +304,8 @@ Return a long answer even in case of accepting short ones.
 
 When `use-dialog-box' is t, pop up a dialog window to get user input."
   (let* ((short (if (eq read-answer-short 'auto)
-                    (eq (symbol-function 'yes-or-no-p) 'y-or-n-p)
+                    (or use-short-answers
+                        (eq (symbol-function 'yes-or-no-p) 'y-or-n-p))
                   read-answer-short))
          (answers-with-help
           (if (assoc "help" answers)
