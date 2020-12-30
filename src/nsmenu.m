@@ -365,6 +365,9 @@ ns_update_menubar (struct frame *f, bool deep_p)
       else
         submenu = [menu addSubmenuWithTitle: wv->name];
 
+      if ([[submenu title] isEqualToString:@"Help"])
+        [NSApp setHelpMenu:submenu];
+
       if (deep_p)
         [submenu fillWithWidgetValue: wv->contents];
 
@@ -457,14 +460,6 @@ set_frame_menubar (struct frame *f, bool first_time, bool deep_p)
 }
 
 
-static const char *
-skipspc (const char *s)
-{
-  while (*s == ' ')
-    s++;
-  return s;
-}
-
 - (NSMenuItem *)addItemWithWidgetValue: (void *)wvptr
                             attributes: (NSDictionary *)attributes
 {
@@ -481,10 +476,10 @@ skipspc (const char *s)
       if (title == nil)
         title = @"< ? >";  /* (get out in the open so we know about it) */
 
-      item = [[NSMenuItem alloc] init];
+      item = [[[NSMenuItem alloc] init] autorelease];
       if (wv->key)
         {
-          NSString *key = [NSString stringWithUTF8String: skipspc (wv->key)];
+          NSString *key = [NSString stringWithUTF8String: wv->key];
 #ifdef NS_IMPL_COCOA
           /* Cocoa only permits a single key (with modifiers) as
              keyEquivalent, so we put them in the title string
@@ -495,9 +490,10 @@ skipspc (const char *s)
 #endif
         }
 
-      NSAttributedString *atitle = [[NSAttributedString alloc]
+      NSAttributedString *atitle = [[[NSAttributedString alloc]
                                          initWithString: title
-                                             attributes: attributes];
+                                             attributes: attributes]
+                                     autorelease];
       [item setAction: @selector (menuDown:)];
       [item setAttributedTitle: atitle];
       [item setEnabled: wv->enabled];
@@ -535,6 +531,63 @@ skipspc (const char *s)
 }
 
 
+typedef struct {
+  const char *from, *to;
+} subst_t;
+
+/* Standard keyboard symbols used in menus. */
+static const subst_t key_symbols[] = {
+  {"<backspace>",  "⌫"},
+  {"DEL",          "⌫"},
+  {"<deletechar>", "⌦"},
+  {"<return>",     "↩"},
+  {"RET",          "↩"},
+  {"<left>",       "←"},
+  {"<right>",      "→"},
+  {"<up>",         "↑"},
+  {"<down>",       "↓"},
+  {"<prior>",      "⇞"},
+  {"<next>",       "⇟"},
+  {"<home>",       "↖"},
+  {"<end>",        "↘"},
+  {"<tab>",        "⇥"},
+  {"TAB",          "⇥"},
+  {"<backtab>",    "⇤"},
+};
+
+/* Transform the key sequence KEY into something prettier by
+   substituting keyboard symbols. */
+static char *
+prettify_key (const char *key)
+{
+  while (*key == ' ') key++;
+
+  int len = strlen (key);
+  char *buf = xmalloc (len + 1);
+  memcpy (buf, key, len + 1);
+  for (int i = 0; i < ARRAYELTS (key_symbols); i++)
+    {
+      ptrdiff_t fromlen = strlen (key_symbols[i].from);
+      char *p = buf;
+      while (p < buf + len)
+        {
+          char *match = memmem (buf, len, key_symbols[i].from, fromlen);
+          if (!match)
+            break;
+          ptrdiff_t tolen = strlen (key_symbols[i].to);
+          eassert (tolen <= fromlen);
+          memcpy (match, key_symbols[i].to, tolen);
+          memmove (match + tolen, match + fromlen,
+                   len - (match + fromlen - buf) + 1);
+          len -= fromlen - tolen;
+          p = match + tolen;
+        }
+    }
+  Lisp_Object result = build_string (buf);
+  xfree (buf);
+  return SSDATA (result);
+}
+
 - (void)fillWithWidgetValue: (void *)wvptr
 {
   widget_value *first_wv = (widget_value *)wvptr;
@@ -542,7 +595,7 @@ skipspc (const char *s)
   NSDictionary *attributes = nil;
 
 #ifdef NS_IMPL_COCOA
-  /* Cocoa doesn't allow multi-key chording in its menu display, so
+  /* Cocoa doesn't allow multi-key sequences in its menu display, so
      work around it by using tabs to split the title into two
      columns.  */
   NSDictionary *font_attribs = @{NSFontAttributeName: menuFont};
@@ -558,7 +611,8 @@ skipspc (const char *s)
         maxNameWidth = MAX(maxNameWidth, nameSize.width);
         if (wv->key)
           {
-            NSString *key = [NSString stringWithUTF8String: skipspc (wv->key)];
+            wv->key = prettify_key (wv->key);
+            NSString *key = [NSString stringWithUTF8String: wv->key];
             NSSize keySize = [key sizeWithAttributes: font_attribs];
             maxKeyWidth = MAX(maxKeyWidth, keySize.width);
           }
