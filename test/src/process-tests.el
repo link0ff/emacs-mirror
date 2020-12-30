@@ -392,7 +392,9 @@ FD_SETSIZE file descriptors (Bug#24325)."
   (with-timeout (60)
   (let ((sleep (executable-find "sleep"))
         ;; FD_SETSIZE is typically 1024 on Unix-like systems.
-        (fd-setsize 1024)
+        ;; On MS-Windows we artificially limit FD_SETSIZE to 64,
+        ;; see the commentary in w32proc.c.
+        (fd-setsize (if (eq system-type 'windows-nt) 64 1024))
         ;; `make-process' allocates at least four file descriptors per process
         ;; when using the pipe communication method.  However, it closes two of
         ;; them in the parent process, so we end up with only two new
