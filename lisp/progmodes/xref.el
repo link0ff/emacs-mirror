@@ -897,7 +897,7 @@ GROUP is a string for decoration purposes and XREF is an
                                   (format "%%%dd: " max-line-width))
            with prev-line-key = nil
            do
-           (xref--insert-propertized '(font-lock-face xref-file-header xref-group t)
+           (xref--insert-propertized '(face xref-file-header xref-group t)
                                      group "\n")
            (cl-loop for (xref . more2) on xrefs do
                     (with-slots (summary location) xref
@@ -907,7 +907,7 @@ GROUP is a string for decoration purposes and XREF is an
                              (prefix
                               (if line
                                   (propertize (format line-format line)
-                                              'font-lock-face 'xref-line-number)
+                                              'face 'xref-line-number)
                                 "  ")))
                         ;; Render multiple matches on the same line, together.
                         (when (and line (equal prev-line-key line-key))
@@ -946,8 +946,8 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
            (funcall fetcher)))
          (xref-alist (xref--analyze xrefs)))
     (with-current-buffer (get-buffer-create xref-buffer-name)
-      (xref--xref-buffer-mode)
       (xref--show-common-initialize xref-alist fetcher alist)
+      (xref--xref-buffer-mode)
       (pop-to-buffer (current-buffer))
       (current-buffer))))
 
@@ -982,7 +982,7 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
          (insert
           (propertize
            (error-message-string err)
-           'font-lock-face 'error))))
+           'face 'error))))
       (goto-char (point-min)))))
 
 (defun xref-show-definitions-buffer (fetcher alist)
@@ -1049,13 +1049,13 @@ between them by typing in the minibuffer with completion."
                         (let* ((line (xref-location-line location))
                                (line-fmt
                                 (if line
-                                    (format #("%d:" 0 2 (font-lock-face xref-line-number))
+                                    (format #("%d:" 0 2 (face xref-line-number))
                                             line)
                                   ""))
                                (group-fmt
                                 (propertize
                                  (substring group group-prefix-length)
-                                 'font-lock-face 'xref-file-header))
+                                 'face 'xref-file-header))
                                (candidate
                                 (format "%s:%s%s" group-fmt line-fmt summary)))
                           (push (cons candidate xref) xref-alist-with-line-info)))))
@@ -1691,7 +1691,7 @@ Such as the current syntax table and the applied syntax properties."
                         (unless syntax-needed
                           (font-lock-ensure line-beg line-end))
                         (buffer-substring line-beg line-end))))
-        (add-text-properties beg-column end-column '(font-lock-face xref-match)
+        (add-text-properties beg-column end-column '(face xref-match)
                              summary)
         (push (xref-make-match summary loc (- end-column beg-column))
               matches)))

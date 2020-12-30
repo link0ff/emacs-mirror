@@ -339,6 +339,20 @@ Non-nil value works well only when outline font-lock keywords
 don't conflict with the major mode's font-lock keywords.")
 ;;;###autoload(put 'outline-minor-mode-highlight 'safe-local-variable 'booleanp)
 
+(defun outline-minor-mode-highlight-buffer ()
+  (save-excursion
+    (goto-char (point-min))
+    (let ((regexp (concat "^\\(?:" outline-regexp "\\).*$")))
+      (while (re-search-forward regexp nil t)
+        (let ((overlay (make-overlay (match-beginning 0)
+                                     (match-end 0))))
+          (overlay-put overlay 'outline-overlay t)
+          (when outline-minor-mode-highlight
+            (overlay-put overlay 'face (outline-font-lock-face)))
+          (when outline-minor-mode-cycle
+            (overlay-put overlay 'keymap outline-mode-cycle-map)))
+        (goto-char (match-end 0))))))
+
 ;;;###autoload
 (define-minor-mode outline-minor-mode
   "Toggle Outline minor mode.
@@ -349,10 +363,11 @@ See the command `outline-mode' for more information on this mode."
   (if outline-minor-mode
       (progn
         (when (or outline-minor-mode-cycle outline-minor-mode-highlight)
-          (unless font-lock-defaults
-            (setq-local font-lock-defaults '(nil t)))
-          (font-lock-add-keywords nil outline-font-lock-keywords t)
-          (font-lock-flush))
+          (if (and font-lock-mode (font-lock-specified-p major-mode))
+              (progn
+                (font-lock-add-keywords nil outline-font-lock-keywords t)
+                (font-lock-flush))
+            (outline-minor-mode-highlight-buffer)))
 	;; Turn off this mode if we change major modes.
 	(add-hook 'change-major-mode-hook
 		  (lambda () (outline-minor-mode -1))
@@ -361,7 +376,9 @@ See the command `outline-mode' for more information on this mode."
 	;; Cause use of ellipses for invisible text.
 	(add-to-invisibility-spec '(outline . t)))
     (when (or outline-minor-mode-cycle outline-minor-mode-highlight)
-      (font-lock-remove-keywords nil outline-font-lock-keywords)
+      (if font-lock-fontified
+          (font-lock-remove-keywords nil outline-font-lock-keywords))
+      (remove-overlays nil nil 'outline-overlay t)
       (font-lock-flush))
     (setq line-move-ignore-invisible nil)
     ;; Cause use of ellipses for invisible text.
@@ -379,8 +396,8 @@ and enable `outline-minor-mode'."
       (progn
         (setq-local outline-minor-mode-cycle t)
         (outline-minor-mode +1))
-    (kill-local-variable 'outline-minor-mode-cycle)
-    (outline-minor-mode -1)))
+    (outline-minor-mode -1)
+    (kill-local-variable 'outline-minor-mode-cycle)))
 
 ;;;###autoload
 (define-minor-mode outline-cycle-highlight-minor-mode
@@ -392,8 +409,8 @@ and enable `outline-cycle-minor-mode'."
       (progn
         (setq-local outline-minor-mode-highlight t)
         (outline-cycle-minor-mode +1))
-    (kill-local-variable 'outline-minor-mode-highlight)
-    (outline-cycle-minor-mode -1)))
+    (outline-cycle-minor-mode -1)
+    (kill-local-variable 'outline-minor-mode-highlight)))
 
 (defvar-local outline-heading-alist ()
   "Alist associating a heading for every possible level.
