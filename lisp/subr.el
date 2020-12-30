@@ -2642,44 +2642,44 @@ while calling this function, then pressing `help-char'
 causes it to evaluate `help-form' and display the result."
   (if (not read-char-choice-use-read-key)
       (read-char-from-minibuffer prompt chars)
-  (unless (consp chars)
-    (error "Called `read-char-choice' without valid char choices"))
-  (let (char done show-help (helpbuf " *Char Help*"))
-    (let ((cursor-in-echo-area t)
-          (executing-kbd-macro executing-kbd-macro)
-	  (esc-flag nil))
-      (save-window-excursion	      ; in case we call help-form-show
-	(while (not done)
-	  (unless (get-text-property 0 'face prompt)
-	    (setq prompt (propertize prompt 'face 'minibuffer-prompt)))
-	  (setq char (let ((inhibit-quit inhibit-keyboard-quit))
-		       (read-key prompt)))
-	  (and show-help (buffer-live-p (get-buffer helpbuf))
-	       (kill-buffer helpbuf))
-	  (cond
-	   ((not (numberp char)))
-	   ;; If caller has set help-form, that's enough.
-	   ;; They don't explicitly have to add help-char to chars.
-	   ((and help-form
-		 (eq char help-char)
-		 (setq show-help t)
-		 (help-form-show)))
-	   ((memq char chars)
-	    (setq done t))
-	   ((and executing-kbd-macro (= char -1))
-	    ;; read-event returns -1 if we are in a kbd macro and
-	    ;; there are no more events in the macro.  Attempt to
-	    ;; get an event interactively.
-	    (setq executing-kbd-macro nil))
-	   ((not inhibit-keyboard-quit)
-	    (cond
-	     ((and (null esc-flag) (eq char ?\e))
-	      (setq esc-flag t))
-	     ((memq char '(?\C-g ?\e))
-	      (keyboard-quit))))))))
-    ;; Display the question with the answer.  But without cursor-in-echo-area.
-    (message "%s%s" prompt (char-to-string char))
-    char)))
+    (unless (consp chars)
+      (error "Called `read-char-choice' without valid char choices"))
+    (let (char done show-help (helpbuf " *Char Help*"))
+      (let ((cursor-in-echo-area t)
+            (executing-kbd-macro executing-kbd-macro)
+            (esc-flag nil))
+        (save-window-excursion        ; in case we call help-form-show
+          (while (not done)
+            (unless (get-text-property 0 'face prompt)
+              (setq prompt (propertize prompt 'face 'minibuffer-prompt)))
+            (setq char (let ((inhibit-quit inhibit-keyboard-quit))
+                         (read-key prompt)))
+            (and show-help (buffer-live-p (get-buffer helpbuf))
+                 (kill-buffer helpbuf))
+            (cond
+             ((not (numberp char)))
+             ;; If caller has set help-form, that's enough.
+             ;; They don't explicitly have to add help-char to chars.
+             ((and help-form
+                   (eq char help-char)
+                   (setq show-help t)
+                   (help-form-show)))
+             ((memq char chars)
+              (setq done t))
+             ((and executing-kbd-macro (= char -1))
+              ;; read-event returns -1 if we are in a kbd macro and
+              ;; there are no more events in the macro.  Attempt to
+              ;; get an event interactively.
+              (setq executing-kbd-macro nil))
+             ((not inhibit-keyboard-quit)
+              (cond
+               ((and (null esc-flag) (eq char ?\e))
+                (setq esc-flag t))
+               ((memq char '(?\C-g ?\e))
+                (keyboard-quit))))))))
+      ;; Display the question with the answer.  But without cursor-in-echo-area.
+      (message "%s%s" prompt (char-to-string char))
+      char)))
 
 (defun sit-for (seconds &optional nodisp obsolete)
   "Redisplay, then wait for SECONDS seconds.  Stop when input is available.
