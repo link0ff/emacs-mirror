@@ -942,8 +942,8 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
            (funcall fetcher)))
          (xref-alist (xref--analyze xrefs)))
     (with-current-buffer (get-buffer-create xref-buffer-name)
-      (xref--show-common-initialize xref-alist fetcher alist)
       (xref--xref-buffer-mode)
+      (xref--show-common-initialize xref-alist fetcher alist)
       (pop-to-buffer (current-buffer))
       (current-buffer))))
 
