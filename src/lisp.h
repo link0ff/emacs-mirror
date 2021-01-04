@@ -1,6 +1,6 @@
 /* Fundamental definitions for GNU Emacs Lisp interpreter. -*- coding: utf-8 -*-
 
-Copyright (C) 1985-1987, 1993-1995, 1997-2020 Free Software Foundation,
+Copyright (C) 1985-1987, 1993-1995, 1997-2021 Free Software Foundation,
 Inc.
 
 This file is part of GNU Emacs.
@@ -1478,8 +1478,8 @@ struct Lisp_String
   {
     struct
     {
-      ptrdiff_t size;
-      ptrdiff_t size_byte;
+      ptrdiff_t size;           /* MSB is used as the markbit.  */
+      ptrdiff_t size_byte;      /* Set to -1 for unibyte strings.  */
       INTERVAL intervals;	/* Text properties in this string.  */
       unsigned char *data;
     } s;

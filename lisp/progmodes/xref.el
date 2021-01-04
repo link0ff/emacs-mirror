@@ -1,6 +1,6 @@
 ;;; xref.el --- Cross-referencing commands              -*-lexical-binding:t-*-
 
-;; Copyright (C) 2014-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2014-2021 Free Software Foundation, Inc.
 ;; Version: 1.0.4
 ;; Package-Requires: ((emacs "26.3"))
 
@@ -547,8 +547,7 @@ If SELECT is non-nil, select the target window."
   "Goto and display position POS of buffer BUF in a window.
 Honor `xref--original-window-intent', run `xref-after-jump-hook'
 and finally return the window."
-  (let* ((xref-buf (current-buffer))
-         (pop-up-frames
+  (let* ((pop-up-frames
           (or (eq xref--original-window-intent 'frame)
               pop-up-frames))
          (action
@@ -566,9 +565,6 @@ and finally return the window."
     (with-selected-window (display-buffer buf action)
       (xref--goto-char pos)
       (run-hooks 'xref-after-jump-hook)
-      (let ((buf (current-buffer)))
-        (with-current-buffer xref-buf
-          (setq-local other-window-scroll-buffer buf)))
       (selected-window))))
 
 (defun xref--display-buffer-in-other-window (buffer alist)
@@ -1021,8 +1017,8 @@ local keymap that binds `RET' to `xref-quit-and-goto-xref'."
                        '(display-buffer-in-direction . ((direction . below))))
         (current-buffer))))))
 
-(define-obsolete-function-alias
-  'xref--show-defs-buffer-at-bottom #'xref-show-definitions-buffer-at-bottom)
+(define-obsolete-function-alias 'xref--show-defs-buffer-at-bottom
+  #'xref-show-definitions-buffer-at-bottom "28.1")
 
 (defun xref-show-definitions-completing-read (fetcher alist)
   "Let the user choose the target definition with completion.
@@ -1069,9 +1065,12 @@ between them by typing in the minibuffer with completion."
                             ((eq action 'metadata)
                              '(metadata . ((category . xref-location))))
                             (t
-                             (complete-with-action action collection string pred))))))
+                             (complete-with-action action collection string pred)))))
+                        (def (caar collection)))
                    (cdr (assoc (completing-read "Choose definition: "
-                                                ctable nil t)
+                                                ctable nil t
+                                                nil nil
+                                                def)
                                collection)))))
 
     (xref-pop-to-location xref (assoc-default 'display-action alist))))

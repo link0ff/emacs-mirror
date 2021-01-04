@@ -1,6 +1,6 @@
 ;;; subr-tests.el --- Tests for subr.el  -*- lexical-binding:t -*-
 
-;; Copyright (C) 2015-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2015-2021 Free Software Foundation, Inc.
 
 ;; Author: Oleh Krehel <ohwoeowho@gmail.com>,
 ;;         Nicolas Petton <nicolas@petton.fr>
@@ -616,26 +616,6 @@ See https://debbugs.gnu.org/cgi/bugreport.cgi?bug=19350."
   (should (equal subr--ordered '(a b c d e)))
   (add-to-ordered-list 'subr--ordered 'b 5)
   (should (equal subr--ordered '(a c d b e))))
-
-(defvar subr--ordered-s nil)
-
-(ert-deftest subr--add-to-ordered-list-equal ()
-  (setq subr--ordered-s nil)
-  (add-to-ordered-list 'subr--ordered-s "b" 2 #'equal)
-  (should (equal subr--ordered-s '("b")))
-  (add-to-ordered-list 'subr--ordered-s "c" 3)
-  (should (equal subr--ordered-s '("b" "c")))
-  (add-to-ordered-list 'subr--ordered-s "a" 1)
-  (should (equal subr--ordered-s '("a" "b" "c")))
-  (add-to-ordered-list 'subr--ordered-s "e")
-  (should (equal subr--ordered-s '("a" "b" "c" "e")))
-  (add-to-ordered-list 'subr--ordered-s "d" 4)
-  (should (equal subr--ordered-s '("a" "b" "c" "d" "e")))
-  (add-to-ordered-list 'subr--ordered-s "e")
-  (should (equal subr--ordered-s '("a" "b" "c" "d" "e")))
-  (add-to-ordered-list 'subr--ordered-s "b" 5)
-  (should (equal subr--ordered-s '("a" "c" "d" "b" "e")))
-  (should-error (add-to-ordered-list 'subr--ordered-s "b" 5 #'eql)))
 
 
 ;;; Apropos.

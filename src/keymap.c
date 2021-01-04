@@ -1,5 +1,5 @@
 /* Manipulation of keymaps
-   Copyright (C) 1985-1988, 1993-1995, 1998-2020 Free Software
+   Copyright (C) 1985-1988, 1993-1995, 1998-2021 Free Software
    Foundation, Inc.
 
 This file is part of GNU Emacs.
@@ -1968,7 +1968,7 @@ then the value includes only maps for prefixes that start with PREFIX.  */)
 DEFUN ("key-description", Fkey_description, Skey_description, 1, 2, 0,
        doc: /* Return a pretty description of key-sequence KEYS.
 Optional arg PREFIX is the sequence of keys leading up to KEYS.
-For example, [?\C-x ?l] is converted into the string \"C-x l\".
+For example, [?\\C-x ?l] is converted into the string \"C-x l\".
 
 For an approximate inverse of this, see `kbd'.  */)
   (Lisp_Object keys, Lisp_Object prefix)

@@ -1,6 +1,6 @@
 ;;; process-tests.el --- Testing the process facilities -*- lexical-binding: t -*-
 
-;; Copyright (C) 2013-2020 Free Software Foundation, Inc.
+;; Copyright (C) 2013-2021 Free Software Foundation, Inc.
 
 ;; This file is part of GNU Emacs.
 
@@ -50,13 +50,13 @@
 
 (ert-deftest process-test-sentinel-accept-process-output ()
   (skip-unless (executable-find "bash"))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (should (process-test-sentinel-wait-function-working-p
            #'accept-process-output))))
 
 (ert-deftest process-test-sentinel-sit-for ()
   (skip-unless (executable-find "bash"))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (should
    (process-test-sentinel-wait-function-working-p (lambda () (sit-for 0.01 t))))))
 
@@ -84,7 +84,7 @@
 
 (ert-deftest process-test-stderr-buffer ()
   (skip-unless (executable-find "bash"))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let* ((stdout-buffer (generate-new-buffer "*stdout*"))
 	 (stderr-buffer (generate-new-buffer "*stderr*"))
 	 (proc (make-process :name "test"
@@ -113,7 +113,7 @@
 
 (ert-deftest process-test-stderr-filter ()
   (skip-unless (executable-find "bash"))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let* ((sentinel-called nil)
 	 (stderr-sentinel-called nil)
 	 (stdout-output nil)
@@ -156,7 +156,7 @@
 
 (ert-deftest set-process-filter-t ()
   "Test setting process filter to t and back." ;; Bug#36591
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (with-temp-buffer
     (let* ((print-level nil)
            (print-length nil)
@@ -193,7 +193,7 @@
 (ert-deftest start-process-should-not-modify-arguments ()
   "`start-process' must not modify its arguments in-place."
   ;; See bug#21831.
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let* ((path (pcase system-type
                  ((or 'windows-nt 'ms-dos)
                   ;; Make sure the file name uses forward slashes.
@@ -212,7 +212,7 @@
 (ert-deftest make-process/noquery-stderr ()
   "Checks that Bug#30031 is fixed."
   (skip-unless (executable-find "sleep"))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (with-temp-buffer
     (let* ((previous-processes (process-list))
            (process (make-process :name "sleep"
@@ -243,7 +243,7 @@
 (ert-deftest make-process/mix-stderr ()
   "Check that `make-process' mixes the output streams if STDERR is nil."
   (skip-unless (executable-find "bash"))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   ;; Frequent random (?) failures on hydra.nixos.org, with no process output.
   ;; Maybe this test should be tagged unstable?  See bug#31214.
   (skip-unless (not (getenv "EMACS_HYDRA_CI")))
@@ -267,7 +267,7 @@
 (ert-deftest make-process-w32-debug-spawn-error ()
   "Check that debugger runs on `make-process' failure (Bug#33016)."
   (skip-unless (eq system-type 'windows-nt))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let* ((debug-on-error t)
          (have-called-debugger nil)
          (debugger (lambda (&rest _)
@@ -286,9 +286,9 @@
     (should have-called-debugger))))
 
 (ert-deftest make-process/file-handler/found ()
-  "Check that the ‘:file-handler’ argument of ‘make-process’
+  "Check that the `:file-handler’ argument of `make-process’
 works as expected if a file name handler is found."
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let ((file-handler-calls 0))
     (cl-flet ((file-handler
                (&rest args)
@@ -308,9 +308,9 @@ works as expected if a file name handler is found."
         (should (= file-handler-calls 1)))))))
 
 (ert-deftest make-process/file-handler/not-found ()
-  "Check that the ‘:file-handler’ argument of ‘make-process’
+  "Check that the `:file-handler’ argument of `make-process’
 works as expected if no file name handler is found."
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let ((file-name-handler-alist ())
         (default-directory invocation-directory)
         (program (expand-file-name invocation-name invocation-directory)))
@@ -319,9 +319,9 @@ works as expected if no file name handler is found."
                                     :file-handler t))))))
 
 (ert-deftest make-process/file-handler/disable ()
-  "Check ‘make-process’ works as expected if it shouldn’t use the
+  "Check `make-process’ works as expected if it shouldn’t use the
 file name handler."
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let ((file-name-handler-alist (list (cons (rx bos "test-handler:")
                                              #'process-tests--file-handler)))
         (default-directory "test-handler:/dir/")
@@ -340,7 +340,7 @@ file name handler."
 (ert-deftest make-process/stop ()
   "Check that `make-process' doesn't accept a `:stop' key.
 See Bug#30460."
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (should-error
    (make-process :name "test"
                  :command (list (expand-file-name invocation-name
@@ -351,31 +351,31 @@ See Bug#30460."
 ;; be the case for hydra.nixos.org, so disable them there for now.
 
 (ert-deftest lookup-family-specification ()
-  "network-lookup-address-info should only accept valid family symbols."
+  "`network-lookup-address-info' should only accept valid family symbols."
   (skip-unless (not (getenv "EMACS_HYDRA_CI")))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (should-error (network-lookup-address-info "google.com" 'both))
   (should (network-lookup-address-info "google.com" 'ipv4))
   (when (featurep 'make-network-process '(:family ipv6))
     (should (network-lookup-address-info "google.com" 'ipv6)))))
 
 (ert-deftest lookup-unicode-domains ()
-  "Unicode domains should fail"
+  "Unicode domains should fail."
   (skip-unless (not (getenv "EMACS_HYDRA_CI")))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (should-error (network-lookup-address-info "faß.de"))
   (should (network-lookup-address-info (puny-encode-domain "faß.de")))))
 
 (ert-deftest unibyte-domain-name ()
-  "Unibyte domain names should work"
+  "Unibyte domain names should work."
   (skip-unless (not (getenv "EMACS_HYDRA_CI")))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (should (network-lookup-address-info (string-to-unibyte "google.com")))))
 
 (ert-deftest lookup-google ()
-  "Check that we can look up google IP addresses"
+  "Check that we can look up google IP addresses."
   (skip-unless (not (getenv "EMACS_HYDRA_CI")))
-  (with-timeout (60)
+  (with-timeout (60 (ert-fail "Test timed out"))
   (let ((addresses-both (network-lookup-address-info "google.com"))
         (addresses-v4 (network-lookup-address-info "google.com" 'ipv4)))
     (should addresses-both)
@@ -384,9 +384,9 @@ See Bug#30460."
     (should (network-lookup-address-info "google.com" 'ipv6)))))
 
 (ert-deftest non-existent-lookup-failure ()
+  "Check that looking up non-existent domain returns nil."
   (skip-unless (not (getenv "EMACS_HYDRA_CI")))
-  (with-timeout (60)
-  "Check that looking up non-existent domain returns nil"
+  (with-timeout (60 (ert-fail "Test timed out"))
   (should (eq nil (network-lookup-address-info "emacs.invalid")))))
 
 (defmacro process-tests--ignore-EMFILE (&rest body)
@@ -493,6 +493,13 @@ FD_SETSIZE."
                     for ,process = (process-tests--ignore-EMFILE
                                      (make-pipe-process
                                       :name (format "pipe %d" i)
+                                      ;; Prevent delete-process from
+                                      ;; trying to read from pipe
+                                      ;; processes that didn't exit
+                                      ;; yet, because no one is
+                                      ;; writing to those pipes, and
+                                      ;; the read will stall.
+                                      :stop (eq system-type 'windows-nt)
                                       :buffer ,buffer
                                       :coding 'no-conversion
                                       :noquery t))
@@ -504,18 +511,6 @@ FD_SETSIZE."
            (delete-process (pop ,processes))
            (delete-process (pop ,processes))
            ,@body)))))
-
-(defmacro process-tests--with-temp-file (var &rest body)
-  "Bind VAR to the name of a new regular file and evaluate BODY.
-Afterwards, delete the file."
-  (declare (indent 1) (debug (symbolp body)))
-  (cl-check-type var symbol)
-  (let ((file (make-symbol "file")))
-    `(let ((,file (make-temp-file "emacs-test-")))
-       (unwind-protect
-           (let ((,var ,file))
-             ,@body)
-         (delete-file ,file)))))
 
 (defmacro process-tests--with-temp-directory (var &rest body)
   "Bind VAR to the name of a new directory and evaluate BODY.
@@ -540,8 +535,8 @@ Afterwards, delete the directory."
   "Check that Emacs doesn't crash when trying to use more than
 FD_SETSIZE file descriptors (Bug#24325)."
   (with-timeout (60 (ert-fail "Test timed out"))
-    (let ((sleep (executable-find "sleep")))
-      (skip-unless sleep)
+    (let ((cat (executable-find "cat")))
+      (skip-unless cat)
       (dolist (conn-type '(pipe pty))
         (ert-info ((format "Connection type `%s'" conn-type))
           (process-tests--fd-setsize-test
@@ -557,7 +552,7 @@ FD_SETSIZE file descriptors (Bug#24325)."
                        ;; ignore `file-error'.
                        (process-tests--ignore-EMFILE
                          (make-process :name (format "test %d" i)
-                                       :command (list sleep "5")
+                                       :command (list cat)
                                        :connection-type conn-type
                                        :coding 'no-conversion
                                        :noquery t))))
@@ -565,6 +560,8 @@ FD_SETSIZE file descriptors (Bug#24325)."
               ;; We should have managed to start at least one process.
               (should processes)
               (dolist (process processes)
+                (should (process-live-p process))
+                (process-send-eof process)
                 (while (accept-process-output process))
                 (should (eq (process-status process) 'exit))
                 ;; If there's an error between fork and exec, Emacs
@@ -647,12 +644,6 @@ FD_SETSIZE file descriptors (Bug#24325)."
   "Check that Emacs doesn't crash when trying to use more than
 FD_SETSIZE file descriptors (Bug#24325)."
   (with-timeout (60 (ert-fail "Test timed out"))
-    (skip-unless (file-executable-p shell-file-name))
-    (skip-unless (executable-find "tty"))
-    (skip-unless (executable-find "sleep"))
-    ;; `process-tests--new-pty' probably only works with GNU Bash.
-    (skip-unless (string-equal
-                  (file-name-nondirectory shell-file-name) "bash"))
     (process-tests--with-processes processes
       ;; In order to use `make-serial-process', we need to create some
       ;; pseudoterminals.  The easiest way to do that is to start a
@@ -660,14 +651,22 @@ FD_SETSIZE file descriptors (Bug#24325)."
       ;; ensure that the terminal stays around while we connect to it.
       ;; Create the host processes before the dummy pipes so we have a
       ;; high chance of succeeding here.
-      (let ((tty-names ()))
-        (dotimes (_ 10)
-          (cl-destructuring-bind
-              (host tty-name) (process-tests--new-pty)
+      (let ((sleep (executable-find "sleep"))
+            (tty-names ()))
+        (skip-unless sleep)
+        (dotimes (i 10)
+          (let* ((host (make-process :name (format "tty host %d" i)
+                                     :command (list sleep "60")
+                                     :buffer nil
+                                     :coding 'utf-8-unix
+                                     :connection-type 'pty
+                                     :noquery t))
+                 (tty-name (process-tty-name host)))
             (should (processp host))
             (push host processes)
             (should tty-name)
             (should (file-exists-p tty-name))
+            (should-not (member tty-name tty-names))
             (push tty-name tty-names)))
         (process-tests--fd-setsize-test
           (process-tests--with-processes processes
@@ -701,49 +700,14 @@ Return nil if that can't be determined."
   (when (eq process-tests--EMFILE-message :unknown)
     (setq process-tests--EMFILE-message
           (with-temp-buffer
-            (when (eql (call-process "errno" nil t nil "EMFILE") 0)
+            (when (eql (ignore-error 'file-error
+                         (call-process "errno" nil t nil "EMFILE"))
+                       0)
               (goto-char (point-min))
               (when (looking-at (rx "EMFILE" (+ blank) (+ digit)
                                     (+ blank) (group (+ nonl))))
                 (match-string-no-properties 1))))))
   process-tests--EMFILE-message)
-
-(defun process-tests--new-pty ()
-  "Allocate a new pseudoterminal.
-Return a list (PROCESS TTY-NAME)."
-  ;; The command below will typically only work with GNU Bash.
-  (should (string-equal (file-name-nondirectory shell-file-name)
-                        "bash"))
-  (process-tests--with-temp-file temp-file
-    (should-not (file-remote-p temp-file))
-    (let* ((command (list shell-file-name shell-command-switch
-                          (format "tty > %s && sleep 60"
-                                  (shell-quote-argument
-                                   (file-name-unquote temp-file)))))
-           (process (make-process :name "tty host"
-                                  :command command
-                                  :buffer nil
-                                  :coding 'utf-8-unix
-                                  :connection-type 'pty
-                                  :noquery t))
-           (tty-name nil)
-           (coding-system-for-read 'utf-8-unix)
-           (coding-system-for-write 'utf-8-unix))
-      ;; Wait until TTY name has arrived.
-      (with-timeout (2 (message "Timed out waiting for TTY name"))
-        (while (and (process-live-p process) (not tty-name))
-          (sleep-for 0.1)
-          (when-let ((attributes (file-attributes temp-file)))
-            (when (cl-plusp (file-attribute-size attributes))
-              (with-temp-buffer
-                (insert-file-contents temp-file)
-                (goto-char (point-max))
-                ;; `tty' has printed a trailing newline.
-                (skip-chars-backward "\n")
-                (unless (bobp)
-                  (setq tty-name (buffer-substring-no-properties
-                                  (point-min) (point)))))))))
-      (list process tty-name))))
 
 (provide 'process-tests)
 ;;; process-tests.el ends here

@@ -1,6 +1,6 @@
 GNU Emacs NEWS -- history of user-visible changes.
 
-Copyright (C) 2017-2020 Free Software Foundation, Inc.
+Copyright (C) 2017-2021 Free Software Foundation, Inc.
 See the end of the file for license conditions.
 
 Please send Emacs bug reports to 'bug-gnu-emacs@gnu.org'.
@@ -211,6 +211,12 @@ variables.  This can be used for remote hosts.
 This makes debugging Emacs Lisp scripts run in batch mode easier.  To
 get back the old behavior, set the new variable
 'backtrace-on-error-noninteractive' to a nil value.
+
+** 'redisplay-skip-fontification-on-input' helps Emacs keep up with fast input.
+This is another attempt to solve the problem of handling high key repeat rate
+and other "slow scrolling" situations.  It is hoped it behaves better
+than 'fast-but-imprecise-scrolling' and 'jit-lock-defer-time'.
+It is not enabled by default.
 
 
 * Editing Changes in Emacs 28.1
@@ -1747,6 +1753,19 @@ height of lines or width of chars.
 When non-nil, use a new xwidget webkit session after bookmark jump.
 Otherwise, it will use 'xwidget-webkit-last-session'.
 
+** Flymake mode
+
++++
+*** New user options to customize Flymake's mode-line.
+
+The new customization variable 'flymake-mode-line-format' is a mix of
+strings and symbols like 'flymake-mode-line-title' ,
+'flymake-mode-line-exception' and 'flymake-mode-line-counters'.  The
+new customization variable 'flymake-mode-line-counter-format' is a mix
+of strings and symbols like 'flymake-mode-line-error-counter',
+'flymake-mode-line-warning-counter' and
+'flymake-mode-line-note-counter'.
+
 ** Flyspell mode
 
 +++
@@ -2010,6 +2029,12 @@ ledit.el, lmenu.el, lucid.el and old-whitespace.el.
 'vc-mtn-command', 'vc-revert-buffer', 'vc-workfile-version',
 'vcursor-toggle-vcursor-map', 'w32-focus-frame', 'w32-select-font',
 'wisent-lex-make-token-table'.
+
+** The 'when' argument of `make-obsolete` and related functions is mandatory.
+The use of those functions without a 'when' argument was marked
+obsolete back in Emacs-23.1.  The affected functions are:
+make-obsolete, define-obsolete-function-alias, make-obsolete-variable,
+define-obsolete-variable-alias.
 
 
 * Lisp Changes in Emacs 28.1
