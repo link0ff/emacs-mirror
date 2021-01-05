@@ -3531,6 +3531,18 @@ void
 kbd_buffer_store_buffered_event (union buffered_input_event *event,
 				 struct input_event *hold_quit)
 {
+  if (!noninteractive)
+    printf ("??1 %s: %u\n", __func__, event->kind);
+
+  /* if (CONSP (event->ie.arg)) */
+  /*   { */
+  /*     char s[4096]; */
+  /*     AUTO_STRING (format, "%s"); */
+  /*     snprintf (s, sizeof s, "%s", SSDATA (CALLN (Fformat, format, event->ie.arg))); */
+  /*     if (!noninteractive) */
+  /* 	printf ("??2 %s\n", s); */
+  /*   } */
+
   if (event->kind == NO_EVENT)
     emacs_abort ();
 
