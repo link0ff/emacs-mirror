@@ -59,22 +59,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 Lisp_Object current_global_map;	/* Current global keymap.  */
 
-Lisp_Object global_map;		/* Default global key bindings.  */
-
-Lisp_Object meta_map;		/* The keymap used for globally bound
-				   ESC-prefixed default commands.  */
-
-Lisp_Object control_x_map;	/* The keymap used for globally bound
-				   C-x-prefixed default commands.  */
-
-				/* The keymap used by the minibuf for local
-				   bindings when spaces are allowed in the
-				   minibuf.  */
-
-				/* The keymap used by the minibuf for local
-				   bindings when spaces are not encouraged
-				   in the minibuf.  */
-
 /* Alist of elements like (DEL . "\d").  */
 static Lisp_Object exclude_keys;
 
@@ -138,19 +122,6 @@ in case you use it as a menu with `x-popup-menu'.  */)
       return list2 (Qkeymap, string);
     }
   return list1 (Qkeymap);
-}
-
-/* This function is used for installing the standard key bindings
-   at initialization time.
-
-   For example:
-
-   initial_define_key (control_x_map, Ctl('X'), "exchange-point-and-mark");  */
-
-void
-initial_define_key (Lisp_Object keymap, int key, const char *defname)
-{
-  store_in_keymap (keymap, make_fixnum (key), intern_c_string (defname));
 }
 
 void
@@ -3195,20 +3166,8 @@ syms_of_keymap (void)
      Each one is the value of a Lisp variable, and is also
      pointed to by a C variable */
 
-  global_map = Fmake_keymap (Qnil);
-  Fset (intern_c_string ("global-map"), global_map);
-
-  current_global_map = global_map;
-  staticpro (&global_map);
+  current_global_map = Qnil;
   staticpro (&current_global_map);
-
-  meta_map = Fmake_keymap (Qnil);
-  Fset (intern_c_string ("esc-map"), meta_map);
-  Ffset (intern_c_string ("ESC-prefix"), meta_map);
-
-  control_x_map = Fmake_keymap (Qnil);
-  Fset (intern_c_string ("ctl-x-map"), control_x_map);
-  Ffset (intern_c_string ("Control-X-prefix"), control_x_map);
 
   exclude_keys = pure_list
     (pure_cons (build_pure_c_string ("DEL"), build_pure_c_string ("\\d")),
@@ -3327,11 +3286,4 @@ be preferred.  */);
   defsubr (&Stext_char_description);
   defsubr (&Swhere_is_internal);
   defsubr (&Sdescribe_buffer_bindings);
-}
-
-void
-keys_of_keymap (void)
-{
-  initial_define_key (global_map, 033, "ESC-prefix");
-  initial_define_key (global_map, Ctl ('X'), "Control-X-prefix");
 }
