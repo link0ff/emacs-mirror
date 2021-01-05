@@ -395,7 +395,10 @@ REGION-NONCONTIGUOUS-P are passed to `perform-replace' (which see).
 
 To customize possible responses, change the bindings in `query-replace-map'."
   (interactive
-   (let ((common
+   (let ((start (if (use-region-p) (region-beginning)))
+         (end (if (use-region-p) (region-end)))
+         (region-noncontiguous-p (if (use-region-p) (region-noncontiguous-p)))
+         (common
 	  (query-replace-read-args
 	   (concat "Query replace"
 		   (if current-prefix-arg
@@ -407,10 +410,7 @@ To customize possible responses, change the bindings in `query-replace-map'."
 	   ;; These are done separately here
 	   ;; so that command-history will record these expressions
 	   ;; rather than the values they had this time.
-	   (if (use-region-p) (region-beginning))
-	   (if (use-region-p) (region-end))
-	   (nth 3 common)
-	   (if (use-region-p) (region-noncontiguous-p)))))
+	   start end (nth 3 common) region-noncontiguous-p)))
   (perform-replace from-string to-string t nil delimited nil nil start end backward region-noncontiguous-p))
 
 (define-key esc-map "%" 'query-replace)
