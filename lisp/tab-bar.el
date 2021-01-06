@@ -187,9 +187,9 @@ on a console which has no window system but does have a mouse."
         ;; Clicking anywhere outside existing tabs will add a new tab
         (tab-bar-new-tab)))))
 
-;; Used in the Show/Hide menu, to have the toggle reflect the current frame.
 (defun toggle-tab-bar-mode-from-frame (&optional arg)
   "Toggle tab bar on or off, based on the status of the current frame.
+Used in the Show/Hide menu, to have the toggle reflect the current frame.
 See `tab-bar-mode' for more information."
   (interactive (list (or current-prefix-arg 'toggle)))
   (if (eq arg 'toggle)
@@ -236,18 +236,27 @@ If the value is `1', then hide the tab bar when it has only one tab,
 and show it again once more tabs are created.
 If nil, always keep the tab bar hidden.  In this case it's still
 possible to use persistent named window configurations by relying on
-keyboard commands `tab-new', `tab-close', `tab-next', `tab-switcher', etc."
+keyboard commands `tab-new', `tab-close', `tab-next', `tab-switcher', etc.
+
+Please customize this variable using the Customization UI, then
+it will automatically update the existing tab bars on each frame."
   :type '(choice (const :tag "Always" t)
                  (const :tag "When more than one tab" 1)
                  (const :tag "Never" nil))
   :initialize 'custom-initialize-default
   :set (lambda (sym val)
          (set-default sym val)
-         (tab-bar-mode
-          (if (or (eq val t)
-                  (and (natnump val)
-                       (> (length (funcall tab-bar-tabs-function)) val)))
-              1 -1)))
+         ;; Preload button images
+         (tab-bar-mode 1)
+         ;; Then handle each frame individually
+         (dolist (frame (frame-list))
+           (set-frame-parameter
+            frame 'tab-bar-lines
+            (if (or (eq val t)
+                    (and (natnump val)
+                         (> (length (funcall tab-bar-tabs-function frame))
+                            val)))
+                1 0))))
   :group 'tab-bar
   :version "27.1")
 
