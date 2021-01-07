@@ -238,8 +238,12 @@ If nil, always keep the tab bar hidden.  In this case it's still
 possible to use persistent named window configurations by relying on
 keyboard commands `tab-new', `tab-close', `tab-next', `tab-switcher', etc.
 
-Please customize this variable using the Customization UI, then
-it will automatically update the existing tab bars on each frame."
+Setting this variable directly does not take effect; please customize
+it (see the info node `Easy Customization'), then it will automatically
+update the tab bar on all frames according to the new value.
+
+To enable or disable the tab bar individually on each frame,
+you can use the command `toggle-frame-tab-bar'."
   :type '(choice (const :tag "Always" t)
                  (const :tag "When more than one tab" 1)
                  (const :tag "Never" nil))
