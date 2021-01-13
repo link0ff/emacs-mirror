@@ -8294,7 +8294,7 @@ indirectly called by the latter."
 		    (window--frame-usable-p (last-nonminibuffer-frame))))
 	 (window
 	  ;; Reuse an existing window.
-	  (or (get-mru-window frame nil t)
+	  (or (get-lru-window frame nil not-this-window)
 	      (let ((window (get-buffer-window buffer 'visible)))
 		(unless (and not-this-window
 			     (eq window (selected-window)))
