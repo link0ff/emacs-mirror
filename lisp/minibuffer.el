@@ -1808,11 +1808,12 @@ It also eliminates runs of equal strings."
                   (put-text-property beg end 'mouse-face nil)
                   ;; Put the predefined face only when suffix
                   ;; is added via annotation-function.
-                  ;; Otherwise, when both prefix and suffix are
-                  ;; added by the caller via affixation-function,
+                  ;; Otherwise, when only suffix is added
+                  ;; by the caller via annotation-function,
                   ;; then allow the caller to decide
-                  ;; what faces to put on prefix and suffix.
-                  (unless prefix
+                  ;; what faces to put on suffix.
+                  (unless (or prefix (text-property-not-all
+                                      0 (length suffix) 'face nil suffix))
                     (font-lock-prepend-text-property
                      beg end 'face 'completions-annotations)))))
 	    (cond
