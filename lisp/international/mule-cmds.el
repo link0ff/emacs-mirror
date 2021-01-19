@@ -3084,11 +3084,19 @@ on encoding."
         (puthash "BELL (BEL)" ?\a names)
         (setq ucs-names names))))
 
+;; TESTED ON "SUPER <TAB>" "GREEK <TAB>"
 (defun mule--ucs-names-affixation (names)
-  (mapcar (lambda (name)
-            (let ((char (gethash name ucs-names)))
-              (list name (concat (if char (format "%c" char) " ") "\t") "")))
-          names))
+  (let* ((chars-names
+          (mapcar (lambda (name)
+                    (cons (gethash name ucs-names) name))
+                  names))
+         (sorted-chars-names
+          (sort chars-names (lambda (a b) (< (car a) (car b))))))
+    (mapcar (lambda (char-name)
+              (let* ((char (car char-name))
+                     (char-str (if char (format "%c" char) " ")))
+                (list (cdr char-name) (concat char-str "\t") "")))
+            sorted-chars-names)))
 
 (defun char-from-name (string &optional ignore-case)
   "Return a character as a number from its Unicode name STRING.
