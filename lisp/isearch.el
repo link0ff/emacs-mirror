@@ -3767,7 +3767,8 @@ since they have special meaning in a regexp."
       (while submatch-data
         (setq b (pop submatch-data)
               e (pop submatch-data))
-        (when (and b e)
+        (when (and (integer-or-marker-p b)
+                   (integer-or-marker-p e))
           (setq ov (make-overlay b e)
                 group (1+ group)
                 face (intern-soft (format "isearch-group-%d" group)))
