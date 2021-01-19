@@ -10649,9 +10649,10 @@ include the height of both, if present, in the return value.  */)
       bpos = BEGV_BYTE;
       while (bpos < ZV_BYTE)
 	{
-	  c = fetch_char_advance (&start, &bpos);
+	  c = FETCH_BYTE (bpos);
 	  if (!(c == ' ' || c == '\t' || c == '\n' || c == '\r'))
 	    break;
+	  inc_both (&start, &bpos);
 	}
       while (bpos > BEGV_BYTE)
 	{
@@ -10680,7 +10681,10 @@ include the height of both, if present, in the return value.  */)
 	  dec_both (&end, &bpos);
 	  c = FETCH_BYTE (bpos);
 	  if (!(c == ' ' || c == '\t' || c == '\n' || c == '\r'))
-	    break;
+            {
+	      inc_both (&end, &bpos);
+	      break;
+            }
 	}
       while (bpos < ZV_BYTE)
 	{
@@ -20823,9 +20827,8 @@ try_window_id (struct window *w)
 		     + window_wants_header_line (w)
 		     + window_internal_height (w));
 
-#if defined (HAVE_GPM) || defined (MSDOS)
 	  gui_clear_window_mouse_face (w);
-#endif
+
 	  /* Perform the operation on the screen.  */
 	  if (dvpos > 0)
 	    {
