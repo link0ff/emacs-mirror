@@ -8239,6 +8239,7 @@ indirectly called by the latter."
 		   0)
 		  (display-buffer-reuse-frames 0)
 		  (t (last-nonminibuffer-frame))))
+         (previous-window (cdr (assq 'previous-window alist)))
 	 best-window second-best-window window)
     ;; Scan windows whether they have shown the buffer recently.
     (catch 'best
@@ -8252,7 +8253,9 @@ indirectly called by the latter."
 	    (throw 'best t)))))
     ;; When ALIST has a `previous-window' entry, that entry may override
     ;; anything we found so far.
-    (when (and (setq window (cdr (assq 'previous-window alist)))
+    (when (and previous-window (boundp previous-window))
+      (setq previous-window (symbol-value previous-window)))
+    (when (and (setq window previous-window)
 	       (window-live-p window)
 	       (or (eq buffer (window-buffer window))
                    (not (window-dedicated-p window))))
