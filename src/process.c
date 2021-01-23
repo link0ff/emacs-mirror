@@ -291,7 +291,6 @@ static int child_signal_read_fd = -1;
 static int child_signal_write_fd = -1;
 static void child_signal_init (void);
 #ifndef WINDOWSNT
-/* FIXME: This is never used, on all platforms.  */
 static void child_signal_read (int, void *);
 #endif
 static void child_signal_notify (void);
@@ -7163,6 +7162,11 @@ process has been transmitted to the serial port.  */)
    handle, which becomes signaled when the process exits, and also
    because that emulation delays the delivery of the simulated SIGCHLD
    until all the output from the subprocess has been consumed.  */
+
+/* FIXME: On Unix-like systems that have a proper 'pselect'
+   (HAVE_PSELECT), we should block SIGCHLD in
+   'wait_reading_process_output' and pass a non-NULL signal mask to
+   'pselect' to avoid the need for the self-pipe.  */
 
 /* Set up `child_signal_read_fd' and `child_signal_write_fd'.  */
 
