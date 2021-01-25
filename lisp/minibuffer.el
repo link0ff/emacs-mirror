@@ -1807,11 +1807,8 @@ It also eliminates runs of equal strings."
                       (end (progn (insert suffix) (point))))
                   (put-text-property beg end 'mouse-face nil)
                   ;; Put the predefined face only when suffix
-                  ;; is added via annotation-function.
-                  ;; Otherwise, when only suffix is added
-                  ;; by the caller via annotation-function,
-                  ;; then allow the caller to decide
-                  ;; what faces to put on suffix.
+                  ;; is added via annotation-function without prefix,
+                  ;; and when the caller doesn't use own face.
                   (unless (or prefix (text-property-not-all
                                       0 (length suffix) 'face nil suffix))
                     (font-lock-prepend-text-property
