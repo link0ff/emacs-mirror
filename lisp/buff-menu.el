@@ -643,7 +643,8 @@ means list those buffers and no others."
 	    (and files-only (>= (prefix-numeric-value files-only) 0)))
       (list-buffers--refresh buffer-list old-buffer)
       (tabulated-list-print)
-      (outline-cycle-highlight-minor-mode +1)
+      (when (fboundp 'outline-cycle-highlight-minor-mode)
+        (outline-cycle-highlight-minor-mode +1))
       (font-lock-ensure))
     buffer))
 

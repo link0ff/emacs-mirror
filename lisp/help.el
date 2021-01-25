@@ -514,7 +514,8 @@ or a buffer name."
       (setq-local outline-regexp ".*:$")
       (setq-local outline-heading-end-regexp ":\n")
       (setq-local outline-level (lambda () 1))
-      (outline-cycle-highlight-minor-mode +1)
+      (when (fboundp 'outline-cycle-highlight-minor-mode)
+        (outline-cycle-highlight-minor-mode +1))
       (save-excursion
         (let ((inhibit-read-only t))
           (goto-char (point-min))
