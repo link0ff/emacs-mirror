@@ -188,10 +188,11 @@ See `replace-regexp' and `query-replace-regexp-eval'.")
 
 (defun query-replace-read-from-suggestions ()
   "Return a list of standard suggestions for `query-replace-read-from'.
-By default, the list includes the active region, the \"tag\" at point
-(see Info node `(emacs) Identifier Search'), the last isearch string,
-and the last replacement regexp.  `query-replace-read-from' appends
-the list returned by this function to the end of values available via
+By default, the list includes the active region, the identifier
+(a.k.a. \"tag\") at point (see Info node `(emacs) Identifier Search'),
+the last isearch string, and the last replacement regexp.
+`query-replace-read-from' appends the list returned
+by this function to the end of values available via
 \\<minibuffer-local-map>\\[next-history-element]."
   (delq nil (list (when (use-region-p)
                     (buffer-substring-no-properties
@@ -824,9 +825,9 @@ the function that you set this to can check `this-command'."
 
 (defun read-regexp-suggestions ()
   "Return a list of standard suggestions for `read-regexp'.
-By default, the list includes the identifier (a.k.a. \"tag\")
-at point (see Info node `(emacs) Identifier Search'), the last
-isearch regexp, the last isearch string, and the last
+By default, the list includes the active region, the identifier
+(a.k.a. \"tag\") at point (see Info node `(emacs) Identifier Search'),
+the last isearch regexp, the last isearch string, and the last
 replacement regexp.  `read-regexp' appends the list returned
 by this function to the end of values available via
 \\<minibuffer-local-map>\\[next-history-element]."
