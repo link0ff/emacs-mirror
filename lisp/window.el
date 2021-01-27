@@ -8196,8 +8196,8 @@ such alists.
 If ALIST has a non-nil `inhibit-same-window' entry, the selected
 window is not usable.  A dedicated window is usable only if it
 already shows BUFFER.  If ALIST contains a `previous-window'
-entry, the window specified by that entry is usable even if it
-never showed BUFFER before.
+entry, the window specified by that entry (either a variable
+or a value) is usable even if it never showed BUFFER before.
 
 If ALIST contains a `reusable-frames' entry, its value determines
 which frames to search for a usable window:

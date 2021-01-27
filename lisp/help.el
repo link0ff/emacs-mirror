@@ -524,6 +524,7 @@ or a buffer name."
           (when (and (re-search-forward "Key translations" nil t)
                      (fboundp 'outline-cycle))
             (outline-cycle))))
+      ;; maybe font-lock-ensure should be in outline-cycle-highlight-minor-mode?
       (font-lock-ensure))))
 
 ;; This function used to be in keymap.c.
