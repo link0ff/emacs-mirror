@@ -2488,7 +2488,7 @@ previous element of the minibuffer history in the minibuffer."
                       (point)))
                 ;; Move to the beginning of minibuffer contents
                 (goto-char (minibuffer-prompt-end))
-              ;; Otherwise, go to the previous history item
+              ;; Otherwise, go to the previous history element
               (signal 'beginning-of-buffer nil))))
       (beginning-of-buffer
        ;; Restore old position since `line-move-visual' moves point to

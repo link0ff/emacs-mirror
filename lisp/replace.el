@@ -186,6 +186,20 @@ See `replace-regexp' and `query-replace-regexp-eval'.")
                         length)
              length)))))
 
+(defun query-replace-read-from-suggestions ()
+  "Return a list of standard suggestions for `query-replace-read-from'.
+By default, the list includes the active region, the \"tag\" at point
+(see Info node `(emacs) Identifier Search'), the last isearch string,
+and the last replacement regexp.  `query-replace-read-from' appends
+the list returned by this function to the end of values available via
+\\<minibuffer-local-map>\\[next-history-element]."
+  (delq nil (list (when (use-region-p)
+                    (buffer-substring-no-properties
+                     (region-beginning) (region-end)))
+                  (find-tag-default)
+                  (car search-ring)
+                  (car (symbol-value query-replace-from-history-variable)))))
+
 (defun query-replace-read-from (prompt regexp-flag)
   "Query and return the `from' argument of a query-replace operation.
 Prompt with PROMPT.  REGEXP-FLAG non-nil means the response should be a regexp.
@@ -243,15 +257,7 @@ wants to replace FROM with TO."
                     (read-regexp prompt nil 'minibuffer-history)
                   (read-from-minibuffer
                    prompt nil nil nil nil
-                   (delq nil
-                         (list
-                          (when (use-region-p)
-                            (buffer-substring-no-properties
-                             (region-beginning) (region-end)))
-                          (find-tag-default)
-                          (car search-ring)
-                          (car (symbol-value query-replace-from-history-variable))))
-                   t)))))
+                   (query-replace-read-from-suggestions) t)))))
            (to))
       (if (and (zerop (length from)) query-replace-defaults)
 	  (cons (caar query-replace-defaults)
