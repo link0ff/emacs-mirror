@@ -99,10 +99,11 @@ static bool xd_in_read_queued_messages = 0;
 #ifdef DBUS_DEBUG
 #define XD_DEBUG_MESSAGE(...)						\
   do {									\
-    char s[4096];							\
+    char s[1024];							\
     snprintf (s, sizeof s, __VA_ARGS__);				\
     if (!noninteractive)						\
       printf ("%s: %s\n", __func__, s);					\
+    message ("%s: %s", __func__, s);					\
   } while (0)
 #define XD_DEBUG_VALID_LISP_OBJECT_P(object)				\
   do {									\
@@ -118,7 +119,7 @@ static bool xd_in_read_queued_messages = 0;
   do {									\
     if (!NILP (Vdbus_debug))						\
       {									\
-	char s[4096];							\
+	char s[1024];							\
 	snprintf (s, sizeof s, __VA_ARGS__);				\
 	message ("%s: %s", __func__, s);				\
       }									\

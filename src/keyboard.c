@@ -2881,21 +2881,6 @@ read_char (int commandflag, Lisp_Object map,
   if (!NILP (tem))
     {
       struct buffer *prev_buffer = current_buffer;
-
-#ifdef HAVE_DBUS
-      if (CONSP (c) && EQ (XCAR (c), Qdbus_event))
-	{
-	  char s[4096];
-	  AUTO_STRING (format, "%s");
-	  if (!noninteractive)
-	    printf ("!!!\n");
-	  snprintf (s, sizeof s, "D Event: %s", SSDATA (CALLN (Fformat, format, c)));
-	  if (!noninteractive)
-	    printf ("! %s: %s\n", __func__, s);
-	  /* message ("! %s: %s", __func__, s); */
-	}
-#endif
-
       last_input_event = c;
       call4 (Qcommand_execute, tem, Qnil, Fvector (1, &last_input_event), Qt);
 
@@ -3508,12 +3493,6 @@ kbd_buffer_nr_stored (void)
 void
 kbd_buffer_store_event (register struct input_event *event)
 {
-  char s[4096];
-  AUTO_STRING (format, "%s");
-  snprintf (s, sizeof s, "%s", SSDATA (CALLN (Fformat, format, event->arg)));
-  if (!noninteractive)
-    printf ("??? %s: %u %s\n", __func__, event->kind, s);
-
   kbd_buffer_store_event_hold (event, 0);
 }
 
@@ -3531,18 +3510,6 @@ void
 kbd_buffer_store_buffered_event (union buffered_input_event *event,
 				 struct input_event *hold_quit)
 {
-  if (!noninteractive)
-    printf ("??1 %s: %u\n", __func__, event->kind);
-
-  /* if (CONSP (event->ie.arg)) */
-  /*   { */
-  /*     char s[4096]; */
-  /*     AUTO_STRING (format, "%s"); */
-  /*     snprintf (s, sizeof s, "%s", SSDATA (CALLN (Fformat, format, event->ie.arg))); */
-  /*     if (!noninteractive) */
-  /* 	printf ("??2 %s\n", s); */
-  /*   } */
-
   if (event->kind == NO_EVENT)
     emacs_abort ();
 
