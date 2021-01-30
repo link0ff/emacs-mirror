@@ -984,6 +984,7 @@ Return an alist of the form ((FILENAME . (XREF ...)) ...)."
             (erase-buffer)
             (xref--insert-xrefs alist))
         (user-error
+         (erase-buffer)
          (insert
           (propertize
            (error-message-string err)
