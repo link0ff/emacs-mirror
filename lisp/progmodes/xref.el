@@ -607,7 +607,7 @@ SELECT is `quit', also quit the *xref* window."
     (when xref
       (xref--show-location (xref-item-location xref)))))
 
-(defun xref-next-line-no-select ()
+(defun xref-next-line-no-display ()
   "Move to the next xref but don't display its source."
   (interactive)
   (xref--search-property 'xref-item))
@@ -615,10 +615,10 @@ SELECT is `quit', also quit the *xref* window."
 (defun xref-next-line ()
   "Move to the next xref and display its source in the appropriate window."
   (interactive)
-  (xref-next-line-no-select)
+  (xref-next-line-no-display)
   (xref-show-location-at-point))
 
-(defun xref-prev-line-no-select ()
+(defun xref-prev-line-no-display ()
   "Move to the previous xref but don't display its source."
   (interactive)
   (xref--search-property 'xref-item t))
@@ -626,7 +626,7 @@ SELECT is `quit', also quit the *xref* window."
 (defun xref-prev-line ()
   "Move to the previous xref and display its source in the appropriate window."
   (interactive)
-  (xref-prev-line-no-select)
+  (xref-prev-line-no-display)
   (xref-show-location-at-point))
 
 (defun xref-next-group ()
@@ -803,9 +803,7 @@ references displayed in the current *xref* buffer."
     (define-key map (kbd "P") #'xref-prev-group)
     (define-key map (kbd "r") #'xref-query-replace-in-results)
     (define-key map (kbd "RET") #'xref-goto-xref)
-    (define-key map (kbd "C-j")  #'xref-quit-and-goto-xref)
-    (define-key map "\t" 'xref-next-line-no-select) ; like compilation-next-error
-    (define-key map [backtab] 'xref-prev-line-no-select) ; like compilation-previous-error
+    (define-key map (kbd "TAB")  #'xref-quit-and-goto-xref)
     (define-key map (kbd "C-o") #'xref-show-location-at-point)
     ;; suggested by Johan Claesson "to further reduce finger movement":
     (define-key map (kbd ".") #'xref-next-line)
@@ -1455,7 +1453,7 @@ IGNORES is a list of glob patterns for files to ignore."
      ;; without the '| sort ...' part if GNU sort is not available on
      ;; your system and/or stable ordering is not important to you.
      ;; Note#2: '!*/' is there to filter out dirs (e.g. submodules).
-     "xargs -0 rg <C> -nH --sort path --no-messages -g '!*/' -e <R>"
+     "xargs -0 rg <C> -nH --no-messages -g '!*/' -e <R> | sort -t: -k1,1 -k2n,2"
      ))
   "Associative list mapping program identifiers to command templates.
 
