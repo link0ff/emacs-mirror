@@ -3077,19 +3077,17 @@ on encoding."
         (puthash "BELL (BEL)" ?\a names)
         (setq ucs-names names))))
 
-;; TESTED ON "SUPER <TAB>" "GREEK <TAB>"
 (defun mule--ucs-names-affixation (names)
-  (let* ((chars-names
-          (mapcar (lambda (name)
-                    (cons (gethash name ucs-names) name))
-                  names))
-         (sorted-chars-names
-          (sort chars-names (lambda (a b) (< (car a) (car b))))))
-    (mapcar (lambda (char-name)
-              (let* ((char (car char-name))
-                     (char-str (if char (format "%c" char) " ")))
-                (list (cdr char-name) (concat char-str "\t") "")))
-            sorted-chars-names)))
+  (mapcar (lambda (name)
+            (let ((char (gethash name ucs-names)))
+              (list name (concat (if char (format "%c" char) " ") "\t") "")))
+          names))
+
+(defun mule--ucs-names-sort-by-char (names)
+  (let* ((chars-and-names
+          (mapcar (lambda (name) (cons (gethash name ucs-names) name)) names))
+         (sorted (sort chars-and-names (lambda (a b) (< (car a) (car b))))))
+    (mapcar #'cdr sorted)))
 
 (defun char-from-name (string &optional ignore-case)
   "Return a character as a number from its Unicode name STRING.
@@ -3140,6 +3138,7 @@ as names, not numbers."
 	     (if (eq action 'metadata)
 		 '(metadata
 		   (affixation-function . mule--ucs-names-affixation)
+		   (display-sort-function . mule--ucs-names-sort-by-char)
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
