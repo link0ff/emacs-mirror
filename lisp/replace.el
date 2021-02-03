@@ -1544,11 +1544,17 @@ You can add this to `occur-hook' if you always want a separate
   (interactive "P\np")
   (with-current-buffer
       (if (eq major-mode 'occur-mode) (current-buffer) (get-buffer "*Occur*"))
-    (rename-buffer (concat "*Occur: "
-                           (mapconcat #'buffer-name
-                                      (car (cddr occur-revert-arguments)) "/")
-                           "*")
-                   (or unique-p (not interactive-p)))))
+    (rename-buffer
+     (concat "*Occur: "
+             (mapconcat (lambda (boo)
+                          (or (and (buffer-live-p boo)
+                                   (buffer-name boo))
+                              (and (overlayp boo)
+                                   (buffer-live-p (overlay-buffer boo))
+                                   (buffer-name (overlay-buffer boo)))))
+                        (car (cddr occur-revert-arguments)) "/")
+             "*")
+     (or unique-p (not interactive-p)))))
 
 ;; Region limits when `occur' applies on a region.
 (defvar occur--final-pos nil)
