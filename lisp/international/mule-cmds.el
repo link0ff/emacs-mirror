@@ -3083,10 +3083,10 @@ on encoding."
               (list name (concat (if char (format "%c" char) " ") "\t") "")))
           names))
 
-(defun mule--ucs-names-sort-by-char (names)
-  (let* ((chars-and-names
+(defun mule--ucs-names-sort-by-code (names)
+  (let* ((codes-and-names
           (mapcar (lambda (name) (cons (gethash name ucs-names) name)) names))
-         (sorted (sort chars-and-names (lambda (a b) (< (car a) (car b))))))
+         (sorted (sort codes-and-names (lambda (a b) (< (car a) (car b))))))
     (mapcar #'cdr sorted)))
 
 (defun char-from-name (string &optional ignore-case)
@@ -3109,6 +3109,16 @@ Return nil if STRING does not name a character."
               (when (eq t (compare-strings string nil nil name nil nil
                                            ignore-case))
                 code)))))))
+
+(defcustom read-char-by-name-sort-function nil
+  "Function to sort characters displayed by `read-char-by-name' completion."
+  :type '(choice
+          (const :tag "Sort by character names" nil)
+          (const :tag "Sort by character codepoints"
+                 mule--ucs-names-sort-by-code)
+          (function :tag "Custom function"))
+  :group 'mule
+  :version "28.1")
 
 (defun read-char-by-name (prompt)
   "Read a character by its Unicode name or hex number string.
@@ -3136,9 +3146,9 @@ as names, not numbers."
 	   prompt
 	   (lambda (string pred action)
 	     (if (eq action 'metadata)
-		 '(metadata
+		 `(metadata
 		   (affixation-function . mule--ucs-names-affixation)
-		   (display-sort-function . mule--ucs-names-sort-by-char)
+		   (display-sort-function . ,read-char-by-name-sort-function)
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char

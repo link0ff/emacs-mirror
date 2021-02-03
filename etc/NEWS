@@ -851,6 +851,11 @@ so e.g. like 'C-x 8 [' inserts a left single quotation mark,
 'C-x \ [' does the same.
 
 ---
+*** New user option 'read-char-by-name-sort-function'.
+It can enable sorting the characters of completion from
+'C-x 8 RET TAB' by codepoints instead of character names.
+
+---
 *** Improved language transliteration in Malayalam input methods.
 Added a new Mozhi scheme.  The inapplicable ITRANS scheme is now
 deprecated.  Errors in the Inscript method were corrected.
