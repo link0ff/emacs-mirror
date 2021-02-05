@@ -851,9 +851,14 @@ so e.g. like 'C-x 8 [' inserts a left single quotation mark,
 'C-x \ [' does the same.
 
 ---
-*** New user option 'read-char-by-name-sort-function'.
+*** New user option 'read-char-by-name-sort'.
 It can enable sorting the characters of completion from
 'C-x 8 RET TAB' by codepoints instead of character names.
+
+---
+*** New user option 'read-char-by-name-group'.
+It groups the characters of completion from 'C-x 8 RET TAB'
+by Unicode blocks.
 
 ---
 *** Improved language transliteration in Malayalam input methods.
