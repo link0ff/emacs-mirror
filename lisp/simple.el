@@ -496,6 +496,16 @@ buffer causes automatic display of the corresponding source code location."
         (overlay-put ol 'window (get-buffer-window))
         (setf next-error--message-highlight-overlay ol)))))
 
+(defun recenter-current-error (&optional arg)
+  "Recenter the current displayed error in the `next-error' buffer."
+  (interactive "P")
+  (save-selected-window
+    (let ((next-error-highlight next-error-highlight-no-select)
+          (display-buffer-overriding-action
+           '(nil (inhibit-same-window . t))))
+      (next-error 0)
+      (set-buffer (window-buffer))
+      (recenter-top-bottom arg))))
 
 ;;;
 
@@ -1477,26 +1487,6 @@ included in the count."
 			  (setq invisible-count (1+ invisible-count))))
 		    invisible-count))))
 	    (t (- (buffer-size) (forward-line (buffer-size))))))))
-
-(defun line-number-at-pos (&optional pos absolute)
-  "Return buffer line number at position POS.
-If POS is nil, use current buffer location.
-
-If ABSOLUTE is nil, the default, counting starts
-at (point-min), so the value refers to the contents of the
-accessible portion of the (potentially narrowed) buffer.  If
-ABSOLUTE is non-nil, ignore any narrowing and return the
-absolute line number."
-  (save-restriction
-    (when absolute
-      (widen))
-    (let ((opoint (or pos (point))) start)
-      (save-excursion
-        (goto-char (point-min))
-        (setq start (point))
-        (goto-char opoint)
-        (forward-line 0)
-        (1+ (count-lines start (point)))))))
 
 (defcustom what-cursor-show-names nil
   "Whether to show character names in `what-cursor-position'."
