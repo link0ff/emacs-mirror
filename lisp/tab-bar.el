@@ -252,12 +252,6 @@ you can use the command `toggle-frame-tab-bar'."
          (set-default sym val)
          ;; Preload button images
          (tab-bar-mode 1)
-         ;; New frames have only one tab, so hide it by default
-         (when (eq val 1)
-           (setq default-frame-alist
-              (cons (cons 'tab-bar-lines 0)
-                    (assq-delete-all 'tab-bar-lines
-                                     default-frame-alist))))
          ;; Then handle each frame individually
          (dolist (frame (frame-list))
            (set-frame-parameter
