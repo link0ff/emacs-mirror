@@ -1457,9 +1457,9 @@ included in the count."
   (save-excursion
     (save-restriction
       (narrow-to-region start end)
-      (goto-char (point-min))
       (cond ((and (not ignore-invisible-lines)
                   (eq selective-display t))
+             (goto-char (point-min))
 	     (save-match-data
 	       (let ((done 0))
 		 (while (re-search-forward "\n\\|\r[^\n]" nil t 40)
@@ -1472,6 +1472,7 @@ included in the count."
 		     (1+ done)
 		   done))))
 	    (ignore-invisible-lines
+             (goto-char (point-min))
 	     (save-match-data
 	       (- (buffer-size)
                   (forward-line (buffer-size))
@@ -1486,7 +1487,11 @@ included in the count."
 			        (assq prop buffer-invisibility-spec)))
 			  (setq invisible-count (1+ invisible-count))))
 		    invisible-count))))
-	    (t (- (buffer-size) (forward-line (buffer-size))))))))
+	    (t
+             (goto-char (point-max))
+             (if (bolp)
+                 (1- (line-number-at-pos))
+               (line-number-at-pos)))))))
 
 (defcustom what-cursor-show-names nil
   "Whether to show character names in `what-cursor-position'."

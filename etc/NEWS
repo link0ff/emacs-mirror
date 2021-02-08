@@ -85,11 +85,11 @@ useful on systems such as FreeBSD which ships only with "etc/termcap".
 
 * Changes in Emacs 28.1
 
+** The new NonGNU ELPA archive is enabled by default alongside GNU ELPA.
+
 +++
 ** New command 'recenter-other-window', bound to 'S-M-C-l'.
 Like 'recenter-top-bottom' acting in the other window.
-
-** The new NonGNU ELPA archive is enabled by default alongside GNU ELPA
 
 ** Minibuffer scrolling is now conservative by default.
 This is controlled by the new variable 'scroll-minibuffer-conservatively'.
@@ -241,8 +241,9 @@ search buffer due to too many matches being highlighted.
 ** A new keymap for buffer actions has been added.
 The 'C-x x' keymap now holds keystrokes for various buffer-oriented
 commands.  The new keystrokes are 'C-x x g' ('revert-buffer'),
-'C-x x r' ('rename-buffer'), 'C-x x u' ('rename-uniquely'),
-'C-x x i' ('insert-buffer') and 'C-x x t' ('toggle-truncate-lines').
+'C-x x r' ('rename-buffer'), 'C-x x u' ('rename-uniquely'), 'C-x x n'
+('clone-buffer'), 'C-x x i' ('insert-buffer') and 'C-x x t'
+('toggle-truncate-lines').
 
 
 * Editing Changes in Emacs 28.1
@@ -599,6 +600,12 @@ their 'default-directory' under VC.
 *** New face 'log-view-commit-body'.
 This is used when expanding commit messages from 'vc-print-root-log'
 and similar commands.
+
+---
+*** New faces for 'vc-dir' buffers and their Git VC backend.
+Those are: 'vc-dir-header', 'vc-dir-header-value', 'vc-dir-directory',
+'vc-dir-file', 'vc-dir-mark-indicator', 'vc-dir-status-warning',
+'vc-dir-status-edited', 'vc-dir-status-up-to-date', 'vc-dir-ignored'.
 
 ---
 *** The responsible VC backend is now the most specific one.
