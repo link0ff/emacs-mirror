@@ -3077,6 +3077,12 @@ on encoding."
         (puthash "BELL (BEL)" ?\a names)
         (setq ucs-names names))))
 
+(defun mule--ucs-names-sort-by-code (names)
+  (let* ((codes-and-names
+          (mapcar (lambda (name) (cons (gethash name ucs-names) name)) names))
+         (sorted (sort codes-and-names (lambda (a b) (< (car a) (car b))))))
+    (mapcar #'cdr sorted)))
+
 (defun mule--ucs-names-affixation (names)
   (mapcar (lambda (name)
             (let ((char (gethash name ucs-names)))
@@ -3113,12 +3119,6 @@ on encoding."
               names-with-header)))
     (nreverse names-with-header)))
 
-(defun mule--ucs-names-sort-by-code (names)
-  (let* ((codes-and-names
-          (mapcar (lambda (name) (cons (gethash name ucs-names) name)) names))
-         (sorted (sort codes-and-names (lambda (a b) (< (car a) (car b))))))
-    (mapcar #'cdr sorted)))
-
 (defun char-from-name (string &optional ignore-case)
   "Return a character as a number from its Unicode name STRING.
 If optional IGNORE-CASE is non-nil, ignore case in STRING.
@@ -3141,7 +3141,8 @@ Return nil if STRING does not name a character."
                 code)))))))
 
 (defcustom read-char-by-name-sort nil
-  "How to sort characters for `read-char-by-name' completion."
+  "How to sort characters for `read-char-by-name' completion.
+Defines the sorting order either by character names or their codepoints."
   :type '(choice
           (const :tag "Sort by character names" nil)
           (const :tag "Sort by character codepoints" code))
@@ -3150,7 +3151,7 @@ Return nil if STRING does not name a character."
 
 (defcustom read-char-by-name-group nil
   "How to group characters for `read-char-by-name' completion.
-When non-nil, split characters to sections of Unicode blocks
+When t, split characters to sections of Unicode blocks
 sorted alphabetically."
   :type 'boolean
   :group 'mule
@@ -3169,6 +3170,9 @@ preceded by an asterisk `*' and use completion, it will show all
 the characters whose names include that substring, not necessarily
 at the beginning of the name.
 
+The options `read-char-by-name-sort' and `read-char-by-name-group'
+define the sorting order of completion characters and how to group them.
+
 Accept a name like \"CIRCULATION FUNCTION\", a hexadecimal
 number like \"2A10\", or a number in hash notation (e.g.,
 \"#x2a10\" for hex, \"10r10768\" for decimal, or \"#o25020\" for
@@ -3183,13 +3187,13 @@ as names, not numbers."
 	   (lambda (string pred action)
 	     (if (eq action 'metadata)
 		 `(metadata
-		   (affixation-function
-                    . ,(if read-char-by-name-group
-                           'mule--ucs-names-group
-                         'mule--ucs-names-affixation))
 		   (display-sort-function
-                    . ,(when (eq read-char-by-name-sort 'code)
-                         'mule--ucs-names-sort-by-code))
+		    . ,(when (eq read-char-by-name-sort 'code)
+			 'mule--ucs-names-sort-by-code))
+		   (affixation-function
+		    . ,(if read-char-by-name-group
+			   'mule--ucs-names-group
+			 'mule--ucs-names-affixation))
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
