@@ -139,7 +139,7 @@ quotify_args (Lisp_Object exp)
 }
 
 static const char *callint_argfuns[]
-    = {"", "point", "mark", "region-beginning", "region-end", "region-noncontiguous-p"};
+    = {"", "point", "mark", "region-beginning", "region-end"};
 
 static void
 check_mark (bool for_region)
@@ -819,7 +819,6 @@ syms_of_callint (void)
 
   preserved_fns = pure_list (intern_c_string ("region-beginning"),
 			     intern_c_string ("region-end"),
-			     intern_c_string ("region-noncontiguous-p"),
 			     intern_c_string ("point"),
 			     intern_c_string ("mark"));
   staticpro (&preserved_fns);

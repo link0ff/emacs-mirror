@@ -40,12 +40,10 @@
  "Compose-like input method with the same key sequences as X Multi_key.
 Examples:
  E = -> €   1 2 -> ½   ^ 3 -> ³"
- '(("\t" . quail-completion)
-   ("\n" . insert-char))
+ '(("\t" . quail-completion))
  t nil nil nil nil nil nil nil nil t)
 
 (quail-define-rules
- ;; ("?\n" insert-char) ;; a function symbol which returns a Quail map
  ("''" ?´)
  ("-^" ?¯)
  ("^-" ?¯)
