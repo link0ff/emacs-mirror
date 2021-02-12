@@ -2018,6 +2018,15 @@ could have saved enough typing by using an abbrev, a hint will be
 displayed in the echo area, mentioning the abbrev that could have been
 used instead.
 
+** Octave Mode
+
++++
+*** Line continuations in double-quoted strings now use a backslash.
+Typing 'C-M-j' (bound to 'octave-indent-new-comment-line') now follows
+the behavior introduced in Octave 3.8 of using a backslash as a line
+continuation marker within double-quoted strings, and an ellipsis
+everywhere else.
+
 
 * New Modes and Packages in Emacs 28.1
 
@@ -2047,6 +2056,11 @@ first).
 
 
 * Incompatible Editing Changes in Emacs 28.1
+
+** The 'M-o' ('facemanu-keymap') global binding has been removed.
+
+** The 'M-o M-s' and 'M-o M-S' global bindings have been removed.
+Use 'M-x center-line' and 'M-x center-paragraph' instead.
 
 ** In 'f90-mode', the backslash character ('\') no longer escapes.
 For about a decade, the backslash character has no longer had a
