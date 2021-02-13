@@ -1782,6 +1782,8 @@ Return t if the buffer had changes, nil otherwise."
                      (if async 'async 1) "diff" file
                      (append (vc-switches nil 'diff) `(,(null-device)))))))
         (setq files (nreverse filtered))))
+    ;; [2021-02-11] I think it should either try to get visible window's buffer position
+    ;; or maybe also search in non-visible buffers?
     (unless rev2    ; remember the position in the or a current buffer
       (let ((f files))
         (while f
