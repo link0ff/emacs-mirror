@@ -24,6 +24,9 @@ applies, and please also update docstrings as needed.
 
 * Installation Changes in Emacs 28.1
 
+--
+** Support for building with Motif has been removed.
+
 ** Cairo graphics library is now used by default if found.
 '--with-cairo' is now the default, if the appropriate development files
 are found by 'configure'.  Note that building with Cairo means using
@@ -932,14 +935,27 @@ To customize obsolete user options, use 'customize-option' or
 
 ** Edebug
 
-+++
-*** Edebug specification lists can use the new keyword '&error', which
-unconditionally aborts the current edebug instrumentation with the
-supplied error message.
+---
+*** 'get-edebug-spec' is obsolete, replaced by 'edebug-get-spec'.
 
-*** Edebug specification lists can use the new keyword ':unique',
-which appends a unique suffix to the Edebug name of the current
-definition.
++++
+*** New function 'def-edebug-elem-spec' to define Edebug spec elements.
+These used to be defined with 'def-edebug-spec' thus conflating the
+two name spaces, which lead to name collisions.
+The use of 'def-edebug-spec' to define Edebug spec elements is
+declared obsolete.
+
+*** Edebug specification lists can use some new keywords:
+
++++
+**** '&lookup SPEC FUN ARGS...' lets FUN compute the specs to use
+
++++
+**** '&error MSG' unconditionally aborts the current edebug instrumentation.
+
++++
+**** ':unique STRING' appends STRING to the Edebug name of the current
+definition to (hopefully) make it more unique.
 
 ** ElDoc
 

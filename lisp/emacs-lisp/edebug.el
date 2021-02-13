@@ -55,6 +55,7 @@
 (require 'backtrace)
 (require 'macroexp)
 (require 'cl-lib)
+(require 'seq)
 (eval-when-compile (require 'pcase))
 
 ;;; Options
@@ -244,18 +245,29 @@ If the result is non-nil, then break.  Errors are ignored."
 
 ;;; Form spec utilities.
 
-(defun get-edebug-spec (symbol)
+(defun edebug-get-spec (symbol)
+  "Return the Edebug spec of a given Lisp expression's head SYMBOL.
+The argument is usually a symbol, but it doesn't have to be."
   ;; Get the spec of symbol resolving all indirection.
   (let ((spec nil)
 	(indirect symbol))
     (while
-        (progn
-          (and (symbolp indirect)
-               (setq indirect
-                     (function-get indirect 'edebug-form-spec 'macro))))
+        (and (symbolp indirect)
+             (setq indirect
+                   (function-get indirect 'edebug-form-spec 'macro)))
       ;; (edebug-trace "indirection: %s" edebug-form-spec)
       (setq spec indirect))
     spec))
+
+(define-obsolete-function-alias 'get-edebug-spec #'edebug-get-spec "28.1")
+
+(defun edebug--get-elem-spec (elem)
+  "Return the specs of the Edebug element ELEM, if any.
+ELEM has to be a symbol."
+  (or (get elem 'edebug-elem-spec)
+      ;; For backward compatibility, we also allow the use of
+      ;; a form's name as a shorthand to refer to its spec.
+      (edebug-get-spec elem)))
 
 ;;;###autoload
 (defun edebug-basic-spec (spec)
@@ -961,6 +973,18 @@ circular objects.  Let `read' read everything else."
 
 ;;; Cursors for traversal of list and vector elements with offsets.
 
+;; Edebug's instrumentation is based on parsing the sexps, which come with
+;; auxiliary position information.  Instead of keeping the position
+;; information together with the sexps, it is kept in a "parallel
+;; tree" of offsets.
+;;
+;; An "edebug cursor" is a pair of a *list of sexps* (called the
+;; "expressions") together with a matching list of offsets.
+;; When we're parsing the content of a list, the
+;; `edebug-cursor-expressions' is simply the list but when parsing
+;; a vector, the `edebug-cursor-expressions' is a list formed of the
+;; elements of the vector.
+
 (defvar edebug-dotted-spec nil
   "Set to t when matching after the dot in a dotted spec list.")
 
@@ -1015,8 +1039,8 @@ circular objects.  Let `read' read everything else."
   ;; The following test should always fail.
   (if (edebug-empty-cursor cursor)
       (edebug-no-match cursor "Not enough arguments."))
-  (setcar cursor (cdr (car cursor)))
-  (setcdr cursor (cdr (cdr cursor)))
+  (cl-callf cdr (car cursor))
+  (cl-callf cdr (cdr cursor))
   cursor)
 
 
@@ -1153,7 +1177,7 @@ purpose by adding an entry to this alist, and setting
 	       (eq 'symbol (progn (forward-char 1) (edebug-next-token-class))))
 	  ;; Find out if this is a defining form from first symbol
 	  (setq def-kind (read (current-buffer))
-		spec (and (symbolp def-kind) (get-edebug-spec def-kind))
+		spec (and (symbolp def-kind) (edebug-get-spec def-kind))
 		defining-form-p (and (listp spec)
 				     (eq '&define (car spec)))
 		;; This is incorrect in general!! But OK most of the time.
@@ -1502,7 +1526,7 @@ contains a circular object."
 	  (if (eq 'quote (car form))
 	      form
 	    (let* ((head (car form))
-		   (spec (and (symbolp head) (get-edebug-spec head)))
+		   (spec (and (symbolp head) (edebug-get-spec head)))
 		   (new-cursor (edebug-new-cursor form offset)))
 	      ;; Find out if this is a defining form from first symbol.
 	      ;; An indirect spec would not work here, yet.
@@ -1542,7 +1566,7 @@ contains a circular object."
 (defsubst edebug-list-form-args (head cursor)
   ;; Process the arguments of a list form given that head of form is a symbol.
   ;; Helper for edebug-list-form
-  (let ((spec (get-edebug-spec head)))
+  (let ((spec (edebug-get-spec head)))
     (cond
      ;; Treat cl-macrolet bindings like macros with no spec.
      ((member head edebug--cl-macrolet-defs)
@@ -1645,7 +1669,7 @@ contains a circular object."
 	edebug-error-point
 	(edebug-gate edebug-gate)  ;; locally bound to limit effect
 	)
-    (edebug-match-specs cursor specs 'edebug-match-specs)))
+    (edebug-match-specs cursor specs #'edebug-match-specs)))
 
 
 (defun edebug-match-one-spec (cursor spec)
@@ -1741,11 +1765,11 @@ contains a circular object."
 		(gate . edebug-match-gate)
 		;;   (nil . edebug-match-nil)  not this one - special case it.
 		))
-  (put (car pair) 'edebug-form-spec (cdr pair)))
+  (put (car pair) 'edebug-elem-spec (cdr pair)))
 
 (defun edebug-match-symbol (cursor symbol)
   ;; Match a symbol spec.
-  (let* ((spec (get-edebug-spec symbol)))
+  (let* ((spec (edebug--get-elem-spec symbol)))
     (cond
      (spec
       (if (consp spec)
@@ -1846,6 +1870,22 @@ contains a circular object."
       (apply #'edebug-no-match cursor "Expected one of" original-specs))
     ))
 
+(cl-defmethod edebug--handle-&-spec-op ((_ (eql &lookup)) cursor specs)
+  "Compute the specs for `&lookup SPEC FUN ARGS...'.
+Extracts the head of the data by matching it against SPEC,
+and then matches the rest against the output of (FUN ARGS... HEAD)."
+  (pcase-let*
+      ((`(,spec ,fun . ,args) specs)
+       (exps (edebug-cursor-expressions cursor))
+       (instrumented-head (edebug-match-one-spec cursor (or spec 'sexp)))
+       (consumed (- (length exps)
+                    (length (edebug-cursor-expressions cursor))))
+       (newspecs (apply fun (append args (seq-subseq exps 0 consumed)))))
+    (cl-assert (eq (edebug-cursor-expressions cursor) (nthcdr consumed exps)))
+    ;; FIXME: What'd be the difference if we used `edebug-match-sublist',
+    ;; which is what `edebug-list-form-args' uses for the similar purpose
+    ;; when matching "normal" forms?
+    (append instrumented-head (edebug-match cursor newspecs))))
 
 (cl-defmethod edebug--handle-&-spec-op ((_ (eql &not)) cursor specs)
   ;; If any specs match, then fail
@@ -2000,7 +2040,7 @@ contains a circular object."
 		cursor "Expected lambda expression"))
 	 (offset (edebug-top-offset cursor))
 	 (head (and (consp sexp) (car sexp)))
-	 (spec (and (symbolp head) (get-edebug-spec head)))
+	 (spec (and (symbolp head) (edebug-get-spec head)))
 	 (edebug-inside-func nil))
     ;; Find out if this is a defining form from first symbol.
     (if (and (consp spec) (eq '&define (car spec)))
@@ -2145,145 +2185,120 @@ into `edebug--cl-macrolet-defs' which is checked in `edebug-list-form-args'."
 ;;;; Edebug Form Specs
 ;;; ==========================================================
 
-;;;;* Spec for def-edebug-spec
-;;; Out of date.
-
-(defun edebug-spec-p (object)
-  "Return non-nil if OBJECT is a symbol with an edebug-form-spec property."
-  (and (symbolp object)
-       (get object 'edebug-form-spec)))
-
-(def-edebug-spec def-edebug-spec
-  ;; Top level is different from lower levels.
-  (&define :name edebug-spec name
-	   &or "nil" edebug-spec-p "t" "0" (&rest edebug-spec)))
-
-(def-edebug-spec edebug-spec-list
-  ;; A list must have something in it, or it is nil, a symbolp
-  ((edebug-spec . [&or nil edebug-spec])))
-
-(def-edebug-spec edebug-spec
-  (&or
-   edebug-spec-list
-   (vector &rest edebug-spec)		; matches a vector
-   ("vector" &rest edebug-spec)		; matches a vector spec
-   ("quote" symbolp)
-   stringp
-   [edebug-lambda-list-keywordp &rest edebug-spec]
-   [keywordp gate edebug-spec]
-   edebug-spec-p  ;; Including all the special ones e.g. form.
-   symbolp;; a predicate
-   ))
-
-
 ;;;* Emacs special forms and some functions.
 
-;; quote expects only one argument, although it allows any number.
-(def-edebug-spec quote sexp)
+(pcase-dolist
+    (`(,name ,spec)
 
-;; The standard defining forms.
-(def-edebug-spec defconst defvar)
-(def-edebug-spec defvar (symbolp &optional form stringp))
+     '((quote (sexp)) ;quote expects only one arg, tho it allows any number.
 
-(def-edebug-spec defun
-  (&define name lambda-list lambda-doc
-           [&optional ("declare" &rest sexp)]
-	   [&optional ("interactive" interactive)]
-	   def-body))
-(def-edebug-spec defmacro
-  ;; FIXME: Improve `declare' so we can Edebug gv-expander and
-  ;; gv-setter declarations.
-  (&define name lambda-list lambda-doc
-           [&optional ("declare" &rest sexp)] def-body))
+       ;; The standard defining forms.
+       (defvar (symbolp &optional form stringp))
+       (defconst defvar)
 
-(def-edebug-spec arglist lambda-list)  ;; deprecated - use lambda-list.
+       ;; Contrary to macros, special forms default to assuming that all args
+       ;; are normal forms, so we don't need to do anything about those
+       ;; special forms:
+       ;;(save-current-buffer t)
+       ;;(save-excursion t)
+       ;;...
+       ;;(progn t)
 
-(def-edebug-spec lambda-list
-  (([&rest arg]
-    [&optional ["&optional" arg &rest arg]]
-    &optional ["&rest" arg]
-    )))
+       ;; `defun' and `defmacro' are not special forms (any more), but it's
+       ;; more convenient to define their Edebug spec here.
+       (defun ( &define name lambda-list lambda-doc
+	        [&optional ("declare" def-declarations)]
+	        [&optional ("interactive" &optional &or stringp def-form)]
+	        def-body))
 
-(def-edebug-spec lambda-doc
-  (&optional [&or stringp
-                  (&define ":documentation" def-form)]))
+       (defmacro ( &define name lambda-list lambda-doc
+                   [&optional ("declare" def-declarations)]
+                   def-body))
 
-(def-edebug-spec interactive
-  (&optional &or stringp def-form))
+       ;; function expects a symbol or a lambda or macro expression
+       ;; A macro is allowed by Emacs.
+       (function (&or symbolp lambda-expr))
+
+       ;; FIXME?  The manual uses this form (maybe that's just
+       ;; for illustration purposes?):
+       ;; (let ((&rest &or symbolp (gate symbolp &optional form)) body))
+       (let ((&rest &or (symbolp &optional form) symbolp) body))
+       (let* let)
+
+       (setq (&rest symbolp form))
+       (cond (&rest (&rest form)))
+
+       (condition-case ( symbolp form
+                         &rest ([&or symbolp (&rest symbolp)] body)))
+
+       (\` (backquote-form))
+
+       ;; Assume immediate quote in unquotes mean backquote at next
+       ;;  higher level.
+       (\, (&or ("quote" edebug-\`) def-form))
+       (\,@ (&define  ;; so (,@ form) is never wrapped.
+	     &or ("quote" edebug-\`) def-form))
+       ))
+    (put name 'edebug-form-spec spec))
+
+(defun edebug--get-declare-spec (head)
+  (get head 'edebug-declaration-spec))
+
+(def-edebug-elem-spec 'def-declarations
+  '(&rest &or (&lookup symbolp edebug--get-declare-spec) sexp))
+
+(def-edebug-elem-spec 'lambda-list
+  '(([&rest arg]
+     [&optional ["&optional" arg &rest arg]]
+     &optional ["&rest" arg]
+     )))
+
+(def-edebug-elem-spec 'arglist '(lambda-list))  ;; deprecated - use lambda-list.
+
+(def-edebug-elem-spec 'lambda-doc
+  '(&optional [&or stringp
+                   (&define ":documentation" def-form)]))
 
 ;; A function-form is for an argument that may be a function or a form.
 ;; This specially recognizes anonymous functions quoted with quote.
-(def-edebug-spec function-form
+(def-edebug-elem-spec 'function-form          ;Deprecated, use `form'!
   ;; form at the end could also handle "function",
   ;; but recognize it specially to avoid wrapping function forms.
-  (&or ([&or "quote" "function"] &or symbolp lambda-expr) form))
-
-;; function expects a symbol or a lambda or macro expression
-;; A macro is allowed by Emacs.
-(def-edebug-spec function (&or symbolp lambda-expr))
-
-;; A macro expression is a lambda expression with "macro" prepended.
-(def-edebug-spec macro (&define "lambda" lambda-list def-body))
-
-;; (def-edebug-spec anonymous-form ((&or ["lambda" lambda] ["macro" macro])))
-
-;; Standard functions that take function-forms arguments.
-
-;; FIXME?  The manual uses this form (maybe that's just for illustration?):
-;; (def-edebug-spec let
-;;   ((&rest &or symbolp (gate symbolp &optional form))
-;;    body))
-(def-edebug-spec let
-  ((&rest &or (symbolp &optional form) symbolp)
-   body))
-
-(def-edebug-spec let* let)
-
-(def-edebug-spec setq (&rest symbolp form))
-
-(def-edebug-spec cond (&rest (&rest form)))
-
-(def-edebug-spec condition-case
-  (symbolp
-   form
-   &rest ([&or symbolp (&rest symbolp)] body)))
-
-
-(def-edebug-spec \` (backquote-form))
+  '(&or ([&or "quote" "function"] &or symbolp lambda-expr) form))
 
 ;; Supports quotes inside backquotes,
 ;; but only at the top level inside unquotes.
-(def-edebug-spec backquote-form
-  (&or
-   ;; Disallow instrumentation of , and ,@ inside a nested backquote, since
-   ;; these are likely to be forms generated by a macro being debugged.
-   ("`" nested-backquote-form)
-   ([&or "," ",@"] &or ("quote" backquote-form) form)
-   ;; The simple version:
-   ;;   (backquote-form &rest backquote-form)
-   ;; doesn't handle (a . ,b).  The straightforward fix:
-   ;;   (backquote-form . [&or nil backquote-form])
-   ;; uses up too much stack space.
-   ;; Note that `(foo . ,@bar) is not valid, so we don't need to handle it.
-   (backquote-form [&rest [&not ","] backquote-form]
-		   . [&or nil backquote-form])
-   ;; If you use dotted forms in backquotes, replace the previous line
-   ;; with the following.  This takes quite a bit more stack space, however.
-   ;; (backquote-form . [&or nil backquote-form])
-   (vector &rest backquote-form)
-   sexp))
+(def-edebug-elem-spec 'backquote-form
+  '(&or
+    ;; Disallow instrumentation of , and ,@ inside a nested backquote, since
+    ;; these are likely to be forms generated by a macro being debugged.
+    ("`" nested-backquote-form)
+    ([&or "," ",@"] &or ("quote" backquote-form) form)
+    ;; The simple version:
+    ;;   (backquote-form &rest backquote-form)
+    ;; doesn't handle (a . ,b).  The straightforward fix:
+    ;;   (backquote-form . [&or nil backquote-form])
+    ;; uses up too much stack space.
+    ;; Note that `(foo . ,@bar) is not valid, so we don't need to handle it.
+    (backquote-form [&rest [&not ","] backquote-form]
+		    . [&or nil backquote-form])
+    ;; If you use dotted forms in backquotes, replace the previous line
+    ;; with the following.  This takes quite a bit more stack space, however.
+    ;; (backquote-form . [&or nil backquote-form])
+    (vector &rest backquote-form)
+    sexp))
 
-(def-edebug-spec nested-backquote-form
-  (&or
-   ("`" &error "Triply nested backquotes (without commas \"between\" them) \
+(def-edebug-elem-spec 'nested-backquote-form
+  '(&or
+    ("`" &error "Triply nested backquotes (without commas \"between\" them) \
 are too difficult to instrument")
-   ;; Allow instrumentation of any , or ,@ contained within the (\, ...) or
-   ;; (\,@ ...) matched on the next line.
-   ([&or "," ",@"] backquote-form)
-   (nested-backquote-form [&rest [&not "," ",@"] nested-backquote-form]
-                          . [&or nil nested-backquote-form])
-   (vector &rest nested-backquote-form)
-   sexp))
+    ;; Allow instrumentation of any , or ,@ contained within the (\, ...) or
+    ;; (\,@ ...) matched on the next line.
+    ([&or "," ",@"] backquote-form)
+    (nested-backquote-form [&rest [&not "," ",@"] nested-backquote-form]
+                           . [&or nil nested-backquote-form])
+    (vector &rest nested-backquote-form)
+    sexp))
 
 ;; Special version of backquote that instruments backquoted forms
 ;; destined to be evaluated, usually as the result of a
@@ -2298,20 +2313,9 @@ are too difficult to instrument")
 
 ;; ,@ might have some problems.
 
-(defalias 'edebug-\` '\`)  ;; same macro as regular backquote.
-(def-edebug-spec edebug-\` (def-form))
-
-;; Assume immediate quote in unquotes mean backquote at next higher level.
-(def-edebug-spec \, (&or ("quote" edebug-\`) def-form))
-(def-edebug-spec \,@ (&define  ;; so (,@ form) is never wrapped.
-		     &or ("quote" edebug-\`) def-form))
-
-;; New byte compiler.
-
-(def-edebug-spec save-selected-window t)
-(def-edebug-spec save-current-buffer t)
-
-;; Anything else?
+(defmacro edebug-\` (exp)
+  (declare (debug (def-form)))
+  (list '\` exp))
 
 ;;; The debugger itself
 
@@ -2485,11 +2489,10 @@ STATUS should be a list returned by `edebug-var-status'."
       (edebug-print-trace-after
        (format "%s result: %s" function edebug-result)))))
 
-(def-edebug-spec edebug-tracing (form body))
-
 (defmacro edebug-tracing (msg &rest body)
   "Print MSG in *edebug-trace* before and after evaluating BODY.
 The result of BODY is also printed."
+  (declare (debug (form body)))
   `(let ((edebug-stack-depth (1+ edebug-stack-depth))
 	 edebug-result)
      (edebug-print-trace-before ,msg)
@@ -3601,7 +3604,10 @@ canceled the first time the function is entered."
   ;; Could store this in the edebug data instead.
   (put function 'edebug-on-entry (if flag 'temp t)))
 
-(defalias 'edebug-cancel-edebug-on-entry #'cancel-edebug-on-entry)
+(define-obsolete-function-alias 'edebug-cancel-edebug-on-entry
+  #'edebug-cancel-on-entry "28.1")
+(define-obsolete-function-alias 'cancel-edebug-on-entry
+  #'edebug-cancel-on-entry "28.1")
 
 (defun edebug--edebug-on-entry-functions ()
   (let ((functions nil))
@@ -3613,7 +3619,7 @@ canceled the first time the function is entered."
      obarray)
     functions))
 
-(defun cancel-edebug-on-entry (function)
+(defun edebug-cancel-on-entry (function)
   "Cause Edebug to not stop when FUNCTION is called.
 The removes the effect of `edebug-on-entry'.  If FUNCTION is is
 nil, remove `edebug-on-entry' on all functions."
@@ -3937,10 +3943,14 @@ be installed in `emacs-lisp-mode-map'.")
 ;; Autoloading these global bindings doesn't make sense because
 ;; they cannot be used anyway unless Edebug is already loaded and active.
 
-(defvar global-edebug-prefix "\^XX"
+(define-obsolete-variable-alias 'global-edebug-prefix
+  'edebug-global-prefix "28.1")
+(defvar edebug-global-prefix "\^XX"
   "Prefix key for global edebug commands, available from any buffer.")
 
-(defvar global-edebug-map
+(define-obsolete-variable-alias 'global-edebug-map
+  'edebug-global-map "28.1")
+(defvar edebug-global-map
   (let ((map (make-sparse-keymap)))
 
     (define-key map " " 'edebug-step-mode)
@@ -3973,9 +3983,9 @@ be installed in `emacs-lisp-mode-map'.")
     map)
   "Global map of edebug commands, available from any buffer.")
 
-(when global-edebug-prefix
-  (global-unset-key global-edebug-prefix)
-  (global-set-key global-edebug-prefix global-edebug-map))
+(when edebug-global-prefix
+  (global-unset-key edebug-global-prefix)
+  (global-set-key edebug-global-prefix edebug-global-map))
 
 
 (defun edebug-help ()
@@ -4237,7 +4247,8 @@ This should be a list of `edebug---frame' objects.")
   (pop-to-buffer edebug-backtrace-buffer)
   (unless (derived-mode-p 'backtrace-mode)
     (backtrace-mode)
-    (add-hook 'backtrace-goto-source-functions #'edebug--backtrace-goto-source))
+    (add-hook 'backtrace-goto-source-functions
+              #'edebug--backtrace-goto-source nil t))
   (setq edebug-instrumented-backtrace-frames
         (backtrace-get-frames 'edebug-debugger
                               :constructor #'edebug--make-frame)
