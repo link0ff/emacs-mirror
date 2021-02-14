@@ -329,6 +329,41 @@ recently executed command not bound to an input event\"."
 
 ;;;;; ************************* EMACS CONTROL ************************* ;;;;;
 
+
+;; And now for something completely different.
+
+;;; repeat-mode
+
+(defcustom repeat-exit-key [return] ; like `isearch-exit'
+  "Key that stops the modal repeating of keys in sequence."
+  :type '(choice (const :tag "No special key to exit repeat sequence" nil)
+		 (key-sequence :tag "Key that exits repeat sequence"))
+  :group 'convenience
+  :version "28.1")
+
+;;;###autoload
+(define-minor-mode repeat-mode
+  "Toggle Repeat mode.
+When Repeat mode is enabled, and the command symbol has the property named
+`repeat-map', this map is activated temporarily for the next command."
+  :global t :group 'convenience
+  (if (not repeat-mode)
+      (remove-hook 'post-command-hook 'repeat-post-hook)
+    (add-hook 'post-command-hook 'repeat-post-hook)))
+
+(defun repeat-post-hook ()
+  "Function run after commands to set transient keymap."
+  (when repeat-mode
+    (let ((repeat-map (and (symbolp this-command)
+                           (get this-command 'repeat-map))))
+      (when repeat-map
+        (when (boundp repeat-map)
+          (setq repeat-map (symbol-value repeat-map)))
+        (let ((map (copy-keymap repeat-map)))
+          (when repeat-exit-key
+            (define-key map repeat-exit-key 'ignore))
+          (set-transient-map map))))))
+
 (provide 'repeat)
 
 ;;; repeat.el ends here

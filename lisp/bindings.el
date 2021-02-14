@@ -950,6 +950,12 @@ if `inhibit-field-text-motion' is non-nil."
 ;; Richard said that we should not use C-x <uppercase letter> and I have
 ;; no idea whereas to bind it.  Any suggestion welcome.  -stef
 ;; (define-key ctl-x-map "U" 'undo-only)
+(defvar undo-repeat-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map "u" 'undo)
+    map)
+  "Keymap to repeat undo `C-x u u' sequences.  Used in `repeat-mode'.")
+(put 'undo 'repeat-map 'undo-repeat-map)
 
 (define-key esc-map "!" 'shell-command)
 (define-key esc-map "|" 'shell-command-on-region)
@@ -963,6 +969,17 @@ if `inhibit-field-text-motion' is non-nil."
 (define-key ctl-x-map [C-left] 'previous-buffer)
 (define-key global-map [XF86Back] 'previous-buffer)
 (put 'previous-buffer :advertised-binding [?\C-x left])
+
+(defvar next-buffer-repeat-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [right] 'next-buffer)
+    (define-key map [C-right] 'next-buffer)
+    (define-key map [left] 'previous-buffer)
+    (define-key map [C-left] 'previous-buffer)
+    map)
+  "Keymap to repeat next-buffer key sequences.  Used in `repeat-mode'.")
+(put 'next-buffer 'repeat-map 'next-buffer-repeat-map)
+(put 'previous-buffer 'repeat-map 'next-buffer-repeat-map)
 
 (let ((map minibuffer-local-map))
   (define-key map "\en"   'next-history-element)
@@ -1035,6 +1052,17 @@ if `inhibit-field-text-motion' is non-nil."
 (define-key global-map "\C-e" 'move-end-of-line)
 
 (define-key ctl-x-map "`" 'next-error)
+
+(defvar next-error-repeat-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map    "n" 'next-error)
+    (define-key map "\M-n" 'next-error)
+    (define-key map    "p" 'previous-error)
+    (define-key map "\M-p" 'previous-error)
+    map)
+  "Keymap to repeat next-error key sequences.  Used in `repeat-mode'.")
+(put 'next-error 'repeat-map 'next-error-repeat-map)
+(put 'previous-error 'repeat-map 'next-error-repeat-map)
 
 (defvar goto-map (make-sparse-keymap)
   "Keymap for navigation commands.")
