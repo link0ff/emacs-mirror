@@ -1970,6 +1970,9 @@ This function uses the `read-extended-command-predicate' user option."
            (complete-with-action action obarray string pred)))
        (lambda (sym)
          (and (commandp sym)
+              ;;; FIXME: This should also be possible to disable by
+              ;;; the user, but I'm not quite sure what the right
+              ;;; design for that would look like.
               (if (get sym 'completion-predicate)
                   (funcall (get sym 'completion-predicate) sym buffer)
                 (funcall read-extended-command-predicate sym buffer))))
@@ -1978,21 +1981,39 @@ This function uses the `read-extended-command-predicate' user option."
 (defun completion-in-mode-p (symbol buffer)
   "Say whether SYMBOL should be offered as a completion.
 This is true if the command is applicable to the major mode in
-BUFFER."
-  (or (null (command-modes symbol))
-      ;; It's derived from a major mode.
-      (apply #'provided-mode-derived-p
+BUFFER, or any of the active minor modes in BUFFER."
+  (let ((modes (command-modes symbol)))
+    (or (null modes)
+        ;; Common case: Just a single mode.
+        (if (null (cdr modes))
+            (or (provided-mode-derived-p
+                 (buffer-local-value 'major-mode buffer) (car modes))
+                (memq (car modes) (buffer-local-value 'minor-modes buffer)))
+          ;; Uncommon case: Multiple modes.
+          (apply #'provided-mode-derived-p
+                 (buffer-local-value 'major-mode buffer)
+                 modes)
+          (seq-intersection modes
+                            (buffer-local-value 'minor-modes buffer)
+                            #'eq)))))
+
+(defun completion-with-modes-p (modes buffer)
+  "Say whether MODES are in action in BUFFER.
+This is the case if either the major mode is derived from one of MODES,
+or (if one of MODES is a minor mode), if it is switched on in BUFFER."
+  (or (apply #'provided-mode-derived-p
              (buffer-local-value 'major-mode buffer)
-             (command-modes symbol))
+             modes)
       ;; It's a minor mode.
-      (seq-intersection (command-modes symbol)
+      (seq-intersection modes
                         (buffer-local-value 'minor-modes buffer)
                         #'eq)))
 
-(defun completion-with-modes-p (modes buffer)
-  (apply #'provided-mode-derived-p
-         (buffer-local-value 'major-mode buffer)
-         modes))
+(defun completion-button-p (category buffer)
+  "Return non-nil if there's a button of CATEGORY at point in BUFFER."
+  (with-current-buffer buffer
+    (and (get-text-property (point) 'button)
+         (eq (get-text-property (point) 'category) category))))
 
 (defun read-extended-command--affixation (command-names)
   (with-selected-window (or (minibuffer-selected-window) (selected-window))
