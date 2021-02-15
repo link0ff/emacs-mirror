@@ -138,6 +138,10 @@ messages are highlighted; this helps to see what messages were visited."
   nil
   "Overlay highlighting the current error message in the `next-error' buffer.")
 
+(defvar global-minor-modes nil
+  "A list of the currently enabled global minor modes.
+This is a list of symbols.")
+
 (defcustom next-error-hook nil
   "List of hook functions run by `next-error' after visiting source file."
   :type 'hook
@@ -1904,15 +1908,15 @@ to get different commands to edit and resubmit."
 (defvar extended-command-history nil)
 (defvar execute-extended-command--last-typed nil)
 
-(defcustom read-extended-command-predicate #'completion-in-mode-p
+(defcustom read-extended-command-predicate #'completion-default-include-p
   "Predicate to use to determine which commands to include when completing.
 The predicate function is called with two parameter: The
 symbol (i.e., command) in question that should be included or
 not, and the current buffer.  The predicate should return non-nil
 if the command should be present when doing `M-x TAB'."
   :version "28.1"
-  :type '(choice (const :tag "Exclude commands not relevant to this mode"
-                        #'completion-in-mode-p)
+  :type '(choice (const :tag "Exclude commands not relevant to the current mode"
+                        #'completion-default-include-p)
                  (const :tag "All commands" (lambda (_ _) t))
                  (function :tag "Other function")))
 
@@ -1970,32 +1974,37 @@ This function uses the `read-extended-command-predicate' user option."
            (complete-with-action action obarray string pred)))
        (lambda (sym)
          (and (commandp sym)
-              ;;; FIXME: This should also be possible to disable by
-              ;;; the user, but I'm not quite sure what the right
-              ;;; design for that would look like.
-              (if (get sym 'completion-predicate)
-                  (funcall (get sym 'completion-predicate) sym buffer)
-                (funcall read-extended-command-predicate sym buffer))))
+              (funcall read-extended-command-predicate sym buffer)))
        t nil 'extended-command-history))))
 
-(defun completion-in-mode-p (symbol buffer)
+(defun completion-default-include-p (symbol buffer)
   "Say whether SYMBOL should be offered as a completion.
-This is true if the command is applicable to the major mode in
-BUFFER, or any of the active minor modes in BUFFER."
-  (let ((modes (command-modes symbol)))
-    (or (null modes)
-        ;; Common case: Just a single mode.
-        (if (null (cdr modes))
-            (or (provided-mode-derived-p
-                 (buffer-local-value 'major-mode buffer) (car modes))
-                (memq (car modes) (buffer-local-value 'minor-modes buffer)))
-          ;; Uncommon case: Multiple modes.
-          (apply #'provided-mode-derived-p
-                 (buffer-local-value 'major-mode buffer)
-                 modes)
-          (seq-intersection modes
-                            (buffer-local-value 'minor-modes buffer)
-                            #'eq)))))
+If there's a `completion-predicate' for SYMBOL, the result from
+calling that predicate is called.  If there isn't one, this
+predicate is true if the command SYMBOL is applicable to the
+major mode in BUFFER, or any of the active minor modes in
+BUFFER."
+  (if (get symbol 'completion-predicate)
+      ;; An explicit completion predicate takes precedence.
+      (funcall (get symbol 'completion-predicate) symbol buffer)
+    ;; Check the modes.
+    (let ((modes (command-modes symbol)))
+      (or (null modes)
+          ;; Common case: Just a single mode.
+          (if (null (cdr modes))
+              (or (provided-mode-derived-p
+                   (buffer-local-value 'major-mode buffer) (car modes))
+                  (memq (car modes)
+                        (buffer-local-value 'local-minor-modes buffer))
+                  (memq (car modes) global-minor-modes))
+            ;; Uncommon case: Multiple modes.
+            (apply #'provided-mode-derived-p
+                   (buffer-local-value 'major-mode buffer)
+                   modes)
+            (seq-intersection modes
+                              (buffer-local-value 'local-minor-modes buffer)
+                              #'eq)
+            (seq-intersection modes global-minor-modes #'eq))))))
 
 (defun completion-with-modes-p (modes buffer)
   "Say whether MODES are in action in BUFFER.
@@ -2006,8 +2015,9 @@ or (if one of MODES is a minor mode), if it is switched on in BUFFER."
              modes)
       ;; It's a minor mode.
       (seq-intersection modes
-                        (buffer-local-value 'minor-modes buffer)
-                        #'eq)))
+                        (buffer-local-value 'local-minor-modes buffer)
+                        #'eq)
+      (seq-intersection modes global-minor-modes #'eq)))
 
 (defun completion-button-p (category buffer)
   "Return non-nil if there's a button of CATEGORY at point in BUFFER."
