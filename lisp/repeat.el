@@ -360,6 +360,9 @@ When Repeat mode is enabled, and the command symbol has the property named
         (when (boundp repeat-map)
           (setq repeat-map (symbol-value repeat-map)))
         (let ((map (copy-keymap repeat-map)))
+          (let (keys)
+            (map-keymap (lambda (key _) (push (key-description (vector key)) keys)) map)
+            (message "To repeat type %s" (mapconcat #'identity keys ", ")))
           (when repeat-exit-key
             (define-key map repeat-exit-key 'ignore))
           (set-transient-map map))))))
