@@ -349,7 +349,16 @@ When Repeat mode is enabled, and the command symbol has the property named
   :global t :group 'convenience
   (if (not repeat-mode)
       (remove-hook 'post-command-hook 'repeat-post-hook)
-    (add-hook 'post-command-hook 'repeat-post-hook)))
+    (add-hook 'post-command-hook 'repeat-post-hook)
+    (let* ((keymaps nil)
+           (commands (all-completions
+                      "" obarray (lambda (s)
+                                   (and (commandp s)
+                                        (get s 'repeat-map)
+                                        (push (get s 'repeat-map) keymaps))))))
+      (message "Repeat mode is enabled for %d commands and %d keymaps"
+               (length commands)
+               (length (delete-dups keymaps))))))
 
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap."
@@ -362,7 +371,10 @@ When Repeat mode is enabled, and the command symbol has the property named
         (let ((map (copy-keymap repeat-map)))
           (let (keys)
             (map-keymap (lambda (key _) (push (key-description (vector key)) keys)) map)
-            (message "To repeat type %s" (mapconcat #'identity keys ", ")))
+            (message "To repeat type %s%s"
+                     (mapconcat #'identity keys ", ")
+                     (when repeat-exit-key
+                       (format ", or %s to exit" (key-description repeat-exit-key)))))
           (when repeat-exit-key
             (define-key map repeat-exit-key 'ignore))
           (set-transient-map map))))))
