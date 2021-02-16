@@ -334,8 +334,9 @@ recently executed command not bound to an input event\"."
 
 ;;; repeat-mode
 
-(defcustom repeat-exit-key [return] ; like `isearch-exit'
-  "Key that stops the modal repeating of keys in sequence."
+(defcustom repeat-exit-key nil
+  "Key that stops the modal repeating of keys in sequence.
+For example, you can set it to <return> like `isearch-exit'."
   :type '(choice (const :tag "No special key to exit repeat sequence" nil)
 		 (key-sequence :tag "Key that exits repeat sequence"))
   :group 'convenience
@@ -368,16 +369,31 @@ When Repeat mode is enabled, and the command symbol has the property named
       (when repeat-map
         (when (boundp repeat-map)
           (setq repeat-map (symbol-value repeat-map)))
-        (let ((map (copy-keymap repeat-map)))
-          (let (keys)
-            (map-keymap (lambda (key _) (push (key-description (vector key)) keys)) map)
-            (message "To repeat type %s%s"
-                     (mapconcat #'identity keys ", ")
-                     (when repeat-exit-key
-                       (format ", or %s to exit" (key-description repeat-exit-key)))))
-          (when repeat-exit-key
-            (define-key map repeat-exit-key 'ignore))
-          (set-transient-map map))))))
+        (let ((map (copy-keymap repeat-map))
+              keys mess)
+          (map-keymap (lambda (key _) (push key keys)) map)
+
+          ;; Exit when the last char is not among repeatable keys
+          (when (memq last-command-event keys)
+            ;; Messaging
+            (setq mess (format-message
+                        "Repeat with %s%s"
+                        (mapconcat (lambda (key)
+                                     (key-description (vector key)))
+                                   keys ", ")
+                        (if repeat-exit-key
+                            (format ", or exit with %s"
+                                    (key-description repeat-exit-key))
+                          "")))
+            (if (current-message)
+                (message "%s [%s]" (current-message) mess)
+              (message mess))
+
+            ;; Adding an exit key
+            (when repeat-exit-key
+              (define-key map repeat-exit-key 'ignore))
+
+            (set-transient-map map)))))))
 
 (provide 'repeat)
 
