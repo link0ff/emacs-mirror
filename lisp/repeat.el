@@ -337,8 +337,8 @@ recently executed command not bound to an input event\"."
 (defcustom repeat-exit-key nil
   "Key that stops the modal repeating of keys in sequence.
 For example, you can set it to <return> like `isearch-exit'."
-  :type '(choice (const :tag "No special key to exit repeat sequence" nil)
-		 (key-sequence :tag "Key that exits repeat sequence"))
+  :type '(choice (const :tag "No special key to exit repeating sequence" nil)
+		 (key-sequence :tag "Key that exits repeating sequence"))
   :group 'convenience
   :version "28.1")
 
@@ -362,7 +362,7 @@ When Repeat mode is enabled, and the command symbol has the property named
                (length (delete-dups keymaps))))))
 
 (defun repeat-post-hook ()
-  "Function run after commands to set transient keymap."
+  "Function run after commands to set transient keymap for repeatable keys."
   (when repeat-mode
     (let ((repeat-map (and (symbolp this-command)
                            (get this-command 'repeat-map))))
@@ -373,8 +373,13 @@ When Repeat mode is enabled, and the command symbol has the property named
               keys mess)
           (map-keymap (lambda (key _) (push key keys)) map)
 
-          ;; Exit when the last char is not among repeatable keys
-          (when (memq last-command-event keys)
+          ;; Exit when the last char is not among repeatable keys,
+          ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
+          (when (or (memq last-command-event keys)
+                    (memq this-original-command '(universal-argument
+                                                  universal-argument-more
+				                  digit-argument
+                                                  negative-argument)))
             ;; Messaging
             (setq mess (format-message
                         "Repeat with %s%s"

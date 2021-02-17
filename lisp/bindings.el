@@ -954,7 +954,7 @@ if `inhibit-field-text-motion' is non-nil."
   (let ((map (make-sparse-keymap)))
     (define-key map "u" 'undo)
     map)
-  "Keymap to repeat undo `C-x u u' sequences.  Used in `repeat-mode'.")
+  "Keymap to repeat undo key sequences `C-x u u'.  Used in `repeat-mode'.")
 (put 'undo 'repeat-map 'undo-repeat-map)
 
 (define-key esc-map "!" 'shell-command)
@@ -969,17 +969,6 @@ if `inhibit-field-text-motion' is non-nil."
 (define-key ctl-x-map [C-left] 'previous-buffer)
 (define-key global-map [XF86Back] 'previous-buffer)
 (put 'previous-buffer :advertised-binding [?\C-x left])
-
-(defvar next-buffer-repeat-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map [right] 'next-buffer)
-    (define-key map [C-right] 'next-buffer)
-    (define-key map [left] 'previous-buffer)
-    (define-key map [C-left] 'previous-buffer)
-    map)
-  "Keymap to repeat next-buffer key sequences.  Used in `repeat-mode'.")
-(put 'next-buffer 'repeat-map 'next-buffer-repeat-map)
-(put 'previous-buffer 'repeat-map 'next-buffer-repeat-map)
 
 (let ((map minibuffer-local-map))
   (define-key map "\en"   'next-history-element)
