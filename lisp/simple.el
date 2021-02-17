@@ -1969,23 +1969,6 @@ This function uses the `read-extended-command-predicate' user option."
        (lambda (string pred action)
          (if (and suggest-key-bindings (eq action 'metadata))
 	     '(metadata
-               (display-sort-function
-                . (lambda (commands)
-                    (if (minibufferp)
-                        ;; Prefer recently used completions and put the default,
-                        ;; if it exists, on top.
-                        (let ((hist (symbol-value minibuffer-history-variable)))
-                          (sort commands
-                                (lambda (c1 c2)
-                                  (cond ((equal c1 minibuffer-default) t)
-                                        ((equal c2 minibuffer-default) nil)
-                                        ((and (member c1 hist) (member c2 hist))
-                                         (> (length (member c1 hist))
-                                            (length (member c2 hist))))
-                                        ((member c1 hist) t)
-                                        ((member c2 hist) nil)
-                                        (t (string-lessp c1 c2))))))
-                      commands)))
 	       (affixation-function . read-extended-command--affixation)
 	       (category . command))
            (complete-with-action action obarray string pred)))
