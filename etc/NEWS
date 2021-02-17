@@ -472,7 +472,7 @@ It can be used to enable/disable the tab bar individually on each frame
 independently from the value of 'tab-bar-mode' and 'tab-bar-show'.
 
 ---
-*** New command 'tab-duplicate' like in web browsers.
+*** New command 'tab-duplicate'.
 
 ---
 *** New user option 'tab-bar-tab-name-format-function'.
@@ -987,7 +987,7 @@ use) and HEAD is the code that matched SPEC.
 +++
 *** New user option 'eldoc-echo-area-display-truncation-message'.
 If non-nil (the default), eldoc will display a message saying
-something like "(Documentation truncated. Use 'M-x eldoc-doc-buffer'
+something like "(Documentation truncated. Use `M-x eldoc-doc-buffer'
 to see rest)" when a message has been truncated.  If nil, truncated
 messages will be marked with just "..." at the end.
 
@@ -2193,7 +2193,7 @@ by mistake and were not useful to Lisp code.
 
 ---
 ** Loading 'generic-x' unconditionally loads all modes.
-The user option 'generic-extras-enable-list' is now obsolete, and
+The user option `generic-extras-enable-list' is now obsolete, and
 setting it has no effect.
 
 ---

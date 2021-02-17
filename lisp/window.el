@@ -10257,7 +10257,6 @@ displaying that processes's buffer."
     (define-key map "o" 'other-window)
     map)
   "Keymap to repeat other-window key sequences.  Used in `repeat-mode'.")
-
 (put 'other-window 'repeat-map 'other-window-repeat-map)
 
 (defvar resize-window-repeat-map
@@ -10270,7 +10269,6 @@ displaying that processes's buffer."
     (define-key map "v" 'shrink-window)
     map)
   "Keymap to repeat window resizing commands.  Used in `repeat-mode'.")
-
 (put 'enlarge-window 'repeat-map 'resize-window-repeat-map)
 (put 'enlarge-window-horizontally 'repeat-map 'resize-window-repeat-map)
 (put 'shrink-window-horizontally 'repeat-map 'resize-window-repeat-map)
