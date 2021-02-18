@@ -2370,7 +2370,7 @@ Normally, history elements are matched case-insensitively if
 `case-fold-search' is non-nil, but an uppercase letter in REGEXP
 makes the search case-sensitive."
   (interactive
-   (let* ((enable-recursive-minibuffers t)
+   (let* ((enable-recursive-minibuffers (or enable-recursive-minibuffers 'transient))
 	  (regexp (read-from-minibuffer "Next element matching (regexp): "
 					nil
 					minibuffer-local-map

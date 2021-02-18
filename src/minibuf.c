@@ -592,7 +592,7 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
   if (!STRINGP (prompt))
     prompt = empty_unibyte_string;
 
-  if (!enable_recursive_minibuffers
+  if (NILP (Venable_recursive_minibuffers)
       && minibuf_level > 0)
     {
       Lisp_Object str
@@ -603,6 +603,9 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
 	/* If we're in another window, cancel the minibuffer that's active.  */
 	Fthrow (Qexit, str);
     }
+
+  if (EQ (Venable_recursive_minibuffers, Qtransient))
+    specbind (Qenable_recursive_minibuffers, Qnil);
 
   if ((noninteractive
        /* In case we are running as a daemon, only do this before
@@ -2242,6 +2245,7 @@ syms_of_minibuf (void)
   DEFSYM (Qcase_fold_search, "case-fold-search");
   DEFSYM (Qmetadata, "metadata");
   DEFSYM (Qcycle_sort_function, "cycle-sort-function");
+  DEFSYM (Qtransient, "transient");
 
   /* A frame parameter.  */
   DEFSYM (Qminibuffer_exit, "minibuffer-exit");
@@ -2311,12 +2315,12 @@ For buffer name completion, `read-buffer-completion-ignore-case'
 controls the behavior, rather than this variable.  */);
   completion_ignore_case = 0;
 
-  DEFVAR_BOOL ("enable-recursive-minibuffers", enable_recursive_minibuffers,
+  DEFVAR_LISP ("enable-recursive-minibuffers", Venable_recursive_minibuffers,
 	       doc: /* Non-nil means to allow minibuffer commands while in the minibuffer.
 This variable makes a difference whenever the minibuffer window is active.
 Also see `minibuffer-depth-indicate-mode', which may be handy if this
 variable is non-nil. */);
-  enable_recursive_minibuffers = 0;
+  Venable_recursive_minibuffers = Qnil;
 
   DEFVAR_LISP ("minibuffer-completion-table", Vminibuffer_completion_table,
 	       doc: /* Alist or obarray used for completion in the minibuffer.
