@@ -1282,7 +1282,19 @@ that uses or sets the mark."
 
 ;; Counting lines, one way or another.
 
-(defvar-local goto-line-history nil
+(defcustom goto-line-history-local nil
+  "If this option is nil, `goto-line-history' is shared between all buffers.
+If it is non-nil, each buffer has its own value of this history list.
+
+Note that on changing from non-nil to nil, the former contents of
+`goto-line-history' for each buffer are discarded on use of
+`goto-line' in that buffer."
+  :group 'editing
+  :type 'boolean
+  :safe #'booleanp
+  :version "28.1")
+
+(defvar goto-line-history nil
   "History of values entered with `goto-line'.")
 
 (defun goto-line-read-args (&optional relative)
@@ -1300,6 +1312,11 @@ that uses or sets the mark."
             (if buffer
                 (concat " in " (buffer-name buffer))
               "")))
+      ;; Has the buffer locality of `goto-line-history' changed?
+      (cond ((and goto-line-history-local (not (local-variable-p 'goto-line-history)))
+             (make-local-variable 'goto-line-history))
+            ((and (not goto-line-history-local) (local-variable-p 'goto-line-history))
+             (kill-local-variable 'goto-line-history)))
       ;; Read the argument, offering that number (if any) as default.
       (list (read-number (format "Goto%s line%s: "
                                  (if (buffer-narrowed-p)
@@ -1911,13 +1928,13 @@ to get different commands to edit and resubmit."
 (defcustom read-extended-command-predicate nil
   "Predicate to use to determine which commands to include when completing.
 If it's nil, include all the commands.
-If it's a functoion, it will be called with two parameters: the
+If it's a function, it will be called with two parameters: the
 symbol of the command and a buffer.  The predicate should return
 non-nil if the command should be present when doing `M-x TAB'
 in that buffer."
   :version "28.1"
   :group 'completion
-  :type `(choice (const :tag "Don't exclude any commands" nil)
+  :type '(choice (const :tag "Don't exclude any commands" nil)
                  (const :tag "Exclude commands irrelevant to current buffer's mode"
                         command-completion-default-include-p)
                  (function :tag "Other function")))
