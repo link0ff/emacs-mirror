@@ -61,6 +61,16 @@ The characters copied are inserted in the buffer before point."
 				 (+ n (point)))))))
     (insert string)))
 
+;;;###autoload
+(defun copy-line (&optional arg)
+  "Duplicate the whole current line ARG times."
+  (interactive "p")
+  (dotimes (_ arg)
+    (forward-line 1)
+    (insert "\n")
+    (forward-line -1)
+    (copy-from-above-command)))
+
 ;; Variation of `zap-to-char'.
 
 ;;;###autoload
