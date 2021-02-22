@@ -62,15 +62,15 @@ The characters copied are inserted in the buffer before point."
     (insert string)))
 
 ;;;###autoload
-(defun copy-line (&optional arg)
-  "Duplicate the whole current line ARG times."
+(defun duplicate-line (&optional arg)
+  "Duplicate the whole current line ARG times or 1 by default."
   (interactive "p")
-  (dotimes (_ arg)
-    (forward-line 1)
-    (unless (prog1 (and (eobp) (eolp) (not (bolp)))
-              (insert-char ?\n))
-      (forward-line -1))
-    (copy-from-above-command)))
+  (save-excursion
+    (let ((line (buffer-substring (line-beginning-position)
+                                  (line-end-position))))
+      (forward-line 0)
+      (insert-before-markers
+       (apply #'concat (make-list (or arg 1) (concat line "\n")))))))
 
 ;; Variation of `zap-to-char'.
 
