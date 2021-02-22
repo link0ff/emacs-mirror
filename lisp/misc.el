@@ -41,7 +41,7 @@ The characters copied are inserted in the buffer before point."
     (save-excursion
       (beginning-of-line)
       (backward-char 1)
-      (skip-chars-backward "\ \t\n")
+      (skip-chars-backward " \t\n")
       (move-to-column cc)
       ;; Default is enough to copy the whole rest of the line.
       (setq n (if arg (prefix-numeric-value arg) (point-max)))
@@ -67,8 +67,9 @@ The characters copied are inserted in the buffer before point."
   (interactive "p")
   (dotimes (_ arg)
     (forward-line 1)
-    (insert "\n")
-    (forward-line -1)
+    (unless (prog1 (and (eobp) (eolp) (not (bolp)))
+              (insert-char ?\n))
+      (forward-line -1))
     (copy-from-above-command)))
 
 ;; Variation of `zap-to-char'.
