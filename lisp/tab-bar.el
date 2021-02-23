@@ -379,6 +379,9 @@ and `tab-bar-select-tab-modifiers'."
 (defvar tab-bar-separator nil
   "String that delimits tabs.")
 
+(defun tab-bar-separator ()
+  (or tab-bar-separator (if window-system " " "|")))
+
 
 (defcustom tab-bar-tab-name-function #'tab-bar-tab-name-current
   "Function to get a tab name.
@@ -502,7 +505,7 @@ the formatted tab name to display in the tab bar."
 
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
-  (let* ((separator (or tab-bar-separator (if window-system " " "|")))
+  (let* ((separator (tab-bar-separator))
          (i 0)
          (tabs (funcall tab-bar-tabs-function)))
     (append
