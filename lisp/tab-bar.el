@@ -38,6 +38,8 @@
   (require 'cl-lib)
   (require 'seq))
 
+(defvar tab-bar-format nil)
+
 
 (defgroup tab-bar nil
   "Frame-local tabs."
@@ -505,9 +507,9 @@ the formatted tab name to display in the tab bar."
 
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
-  (let* ((separator (tab-bar-separator))
-         (i 0)
-         (tabs (funcall tab-bar-tabs-function)))
+  (let ((separator (tab-bar-separator))
+        (tabs (funcall tab-bar-tabs-function))
+        (i 0))
     (append
      '(keymap (mouse-1 . tab-bar-handle-mouse))
      (when (and tab-bar-history-mode tab-bar-history-buttons-show)
