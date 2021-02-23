@@ -360,9 +360,7 @@ mouse-2: Show help for major mode\n\
 mouse-3: Toggle minor modes"
 			mouse-face mode-line-highlight
 			local-map ,mode-line-major-mode-keymap)
-	  '(""
-	    (:eval (if (memq 'tab-bar-format-process tab-bar-format)
-		       "" mode-line-process)))
+	  '("" mode-line-process)
 	  `(:propertize ("" minor-mode-alist)
 			mouse-face mode-line-highlight
 			help-echo "Minor mode\n\
