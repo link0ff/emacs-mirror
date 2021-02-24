@@ -38,8 +38,6 @@
   (require 'cl-lib)
   (require 'seq))
 
-(defvar tab-bar-format nil)
-
 
 (defgroup tab-bar nil
   "Frame-local tabs."
@@ -504,6 +502,8 @@ the formatted tab name to display in the tab bar."
                       tab-bar-close-button)
                  ""))
      'face (if current-p 'tab-bar-tab 'tab-bar-tab-inactive))))
+
+(defvar tab-bar-format nil)
 
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
@@ -1290,6 +1290,7 @@ and can restore them."
 (defalias 'tab-close-other 'tab-bar-close-other-tabs)
 (defalias 'tab-undo        'tab-bar-undo-close-tab)
 (defalias 'tab-select      'tab-bar-select-tab)
+(defalias 'tab-switch      'tab-bar-switch-to-tab)
 (defalias 'tab-next        'tab-bar-switch-to-next-tab)
 (defalias 'tab-previous    'tab-bar-switch-to-prev-tab)
 (defalias 'tab-last        'tab-bar-switch-to-last-tab)
@@ -1710,10 +1711,11 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
 (define-key tab-prefix-map "1" 'tab-close-other)
 (define-key tab-prefix-map "0" 'tab-close)
 (define-key tab-prefix-map "o" 'tab-next)
+(define-key tab-prefix-map "O" 'tab-previous)
 (define-key tab-prefix-map "m" 'tab-move)
 (define-key tab-prefix-map "M" 'tab-move-to)
 (define-key tab-prefix-map "r" 'tab-rename)
-(define-key tab-prefix-map "\r" 'tab-bar-select-tab-by-name)
+(define-key tab-prefix-map "\r" 'tab-switch)
 (define-key tab-prefix-map "b" 'switch-to-buffer-other-tab)
 (define-key tab-prefix-map "f" 'find-file-other-tab)
 (define-key tab-prefix-map "\C-f" 'find-file-other-tab)
