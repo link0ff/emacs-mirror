@@ -5910,7 +5910,12 @@ this variable.  */);
   use_file_dialog = true;
 
   DEFVAR_BOOL ("use-short-answers", use_short_answers,
-    doc: /* Non-nil means `yes-or-no-p' uses shorter answers "y" or "n".  */);
+    doc: /* Non-nil means `yes-or-no-p' uses shorter answers "y" or "n".
+It's discouraged to use single-key answers because `yes-or-no-p' is
+intended to be used when it's thought that you should not respond too
+quickly, and giving the wrong answer would have serious consequences.
+When non-nil, it uses `y-or-n-p'.  In this case it means also obeying
+the value of `y-or-n-p-use-read-key'.  */);
   use_short_answers = false;
 
   defsubr (&Sidentity);
