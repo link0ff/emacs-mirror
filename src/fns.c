@@ -2882,8 +2882,7 @@ if `last-nonmenu-event' is nil, and `use-dialog-box' is non-nil.  */)
   prompt = CALLN (Fconcat, prompt, yes_or_no);
 
   ptrdiff_t count = SPECPDL_INDEX ();
-  if (NILP (Venable_recursive_minibuffers))
-    specbind (Qenable_recursive_minibuffers, Qtransient);
+  specbind (Qenable_recursive_minibuffers, Qt);
 
   while (1)
     {
