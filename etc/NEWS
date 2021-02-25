@@ -2417,7 +2417,7 @@ use the function 'read-key' to read a character instead of using the minibuffer.
 ---
 ** New variable 'use-short-answers' to use 'y-or-n-p' instead of 'yes-or-no-p'.
 This relieves of the need to define an alias that maps one to another
-in the init file.
+in the init file.  The same variable also affects the function 'read-answer'.
 
 +++
 ** 'set-window-configuration' now takes an optional 'dont-set-frame'
