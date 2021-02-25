@@ -5913,10 +5913,9 @@ this variable.  */);
     doc: /* Non-nil means `yes-or-no-p' uses shorter answers "y" or "n".
 It's discouraged to use single-key answers because `yes-or-no-p' is
 intended to be used when it's thought that you should not respond too
-quickly, and giving the wrong answer would have serious consequences.
-When non-nil, it uses `y-or-n-p'.  In this case it means also obeying
-the value of `y-or-n-p-use-read-key'.  The same variable also affects
-the function `read-answer'.  */);
+quickly, so you take time and perhaps think more about the answer.
+When non-nil, then `yes-or-no-p' uses `y-or-n-p' to read an answer.
+The same variable also affects the function `read-answer'.  */);
   use_short_answers = false;
 
   defsubr (&Sidentity);
