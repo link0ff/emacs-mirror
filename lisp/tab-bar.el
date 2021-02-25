@@ -503,58 +503,109 @@ the formatted tab name to display in the tab bar."
                  ""))
      'face (if current-p 'tab-bar-tab 'tab-bar-tab-inactive))))
 
-(defvar tab-bar-format nil)
+(defvar tab-bar-format '(tab-bar-format-history
+                         tab-bar-format-tabs
+                         ;; tab-bar-format-sep-add-tab
+                         ;; tab-bar-format-add-tab
+                         tab-bar-format-align-right
+                         tab-bar-format-global
+                         )
+  "Template that specifies tab bar items.")
 
-(defun tab-bar-make-keymap-1 ()
-  "Generate an actual keymap from `tab-bar-map', without caching."
+(defun tab-bar-format-history ()
+  (when (and tab-bar-history-mode tab-bar-history-buttons-show)
+    `((sep-history-back menu-item ,(tab-bar-separator) ignore)
+      (history-back
+       menu-item ,tab-bar-back-button tab-bar-history-back
+       :help "Click to go back in tab history")
+      (sep-history-forward menu-item ,(tab-bar-separator) ignore)
+      (history-forward
+       menu-item ,tab-bar-forward-button tab-bar-history-forward
+       :help "Click to go forward in tab history"))))
+
+(defun tab-bar-format-tabs ()
   (let ((separator (tab-bar-separator))
         (tabs (funcall tab-bar-tabs-function))
         (i 0))
-    (append
-     '(keymap (mouse-1 . tab-bar-handle-mouse))
-     (when (and tab-bar-history-mode tab-bar-history-buttons-show)
-       `((sep-history-back menu-item ,separator ignore)
-         (history-back
-          menu-item ,tab-bar-back-button tab-bar-history-back
-          :help "Click to go back in tab history")
-         (sep-history-forward menu-item ,separator ignore)
-         (history-forward
-          menu-item ,tab-bar-forward-button tab-bar-history-forward
-          :help "Click to go forward in tab history")))
-     (mapcan
-      (lambda (tab)
-        (setq i (1+ i))
-        (append
-         `((,(intern (format "sep-%i" i)) menu-item ,separator ignore))
-         (cond
-          ((eq (car tab) 'current-tab)
-           `((current-tab
-              menu-item
-              ,(funcall tab-bar-tab-name-format-function tab i)
-              ignore
-              :help "Current tab")))
-          (t
-           `((,(intern (format "tab-%i" i))
-              menu-item
-              ,(funcall tab-bar-tab-name-format-function tab i)
-              ,(or
-                (alist-get 'binding tab)
-                `(lambda ()
-                   (interactive)
-                   (tab-bar-select-tab ,i)))
-              :help "Click to visit tab"))))
-         `((,(if (eq (car tab) 'current-tab) 'C-current-tab (intern (format "C-tab-%i" i)))
-            menu-item ""
-            ,(or
-              (alist-get 'close-binding tab)
-              `(lambda ()
-                 (interactive)
-                 (tab-bar-close-tab ,i)))))))
-      tabs)
-     `((sep-add-tab menu-item ,separator ignore))
-     (when (and tab-bar-new-button-show tab-bar-new-button)
-       `((add-tab menu-item ,tab-bar-new-button tab-bar-new-tab
-                  :help "New tab"))))))
+    (mapcan
+     (lambda (tab)
+       (setq i (1+ i))
+       (append
+        `((,(intern (format "sep-%i" i)) menu-item ,separator ignore))
+        (cond
+         ((eq (car tab) 'current-tab)
+          `((current-tab
+             menu-item
+             ,(funcall tab-bar-tab-name-format-function tab i)
+             ignore
+             :help "Current tab")))
+         (t
+          `((,(intern (format "tab-%i" i))
+             menu-item
+             ,(funcall tab-bar-tab-name-format-function tab i)
+             ,(or
+               (alist-get 'binding tab)
+               `(lambda ()
+                  (interactive)
+                  (tab-bar-select-tab ,i)))
+             :help "Click to visit tab"))))
+        `((,(if (eq (car tab) 'current-tab) 'C-current-tab (intern (format "C-tab-%i" i)))
+           menu-item ""
+           ,(or
+             (alist-get 'close-binding tab)
+             `(lambda ()
+                (interactive)
+                (tab-bar-close-tab ,i)))))))
+     tabs)))
+
+(defun tab-bar-format-sep-add-tab ()
+  `((sep-add-tab menu-item ,(tab-bar-separator) ignore)))
+
+(defun tab-bar-format-add-tab ()
+  (when (and tab-bar-new-button-show tab-bar-new-button)
+    `((add-tab menu-item ,tab-bar-new-button tab-bar-new-tab
+               :help "New tab"))))
+
+(defun tab-bar-format-align-right ()
+  (let* ((rest (cdr (member 'tab-bar-format-align-right tab-bar-format)))
+         (rest (tab-bar-format-list rest))
+         (rest (mapconcat (lambda (item) (nth 2 item)) rest ""))
+         (hpos (length rest))
+         (str (propertize " " 'display `(space :align-to (- right ,hpos)))))
+    `((tab-bar-format-align-right menu-item ,str ignore))))
+
+(defun tab-bar-format-global ()
+  `((tab-bar-format-global
+     menu-item
+     ,(format-mode-line global-mode-string)
+     ignore)))
+
+(defun tab-bar-format-list (format-list)
+  (let ((i 0))
+    (apply #'append
+           (mapcar (lambda (format)
+                     (setq i (1+ i))
+                     (cond
+                      ((functionp format)
+                       (let ((ret (funcall format)))
+                         (when (stringp ret)
+                           (setq ret `((sep-add-tab menu-item ,ret ignore))))
+                         ret))
+                      ((stringp format)
+                       ;; TODO: uniq string and uniq tab-bar-format-separator
+                       `((tab-bar-format-string
+                          menu-item
+                          ,format
+                          ignore)))
+                      ((boundp format)
+                       (symbol-value format))))
+                   format-list))))
+
+(defun tab-bar-make-keymap-1 ()
+  "Generate an actual keymap from `tab-bar-map', without caching."
+  (append
+   '(keymap (mouse-1 . tab-bar-handle-mouse))
+   (tab-bar-format-list tab-bar-format)))
 
 
 ;; Some window-configuration parameters don't need to be persistent.

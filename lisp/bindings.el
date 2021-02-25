@@ -550,7 +550,8 @@ Major modes that edit things other than ordinary files may change this
 
 (defvar mode-line-misc-info
   '((global-mode-string (""
-                         (:eval (if (memq 'tab-bar-format-global tab-bar-format)
+                         (:eval (if (and (boundp 'tab-bar-format)
+                                         (memq 'tab-bar-format-global tab-bar-format))
 		                    "" global-mode-string))
                          " ")))
   "Mode line construct for miscellaneous information.
