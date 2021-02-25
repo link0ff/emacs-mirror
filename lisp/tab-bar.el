@@ -505,12 +505,15 @@ the formatted tab name to display in the tab bar."
 
 (defvar tab-bar-format '(tab-bar-format-history
                          tab-bar-format-tabs
-                         ;; tab-bar-format-sep-add-tab
-                         ;; tab-bar-format-add-tab
-                         tab-bar-format-align-right
-                         tab-bar-format-global
-                         )
-  "Template that specifies tab bar items.")
+                         tab-bar-separator
+                         tab-bar-format-add-tab)
+  "Template for displaying tab bar items.
+Every item in the list is a function that returns
+a string, or a list of menu-item elements, or nil.
+When you add more items `tab-bar-format-align-right' and
+`tab-bar-format-global' to the end, then after enabling
+`display-time-mode' it will display time aligned to the right
+on the tab bar.")
 
 (defun tab-bar-format-history ()
   (when (and tab-bar-history-mode tab-bar-history-buttons-show)
@@ -558,16 +561,14 @@ the formatted tab name to display in the tab bar."
                 (tab-bar-close-tab ,i)))))))
      tabs)))
 
-(defun tab-bar-format-sep-add-tab ()
-  `((sep-add-tab menu-item ,(tab-bar-separator) ignore)))
-
 (defun tab-bar-format-add-tab ()
   (when (and tab-bar-new-button-show tab-bar-new-button)
     `((add-tab menu-item ,tab-bar-new-button tab-bar-new-tab
                :help "New tab"))))
 
 (defun tab-bar-format-align-right ()
-  (let* ((rest (cdr (member 'tab-bar-format-align-right tab-bar-format)))
+  "Align the rest of tab bar items to the right."
+  (let* ((rest (cdr (memq 'tab-bar-format-align-right tab-bar-format)))
          (rest (tab-bar-format-list rest))
          (rest (mapconcat (lambda (item) (nth 2 item)) rest ""))
          (hpos (length rest))
@@ -575,6 +576,12 @@ the formatted tab name to display in the tab bar."
     `((tab-bar-format-align-right menu-item ,str ignore))))
 
 (defun tab-bar-format-global ()
+  "Format `global-mode-string' to display it in the tab bar.
+When `tab-bar-format-global' is added to `tab-bar-format'
+(possibly appended after `tab-bar-format-align-right'),
+then modes that display information on the mode line
+using `global-mode-string' will display the same text
+on the tab bar instead."
   `((tab-bar-format-global
      menu-item
      ,(format-mode-line global-mode-string)
@@ -583,23 +590,17 @@ the formatted tab name to display in the tab bar."
 (defun tab-bar-format-list (format-list)
   (let ((i 0))
     (apply #'append
-           (mapcar (lambda (format)
-                     (setq i (1+ i))
-                     (cond
-                      ((functionp format)
-                       (let ((ret (funcall format)))
-                         (when (stringp ret)
-                           (setq ret `((sep-add-tab menu-item ,ret ignore))))
-                         ret))
-                      ((stringp format)
-                       ;; TODO: uniq string and uniq tab-bar-format-separator
-                       `((tab-bar-format-string
-                          menu-item
-                          ,format
-                          ignore)))
-                      ((boundp format)
-                       (symbol-value format))))
-                   format-list))))
+           (mapcar
+            (lambda (format)
+              (setq i (1+ i))
+              (cond
+               ((functionp format)
+                (let ((ret (funcall format)))
+                  (when (stringp ret)
+                    (setq ret `((,(intern (format "str-%i" i))
+                                 menu-item ,ret ignore))))
+                  ret))))
+            format-list))))
 
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
