@@ -2422,8 +2422,6 @@ list that represents a doc string reference.
 	      byte-compile-output nil
               byte-compile-jump-tables nil))))
 
-(defvar byte-compile-force-lexical-warnings nil)
-
 (defun byte-compile-preprocess (form &optional _for-effect)
   (setq form (macroexpand-all form byte-compile-macro-environment))
   ;; FIXME: We should run byte-optimize-form here, but it currently does not
@@ -2434,7 +2432,6 @@ list that represents a doc string reference.
   ;;     (setq form (byte-optimize-form form for-effect)))
   (cond
    (lexical-binding (cconv-closure-convert form))
-   (byte-compile-force-lexical-warnings (cconv-warnings-only form))
    (t form)))
 
 ;; byte-hunk-handlers cannot call this!
@@ -5228,8 +5225,9 @@ already up-to-date."
   "Reload any Lisp file that was changed since Emacs was dumped.
 Use with caution."
   (let* ((argv0 (car command-line-args))
-         (emacs-file (executable-find argv0)))
-    (if (not (and emacs-file (file-executable-p emacs-file)))
+         (emacs-file (or (cdr (nth 2 (pdumper-stats)))
+                         (executable-find argv0))))
+    (if (not (and emacs-file (file-exists-p emacs-file)))
         (message "Can't find %s to refresh preloaded Lisp files" argv0)
       (dolist (f (reverse load-history))
         (setq f (car f))
