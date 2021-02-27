@@ -113,7 +113,21 @@ Possible modifier keys are `control', `meta', `shift', `hyper', `super' and
   (unless (global-key-binding [(control shift tab)])
     (global-set-key [(control shift tab)] 'tab-previous))
   (unless (global-key-binding [(control shift iso-lefttab)])
-    (global-set-key [(control shift iso-lefttab)] 'tab-previous)))
+    (global-set-key [(control shift iso-lefttab)] 'tab-previous))
+
+  ;; Replace default value with a condition that supports displaying
+  ;; global-mode-string in the tab bar instead of the mode line.
+  (when (member '(global-mode-string ("" global-mode-string " "))
+                mode-line-misc-info)
+    (setq mode-line-misc-info
+          (append '(global-mode-string
+                    ("" (:eval (if (and tab-bar-mode
+                                        (memq 'tab-bar-format-global
+                                              tab-bar-format))
+                                   "" global-mode-string))
+                     " "))
+                  (remove '(global-mode-string ("" global-mode-string " "))
+                          mode-line-misc-info)))))
 
 (defun tab-bar--undefine-keys ()
   "Uninstall key bindings previously bound by `tab-bar--define-keys'."
