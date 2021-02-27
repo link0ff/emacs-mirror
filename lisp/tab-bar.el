@@ -526,8 +526,9 @@ Every item in the list is a function that returns
 a string, or a list of menu-item elements, or nil.
 When you add more items `tab-bar-format-align-right' and
 `tab-bar-format-global' to the end, then after enabling
-`display-time-mode' it will display time aligned to the right
-on the tab bar.")
+`display-time-mode' (or any other mode that uses `global-mode-string')
+it will display time aligned to the right on the tab bar instead of
+the mode line.")
 
 (defun tab-bar-format-history ()
   (when (and tab-bar-history-mode tab-bar-history-buttons-show)
