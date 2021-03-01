@@ -509,7 +509,9 @@ the formatted tab name to display in the tab bar."
 (defun tab-bar-tab-name-format-default (tab i)
   (let ((current-p (eq (car tab) 'current-tab)))
     (propertize
-     (concat (if tab-bar-tab-hints (format "%d " i) "")
+     (concat (if (alist-get 'group tab)
+                 (format "%s " (alist-get 'group tab)) "")
+             (if tab-bar-tab-hints (format "%d " i) "")
              (alist-get 'name tab)
              (or (and tab-bar-close-button-show
                       (not (eq tab-bar-close-button-show
@@ -647,6 +649,7 @@ on the tab bar instead."
 (defun tab-bar--tab (&optional frame)
   (let* ((tab (assq 'current-tab (frame-parameter frame 'tabs)))
          (tab-explicit-name (alist-get 'explicit-name tab))
+         (tab-group (alist-get 'group tab))
          (bl  (seq-filter #'buffer-live-p (frame-parameter frame 'buffer-list)))
          (bbl (seq-filter #'buffer-live-p (frame-parameter frame 'buried-buffer-list))))
     `(tab
@@ -654,6 +657,7 @@ on the tab bar instead."
                    (alist-get 'name tab)
                  (funcall tab-bar-tab-name-function)))
       (explicit-name . ,tab-explicit-name)
+      ,@(if tab-group `((group . ,tab-group)))
       (time . ,(float-time))
       (ws . ,(window-state-get
               (frame-root-window (or frame (selected-frame))) 'writable))
@@ -669,12 +673,14 @@ on the tab bar instead."
   ;; necessary when switching tabs, otherwise the destination tab
   ;; inherit the current tab's `explicit-name` parameter.
   (let* ((tab (or tab (assq 'current-tab (frame-parameter frame 'tabs))))
-         (tab-explicit-name (alist-get 'explicit-name tab)))
+         (tab-explicit-name (alist-get 'explicit-name tab))
+         (tab-group (alist-get 'group tab)))
     `(current-tab
       (name . ,(if tab-explicit-name
                    (alist-get 'name tab)
                  (funcall tab-bar-tab-name-function)))
-      (explicit-name . ,tab-explicit-name))))
+      (explicit-name . ,tab-explicit-name)
+      ,@(if tab-group `((group . ,tab-group))))))
 
 (defun tab-bar--current-tab-index (&optional tabs frame)
   (seq-position (or tabs (funcall tab-bar-tabs-function frame))
@@ -1240,6 +1246,40 @@ function `tab-bar-tab-name-function'."
   (tab-bar-rename-tab new-name (1+ (tab-bar--tab-index-by-name tab-name))))
 
 
+;;; Tab groups
+
+(defun tab-bar-set-group (group-name &optional arg)
+  "Add the tab specified by its absolute position ARG to GROUP-NAME.
+If no ARG is specified, then set the GROUP-NAME for the current tab.
+ARG counts from 1.
+If GROUP-NAME is the empty string, then remove the tab from any group."
+  (interactive
+   (let* ((tabs (funcall tab-bar-tabs-function))
+          (tab-index (or current-prefix-arg (1+ (tab-bar--current-tab-index tabs))))
+          (group-name (alist-get 'group (nth (1- tab-index) tabs))))
+     (list (completing-read
+            "Group name for tab (leave blank to remove group): "
+            (delete-dups (delq nil (cons group-name
+                                         (mapcar (lambda (tab)
+                                                   (alist-get 'group tab))
+                                                 (funcall tab-bar-tabs-function))))))
+           current-prefix-arg)))
+  (let* ((tabs (funcall tab-bar-tabs-function))
+         (tab-index (if arg
+                        (1- (max 0 (min arg (length tabs))))
+                      (tab-bar--current-tab-index tabs)))
+         (tab (nth tab-index tabs))
+         (group (assq 'group tab))
+         (group-new-name (and (> (length group-name) 0) group-name)))
+    (if group
+        (setcdr group group-new-name)
+      (nconc tab `((group . ,group-new-name))))
+
+    (force-mode-line-update)
+    (unless tab-bar-mode
+      (message "Set tab group to '%s'" group-new-name))))
+
+
 ;;; Tab history mode
 
 (defvar tab-bar-history-limit 10
@@ -1770,6 +1810,7 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
 (defalias 'tab-recent      'tab-bar-switch-to-recent-tab)
 (defalias 'tab-move        'tab-bar-move-tab)
 (defalias 'tab-move-to     'tab-bar-move-tab-to)
+(defalias 'tab-group       'tab-bar-set-group)
 (defalias 'tab-rename      'tab-bar-rename-tab)
 (defalias 'tab-list        'tab-switcher)
 
@@ -1782,6 +1823,7 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
 (define-key tab-prefix-map "O" 'tab-previous)
 (define-key tab-prefix-map "m" 'tab-move)
 (define-key tab-prefix-map "M" 'tab-move-to)
+(define-key tab-prefix-map "G" 'tab-group)
 (define-key tab-prefix-map "r" 'tab-rename)
 (define-key tab-prefix-map "\r" 'tab-switch)
 (define-key tab-prefix-map "b" 'switch-to-buffer-other-tab)
