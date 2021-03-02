@@ -1248,7 +1248,7 @@ function `tab-bar-tab-name-function'."
 
 ;;; Tab groups
 
-(defun tab-bar-set-group (group-name &optional arg)
+(defun tab-bar-change-tab-group (group-name &optional arg)
   "Add the tab specified by its absolute position ARG to GROUP-NAME.
 If no ARG is specified, then set the GROUP-NAME for the current tab.
 ARG counts from 1.
@@ -1670,6 +1670,8 @@ a function, then it is called with two arguments: BUFFER and ALIST, and
 should return the tab name.  When a `tab-name' entry is omitted, create
 a new tab without an explicit name.
 
+The ALIST entry `tab-group' (string or function) defines the tab group.
+
 If ALIST contains a `reusable-frames' entry, its value determines
 which frames to search for a reusable tab:
   nil -- the selected frame (actually the last non-minibuffer frame)
@@ -1722,6 +1724,8 @@ then it is called with two arguments: BUFFER and ALIST, and should return
 the tab name.  When a `tab-name' entry is omitted, create a new tab without
 an explicit name.
 
+The ALIST entry `tab-group' (string or function) defines the tab group.
+
 This is an action function for buffer display, see Info
 node `(elisp) Buffer Display Action Functions'.  It should be
 called only by `display-buffer' or a function directly or
@@ -1733,6 +1737,11 @@ indirectly called by the latter."
         (setq tab-name (funcall tab-name buffer alist)))
       (when tab-name
         (tab-bar-rename-tab tab-name)))
+    (let ((tab-group (alist-get 'tab-group alist)))
+      (when (functionp tab-group)
+        (setq tab-group (funcall tab-group buffer alist)))
+      (when tab-group
+        (tab-bar-change-tab-group tab-group)))
     (window--display-buffer buffer (selected-window) 'tab alist)))
 
 (defun switch-to-buffer-other-tab (buffer-or-name &optional norecord)
@@ -1810,7 +1819,8 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
 (defalias 'tab-recent      'tab-bar-switch-to-recent-tab)
 (defalias 'tab-move        'tab-bar-move-tab)
 (defalias 'tab-move-to     'tab-bar-move-tab-to)
-(defalias 'tab-group       'tab-bar-set-group)
+(defalias 'tab-group       'tab-bar-change-tab-group)
+(defalias 'tab-group-close 'tab-bar-close-tab-group)
 (defalias 'tab-rename      'tab-bar-rename-tab)
 (defalias 'tab-list        'tab-switcher)
 
