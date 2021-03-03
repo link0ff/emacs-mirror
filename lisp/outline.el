@@ -185,7 +185,8 @@ in the file it applies to.")
       (define-key map [tab]       tab-binding)
       (define-key map (kbd "TAB") tab-binding)
       (define-key map (kbd "<backtab>") #'outline-cycle-buffer))
-    map))
+    map)
+  "Keymap used by `outline-mode-map' and `outline-cycle-minor-mode'.")
 
 (defvar outline-mode-map
   (let ((map (make-sparse-keymap)))
