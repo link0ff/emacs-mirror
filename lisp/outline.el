@@ -177,13 +177,13 @@ in the file it applies to.")
 
 (defvar outline-mode-cycle-map
   (let ((map (make-sparse-keymap)))
-    (let ((binding `(menu-item
-                     "" outline-cycle
-                     ;; Only takes effect if point is on a heading.
-                     :filter ,(lambda (cmd)
-                                (when (outline-on-heading-p) cmd)))))
-      (define-key map (kbd "TAB") binding)
-      (define-key map [tab] binding)
+    (let ((tab-binding `(menu-item
+                         "" outline-cycle
+                         ;; Only takes effect if point is on a heading.
+                         :filter ,(lambda (cmd)
+                                    (when (outline-on-heading-p) cmd)))))
+      (define-key map [tab]       tab-binding)
+      (define-key map (kbd "TAB") tab-binding)
       (define-key map (kbd "<backtab>") #'outline-cycle-buffer))
     map))
 
@@ -198,16 +198,17 @@ in the file it applies to.")
   '(
     ;; Highlight headings according to the level.
     (eval . (list (concat "^\\(?:" outline-regexp "\\)"
-                          (if (string-suffix-p "$" outline-regexp)
+                          (if (and outline-minor-mode-cycle
+                                   (string-suffix-p "$" outline-regexp))
                               "" ".+"))
-		  0 '(if outline-minor-mode-cycle
-			 (if outline-minor-mode-highlight
+                  0 '(if outline-minor-mode-cycle
+                         (if outline-minor-mode-highlight
                              (list 'face (outline-font-lock-face)
                                    'keymap outline-mode-cycle-map)
                            (list 'face nil
                                  'keymap outline-mode-cycle-map))
-		       (outline-font-lock-face))
-		  nil
+                       (outline-font-lock-face))
+                  nil
                   (if (or outline-minor-mode-cycle
                           outline-minor-mode-highlight)
                       'append
@@ -326,9 +327,9 @@ After that, changing the prefix key requires manipulating keymaps."
          (set-default sym val)))
 
 (defvar outline-minor-mode-cycle nil
-  "Enable heading cycle in `outline-minor-mode'.
-When point is on a heading line, then typing 'TAB' cycles between `hide all',
-`headings only' and `show all' (`outline-cycle').  Typing 'S-TAB' on
+  "Enable cycling of headings in `outline-minor-mode'.
+When point is on a heading line, then typing `TAB' cycles between `hide all',
+`headings only' and `show all' (`outline-cycle').  Typing `S-TAB' on
 a heading line cycles the whole buffer (`outline-cycle-buffer').
 Typing these keys anywhere outside heading lines uses their default bindings.")
 ;;;###autoload(put 'outline-minor-mode-cycle 'safe-local-variable 'booleanp)
@@ -340,6 +341,7 @@ don't conflict with the major mode's font-lock keywords.")
 ;;;###autoload(put 'outline-minor-mode-highlight 'safe-local-variable 'booleanp)
 
 (defun outline-minor-mode-highlight-buffer ()
+  ;; Fallback to overlays when font-lock is disabled.
   (save-excursion
     (goto-char (point-min))
     (let ((regexp (concat "^\\(?:" outline-regexp "\\).*$")))
