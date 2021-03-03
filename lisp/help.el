@@ -523,9 +523,7 @@ or a buffer name."
           ;; Hide the longest body
           (when (and (re-search-forward "Key translations" nil t)
                      (fboundp 'outline-cycle))
-            (outline-cycle))))
-      ;; maybe font-lock-ensure should be in outline-cycle-highlight-minor-mode?
-      (font-lock-ensure))))
+            (outline-cycle)))))))
 
 ;; This function used to be in keymap.c.
 (defun describe-bindings-internal (&optional menus prefix)

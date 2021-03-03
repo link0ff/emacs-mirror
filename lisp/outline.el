@@ -341,7 +341,7 @@ don't conflict with the major mode's font-lock keywords.")
 ;;;###autoload(put 'outline-minor-mode-highlight 'safe-local-variable 'booleanp)
 
 (defun outline-minor-mode-highlight-buffer ()
-  ;; Fallback to overlays when font-lock is disabled.
+  ;; Fallback to overlays when font-lock is unsupported.
   (save-excursion
     (goto-char (point-min))
     (let ((regexp (concat "^\\(?:" outline-regexp "\\).*$")))
@@ -365,7 +365,7 @@ See the command `outline-mode' for more information on this mode."
   (if outline-minor-mode
       (progn
         (when (or outline-minor-mode-cycle outline-minor-mode-highlight)
-          (if (and font-lock-mode (font-lock-specified-p major-mode))
+          (if (and global-font-lock-mode (font-lock-specified-p major-mode))
               (progn
                 (font-lock-add-keywords nil outline-font-lock-keywords t)
                 (font-lock-flush))

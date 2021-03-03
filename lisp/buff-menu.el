@@ -625,9 +625,7 @@ means list those buffers and no others."
       (list-buffers--refresh buffer-list old-buffer)
       (tabulated-list-print)
       (when (fboundp 'outline-cycle-highlight-minor-mode)
-        (outline-cycle-highlight-minor-mode +1)
-        ;; font-lock-ensure should be in outline-cycle-highlight-minor-mode?
-        (font-lock-ensure)))
+        (outline-cycle-highlight-minor-mode +1)))
     buffer))
 
 (defun Buffer-menu-mouse-select (event)
