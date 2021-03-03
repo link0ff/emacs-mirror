@@ -1702,13 +1702,11 @@ Such as the current syntax table and the applied syntax properties."
              (end-column (- (match-end 0) line-beg))
              (loc (xref-make-file-location file line beg-column))
              (summary (progn
-                        ;; Test case: visit emacs/src/xdisp.c
-                        ;; 'C-x p g expose_frame RET'
                         (unless syntax-needed
                           (font-lock-ensure line-beg line-end))
                         (buffer-substring line-beg line-end))))
-        (add-text-properties beg-column end-column '(face xref-match)
-                             summary)
+        (add-face-text-property beg-column end-column 'xref-match
+                                t summary)
         (push (xref-make-match summary loc (- end-column beg-column))
               matches)))
     (nreverse matches)))
