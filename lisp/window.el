@@ -6229,10 +6229,15 @@ windows can get as small as `window-safe-min-height' and
                               (throw 'live window)))
                           root))
                      (selected-window)))
-      (delete-other-windows-internal window root)
-      ;; Create a new window to replace the existing one.
-      (setq window (prog1 (split-window window)
-                     (delete-window window)))))
+      (delete-other-windows-internal window root)))
+
+  ;; Create a new window to replace the existing one.
+  (let ((new-window
+         (or (ignore-errors (split-window (selected-window)))
+             (ignore-errors (split-window (selected-window) nil t)))))
+    (when new-window
+      (delete-window window)
+      (setq window new-window)))
 
   (set-window-dedicated-p window nil)
 
