@@ -1702,8 +1702,7 @@ Such as the current syntax table and the applied syntax properties."
              (end-column (- (match-end 0) line-beg))
              (loc (xref-make-file-location file line beg-column))
              (summary (progn
-                        (unless syntax-needed
-                          (font-lock-ensure line-beg line-end))
+                        (font-lock-ensure line-beg line-end)
                         (buffer-substring line-beg line-end))))
         (add-face-text-property beg-column end-column 'xref-match
                                 t summary)
