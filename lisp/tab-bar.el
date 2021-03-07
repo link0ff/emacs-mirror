@@ -772,7 +772,7 @@ ARG counts from 1."
                      tab-bar-history-forward)))
 
          (ws
-          (window-state-put ws (frame-root-window (selected-frame)) 'safe)))
+          (window-state-put ws nil 'safe)))
 
         (setq tab-bar-history-omit t)
 
