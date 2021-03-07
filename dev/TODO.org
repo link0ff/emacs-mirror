@@ -27,6 +27,9 @@ This feature is unusable with 'C-c C-d' (log-edit-show-diff):
    moves point to some random place in the diff output.  It's difficult
    to understand its logic, why it decides to move to the middle of the
    multi-file diff.
+   Sometimes displaying the end of the diff buffer makes an impression
+   that it's a complete diff buffer, thus a danger to miss the
+   beginning of the partially hidden diff buffer
 2. 'C-c C-d' (log-edit-show-diff)
    read-file-name("Use file /dev/null: " "/dev/" "/dev/null" t "null")
    diff-find-file-name()

@@ -624,8 +624,9 @@ means list those buffers and no others."
 	    (and files-only (>= (prefix-numeric-value files-only) 0)))
       (list-buffers--refresh buffer-list old-buffer)
       (tabulated-list-print)
-      (when (fboundp 'outline-cycle-highlight-minor-mode)
-        (outline-cycle-highlight-minor-mode +1)))
+      (setq-local outline-minor-mode-cycle t
+                  outline-minor-mode-highlight t)
+      (outline-minor-mode 1))
     buffer))
 
 (defun Buffer-menu-mouse-select (event)
