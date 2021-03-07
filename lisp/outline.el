@@ -199,17 +199,19 @@ in the file it applies to.")
   '(
     ;; Highlight headings according to the level.
     (eval . (list (concat "^\\(?:" outline-regexp "\\).+")
-                  0 '(if outline-minor-mode-cycle
-                         (if outline-minor-mode-highlight
-                             (list 'face (outline-font-lock-face)
-                                   'keymap outline-mode-cycle-map)
-                           (list 'face nil
-                                 'keymap outline-mode-cycle-map))
+                  0 '(if outline-minor-mode
+                         (if outline-minor-mode-cycle
+                             (if outline-minor-mode-highlight
+                                 (list 'face (outline-font-lock-face)
+                                       'keymap outline-mode-cycle-map)
+                               (list 'face nil
+                                     'keymap outline-mode-cycle-map)))
                        (outline-font-lock-face))
-                  (when (eq outline-minor-mode-highlight 'override)
-                      'append)
-                  (if (or outline-minor-mode-cycle
-                          (eq outline-minor-mode-highlight t))
+                  (when (and outline-minor-mode
+                             (eq outline-minor-mode-highlight 'override))
+                    'append)
+                  (if (and outline-minor-mode
+                           (eq outline-minor-mode-highlight t))
                       'append
                     t))))
   "Additional expressions to highlight in Outline mode.")
@@ -327,6 +329,7 @@ After that, changing the prefix key requires manipulating keymaps."
 
 (defcustom outline-minor-mode-cycle nil
   "Enable cycling of headings in `outline-minor-mode'.
+When enabled, it puts a keymap with cycling keys on heading lines.
 When point is on a heading line, then typing `TAB' cycles between `hide all',
 `headings only' and `show all' (`outline-cycle').  Typing `S-TAB' on
 a heading line cycles the whole buffer (`outline-cycle-buffer').
@@ -338,7 +341,10 @@ Typing these keys anywhere outside heading lines uses their default bindings."
 (defcustom outline-minor-mode-highlight nil
   "Highlight headings in `outline-minor-mode' using font-lock keywords.
 Non-nil value works well only when outline font-lock keywords
-don't conflict with the major mode's font-lock keywords."
+don't conflict with the major mode's font-lock keywords.
+When t, it puts outline faces only if there are no major mode's faces
+on headings.  When `override', it tries to append outline faces
+to major mode's faces."
   :type '(choice (const :tag "No highlighting" nil)
                  (const :tag "Append to major mode faces" override)
                  (const :tag "Highlight separately from major mode faces" t))

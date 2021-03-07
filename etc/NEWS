@@ -378,10 +378,9 @@ heading line cycles the whole buffer between "only top-level
 headings", "all headings and subheadings", and "show all" states.
 
 *** New option 'outline-minor-mode-highlight'.
-This option customizes 'outline-minor-mode'.  It puts
-highlighting on heading lines using standard outline faces.  This
-works well only when there are no conflicts with faces used by the
-major mode.
+This option customizes 'outline-minor-mode'.  It puts highlighting
+on heading lines using standard outline faces.  This works well only
+when there are no conflicts with faces used by the major mode.
 
 
 * Changes in Specialized Modes and Packages in Emacs 28.1
