@@ -402,9 +402,9 @@ elements is negated: these commands will NOT prompt."
                  (const :tag "Prompt if no identifier at point" nil)
                  (set :menu-tag "Prompt according to command"
                       :tag "Prompt according to command"
-                      :value (not)
-                      (const :tag "Except for commands listed below" not)
-                      (repeat :inline t (symbol :tag "command")))))
+		      :value (not)
+		      (const :tag "Except for commands listed below" not)
+		      (repeat :inline t (symbol :tag "command")))))
 
 (defcustom xref-after-jump-hook '(recenter
                                   xref-pulse-momentarily)
@@ -413,6 +413,10 @@ elements is negated: these commands will NOT prompt."
 
 (defcustom xref-after-return-hook '(xref-pulse-momentarily)
   "Functions called after returning to a pre-jump location."
+  :type 'hook)
+
+(defcustom xref-after-update-hook nil
+  "Functions called after the xref buffer is updated."
   :type 'hook)
 
 (defvar xref--marker-ring (make-ring xref-marker-ring-length)
@@ -929,7 +933,8 @@ GROUP is a string for decoration purposes and XREF is an
                                        "RET or mouse-1: follow reference"))
                          prefix new-summary)
                         (setq prev-line-key line-key)))
-                    (insert "\n"))))
+                    (insert "\n")))
+  (run-hooks 'xref-after-update-hook))
 
 (defun xref--analyze (xrefs)
   "Find common filenames in XREFS.
@@ -1701,9 +1706,7 @@ Such as the current syntax table and the applied syntax properties."
       (let* ((beg-column (- (match-beginning 0) line-beg))
              (end-column (- (match-end 0) line-beg))
              (loc (xref-make-file-location file line beg-column))
-             (summary (progn
-                        (font-lock-ensure line-beg line-end)
-                        (buffer-substring line-beg line-end))))
+             (summary (buffer-substring line-beg line-end)))
         (add-face-text-property beg-column end-column 'xref-match
                                 t summary)
         (push (xref-make-match summary loc (- end-column beg-column))
