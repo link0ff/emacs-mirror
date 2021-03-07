@@ -198,10 +198,7 @@ in the file it applies to.")
 (defvar outline-font-lock-keywords
   '(
     ;; Highlight headings according to the level.
-    (eval . (list (concat "^\\(?:" outline-regexp "\\)"
-                          (if (and outline-minor-mode-cycle
-                                   (string-suffix-p "$" outline-regexp))
-                              "" ".+"))
+    (eval . (list (concat "^\\(?:" outline-regexp "\\).+")
                   0 '(if outline-minor-mode-cycle
                          (if outline-minor-mode-highlight
                              (list 'face (outline-font-lock-face)
@@ -334,13 +331,7 @@ When point is on a heading line, then typing `TAB' cycles between `hide all',
 `headings only' and `show all' (`outline-cycle').  Typing `S-TAB' on
 a heading line cycles the whole buffer (`outline-cycle-buffer').
 Typing these keys anywhere outside heading lines uses their default bindings."
-  :type '(choice (const :tag "No cycling" nil)
-                 (const :tag "Cycle on headings" t))
-  :initialize 'custom-initialize-default
-  :set (lambda (sym val)
-         ;; (define-key outline-minor-mode-map outline-minor-mode-prefix nil)
-         ;; (define-key outline-minor-mode-map val outline-mode-prefix-map)
-         (set-default sym val))
+  :type 'boolean
   :version "28.1")
 ;;;###autoload(put 'outline-minor-mode-cycle 'safe-local-variable 'booleanp)
 
@@ -350,7 +341,7 @@ Non-nil value works well only when outline font-lock keywords
 don't conflict with the major mode's font-lock keywords."
   :type '(choice (const :tag "No highlighting" nil)
                  (const :tag "Append to major mode faces" override)
-                 (const :tag "Don't append to major mode faces" t))
+                 (const :tag "Highlight separately from major mode faces" t))
   :version "28.1")
 ;;;###autoload(put 'outline-minor-mode-highlight 'safe-local-variable 'booleanp)
 
