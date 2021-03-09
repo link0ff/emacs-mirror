@@ -413,7 +413,9 @@ elements is negated: these commands will NOT prompt."
 
 (defcustom xref-after-update-hook nil
   "Functions called after the xref buffer is updated."
-  :type 'hook)
+  :type 'hook
+  :version "28.1"
+  :package-version '(xref . "1.0.4"))
 
 (defvar xref--marker-ring (make-ring xref-marker-ring-length)
   "Ring of markers to implement the marker stack.")
