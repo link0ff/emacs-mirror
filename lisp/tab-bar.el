@@ -1150,22 +1150,24 @@ for the last tab on a frame is determined by
   "Close all tabs on the selected frame, except the selected one."
   (interactive)
   (let* ((tabs (funcall tab-bar-tabs-function))
-         (current-index (tab-bar--current-tab-index tabs)))
+         (current-index (tab-bar--current-tab-index tabs))
+         (keep-tabs tabs))
     (when current-index
       (dotimes (index (length tabs))
-        (unless (or (eq index current-index)
-                    (run-hook-with-args-until-success
-                     'tab-bar-tab-prevent-close-functions
-                     (nth index tabs)
-                     ;; `last-tab-p' logically can't ever be true
-                     ;; if we make it this far
-                     nil))
-          (push `((frame . ,(selected-frame))
-                  (index . ,index)
-                  (tab . ,(nth index tabs)))
-                tab-bar-closed-tabs)
-          (run-hook-with-args 'tab-bar-tab-pre-close-functions (nth index tabs) nil)))
-      (set-frame-parameter nil 'tabs (list (nth current-index tabs)))
+        (let ((tab (nth index tabs)))
+          (unless (or (eq index current-index)
+                      (run-hook-with-args-until-success
+                       'tab-bar-tab-prevent-close-functions tab
+                       ;; `last-tab-p' logically can't ever be true
+                       ;; if we make it this far
+                       nil))
+            (push `((frame . ,(selected-frame))
+                    (index . ,index)
+                    (tab . ,tab))
+                  tab-bar-closed-tabs)
+            (run-hook-with-args 'tab-bar-tab-pre-close-functions tab nil)
+            (setq keep-tabs (remove tab keep-tabs)))))
+      (set-frame-parameter nil 'tabs keep-tabs)
 
       ;; Recalculate tab-bar-lines and update frames
       (tab-bar--update-tab-bar-lines)
@@ -1291,7 +1293,7 @@ If GROUP-NAME is the empty string, then remove the tab from any group."
                                          (mapcar (lambda (tab)
                                                    (alist-get 'group tab))
                                                  (funcall tab-bar-tabs-function)))))))))
-  (let ((tabs (funcall tab-bar-tabs-function)))
+  (let* ((tabs (funcall tab-bar-tabs-function)))
     (dotimes (index (length tabs))
       (unless (or (eq index current-index)
                   (run-hook-with-args-until-success
