@@ -1294,28 +1294,19 @@ If GROUP-NAME is the empty string, then remove the tab from any group."
                                          (mapcar (lambda (tab)
                                                    (alist-get 'group tab))
                                                  (funcall tab-bar-tabs-function)))))))))
-  (let* ((tabs (funcall tab-bar-tabs-function)))
-    (dotimes (index (length tabs))
-      (unless (or (eq index current-index)
-                  (run-hook-with-args-until-success
-                   'tab-bar-tab-prevent-close-functions
-                   (nth index tabs)
-                   ;; `last-tab-p' logically can't ever be true
-                   ;; if we make it this far
-                   nil))
-        (push `((frame . ,(selected-frame))
-                (index . ,index)
-                (tab . ,(nth index tabs)))
-              tab-bar-closed-tabs)
-        (run-hook-with-args 'tab-bar-tab-pre-close-functions (nth index tabs) nil)))
-    (set-frame-parameter nil 'tabs (list (nth current-index tabs)))
+  (let* ((close-group (and (> (length group-name) 0) group-name))
+         (tab-bar-tab-prevent-close-functions
+          (cons (lambda (tab _last-tab-p)
+                  (not (equal (alist-get 'group tab) close-group)))
+                tab-bar-tab-prevent-close-functions)))
+    (tab-bar-close-other-tabs)
 
-    ;; Recalculate tab-bar-lines and update frames
-    (tab-bar--update-tab-bar-lines)
-
-    (force-mode-line-update)
-    (unless tab-bar-mode
-      (message "Deleted all other tabs"))))
+    (let* ((tabs (funcall tab-bar-tabs-function))
+           (current-index (tab-bar--current-tab-index tabs))
+           (current-tab (and current-index (nth current-index tabs))))
+      (when (and current-tab (equal (alist-get 'group current-tab)
+                                    close-group))
+        (tab-bar-close-tab)))))
 
 
 ;;; Tab history mode
