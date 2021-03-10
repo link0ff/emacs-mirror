@@ -1151,23 +1151,24 @@ for the last tab on a frame is determined by
   (interactive)
   (let* ((tabs (funcall tab-bar-tabs-function))
          (current-index (tab-bar--current-tab-index tabs))
-         (keep-tabs tabs))
-    (when current-index
-      (dotimes (index (length tabs))
-        (let ((tab (nth index tabs)))
-          (unless (or (eq index current-index)
-                      (run-hook-with-args-until-success
-                       'tab-bar-tab-prevent-close-functions tab
-                       ;; `last-tab-p' logically can't ever be true
-                       ;; if we make it this far
-                       nil))
-            (push `((frame . ,(selected-frame))
-                    (index . ,index)
-                    (tab . ,tab))
-                  tab-bar-closed-tabs)
-            (run-hook-with-args 'tab-bar-tab-pre-close-functions tab nil)
-            (setq keep-tabs (remove tab keep-tabs)))))
-      (set-frame-parameter nil 'tabs keep-tabs)
+         (current-tab (and current-index (nth current-index tabs)))
+         (index 0))
+    (when current-tab
+      (dolist (tab tabs)
+        (unless (or (eq tab current-tab)
+                    (run-hook-with-args-until-success
+                     'tab-bar-tab-prevent-close-functions tab
+                     ;; `last-tab-p' logically can't ever be true
+                     ;; if we make it this far
+                     nil))
+          (push `((frame . ,(selected-frame))
+                  (index . ,index)
+                  (tab . ,tab))
+                tab-bar-closed-tabs)
+          (run-hook-with-args 'tab-bar-tab-pre-close-functions tab nil)
+          (setq tabs (delq tab tabs)))
+        (setq index (1+ index)))
+      (set-frame-parameter nil 'tabs tabs)
 
       ;; Recalculate tab-bar-lines and update frames
       (tab-bar--update-tab-bar-lines)
