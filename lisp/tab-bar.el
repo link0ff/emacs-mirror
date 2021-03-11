@@ -576,12 +576,13 @@ the mode line.")
            (tab-bar-close-tab ,i)))))))
 
 (defun tab-bar-format-tabs ()
-  (let ((i 0))
+  (let* ((tabs (funcall tab-bar-tabs-function))
+         (i 0))
     (mapcan
      (lambda (tab)
        (setq i (1+ i))
        (tab-bar--format-tab tab i))
-     (funcall tab-bar-tabs-function))))
+     tabs)))
 
 ;; (defcustom tab-bar-tab-group-name-format-function #'tab-bar-tab-group-name-format-default
 
@@ -589,7 +590,9 @@ the mode line.")
 ;;   )
 
 (defun tab-bar-format-tab-groups ()
-  (let ((i 0))
+  (let* ((tabs (funcall tab-bar-tabs-function))
+         (current-tab-group (alist-get 'group (tab-bar--current-tab-find tabs)))
+         (i 0))
     (mapcan
      (lambda (tab)
        (let ((tab-group (alist-get 'group tab)))
