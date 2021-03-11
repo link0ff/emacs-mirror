@@ -135,10 +135,12 @@ typedef struct ns_bitmap_record Bitmap_Record;
 # define COLOR_TABLE_SUPPORT 1
 #endif
 
+#ifdef HAVE_RSVG
 #if defined HAVE_NS
 # define FRAME_SCALE_FACTOR(f) ns_frame_scale_factor (f)
 #else
 # define FRAME_SCALE_FACTOR(f) 1;
+#endif
 #endif
 
 static void image_disable_image (struct frame *, struct image *);
@@ -2232,7 +2234,7 @@ image_set_transform (struct frame *f, struct image *img)
      TODO: implement for Windows.  */
   bool smoothing;
   Lisp_Object s = image_spec_value (img->spec, QCtransform_smoothing, NULL);
-  if (!s)
+  if (NILP (s))
     smoothing = (width < img->width) || (height < img->height);
   else
     smoothing = !NILP (s);
