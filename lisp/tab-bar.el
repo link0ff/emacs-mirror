@@ -700,6 +700,10 @@ on the tab bar instead."
       (explicit-name . ,tab-explicit-name)
       ,@(if tab-group `((group . ,tab-group))))))
 
+(defun tab-bar--current-tab-find (&optional tabs frame)
+  (seq-find (lambda (tab) (eq (car tab) 'current-tab))
+            (or tabs (funcall tab-bar-tabs-function frame))))
+
 (defun tab-bar--current-tab-index (&optional tabs frame)
   (seq-position (or tabs (funcall tab-bar-tabs-function frame))
                 'current-tab (lambda (a b) (eq (car a) b))))
@@ -1167,8 +1171,7 @@ for the last tab on a frame is determined by
   "Close all tabs on the selected frame, except the selected one."
   (interactive)
   (let* ((tabs (funcall tab-bar-tabs-function))
-         (current-index (tab-bar--current-tab-index tabs))
-         (current-tab (and current-index (nth current-index tabs)))
+         (current-tab (tab-bar--current-tab-find tabs))
          (index 0))
     (when current-tab
       (dolist (tab tabs)
@@ -1303,8 +1306,7 @@ If GROUP-NAME is the empty string, then remove the tab from any group."
   "Close all tabs that belong to GROUP-NAME on the selected frame."
   (interactive
    (let* ((tabs (funcall tab-bar-tabs-function))
-          (tab-index (1+ (tab-bar--current-tab-index tabs)))
-          (group-name (alist-get 'group (nth (1- tab-index) tabs))))
+          (group-name (alist-get 'group (tab-bar--current-tab-find tabs))))
      (list (completing-read
             "Close all tabs with group name: "
             (delete-dups (delq nil (cons group-name
@@ -1319,8 +1321,7 @@ If GROUP-NAME is the empty string, then remove the tab from any group."
     (tab-bar-close-other-tabs)
 
     (let* ((tabs (funcall tab-bar-tabs-function))
-           (current-index (tab-bar--current-tab-index tabs))
-           (current-tab (and current-index (nth current-index tabs))))
+           (current-tab (tab-bar--current-tab-find tabs)))
       (when (and current-tab (equal (alist-get 'group current-tab)
                                     close-group))
         (tab-bar-close-tab)))))
