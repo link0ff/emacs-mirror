@@ -511,7 +511,8 @@ the formatted tab name to display in the tab bar."
   (let ((current-p (eq (car tab) 'current-tab)))
     (propertize
      (concat (if (alist-get 'group tab)
-                 (format "%s " (alist-get 'group tab)) "")
+                 (format "%s " (alist-get 'group tab))
+               "")
              (if tab-bar-tab-hints (format "%d " i) "")
              (alist-get 'name tab)
              (or (and tab-bar-close-button-show
@@ -523,6 +524,7 @@ the formatted tab name to display in the tab bar."
 
 (defvar tab-bar-format '(tab-bar-format-history
                          tab-bar-format-tabs
+                         ;; tab-bar-format-tab-groups
                          tab-bar-separator
                          tab-bar-format-add-tab)
   "Template for displaying tab bar items.
@@ -545,40 +547,55 @@ the mode line.")
        menu-item ,tab-bar-forward-button tab-bar-history-forward
        :help "Click to go forward in tab history"))))
 
+(defun tab-bar--format-tab (tab i)
+  (append
+   `((,(intern (format "sep-%i" i)) menu-item ,(tab-bar-separator) ignore))
+   (cond
+    ((eq (car tab) 'current-tab)
+     `((current-tab
+        menu-item
+        ,(funcall tab-bar-tab-name-format-function tab i)
+        ignore
+        :help "Current tab")))
+    (t
+     `((,(intern (format "tab-%i" i))
+        menu-item
+        ,(funcall tab-bar-tab-name-format-function tab i)
+        ,(or
+          (alist-get 'binding tab)
+          `(lambda ()
+             (interactive)
+             (tab-bar-select-tab ,i)))
+        :help "Click to visit tab"))))
+   `((,(if (eq (car tab) 'current-tab) 'C-current-tab (intern (format "C-tab-%i" i)))
+      menu-item ""
+      ,(or
+        (alist-get 'close-binding tab)
+        `(lambda ()
+           (interactive)
+           (tab-bar-close-tab ,i)))))))
+
 (defun tab-bar-format-tabs ()
-  (let ((separator (tab-bar-separator))
-        (tabs (funcall tab-bar-tabs-function))
-        (i 0))
+  (let ((i 0))
     (mapcan
      (lambda (tab)
        (setq i (1+ i))
-       (append
-        `((,(intern (format "sep-%i" i)) menu-item ,separator ignore))
-        (cond
-         ((eq (car tab) 'current-tab)
-          `((current-tab
-             menu-item
-             ,(funcall tab-bar-tab-name-format-function tab i)
-             ignore
-             :help "Current tab")))
-         (t
-          `((,(intern (format "tab-%i" i))
-             menu-item
-             ,(funcall tab-bar-tab-name-format-function tab i)
-             ,(or
-               (alist-get 'binding tab)
-               `(lambda ()
-                  (interactive)
-                  (tab-bar-select-tab ,i)))
-             :help "Click to visit tab"))))
-        `((,(if (eq (car tab) 'current-tab) 'C-current-tab (intern (format "C-tab-%i" i)))
-           menu-item ""
-           ,(or
-             (alist-get 'close-binding tab)
-             `(lambda ()
-                (interactive)
-                (tab-bar-close-tab ,i)))))))
-     tabs)))
+       (tab-bar--format-tab tab i))
+     (funcall tab-bar-tabs-function))))
+
+;; (defcustom tab-bar-tab-group-name-format-function #'tab-bar-tab-group-name-format-default
+
+;; (defun tab-bar--format-tab-group ()
+;;   )
+
+(defun tab-bar-format-tab-groups ()
+  (let ((i 0))
+    (mapcan
+     (lambda (tab)
+       (let ((tab-group (alist-get 'group tab)))
+         (setq i (1+ i))
+         (tab-bar--format-tab tab i)))
+     (funcall tab-bar-tabs-function))))
 
 (defun tab-bar-format-add-tab ()
   (when (and tab-bar-new-button-show tab-bar-new-button)
@@ -1329,7 +1346,7 @@ If GROUP-NAME is the empty string, then remove the tab from any group."
 (defvar tab-bar-history-old-minibuffer-depth 0
   "Minibuffer depth before the current command.")
 
-(defun tab-bar-history--pre-change ()
+(defun tab-bar--history-pre-change ()
   (setq tab-bar-history-old-minibuffer-depth (minibuffer-depth))
   ;; Store wc before possibly entering the minibuffer
   (when (zerop tab-bar-history-old-minibuffer-depth)
@@ -1412,9 +1429,9 @@ and can restore them."
                                                 :ascent center))
                                tab-bar-forward-button))
 
-        (add-hook 'pre-command-hook 'tab-bar-history--pre-change)
+        (add-hook 'pre-command-hook 'tab-bar--history-pre-change)
         (add-hook 'window-configuration-change-hook 'tab-bar--history-change))
-    (remove-hook 'pre-command-hook 'tab-bar-history--pre-change)
+    (remove-hook 'pre-command-hook 'tab-bar--history-pre-change)
     (remove-hook 'window-configuration-change-hook 'tab-bar--history-change)))
 
 
