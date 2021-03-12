@@ -510,10 +510,7 @@ the formatted tab name to display in the tab bar."
 (defun tab-bar-tab-name-format-default (tab i)
   (let ((current-p (eq (car tab) 'current-tab)))
     (propertize
-     (concat (if (alist-get 'group tab)
-                 (format "%s " (alist-get 'group tab))
-               "")
-             (if tab-bar-tab-hints (format "%d " i) "")
+     (concat (if tab-bar-tab-hints (format "%d " i) "")
              (alist-get 'name tab)
              (or (and tab-bar-close-button-show
                       (not (eq tab-bar-close-button-show
@@ -576,29 +573,62 @@ the mode line.")
            (tab-bar-close-tab ,i)))))))
 
 (defun tab-bar-format-tabs ()
-  (let* ((tabs (funcall tab-bar-tabs-function))
-         (i 0))
+  (let ((i 0))
     (mapcan
      (lambda (tab)
        (setq i (1+ i))
        (tab-bar--format-tab tab i))
-     tabs)))
+     (funcall tab-bar-tabs-function))))
 
-;; (defcustom tab-bar-tab-group-name-format-function #'tab-bar-tab-group-name-format-default
+(defcustom tab-bar-tab-group-format-function #'tab-bar-tab-group-format-default
+  "Function to format a tab group name.
+Function gets two arguments, a tab with a group name and its number,
+and should return the formatted tab group name to display in the tab bar."
+  :type 'function
+  :initialize 'custom-initialize-default
+  :set (lambda (sym val)
+         (set-default sym val)
+         (force-mode-line-update))
+  :group 'tab-bar
+  :version "28.1")
 
-;; (defun tab-bar--format-tab-group ()
-;;   )
+(defun tab-bar-tab-group-format-default (tab i)
+  (propertize
+   (concat (if tab-bar-tab-hints (format "%d " i) "")
+           (alist-get 'group tab))
+   'face 'tab-bar-tab-inactive))
+
+(defun tab-bar--format-tab-group (tab i)
+  (append
+   `((,(intern (format "sep-%i" i)) menu-item ,(tab-bar-separator) ignore))
+   `((,(intern (format "group-%i" i))
+      menu-item
+      ,(funcall tab-bar-tab-group-format-function tab i)
+      ,(or
+        (alist-get 'binding tab)
+        `(lambda ()
+           (interactive)
+           (tab-bar-select-tab ,i)))
+      :help "Click to visit group"))))
 
 (defun tab-bar-format-tab-groups ()
   (let* ((tabs (funcall tab-bar-tabs-function))
-         (current-tab-group (alist-get 'group (tab-bar--current-tab-find tabs)))
+         (current-group (alist-get 'group (tab-bar--current-tab-find tabs)))
+         (previous-group nil)
          (i 0))
     (mapcan
      (lambda (tab)
        (let ((tab-group (alist-get 'group tab)))
          (setq i (1+ i))
-         (tab-bar--format-tab tab i)))
-     (funcall tab-bar-tabs-function))))
+         (prog1 (if (or (not tab-group) (equal tab-group current-group))
+                    ;; Show current group and ungrouped tabs
+                    (tab-bar--format-tab tab i)
+                  ;; Otherwise, show first group tab with a group name,
+                  ;; but hide other group tabs
+                  (unless (equal previous-group tab-group)
+                    (tab-bar--format-tab-group tab i)))
+           (setq previous-group tab-group))))
+     tabs)))
 
 (defun tab-bar-format-add-tab ()
   (when (and tab-bar-new-button-show tab-bar-new-button)
