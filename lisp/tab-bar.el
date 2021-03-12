@@ -534,7 +534,7 @@ the mode line."
   :type 'hook
   :options '(tab-bar-format-history
              tab-bar-format-tabs
-             tab-bar-format-tab-groups
+             tab-bar-format-tabs-groups
              tab-bar-separator
              tab-bar-format-add-tab
              tab-bar-format-align-right
@@ -624,7 +624,7 @@ and should return the formatted tab group name to display in the tab bar."
            (tab-bar-select-tab ,i)))
       :help "Click to visit group"))))
 
-(defun tab-bar-format-tab-groups ()
+(defun tab-bar-format-tabs-groups ()
   (let* ((tabs (funcall tab-bar-tabs-function))
          (current-group (alist-get 'group (tab-bar--current-tab-find tabs)))
          (previous-group nil)
