@@ -519,11 +519,10 @@ the formatted tab name to display in the tab bar."
                  ""))
      'face (if current-p 'tab-bar-tab 'tab-bar-tab-inactive))))
 
-(defvar tab-bar-format '(tab-bar-format-history
-                         tab-bar-format-tabs
-                         ;; tab-bar-format-tab-groups
-                         tab-bar-separator
-                         tab-bar-format-add-tab)
+(defcustom tab-bar-format '(tab-bar-format-history
+                            tab-bar-format-tabs
+                            tab-bar-separator
+                            tab-bar-format-add-tab)
   "Template for displaying tab bar items.
 Every item in the list is a function that returns
 a string, or a list of menu-item elements, or nil.
@@ -531,7 +530,21 @@ When you add more items `tab-bar-format-align-right' and
 `tab-bar-format-global' to the end, then after enabling
 `display-time-mode' (or any other mode that uses `global-mode-string')
 it will display time aligned to the right on the tab bar instead of
-the mode line.")
+the mode line."
+  :type 'hook
+  :options '(tab-bar-format-history
+             tab-bar-format-tabs
+             tab-bar-format-tab-groups
+             tab-bar-separator
+             tab-bar-format-add-tab
+             tab-bar-format-align-right
+             tab-bar-format-global)
+  :initialize 'custom-initialize-default
+  :set (lambda (sym val)
+         (set-default sym val)
+         (force-mode-line-update))
+  :group 'tab-bar
+  :version "28.1")
 
 (defun tab-bar-format-history ()
   (when (and tab-bar-history-mode tab-bar-history-buttons-show)
