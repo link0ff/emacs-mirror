@@ -1441,9 +1441,9 @@ decaying average of delays, and if this number gets too high, the
 animation is stopped.
 
 +++
-*** The 'n' and 'p' commands (next/previous image) now respects dired order.
+*** The 'n' and 'p' commands (next/previous image) now respect Dired order.
 These commands would previously display the next/previous image in
-alphabetical order, but will now find the "parent" dired buffer and
+lexicographic order, but will now find the "parent" Dired buffer and
 select the next/previous image file according to how the files are
 sorted there.  The commands have also been extended to work when the
 "parent" buffer is an archive mode (i.e., zip file or the like) or tar
@@ -1482,6 +1482,12 @@ and nil to disable smoothing.
 
 The default behaviour of smoothing on down-scaling and not smoothing
 on up-scaling remains unchanged.
+
++++
+*** New user option 'image-transform-smoothing'.
+This controls whether to use smoothing or not for an image.  Values
+include nil (no smoothing), t (do smoothing) or a predicate function
+that's called with the image object and should return nil/t.
 
 ** EWW
 

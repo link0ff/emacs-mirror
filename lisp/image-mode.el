@@ -95,7 +95,7 @@ Its value should be one of the following:
 (defvar-local image-transform-rotation 0.0
   "Rotation angle for the image in the current Image mode buffer.")
 
-(defvar-local image-transform-smoothing nil
+(defvar-local image--transform-smoothing nil
   "Whether to use transform smoothing.")
 
 (defvar image-transform-right-angle-fudge 0.0001
@@ -1144,8 +1144,8 @@ replacing the current Image mode buffer."
       (funcall next))))
 
 (defun image-mode--directory-buffers (file)
-  "Return a alist of type/buffer for all \"parent\" buffers to image FILE.
-This is normally a list of dired buffers, but can also be archive and
+  "Return an alist of type/buffer for all \"parent\" buffers to image FILE.
+This is normally a list of Dired buffers, but can also be archive and
 tar mode buffers."
   (let ((buffers nil)
         (dir (file-name-directory file)))
@@ -1481,9 +1481,9 @@ return value is suitable for appending to an image spec."
 	    (list :height (cdr resized)))
 	,@(unless (= 0.0 image-transform-rotation)
 	    (list :rotation image-transform-rotation))
-        ,@(when image-transform-smoothing
+        ,@(when image--transform-smoothing
             (list :transform-smoothing
-                  (string= image-transform-smoothing "smooth")))))))
+                  (string= image--transform-smoothing "smooth")))))))
 
 (defun image-transform-set-scale (scale)
   "Prompt for a number, and resize the current image by that amount."
@@ -1519,7 +1519,7 @@ ROTATION should be in degrees."
 (defun image-transform-set-smoothing (smoothing)
   (interactive (list (completing-read "Smoothing: "
                                       '("none" "smooth") nil t)))
-  (setq image-transform-smoothing smoothing)
+  (setq image--transform-smoothing smoothing)
   (image-toggle-display-image))
 
 (defun image-transform-original ()
@@ -1535,7 +1535,7 @@ ROTATION should be in degrees."
   (setq image-transform-resize image-auto-resize
 	image-transform-rotation 0.0
 	image-transform-scale 1
-        image-transform-smoothing nil)
+        image--transform-smoothing nil)
   (image-toggle-display-image))
 
 (provide 'image-mode)
