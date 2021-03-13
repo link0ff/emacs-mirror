@@ -6679,6 +6679,7 @@ parse_solitary_modifier (Lisp_Object symbol)
     case 'c':
       MULTI_LETTER_MOD (ctrl_modifier, "ctrl", 4);
       MULTI_LETTER_MOD (ctrl_modifier, "control", 7);
+      MULTI_LETTER_MOD (click_modifier, "click", 5);
       break;
 
     case 'H':
@@ -12379,8 +12380,6 @@ syms_of_keyboard_for_pdumper (void)
   /* Create the initial keyboard.  Qt means 'unset'.  */
   eassert (initial_kboard == NULL);
   initial_kboard = allocate_kboard (Qt);
-
-  Vwhile_no_input_ignore_events = Qnil;
 
   inhibit_record_char = false;
 }
