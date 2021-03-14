@@ -530,7 +530,8 @@ When you add more items `tab-bar-format-align-right' and
 `tab-bar-format-global' to the end, then after enabling
 `display-time-mode' (or any other mode that uses `global-mode-string')
 it will display time aligned to the right on the tab bar instead of
-the mode line."
+the mode line.  Replacing `tab-bar-format-tabs' with
+`tab-bar-format-tabs-groups' will group tabs on the tab bar."
   :type 'hook
   :options '(tab-bar-format-history
              tab-bar-format-tabs
@@ -1318,7 +1319,10 @@ function `tab-bar-tab-name-function'."
   "Add the tab specified by its absolute position ARG to GROUP-NAME.
 If no ARG is specified, then set the GROUP-NAME for the current tab.
 ARG counts from 1.
-If GROUP-NAME is the empty string, then remove the tab from any group."
+If GROUP-NAME is the empty string, then remove the tab from any group.
+While using this command, you might also want to replace
+`tab-bar-format-tabs' with `tab-bar-format-tabs-groups' in
+`tab-bar-format' to group tabs on the tab bar."
   (interactive
    (let* ((tabs (funcall tab-bar-tabs-function))
           (tab-index (or current-prefix-arg (1+ (tab-bar--current-tab-index tabs))))
