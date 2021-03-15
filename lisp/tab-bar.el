@@ -330,14 +330,14 @@ before calling the command that adds a new tab."
 (defcustom tab-bar-new-tab-group nil
   "Defines what group to assign to a new tab.
 If nil, don't set a default group automatically.
-If t, inherit the group from the previous tab.
-If the value is a string, use it as a group name of a new tab.
+If t, inherit the group name from the previous tab.
+If the value is a string, use it as the group name of a new tab.
 If the value is a function, call it with no arguments
-to get the group name it returns."
-  :type '(choice (const     :tag "No automatic group" nil)
-                 (const     :tag "Inherit group from previous tab" t)
-                 (string    :tag "Fixed group name")
-                 (function  :tag "Function that returns group name"))
+to get the group name."
+  :type '(choice (const    :tag "No automatic group" nil)
+                 (const    :tag "Inherit group from previous tab" t)
+                 (string   :tag "Fixed group name")
+                 (function :tag "Function that returns group name"))
   :group 'tab-bar
   :version "28.1")
 
