@@ -765,7 +765,11 @@ on the tab bar instead."
   ;; inherits the current tab's `explicit-name' parameter.
   (let* ((tab (or tab (assq 'current-tab (frame-parameter frame 'tabs))))
          (tab-explicit-name (alist-get 'explicit-name tab))
-         (tab-group (alist-get 'group tab)))
+         (tab-group (if tab
+                        (alist-get 'group tab)
+                      (pcase tab-bar-new-tab-group
+                        ((pred stringp) tab-bar-new-tab-group)
+                        ((pred functionp) (funcall tab-bar-new-tab-group))))))
     `(current-tab
       (name . ,(if tab-explicit-name
                    (alist-get 'name tab)
@@ -1049,7 +1053,10 @@ After the tab is created, the hooks in
 
     (when from-index
       (setf (nth from-index tabs) from-tab))
-    (let* ((to-tab (tab-bar--current-tab))
+
+    (let* ((to-tab (tab-bar--current-tab
+                    (when (eq tab-bar-new-tab-group t)
+                      `((group . ,(alist-get 'group from-tab))))))
            (to-index (and to-index (prefix-numeric-value to-index)))
            (to-index (or (if to-index
                              (if (< to-index 0)
@@ -1068,14 +1075,6 @@ After the tab is created, the hooks in
       (when (eq to-index 0)
         ;; `pushnew' handles the head of tabs but not frame-parameter
         (set-frame-parameter nil 'tabs tabs))
-
-      (when tab-bar-new-tab-group
-        (let ((group (pcase tab-bar-new-tab-group
-                       ('t (alist-get 'group from-tab))
-                       ((pred stringp) tab-bar-new-tab-group)
-                       ((pred functionp) (funcall tab-bar-new-tab-group)))))
-          (when (stringp group)
-            (nconc to-tab `((group . ,group))))))
 
       (run-hook-with-args 'tab-bar-tab-post-open-functions
                           (nth to-index tabs)))
@@ -1113,8 +1112,7 @@ If a negative ARG, duplicate the tab to ARG positions to the left.
 If ARG is zero, duplicate the tab in place of the current tab."
   (interactive "P")
   (let ((tab-bar-new-tab-choice nil)
-        (tab-bar-new-tab-group
-         (alist-get 'group (tab-bar--current-tab-find))))
+        (tab-bar-new-tab-group t))
     (tab-bar-new-tab arg)))
 
 
