@@ -609,7 +609,7 @@ SELECT is `quit', also quit the *xref* window."
     (when xref
       (xref--show-location (xref-item-location xref)))))
 
-(defun xref-next-line-no-display ()
+(defun xref-next-line-no-show ()
   "Move to the next xref but don't display its source."
   (interactive)
   (xref--search-property 'xref-item))
@@ -617,10 +617,10 @@ SELECT is `quit', also quit the *xref* window."
 (defun xref-next-line ()
   "Move to the next xref and display its source in the appropriate window."
   (interactive)
-  (xref-next-line-no-display)
+  (xref-next-line-no-show)
   (xref-show-location-at-point))
 
-(defun xref-prev-line-no-display ()
+(defun xref-prev-line-no-show ()
   "Move to the previous xref but don't display its source."
   (interactive)
   (xref--search-property 'xref-item t))
@@ -628,7 +628,7 @@ SELECT is `quit', also quit the *xref* window."
 (defun xref-prev-line ()
   "Move to the previous xref and display its source in the appropriate window."
   (interactive)
-  (xref-prev-line-no-display)
+  (xref-prev-line-no-show)
   (xref-show-location-at-point))
 
 (defun xref-next-group ()
