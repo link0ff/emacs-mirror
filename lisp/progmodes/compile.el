@@ -2572,15 +2572,11 @@ Use this command in a compilation log buffer."
   (or (compilation-buffer-p (current-buffer))
       (error "Not in a compilation buffer"))
   (compilation--ensure-parse (point))
-  (let ((window (posn-window (event-end event))))
-    (if (get-text-property (point) 'compilation-directory)
-        (dired-other-window
-         (car (get-text-property (point) 'compilation-directory)))
-      (setq compilation-current-error (point))
-      (next-error-internal))
-    (when current-prefix-arg
-      (with-selected-window window
-        (quit-restore-window window)))))
+  (if (get-text-property (point) 'compilation-directory)
+      (dired-other-window
+       (car (get-text-property (point) 'compilation-directory)))
+    (setq compilation-current-error (point))
+    (next-error-internal)))
 
 ;; This is mostly unused, but we keep it for the sake of some external
 ;; packages which seem to make use of it.

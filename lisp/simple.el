@@ -398,10 +398,6 @@ and TO-BUFFER is a target buffer."
     (recenter next-error-recenter))
   (funcall next-error-found-function from-buffer to-buffer)
   (next-error-message-highlight from-buffer)
-  (when (and current-prefix-arg from-buffer (not (eq from-buffer to-buffer)))
-    (let ((window (get-buffer-window from-buffer)))
-      (with-selected-window window
-        (quit-restore-window window))))
   (run-hooks 'next-error-hook))
 
 (defun next-error-select-buffer (buffer)
