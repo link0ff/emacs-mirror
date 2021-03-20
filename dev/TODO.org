@@ -39,6 +39,17 @@ This feature is unusable with 'C-c C-d' (log-edit-show-diff):
    vc/diff-mode.el:706:1: Warning: Unused lexical variable `i'
    vc/diff-mode.el:733:30: Warning: reference to free variable
 
+Debugger entered--Lisp error: (wrong-type-argument stringp nil)
+  string-to-number(nil)
+  (let ((start (string-to-number (match-string 3))) (len (string-to-number (match-string 4))))
+  (cond ((eobp) nil) ((looking-at diff-hunk-header-re-unified
+  (progn (condition-case nil (diff-hunk-next)
+  (while (progn (condition-case nil (diff-hunk-next)
+  (if (eobp) (goto-char (point-min)) (forward-line -1) (while
+  diff-goto-line("manifest.js" 1 0)
+  apply(diff-goto-line ("manifest.js" 1 0))
+  vc-diff-finish
+
 * inhibit-messages
 
 bug#42865: 28.0.50; Add new 'copy-region-quietly' defcustom
