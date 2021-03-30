@@ -1785,6 +1785,8 @@ Return t if the buffer had changes, nil otherwise."
         (setq files (nreverse filtered))))
     ;; [2021-02-11] I think it should either try to get visible window's buffer position
     ;; or maybe also search in non-visible buffers?
+    ;; [2021-03-30] BETTER TO ADD THIS TO A NEW HOOK
+    ;; (together with `shrink-window-if-larger-than-buffer')
     (unless rev2    ; remember the position in the or a current buffer
       (let ((f files))
         (while f

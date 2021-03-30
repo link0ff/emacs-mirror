@@ -6,6 +6,8 @@ https://github.com/dgutov/diff-hl/issues/149
 Subject: bug#36526: Open diff at current location (feature request with suggested code)
 https://www.reddit.com/r/emacs/comments/efu71g/announce_diffatpoint_now_available_in_melpa/
 
+BETTER TO ADD IT TO A NEW HOOK
+
 Implementations:
 1. https://gitlab.com/ideasman42/emacs-diff-at-point
 2. (qv "~/.emacs.d/elpa/diff-hl-20200701.2141/diff-hl.el"
