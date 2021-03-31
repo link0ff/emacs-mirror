@@ -342,6 +342,8 @@ For example, you can set it to <return> like `isearch-exit'."
   :group 'convenience
   :version "28.1")
 
+;;;###autoload (defvar repeat-map nil)
+
 ;;;###autoload
 (define-minor-mode repeat-mode
   "Toggle Repeat mode.
@@ -364,8 +366,9 @@ When Repeat mode is enabled, and the command symbol has the property named
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
   (when repeat-mode
-    (let ((repeat-map (and (symbolp this-command)
-                           (get this-command 'repeat-map))))
+    (let ((repeat-map (or repeat-map
+                          (and (symbolp this-command)
+                               (get this-command 'repeat-map)))))
       (when repeat-map
         (when (boundp repeat-map)
           (setq repeat-map (symbol-value repeat-map)))
@@ -398,7 +401,8 @@ When Repeat mode is enabled, and the command symbol has the property named
             (when repeat-exit-key
               (define-key map repeat-exit-key 'ignore))
 
-            (set-transient-map map)))))))
+            (set-transient-map map))))))
+  (setq repeat-map nil))
 
 (provide 'repeat)
 
