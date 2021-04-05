@@ -393,7 +393,7 @@ When Repeat mode is enabled, and the command symbol has the property named
 
           ;; Exit when the last char is not among repeatable keys,
           ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
-          (when (or (memq last-command-event keys)
+          (when (or (lookup-key map (this-single-command-keys) nil)
                     prefix-command-p)
 
             (when (and repeat-keep-prefix (not prefix-command-p))
