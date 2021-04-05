@@ -342,6 +342,16 @@ For example, you can set it to <return> like `isearch-exit'."
   :group 'convenience
   :version "28.1")
 
+(defcustom repeat-keep-prefix t
+  "Keep the prefix arg of the previous command.
+This can help to reverse direction
+with e.g. C-x o M-- o o.
+Also it can help to set new step
+e.g. C-x { 5 { { { will set window resizing step to 5 units."
+  :type 'boolean
+  :group 'convenience
+  :version "28.1")
+
 ;;;###autoload (defvar repeat-map nil)
 
 ;;;###autoload
@@ -372,30 +382,37 @@ When Repeat mode is enabled, and the command symbol has the property named
       (when repeat-map
         (when (boundp repeat-map)
           (setq repeat-map (symbol-value repeat-map)))
-        (let ((map (copy-keymap repeat-map))
-              keys mess)
+        (let ((prefix-command-p (memq this-original-command
+                                      '(universal-argument
+                                        universal-argument-more
+                                        digit-argument
+                                        negative-argument)))
+              (map (copy-keymap repeat-map))
+              keys)
           (map-keymap (lambda (key _) (push key keys)) map)
 
           ;; Exit when the last char is not among repeatable keys,
           ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
           (when (or (memq last-command-event keys)
-                    (memq this-original-command '(universal-argument
-                                                  universal-argument-more
-				                  digit-argument
-                                                  negative-argument)))
+                    prefix-command-p)
+
+            (when (and repeat-keep-prefix (not prefix-command-p))
+              (setq prefix-arg current-prefix-arg))
+
             ;; Messaging
-            (setq mess (format-message
-                        "Repeat with %s%s"
-                        (mapconcat (lambda (key)
-                                     (key-description (vector key)))
-                                   keys ", ")
-                        (if repeat-exit-key
-                            (format ", or exit with %s"
-                                    (key-description repeat-exit-key))
-                          "")))
-            (if (current-message)
-                (message "%s [%s]" (current-message) mess)
-              (message mess))
+            (unless prefix-command-p
+              (let ((mess (format-message
+                           "Repeat with %s%s"
+                           (mapconcat (lambda (key)
+                                        (key-description (vector key)))
+                                      keys ", ")
+                           (if repeat-exit-key
+                               (format ", or exit with %s"
+                                       (key-description repeat-exit-key))
+                             ""))))
+                (if (current-message)
+                    (message "%s [%s]" (current-message) mess)
+                  (message mess))))
 
             ;; Adding an exit key
             (when repeat-exit-key
