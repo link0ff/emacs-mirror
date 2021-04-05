@@ -343,11 +343,7 @@ For example, you can set it to <return> like `isearch-exit'."
   :version "28.1")
 
 (defcustom repeat-keep-prefix t
-  "Keep the prefix arg of the previous command.
-This can help to reverse direction
-with e.g. C-x o M-- o o.
-Also it can help to set new step
-e.g. C-x { 5 { { { will set window resizing step to 5 units."
+  "Keep the prefix arg of the previous command."
   :type 'boolean
   :group 'convenience
   :version "28.1")
@@ -389,7 +385,6 @@ When Repeat mode is enabled, and the command symbol has the property named
                                         negative-argument)))
               (map (copy-keymap rep-map))
               keys)
-          (map-keymap (lambda (key _) (push key keys)) map)
 
           ;; Exit when the last char is not among repeatable keys,
           ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
@@ -401,6 +396,7 @@ When Repeat mode is enabled, and the command symbol has the property named
 
             ;; Messaging
             (unless prefix-command-p
+              (map-keymap (lambda (key _) (push key keys)) map)
               (let ((mess (format-message
                            "Repeat with %s%s"
                            (mapconcat (lambda (key)
