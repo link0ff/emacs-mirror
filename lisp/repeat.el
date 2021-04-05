@@ -376,18 +376,18 @@ When Repeat mode is enabled, and the command symbol has the property named
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
   (when repeat-mode
-    (let ((repeat-map (or repeat-map
-                          (and (symbolp this-command)
-                               (get this-command 'repeat-map)))))
-      (when repeat-map
-        (when (boundp repeat-map)
-          (setq repeat-map (symbol-value repeat-map)))
+    (let ((rep-map (or repeat-map
+                       (and (symbolp this-command)
+                            (get this-command 'repeat-map)))))
+      (when rep-map
+        (when (boundp rep-map)
+          (setq rep-map (symbol-value rep-map)))
         (let ((prefix-command-p (memq this-original-command
                                       '(universal-argument
                                         universal-argument-more
                                         digit-argument
                                         negative-argument)))
-              (map (copy-keymap repeat-map))
+              (map (copy-keymap rep-map))
               keys)
           (map-keymap (lambda (key _) (push key keys)) map)
 
