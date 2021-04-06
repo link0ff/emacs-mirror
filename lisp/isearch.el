@@ -172,6 +172,17 @@ This allows you to resume earlier Isearch sessions through the
 command history."
   :type 'boolean)
 
+(defcustom isearch-wrap-pause t ;; isearch-wrap-repeat?
+  "A choice defining whether to pause before wrapping.
+When `t' (by default), signal an error when no more matches are found.
+Then after repeating the search, wrap with `isearch-wrap-function'.
+When `no', wrap immediately after reaching the end of the search space.
+When `nil', never wrap."
+  :type '(choice (const :tag "Pause before wrapping" t)
+                 (const :tag "No pause before wrapping" no)
+                 (const :tag "Disable wrapping" nil))
+  :version "28.1")
+
 (defvar isearch-mode-hook nil
   "Function(s) to call after starting up an incremental search.")
 
@@ -1827,13 +1838,12 @@ Use `isearch-exit' to quit without signaling."
 	    ;; After taking the last element, adjust ring to previous one.
 	    (isearch-ring-adjust1 nil))
 	;; If already have what to search for, repeat it.
-	(or isearch-success
-	    (progn
-	      ;; Set isearch-wrapped before calling isearch-wrap-function
-	      (setq isearch-wrapped t)
-	      (if isearch-wrap-function
-		  (funcall isearch-wrap-function)
-	        (goto-char (if isearch-forward (point-min) (point-max)))))))
+	(unless (or isearch-success (null isearch-wrap-pause))
+	  ;; Set isearch-wrapped before calling isearch-wrap-function
+	  (setq isearch-wrapped t)
+	  (if isearch-wrap-function
+	      (funcall isearch-wrap-function)
+	    (goto-char (if isearch-forward (point-min) (point-max))))))
     ;; C-s in reverse or C-r in forward, change direction.
     (setq isearch-forward (not isearch-forward)
 	  isearch-success t))
@@ -3488,8 +3498,7 @@ Optional third argument, if t, means if fail just return nil (no error).
      ;; stack overflow in regexp search.
      (setq isearch-error (format "%s" lossage))))
 
-  (if isearch-success
-      nil
+  (unless isearch-success
     ;; Ding if failed this time after succeeding last time.
     (and (isearch--state-success (car isearch-cmds))
 	 (ding))
