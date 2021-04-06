@@ -1872,24 +1872,26 @@ Use `isearch-exit' to quit without signaling."
 	      (forward-char (if isearch-forward 1 -1))
 	      (isearch-search))
 	  (isearch-search))
-	(when (> count 0)
-	  ;; Update isearch-cmds, so if isearch-search fails later,
-	  ;; it can restore old successful state from isearch-cmds.
-	  (isearch-push-state))
-        (cond
-         ;; Wrap immediately and repeat the search again
-         ((and (memq isearch-wrap-pause '(no no-ding))
-               ;; If failed this time after succeeding last time
-               (not isearch-success) was-success)
-          (setq was-success nil)
-          (setq count (1+ count)) ;; Increment to force repeat
-          (setq isearch-wrapped t)
-          (if isearch-wrap-function
-              (funcall isearch-wrap-function)
-            (goto-char (if isearch-forward (point-min) (point-max)))))
-         ;; Stop looping on failure
-         (t (when (or (not isearch-success) isearch-error)
-              (setq count 0)))))))
+	  (when (> count 0)
+	    ;; Update isearch-cmds, so if isearch-search fails later,
+	    ;; it can restore old successful state from isearch-cmds.
+	    (isearch-push-state))
+          (cond
+           ;; Wrap immediately and repeat the search again
+           ((memq isearch-wrap-pause '(no no-ding))
+            (if isearch-success
+                (setq was-success isearch-success)
+              ;; If failed this time after succeeding last time
+              (when was-success
+                (setq was-success nil)
+                (setq count (1+ count)) ;; Increment to force repeat
+                (setq isearch-wrapped t)
+                (if isearch-wrap-function
+                    (funcall isearch-wrap-function)
+                  (goto-char (if isearch-forward (point-min) (point-max)))))))
+           ;; Stop looping on failure
+           (t (when (or (not isearch-success) isearch-error)
+                (setq count 0)))))))
 
   (isearch-push-state)
   (isearch-update))
