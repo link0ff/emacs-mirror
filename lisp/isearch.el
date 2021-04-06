@@ -1856,7 +1856,8 @@ Use `isearch-exit' to quit without signaling."
       (setq isearch-success t)
     ;; For the case when count > 1, don't keep intermediate states
     ;; added to isearch-cmds by isearch-push-state in this loop.
-    (let ((isearch-cmds isearch-cmds))
+    (let ((isearch-cmds isearch-cmds)
+          (was-success isearch-success))
       (while (<= 0 (setq count (1- (or count 1))))
 	(if (and isearch-success
 		 (equal (point) isearch-other-end)
@@ -1875,21 +1876,20 @@ Use `isearch-exit' to quit without signaling."
 	  ;; Update isearch-cmds, so if isearch-search fails later,
 	  ;; it can restore old successful state from isearch-cmds.
 	  (isearch-push-state))
-        ;; Wrap immediately and repeat the search again
-        (if (and (memq isearch-wrap-pause '(no no-ding))
-                 ;; If failed this time after succeeding last time
-                 (not isearch-just-started)
-                 (not isearch-success)
-                 (isearch--state-success (car isearch-cmds)))
-            (progn
-              (setq count (1+ count)) ;; Increment to force repeat.
-              (setq isearch-wrapped t)
-              (if isearch-wrap-function
-                  (funcall isearch-wrap-function)
-                (goto-char (if isearch-forward (point-min) (point-max)))))
-          ;; Stop looping on failure
-          (when (or (not isearch-success) isearch-error)
-            (setq count 0))))))
+        (cond
+         ;; Wrap immediately and repeat the search again
+         ((and (memq isearch-wrap-pause '(no no-ding))
+               ;; If failed this time after succeeding last time
+               (not isearch-success) was-success)
+          (setq was-success nil)
+          (setq count (1+ count)) ;; Increment to force repeat
+          (setq isearch-wrapped t)
+          (if isearch-wrap-function
+              (funcall isearch-wrap-function)
+            (goto-char (if isearch-forward (point-min) (point-max)))))
+         ;; Stop looping on failure
+         (t (when (or (not isearch-success) isearch-error)
+              (setq count 0)))))))
 
   (isearch-push-state)
   (isearch-update))
