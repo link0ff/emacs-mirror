@@ -172,13 +172,13 @@ This allows you to resume earlier Isearch sessions through the
 command history."
   :type 'boolean)
 
-(defcustom isearch-wrap-pause t ;; isearch-wrap-repeat?
-  "A choice defining whether to pause before wrapping.
+(defcustom isearch-wrap-pause t
+  "Define the behavior of wrapping when there are no more matches.
 When `t' (by default), signal an error when no more matches are found.
 Then after repeating the search, wrap with `isearch-wrap-function'.
-When `no', wrap immediately after reaching the end of the search space.
+When `no', wrap immediately after reaching the last match.
 When `no-ding', wrap immediately without flashing the screen.
-When `nil', never wrap."
+When `nil', never wrap, just stop at the last match."
   :type '(choice (const :tag "Pause before wrapping" t)
                  (const :tag "No pause before wrapping" no)
                  (const :tag "No pause and no flashing" no-ding)
@@ -1887,6 +1887,8 @@ Use `isearch-exit' to quit without signaling."
                 (setq count (1+ count)) ;; Increment to force repeat
                 (setq isearch-wrapped t)
                 (if isearch-wrap-function
+                    ;; Note that some wrap functions change the value of
+                    ;; isearch-success, so it's handled above before this call.
                     (funcall isearch-wrap-function)
                   (goto-char (if isearch-forward (point-min) (point-max)))))))
            ;; Stop looping on failure
@@ -3517,7 +3519,7 @@ Optional third argument, if t, means if fail just return nil (no error).
   (unless isearch-success
     ;; Ding if failed this time after succeeding last time.
     (and (isearch--state-success (car isearch-cmds))
-         (not (eq isearch-wrap-pause 'no-ding))
+	 (not (eq isearch-wrap-pause 'no-ding))
 	 (ding))
     (if (functionp (isearch--state-pop-fun (car isearch-cmds)))
         (funcall (isearch--state-pop-fun (car isearch-cmds))
