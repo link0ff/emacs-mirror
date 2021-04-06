@@ -177,9 +177,11 @@ command history."
 When `t' (by default), signal an error when no more matches are found.
 Then after repeating the search, wrap with `isearch-wrap-function'.
 When `no', wrap immediately after reaching the end of the search space.
+When `no-ding', wrap immediately without flashing the screen.
 When `nil', never wrap."
   :type '(choice (const :tag "Pause before wrapping" t)
                  (const :tag "No pause before wrapping" no)
+                 (const :tag "No pause and no flashing" no-ding)
                  (const :tag "Disable wrapping" nil))
   :version "28.1")
 
@@ -1854,7 +1856,8 @@ Use `isearch-exit' to quit without signaling."
       (setq isearch-success t)
     ;; For the case when count > 1, don't keep intermediate states
     ;; added to isearch-cmds by isearch-push-state in this loop.
-    (let ((isearch-cmds isearch-cmds))
+    (let ((isearch-cmds isearch-cmds)
+          (was-success isearch-success))
       (while (<= 0 (setq count (1- (or count 1))))
 	(if (and isearch-success
 		 (equal (point) isearch-other-end)
@@ -1873,9 +1876,19 @@ Use `isearch-exit' to quit without signaling."
 	  ;; Update isearch-cmds, so if isearch-search fails later,
 	  ;; it can restore old successful state from isearch-cmds.
 	  (isearch-push-state))
-	;; Stop looping on failure.
-	(when (or (not isearch-success) isearch-error)
-	  (setq count 0)))))
+        (cond
+         ;; Wrap immediately and repeat the search again.
+         ((and (memq isearch-wrap-pause '(no no-ding))
+               was-success (not isearch-success))
+          (setq was-success nil)
+          (setq count (1+ count)) ;; Increment to force repeat.
+          (setq isearch-wrapped t)
+          (if isearch-wrap-function
+              (funcall isearch-wrap-function)
+            (goto-char (if isearch-forward (point-min) (point-max)))))
+         ;; Stop looping on failure.
+         (t (when (or (not isearch-success) isearch-error)
+              (setq count 0)))))))
 
   (isearch-push-state)
   (isearch-update))
@@ -3501,6 +3514,7 @@ Optional third argument, if t, means if fail just return nil (no error).
   (unless isearch-success
     ;; Ding if failed this time after succeeding last time.
     (and (isearch--state-success (car isearch-cmds))
+         (not (eq isearch-wrap-pause 'no-ding))
 	 (ding))
     (if (functionp (isearch--state-pop-fun (car isearch-cmds)))
         (funcall (isearch--state-pop-fun (car isearch-cmds))
