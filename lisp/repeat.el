@@ -348,7 +348,11 @@ For example, you can set it to <return> like `isearch-exit'."
   :group 'convenience
   :version "28.1")
 
-;;;###autoload (defvar repeat-map nil)
+;;;###autoload
+(defvar repeat-map nil
+  "The value of the repeating map for the next command.
+A command called from the map can set it again to the same map when
+the map can't be set on the command symbol property `repeat-map'.")
 
 ;;;###autoload
 (define-minor-mode repeat-mode
