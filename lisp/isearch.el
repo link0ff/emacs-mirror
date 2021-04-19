@@ -972,12 +972,13 @@ Each element is an `isearch--state' struct where the slots are
 (defvar-local isearch-mode nil) ;; Name of the minor mode, if non-nil.
 
 (define-key global-map "\C-s" 'isearch-forward)
-(define-key esc-map "\C-s" 'isearch-forward-regexp)
+(define-key esc-map    "\C-s" 'isearch-forward-regexp)
 (define-key global-map "\C-r" 'isearch-backward)
-(define-key esc-map "\C-r" 'isearch-backward-regexp)
-(define-key search-map "w" 'isearch-forward-word)
-(define-key search-map "_" 'isearch-forward-symbol)
-(define-key search-map "." 'isearch-forward-symbol-at-point)
+(define-key esc-map    "\C-r" 'isearch-backward-regexp)
+(define-key search-map    "w" 'isearch-forward-word)
+(define-key search-map    "_" 'isearch-forward-symbol)
+(define-key search-map    "." 'isearch-forward-symbol-at-point)
+(define-key search-map "\M-." 'isearch-forward-thing-at-point)
 
 ;; Entry points to isearch-mode.
 
@@ -1156,6 +1157,25 @@ positive, or search for ARGth symbol backward if ARG is negative."
       (setq isearch-error "No symbol at point")
       (isearch-push-state)
       (isearch-update)))))
+
+(defun isearch-forward-thing-at-point ()
+  "Do incremental search forward for a thing found near point.
+Like ordinary incremental search except if the region is active
+then text from the active region is added to the search string.
+Otherwise, the initial search string gets the thing found at point."
+  (interactive)
+  (isearch-forward nil 1)
+  (cond
+   ((use-region-p)
+    (when (< (mark) (point))
+      (exchange-point-and-mark))
+    (isearch-yank-string
+     (buffer-substring-no-properties (region-beginning) (region-end)))
+    (deactivate-mark))
+   (t
+    (setq isearch-error "No active region")
+    (isearch-push-state)
+    (isearch-update))))
 
 
 ;; isearch-mode only sets up incremental search for the minor mode.
