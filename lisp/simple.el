@@ -8850,10 +8850,12 @@ With prefix argument N, move N items (negative N means move backward)."
 		    (point) 'mouse-face nil beg))
 	(setq n (1+ n))))))
 
-(defun choose-completion (&optional event)
+(defun choose-completion (&optional event arg)
   "Choose the completion at point.
-If EVENT, use EVENT's position to determine the starting position."
-  (interactive (list last-nonmenu-event))
+If EVENT, use EVENT's position to determine the starting position.
+When the prefix ARG is 0, insert the completion at point to the minibuffer
+and quit the completion window without exiting the minibuffer."
+  (interactive (list last-nonmenu-event current-prefix-arg))
   ;; In case this is run via the mouse, give temporary modes such as
   ;; isearch a chance to turn off.
   (run-hooks 'mouse-leave-buffer-hook)
@@ -8861,6 +8863,7 @@ If EVENT, use EVENT's position to determine the starting position."
     (let ((buffer completion-reference-buffer)
           (base-position completion-base-position)
           (insert-function completion-list-insert-choice-function)
+          (completion-no-auto-exit (if (eq arg 0) t completion-no-auto-exit))
           (choice
            (save-excursion
              (goto-char (posn-point (event-start event)))
@@ -8871,6 +8874,7 @@ If EVENT, use EVENT's position to determine the starting position."
                 ((and (not (bobp))
                       (get-text-property (1- (point)) 'mouse-face))
                  (setq end (1- (point)) beg (point)))
+                ;; FIXIT:
                 (t (error "No completion here")))
                (setq beg (previous-single-property-change beg 'mouse-face))
                (setq end (or (next-single-property-change end 'mouse-face)
