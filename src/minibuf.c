@@ -567,7 +567,7 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
      in previous recursive minibuffer, but was not set explicitly
      to t for this invocation, so set it to nil in this minibuffer.
      Save the old value now, before we change it.  */
-  specbind (intern ("minibuffer-completing-file-name"),
+  specbind (Qminibuffer_completing_file_name,
 	    Vminibuffer_completing_file_name);
   if (EQ (Vminibuffer_completing_file_name, Qlambda))
     Vminibuffer_completing_file_name = Qnil;
@@ -728,10 +728,10 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
     Vminibuffer_completing_file_name = Qlambda;
 
   /* If variable is unbound, make it nil.  */
-  histval = find_symbol_value (Vminibuffer_history_variable);
+  histval = find_symbol_value (histvar);
   if (EQ (histval, Qunbound))
     {
-      Fset (Vminibuffer_history_variable, Qnil);
+      Fset (histvar, Qnil);
       histval = Qnil;
     }
 
@@ -752,10 +752,6 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
   /* Defeat (setq-default truncate-lines t), since truncated lines do
      not work correctly in minibuffers.  (Bug#5715, etc)  */
   bset_truncate_lines (current_buffer, Qnil);
-
-  /* If appropriate, copy enable-multibyte-characters into the minibuffer.  */
-  if (inherit_input_method)
-    bset_enable_multibyte_characters (current_buffer, enable_multibyte);
 
   /* The current buffer's default directory is usually the right thing
      for our minibuffer here.  However, if you're typing a command at
@@ -808,9 +804,11 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
     specbind (Qinhibit_modification_hooks, Qt);
     Ferase_buffer ();
 
-    if (!NILP (BVAR (current_buffer, enable_multibyte_characters))
-	&& ! STRING_MULTIBYTE (minibuf_prompt))
-      minibuf_prompt = Fstring_make_multibyte (minibuf_prompt);
+    /* If appropriate, copy enable-multibyte-characters into the minibuffer.
+       In any case don't blindly inherit the multibyteness used previously.  */
+    bset_enable_multibyte_characters (current_buffer,
+                                      inherit_input_method ? enable_multibyte
+                                      : Qt);
 
     /* Insert the prompt, record where it ends.  */
     Finsert (1, &minibuf_prompt);
@@ -920,13 +918,13 @@ read_minibuf (Lisp_Object map, Lisp_Object initial, Lisp_Object prompt,
 	      && !EQ (XWINDOW (XFRAME (calling_frame)->minibuffer_window)
 		      ->frame,
 		      calling_frame))))
-    call2 (intern ("select-frame-set-input-focus"), calling_frame, Qnil);
+    call2 (Qselect_frame_set_input_focus, calling_frame, Qnil);
 
   /* Add the value to the appropriate history list, if any.  This is
      done after the previous buffer has been made current again, in
      case the history variable is buffer-local.  */
   if (! (NILP (Vhistory_add_new_input) || NILP (histstring)))
-    call2 (intern ("add-to-history"), histvar, histstring);
+    call2 (Qadd_to_history, histvar, histstring);
 
   /* If Lisp form desired instead of string, parse it.  */
   if (expflag)
@@ -965,13 +963,13 @@ set_minibuffer_mode (Lisp_Object buf, EMACS_INT depth)
   Fset_buffer (buf);
   if (depth > 0)
     {
-      if (!NILP (Ffboundp (intern ("fundamental-mode"))))
-	call0 (intern ("fundamental-mode"));
+      if (!NILP (Ffboundp (Qminibuffer_mode)))
+	call0 (Qminibuffer_mode);
     }
   else
     {
-      if (!NILP (Ffboundp (intern ("minibuffer-inactive-mode"))))
-	call0 (intern ("minibuffer-inactive-mode"));
+      if (!NILP (Ffboundp (Qminibuffer_inactive_mode)))
+	call0 (Qminibuffer_inactive_mode);
       else
 	Fkill_all_local_variables ();
     }
@@ -1163,7 +1161,7 @@ read_minibuf_unwind (void)
      dead, we may keep displaying this buffer (tho it's inactive), so reset it,
      to make sure we don't leave around bindings and stuff which only
      made sense during the read_minibuf invocation.  */
-  call0 (intern ("minibuffer-inactive-mode"));
+  call0 (Qminibuffer_inactive_mode);
 
   /* We've exited the recursive edit, so switch the current windows
      away from the expired minibuffer window, both in the current
@@ -1360,30 +1358,6 @@ Fifth arg INHERIT-INPUT-METHOD, if non-nil, means the minibuffer inherits
   if (STRINGP (val) && SCHARS (val) == 0 && ! NILP (default_value))
     val = CONSP (default_value) ? XCAR (default_value) : default_value;
   return unbind_to (count, val);
-}
-
-DEFUN ("read-no-blanks-input", Fread_no_blanks_input, Sread_no_blanks_input, 1, 3, 0,
-       doc: /* Read a string from the terminal, not allowing blanks.
-Prompt with PROMPT.  Whitespace terminates the input.  If INITIAL is
-non-nil, it should be a string, which is used as initial input, with
-point positioned at the end, so that SPACE will accept the input.
-\(Actually, INITIAL can also be a cons of a string and an integer.
-Such values are treated as in `read-from-minibuffer', but are normally
-not useful in this function.)
-
-Third arg INHERIT-INPUT-METHOD, if non-nil, means the minibuffer inherits
-the current input method and the setting of`enable-multibyte-characters'.
-
-If `inhibit-interaction' is non-nil, this function will signal an
-`inhibited-interaction' error.  */)
-  (Lisp_Object prompt, Lisp_Object initial, Lisp_Object inherit_input_method)
-{
-  CHECK_STRING (prompt);
-  barf_if_interaction_inhibited ();
-
-  return read_minibuf (Vminibuffer_local_ns_map, initial, prompt,
-		       0, Qminibuffer_history, make_fixnum (0), Qnil, 0,
-		       !NILP (inherit_input_method));
 }
 
 DEFUN ("read-command", Fread_command, Sread_command, 1, 2, 0,
@@ -2333,6 +2307,12 @@ syms_of_minibuf (void)
   /* A frame parameter.  */
   DEFSYM (Qminibuffer_exit, "minibuffer-exit");
 
+  DEFSYM (Qminibuffer_mode, "minibuffer-mode");
+  DEFSYM (Qminibuffer_inactive_mode, "minibuffer-inactive-mode");
+  DEFSYM (Qminibuffer_completing_file_name, "minibuffer-completing-file-name");
+  DEFSYM (Qselect_frame_set_input_focus, "select-frame-set-input-focus");
+  DEFSYM (Qadd_to_history, "add-to-history");
+
   DEFVAR_LISP ("read-expression-history", Vread_expression_history,
 	       doc: /* A history list for arguments that are Lisp expressions to evaluate.
 For example, `eval-expression' uses this.  */);
@@ -2513,7 +2493,6 @@ instead. */);
   defsubr (&Sread_variable);
   defsubr (&Sinternal_complete_buffer);
   defsubr (&Sread_buffer);
-  defsubr (&Sread_no_blanks_input);
   defsubr (&Sminibuffer_depth);
   defsubr (&Sminibuffer_prompt);
 
