@@ -1158,24 +1158,41 @@ positive, or search for ARGth symbol backward if ARG is negative."
       (isearch-push-state)
       (isearch-update)))))
 
+(defcustom isearch-forward-thing-at-point '(region url symbol sexp)
+  "A list of symbols to try to get the \"thing\" at point.
+Each element of the list should be one of the symbols supported by
+`bounds-of-thing-at-point'.  This variable is used by the command
+`isearch-forward-thing-at-point' to yank the initial \"thing\"
+as text to the search string."
+  :type '(repeat (symbol :tag "Thing symbol"))
+  :version "28.1")
+
 (defun isearch-forward-thing-at-point ()
-  "Do incremental search forward for a thing found near point.
-Like ordinary incremental search except if the region is active
-then text from the active region is added to the search string.
-Otherwise, the initial search string gets the thing found at point."
+  "Do incremental search forward for the \"thing\" found near point.
+Like ordinary incremental search except that the \"thing\" found at point
+is added to the search string initially.  The \"thing\" is defined by
+`bounds-of-thing-at-point'.  You can customize the variable
+`isearch-forward-thing-at-point' to define a list of symbols to try
+to find a \"thing\" at point.  For example, when the list contains
+the symbol `region' and the region is active, then text from the
+active region is added to the search string."
   (interactive)
   (isearch-forward nil 1)
-  (cond
-   ((use-region-p)
-    (when (< (mark) (point))
-      (exchange-point-and-mark))
-    (isearch-yank-string
-     (buffer-substring-no-properties (region-beginning) (region-end)))
-    (deactivate-mark))
-   (t
-    (setq isearch-error "No active region")
-    (isearch-push-state)
-    (isearch-update))))
+  (let ((bounds (seq-some (lambda (thing)
+                            (bounds-of-thing-at-point thing))
+                          isearch-forward-thing-at-point)))
+    (cond
+     (bounds
+      (when (use-region-p)
+        (deactivate-mark))
+      (when (< (car bounds) (point))
+	(goto-char (car bounds)))
+      (isearch-yank-string
+       (buffer-substring-no-properties (car bounds) (cdr bounds))))
+     (t
+      (setq isearch-error "No thing at point")
+      (isearch-push-state)
+      (isearch-update)))))
 
 
 ;; isearch-mode only sets up incremental search for the minor mode.
