@@ -86,16 +86,16 @@ This is intended for debugging the compiler itself.
 (defcustom comp-deferred-compilation-deny-list
   '()
   "List of regexps to exclude matching files from deferred native compilation.
-Files whose names match any regexp is excluded from native compilation."
-  :type 'list
+Files whose names match any regexp are excluded from native compilation."
+  :type '(repeat regexp)
   :version "28.1")
 
 (defcustom comp-bootstrap-deny-list
   '()
   "List of regexps to exclude files from native compilation during bootstrap.
-Files whose names match any regexp is excluded from native compilation
+Files whose names match any regexp are excluded from native compilation
 during bootstrap."
-  :type 'list
+  :type '(repeat regexp)
   :version "28.1")
 
 (defcustom comp-never-optimize-functions
@@ -104,7 +104,7 @@ during bootstrap."
     ;; REMOVE.
     macroexpand rename-buffer)
   "Primitive functions to exclude from trampoline optimization."
-  :type 'list
+  :type '(repeat symbol)
   :version "28.1")
 
 (defcustom comp-async-jobs-number 0
@@ -115,11 +115,10 @@ or one if there's just one execution unit."
   :risky t
   :version "28.1")
 
-;; FIXME: This an abnormal hook, and should be renamed to something
-;; like `comp-async-cu-done-function'.
-(defcustom comp-async-cu-done-hook nil
-  "Hook run after asynchronously compiling a single compilation unit.
-Called with one argument FILE, the filename used as input to compilation."
+(defcustom comp-async-cu-done-functions nil
+  "List of functions to call after asynchronously compiling one compilation unit.
+Called with one argument FILE, the filename used as input to
+compilation."
   :type 'hook
   :version "28.1")
 
@@ -131,7 +130,7 @@ Called with one argument FILE, the filename used as input to compilation."
 (defcustom comp-async-env-modifier-form nil
   "Form evaluated before compilation by each asynchronous compilation subprocess.
 Used to modify the compiler environment."
-  :type 'list
+  :type 'sexp
   :risky t
   :version "28.1")
 
@@ -169,7 +168,7 @@ affecting the assembler and linker are likely to be useful.
 
 Passing these options is only available in libgccjit version 9
 and above."
-  :type 'list
+  :type '(repeat string)                ; FIXME is this right?
   :version "28.1")
 
 (defcustom comp-libgccjit-reproducer nil
@@ -604,7 +603,7 @@ Useful to hook into pass checkers.")
   (when (gethash predicate comp-known-predicates-h) t))
 
 (defun comp-pred-to-cstr (predicate)
-  "Given PREDICATE, return the correspondig constraint."
+  "Given PREDICATE, return the corresponding constraint."
   (gethash predicate comp-known-predicates-h))
 
 (defconst comp-symbol-values-optimizable '(most-positive-fixnum
@@ -1475,7 +1474,7 @@ STACK-OFF is the index of the first slot frame involved."
                              collect (comp-slot-n sp))))
 
 (cl-defun make-comp-mvar (&key slot (constant nil const-vld) type)
-  "`comp-mvar' intitializer."
+  "`comp-mvar' initializer."
   (let ((mvar (make--comp-mvar :slot slot)))
     (when const-vld
       (comp-add-const-to-relocs constant)
@@ -2256,7 +2255,7 @@ into the C code forwarding the compilation unit."
 
 
 (defsubst comp-mvar-used-p (mvar)
-  "Non-nil when MVAR is used as lhs in the current funciton."
+  "Non-nil when MVAR is used as lhs in the current function."
   (declare (gv-setter (lambda (val)
 			`(puthash ,mvar ,val comp-pass))))
   (gethash mvar comp-pass))
@@ -3628,7 +3627,7 @@ Prepare every function for final compilation and drive the C back-end."
            compile-result))))
 
 (defvar comp-async-compilation nil
-  "Non-nil while executing an asyncronous native compilation.")
+  "Non-nil while executing an asynchronous native compilation.")
 
 (defun comp-final (_)
   "Final pass driving the C back-end for code emission."
@@ -3940,7 +3939,7 @@ display a message."
                              :sentinel
                              (lambda (process _event)
                                (run-hook-with-args
-                                'comp-async-cu-done-hook
+                                'comp-async-cu-done-functions
                                 source-file)
                                (comp-accept-and-process-async-output process)
                                (ignore-errors (delete-file temp-file))
