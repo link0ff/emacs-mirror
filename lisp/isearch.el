@@ -1819,21 +1819,33 @@ The following additional command keys are active while editing.
 	  (minibuffer-history-symbol)
 	  ;; Search string might have meta information on text properties.
 	  (minibuffer-allow-text-properties t))
-     (setq isearch-new-string
-	   (read-from-minibuffer
-	    (isearch-message-prefix nil isearch-nonincremental)
-	    (cons isearch-string (1+ (or (isearch-fail-pos)
-					 (length isearch-string))))
-	    minibuffer-local-isearch-map nil
-	    (if isearch-regexp
-		(cons 'regexp-search-ring
-		      (1+ (or regexp-search-ring-yank-pointer -1)))
-	      (cons 'search-ring
-		    (1+ (or search-ring-yank-pointer -1))))
-	    nil t)
-	   isearch-new-message
-	   (mapconcat 'isearch-text-char-description
-		      isearch-new-string "")))))
+     (minibuffer-with-setup-hook
+         (lambda ()
+           (when isearch-buffer-local
+             (add-hook 'after-change-functions
+                       (lambda (_ _ _)
+                         (let ((new-string (minibuffer-contents)))
+                           (with-minibuffer-selected-window
+                             (setq isearch-string new-string
+                                   isearch-message (mapconcat 'isearch-text-char-description
+		                                              isearch-string ""))
+                             (let ((isearch-yank-flag t)) (isearch-search-and-update)))))
+                       nil t)))
+       (setq isearch-new-string
+	     (read-from-minibuffer
+	      (isearch-message-prefix nil isearch-nonincremental)
+	      (cons isearch-string (1+ (or (isearch-fail-pos)
+					   (length isearch-string))))
+	      minibuffer-local-isearch-map nil
+	      (if isearch-regexp
+		  (cons 'regexp-search-ring
+		        (1+ (or regexp-search-ring-yank-pointer -1)))
+	        (cons 'search-ring
+		      (1+ (or search-ring-yank-pointer -1))))
+	      nil t)
+	     isearch-new-message
+	     (mapconcat 'isearch-text-char-description
+		        isearch-new-string ""))))))
 
 (defun isearch-nonincremental-exit-minibuffer ()
   (interactive)
