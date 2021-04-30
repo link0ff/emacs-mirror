@@ -195,6 +195,11 @@ is one."
                  (const :tag "Move to another match" t))
   :version "28.1")
 
+(defcustom isearch-buffer-local nil
+  "Whether isearch should be buffer-local."
+  :type 'boolean
+  :version "28.1")
+
 (defvar isearch-mode-hook nil
   "Function(s) to call after starting up an incremental search.")
 
@@ -668,8 +673,6 @@ This is like `describe-bindings', but displays only Isearch keys."
     map)
   "Keymap for `isearch-mode'.")
 
-(add-to-list 'emulation-mode-map-alists `((isearch-mode . ,isearch-mode-map)))
-
 (easy-menu-define isearch-menu-bar-map  isearch-mode-map
   "Menu for `isearch-mode'."
   '("Isearch"
@@ -953,6 +956,8 @@ Each element is an `isearch--state' struct where the slots are
 
 ;; The value of input-method-function when isearch is invoked.
 (defvar isearch-input-method-function nil)
+
+(defvar isearch--saved-overriding-local-map nil)
 
 ;; Minor-mode-alist changes - kind of redundant with the
 ;; echo area, but if isearching in multiple windows, it can be useful.
@@ -1295,7 +1300,14 @@ used to set the value of `isearch-regexp-function'."
   (setq	isearch-mode " Isearch")  ;; forward? regexp?
   (force-mode-line-update)
 
+  (if isearch-buffer-local
+      (add-to-list 'emulation-mode-map-alists `((isearch-mode . ,isearch-mode-map)))
+    (setq overriding-terminal-local-map isearch-mode-map))
   (run-hooks 'isearch-mode-hook)
+  (unless isearch-buffer-local
+    ;; Remember the initial map possibly modified
+    ;; by external packages in isearch-mode-hook.  (Bug#16035)
+    (setq isearch--saved-overriding-local-map overriding-terminal-local-map))
 
   ;; Pushing the initial state used to be before running isearch-mode-hook,
   ;; but a hook might set `isearch-push-state-function' used in
@@ -1304,10 +1316,10 @@ used to set the value of `isearch-regexp-function'."
 
   (isearch-update)
 
-  (add-hook 'pre-command-hook 'isearch-pre-command-hook nil t)
-  (add-hook 'post-command-hook 'isearch-post-command-hook nil t)
-  (add-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer nil t)
-  (add-hook 'kbd-macro-termination-hook 'isearch-done nil t)
+  (add-hook 'pre-command-hook 'isearch-pre-command-hook nil isearch-buffer-local)
+  (add-hook 'post-command-hook 'isearch-post-command-hook nil isearch-buffer-local)
+  (add-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer nil isearch-buffer-local)
+  (add-hook 'kbd-macro-termination-hook 'isearch-done nil isearch-buffer-local)
 
   ;; isearch-mode can be made modal (in the sense of not returning to
   ;; the calling function until searching is completed) by entering
@@ -1402,10 +1414,10 @@ NOPUSH is t and EDIT is t."
                                      ,isearch-message
                                      ',isearch-case-fold-search)))
 
-  (remove-hook 'pre-command-hook 'isearch-pre-command-hook t)
-  (remove-hook 'post-command-hook 'isearch-post-command-hook t)
-  (remove-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer t)
-  (remove-hook 'kbd-macro-termination-hook 'isearch-done t)
+  (remove-hook 'pre-command-hook 'isearch-pre-command-hook isearch-buffer-local)
+  (remove-hook 'post-command-hook 'isearch-post-command-hook isearch-buffer-local)
+  (remove-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer isearch-buffer-local)
+  (remove-hook 'kbd-macro-termination-hook 'isearch-done isearch-buffer-local)
 
   (when (buffer-live-p isearch--current-buffer)
     (with-current-buffer isearch--current-buffer
@@ -1414,6 +1426,7 @@ NOPUSH is t and EDIT is t."
 
   ;; Called by all commands that terminate isearch-mode.
   ;; If NOPUSH is non-nil, we don't push the string on the search ring.
+  (setq overriding-terminal-local-map nil)
   ;; (setq pre-command-hook isearch-old-pre-command-hook) ; for lemacs
   (setq minibuffer-message-timeout isearch-original-minibuffer-message-timeout)
   (isearch-dehighlight)
@@ -1626,8 +1639,8 @@ You can update the global isearch variables by setting new values to
 `isearch-new-string', `isearch-new-message', `isearch-new-forward',
 `isearch-new-regexp-function', `isearch-new-case-fold',
 `isearch-new-nonincremental'."
-  (if t ;; isearch-buffer-local
-      `(let ((isearch-new-string isearch-string)
+  `(if isearch-buffer-local
+       (let ((isearch-new-string isearch-string)
              (isearch-new-message isearch-message))
          (progn ,@body)
          (setq isearch-string isearch-new-string
@@ -1638,7 +1651,7 @@ You can update the global isearch variables by setting new values to
   ;; If there were a way to catch any change of buffer from the minibuffer,
   ;; this could be simplified greatly.
   ;; Editing doesn't back up the search point.  Should it?
-  `(condition-case nil
+   (condition-case nil
       (progn
 	(let ((isearch-new-nonincremental isearch-nonincremental)
 
@@ -1833,7 +1846,7 @@ The following additional command keys are active while editing.
 (defun isearch-forward-exit-minibuffer ()
   "Resume isearching forward from the minibuffer that edits the search string."
   (interactive)
-  (if t ;; isearch-buffer-local
+  (if isearch-buffer-local
       (let ((new-string (minibuffer-contents)))
         (with-minibuffer-selected-window
           (setq isearch-string new-string
@@ -1846,7 +1859,7 @@ The following additional command keys are active while editing.
 (defun isearch-reverse-exit-minibuffer ()
   "Resume isearching backward from the minibuffer that edits the search string."
   (interactive)
-  (if t ;; isearch-buffer-local
+  (if isearch-buffer-local
       (let ((new-string (minibuffer-contents)))
         (with-minibuffer-selected-window
           (setq isearch-string new-string
@@ -3033,6 +3046,10 @@ See more for options in `search-exit-option'."
   (let* ((key (this-single-command-keys))
 	 (main-event (aref key 0)))
     (cond
+     ;; Don't exit Isearch if we're in the middle of some
+     ;; `set-transient-map' thingy like `universal-argument--mode'.
+     ((unless isearch-buffer-local
+        (not (eq overriding-terminal-local-map isearch--saved-overriding-local-map))))
      ;; Don't exit Isearch for isearch key bindings.
      ((or (commandp (lookup-key isearch-mode-map key nil))
           (commandp
