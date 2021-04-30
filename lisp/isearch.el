@@ -1158,7 +1158,7 @@ positive, or search for ARGth symbol backward if ARG is negative."
       (isearch-push-state)
       (isearch-update)))))
 
-(defcustom isearch-forward-thing-at-point '(region url symbol sexp line)
+(defcustom isearch-forward-thing-at-point '(region url symbol sexp)
   "A list of symbols to try to get the \"thing\" at point.
 Each element of the list should be one of the symbols supported by
 `bounds-of-thing-at-point'.  This variable is used by the command
@@ -1628,25 +1628,11 @@ You can update the global isearch variables by setting new values to
 `isearch-new-nonincremental'."
   (if t ;; isearch-buffer-local
       `(let ((isearch-new-string isearch-string)
-             (isearch-new-message isearch-message)
-             ;; (isearch-new-forward isearch-forward)
-             ;; (old-point (point))
-             ;; (old-other-end isearch-other-end)
-             )
+             (isearch-new-message isearch-message))
          (progn ,@body)
-         ;; (if (and old-other-end (eq old-point (point))
-         ;;          (eq isearch-forward isearch-new-forward))
-         ;;     (goto-char old-other-end))
          (setq isearch-string isearch-new-string
-               isearch-message isearch-new-message
-               ;; isearch-forward isearch-new-forward
-               )
-         ;; (isearch-repeat (if isearch-forward 'forward 'backward))
-         (let ((isearch-yank-flag t)) (isearch-search-and-update))
-         ;; (isearch-search)
-         ;; (isearch-push-state)
-         ;; (isearch-update)
-         )
+               isearch-message isearch-new-message)
+         (let ((isearch-yank-flag t)) (isearch-search-and-update)))
   ;; This code is very hairy for several reasons, explained in the code.
   ;; Mainly, isearch-mode must be terminated while editing and then restarted.
   ;; If there were a way to catch any change of buffer from the minibuffer,
@@ -1847,34 +1833,26 @@ The following additional command keys are active while editing.
 (defun isearch-forward-exit-minibuffer ()
   "Resume isearching forward from the minibuffer that edits the search string."
   (interactive)
-  (if t
+  (if t ;; isearch-buffer-local
       (let ((new-string (minibuffer-contents)))
         (with-minibuffer-selected-window
           (setq isearch-string new-string
                 isearch-message (mapconcat 'isearch-text-char-description
 		                           isearch-string ""))
-          ;; (setq isearch-forward t)
-          (isearch-repeat-forward)
-          )
-        ;; (exit-minibuffer)
-        )
+          (isearch-repeat-forward)))
     (setq isearch-new-forward t isearch-new-nonincremental nil)
     (exit-minibuffer)))
 
 (defun isearch-reverse-exit-minibuffer ()
   "Resume isearching backward from the minibuffer that edits the search string."
   (interactive)
-  (if t
+  (if t ;; isearch-buffer-local
       (let ((new-string (minibuffer-contents)))
         (with-minibuffer-selected-window
           (setq isearch-string new-string
                 isearch-message (mapconcat 'isearch-text-char-description
 		                           isearch-string ""))
-          ;; (setq isearch-forward nil)
-          (isearch-repeat-backward)
-          )
-        ;; (exit-minibuffer)
-        )
+          (isearch-repeat-backward)))
     (setq isearch-new-forward nil isearch-new-nonincremental nil)
     (exit-minibuffer)))
 
@@ -2638,7 +2616,7 @@ Otherwise invoke whatever the calling mouse-2 command sequence
 is bound to outside of Isearch."
   (interactive "e")
   (let ((w (posn-window (event-start click)))
-        (binding (let (
+        (binding (let ((overriding-terminal-local-map nil)
                        ;; Key search depends on mode (bug#47755)
                        (isearch-mode nil))
                    (key-binding (this-command-keys-vector) t))))
