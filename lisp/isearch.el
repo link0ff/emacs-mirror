@@ -539,10 +539,11 @@ This is like `describe-bindings', but displays only Isearch keys."
   (run-hooks 'menu-bar-update-hook)
   (let ((command nil))
     (let ((menu-bar (menu-bar-keymap)))
-      (setq command (let ((isearch-mode t)) ; Show bindings from
-                                        ; `isearch-mode-map' in
-                                        ; tmm's prompt.
-                      (tmm-prompt menu-bar nil nil t))))
+      (with-isearch-suspended
+       (setq command (let ((isearch-mode t)) ; Show bindings from
+                                             ; `isearch-mode-map' in
+                                             ; tmm's prompt.
+                       (tmm-prompt menu-bar nil nil t)))))
     (call-interactively command)))
 
 (defvar isearch-menu-bar-commands
@@ -1625,6 +1626,27 @@ You can update the global isearch variables by setting new values to
 `isearch-new-string', `isearch-new-message', `isearch-new-forward',
 `isearch-new-regexp-function', `isearch-new-case-fold',
 `isearch-new-nonincremental'."
+  (if t ;; isearch-buffer-local
+      `(let ((isearch-new-string isearch-string)
+             (isearch-new-message isearch-message)
+             ;; (isearch-new-forward isearch-forward)
+             ;; (old-point (point))
+             ;; (old-other-end isearch-other-end)
+             )
+         (progn ,@body)
+         ;; (if (and old-other-end (eq old-point (point))
+         ;;          (eq isearch-forward isearch-new-forward))
+         ;;     (goto-char old-other-end))
+         (setq isearch-string isearch-new-string
+               isearch-message isearch-new-message
+               ;; isearch-forward isearch-new-forward
+               )
+         ;; (isearch-repeat (if isearch-forward 'forward 'backward))
+         (let ((isearch-yank-flag t)) (isearch-search-and-update))
+         ;; (isearch-search)
+         ;; (isearch-push-state)
+         ;; (isearch-update)
+         )
   ;; This code is very hairy for several reasons, explained in the code.
   ;; Mainly, isearch-mode must be terminated while editing and then restarted.
   ;; If there were a way to catch any change of buffer from the minibuffer,
@@ -1774,7 +1796,7 @@ You can update the global isearch variables by setting new values to
     (quit  ; handle abort-recursive-edit
      (setq isearch-suspended nil)
      (isearch-abort)  ;; outside of let to restore outside global values
-     )))
+     ))))
 
 (defvar minibuffer-history-symbol) ;; from external package gmhist.el
 
@@ -1787,32 +1809,32 @@ The following additional command keys are active while editing.
 \\[isearch-reverse-exit-minibuffer] to resume isearching backward.
 \\[isearch-complete-edit] to complete the search string using the search ring."
   (interactive)
-  (let* ((message-log-max nil)
-	 ;; Don't add a new search string to the search ring here
-	 ;; in `read-from-minibuffer'. It should be added only
-	 ;; by `isearch-update-ring' called from `isearch-done'.
-	 (history-add-new-input nil)
-	 ;; Binding minibuffer-history-symbol to nil is a work-around
-	 ;; for some incompatibility with gmhist.
-	 (minibuffer-history-symbol)
-	 ;; Search string might have meta information on text properties.
-	 (minibuffer-allow-text-properties t))
-    (setq isearch-string
-	  (read-from-minibuffer
-	   (isearch-message-prefix nil isearch-nonincremental)
-	   (cons isearch-string (1+ (or (isearch-fail-pos)
-					(length isearch-string))))
-	   minibuffer-local-isearch-map nil
-	   (if isearch-regexp
-	       (cons 'regexp-search-ring
-		     (1+ (or regexp-search-ring-yank-pointer -1)))
-	     (cons 'search-ring
-		   (1+ (or search-ring-yank-pointer -1))))
-	   nil t)
-	  isearch-message
-	  (mapconcat 'isearch-text-char-description
-		     isearch-string ""))
-    (isearch-search-and-update)))
+  (with-isearch-suspended
+   (let* ((message-log-max nil)
+	  ;; Don't add a new search string to the search ring here
+	  ;; in `read-from-minibuffer'. It should be added only
+	  ;; by `isearch-update-ring' called from `isearch-done'.
+	  (history-add-new-input nil)
+	  ;; Binding minibuffer-history-symbol to nil is a work-around
+	  ;; for some incompatibility with gmhist.
+	  (minibuffer-history-symbol)
+	  ;; Search string might have meta information on text properties.
+	  (minibuffer-allow-text-properties t))
+     (setq isearch-new-string
+	   (read-from-minibuffer
+	    (isearch-message-prefix nil isearch-nonincremental)
+	    (cons isearch-string (1+ (or (isearch-fail-pos)
+					 (length isearch-string))))
+	    minibuffer-local-isearch-map nil
+	    (if isearch-regexp
+		(cons 'regexp-search-ring
+		      (1+ (or regexp-search-ring-yank-pointer -1)))
+	      (cons 'search-ring
+		    (1+ (or search-ring-yank-pointer -1))))
+	    nil t)
+	   isearch-new-message
+	   (mapconcat 'isearch-text-char-description
+		      isearch-new-string "")))))
 
 (defun isearch-nonincremental-exit-minibuffer ()
   (interactive)
@@ -1825,14 +1847,36 @@ The following additional command keys are active while editing.
 (defun isearch-forward-exit-minibuffer ()
   "Resume isearching forward from the minibuffer that edits the search string."
   (interactive)
-  (setq isearch-new-forward t isearch-new-nonincremental nil)
-  (exit-minibuffer))
+  (if t
+      (let ((new-string (minibuffer-contents)))
+        (with-minibuffer-selected-window
+          (setq isearch-string new-string
+                isearch-message (mapconcat 'isearch-text-char-description
+		                           isearch-string ""))
+          ;; (setq isearch-forward t)
+          (isearch-repeat-forward)
+          )
+        ;; (exit-minibuffer)
+        )
+    (setq isearch-new-forward t isearch-new-nonincremental nil)
+    (exit-minibuffer)))
 
 (defun isearch-reverse-exit-minibuffer ()
   "Resume isearching backward from the minibuffer that edits the search string."
   (interactive)
-  (setq isearch-new-forward nil isearch-new-nonincremental nil)
-  (exit-minibuffer))
+  (if t
+      (let ((new-string (minibuffer-contents)))
+        (with-minibuffer-selected-window
+          (setq isearch-string new-string
+                isearch-message (mapconcat 'isearch-text-char-description
+		                           isearch-string ""))
+          ;; (setq isearch-forward nil)
+          (isearch-repeat-backward)
+          )
+        ;; (exit-minibuffer)
+        )
+    (setq isearch-new-forward nil isearch-new-nonincremental nil)
+    (exit-minibuffer)))
 
 (defun isearch-cancel ()
   "Terminate the search and go back to the starting point."
@@ -2390,10 +2434,11 @@ characters in that string."
 		 ;; Get the regexp for collection pattern.
 		 (let ((default (car occur-collect-regexp-history))
 		       regexp-collect)
-		   (setq regexp-collect
-			 (read-regexp
-			  (format-prompt "Regexp to collect" default)
-			  default 'occur-collect-regexp-history))
+		   (with-isearch-suspended
+		    (setq regexp-collect
+			  (read-regexp
+			   (format-prompt "Regexp to collect" default)
+			   default 'occur-collect-regexp-history)))
 		   regexp-collect))
 	     ;; Otherwise normal occur takes numerical prefix argument.
 	     (when current-prefix-arg
@@ -2531,17 +2576,17 @@ If search string is empty, just beep."
 (defun isearch-yank-from-kill-ring ()
   "Read a string from the `kill-ring' and append it to the search string."
   (interactive)
-  (let ((string (read-from-kill-ring)))
-    (if (and isearch-case-fold-search
-             (eq 'not-yanks search-upper-case))
-        (setq string (downcase string)))
-    (if isearch-regexp (setq string (regexp-quote string)))
-    (setq isearch-yank-flag t)
-    (setq isearch-string (concat isearch-string string)
-          isearch-message (concat isearch-message
-                                  (mapconcat 'isearch-text-char-description
-                                             string ""))))
-  (isearch-search-and-update))
+  (with-isearch-suspended
+   (let ((string (read-from-kill-ring)))
+     (if (and isearch-case-fold-search
+              (eq 'not-yanks search-upper-case))
+         (setq string (downcase string)))
+     (if isearch-regexp (setq string (regexp-quote string)))
+     (setq isearch-yank-flag t)
+     (setq isearch-new-string (concat isearch-string string)
+           isearch-new-message (concat isearch-message
+                                       (mapconcat 'isearch-text-char-description
+                                                  string ""))))))
 
 (defun isearch-yank-pop ()
   "Replace just-yanked search string with previously killed string.
@@ -2709,16 +2754,16 @@ If optional ARG is non-nil, yank the next ARG lines."
 Completion is available like in `read-char-by-name' used by `insert-char'.
 With argument, add COUNT copies of the character."
   (interactive "p")
-  (let ((char (read-char-by-name "Add character to search (Unicode name or hex): ")))
-    (when char
-      (let ((string (if (and (integerp count) (> count 1))
-			(make-string count char)
-		      (char-to-string char))))
-	(setq isearch-string (concat isearch-string string)
-	      isearch-message (concat isearch-message
-				      (mapconcat 'isearch-text-char-description
-						 string ""))))))
-  (isearch-search-and-update))
+  (with-isearch-suspended
+   (let ((char (read-char-by-name "Add character to search (Unicode name or hex): ")))
+     (when char
+       (let ((string (if (and (integerp count) (> count 1))
+			 (make-string count char)
+		       (char-to-string char))))
+	 (setq isearch-new-string (concat isearch-string string)
+	       isearch-new-message (concat isearch-message
+					   (mapconcat 'isearch-text-char-description
+						      string ""))))))))
 
 (defun isearch-search-and-update ()
   "Do the search and update the display."
