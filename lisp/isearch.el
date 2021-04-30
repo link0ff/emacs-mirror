@@ -539,11 +539,10 @@ This is like `describe-bindings', but displays only Isearch keys."
   (run-hooks 'menu-bar-update-hook)
   (let ((command nil))
     (let ((menu-bar (menu-bar-keymap)))
-      (with-isearch-suspended
-       (setq command (let ((isearch-mode t)) ; Show bindings from
-                                             ; `isearch-mode-map' in
-                                             ; tmm's prompt.
-                       (tmm-prompt menu-bar nil nil t)))))
+      (setq command (let ((isearch-mode t)) ; Show bindings from
+                                        ; `isearch-mode-map' in
+                                        ; tmm's prompt.
+                      (tmm-prompt menu-bar nil nil t))))
     (call-interactively command)))
 
 (defvar isearch-menu-bar-commands
@@ -667,6 +666,8 @@ This is like `describe-bindings', but displays only Isearch keys."
     (define-key map "\C-x8\r" 'isearch-char-by-name)
     map)
   "Keymap for `isearch-mode'.")
+
+(add-to-list 'emulation-mode-map-alists `((isearch-mode . ,isearch-mode-map)))
 
 (easy-menu-define isearch-menu-bar-map  isearch-mode-map
   "Menu for `isearch-mode'."
@@ -952,8 +953,6 @@ Each element is an `isearch--state' struct where the slots are
 ;; The value of input-method-function when isearch is invoked.
 (defvar isearch-input-method-function nil)
 
-(defvar isearch--saved-overriding-local-map nil)
-
 ;; Minor-mode-alist changes - kind of redundant with the
 ;; echo area, but if isearching in multiple windows, it can be useful.
 ;; Also, clicking the mode-line indicator pops up
@@ -1158,7 +1157,7 @@ positive, or search for ARGth symbol backward if ARG is negative."
       (isearch-push-state)
       (isearch-update)))))
 
-(defcustom isearch-forward-thing-at-point '(region url symbol sexp)
+(defcustom isearch-forward-thing-at-point '(region url symbol sexp line)
   "A list of symbols to try to get the \"thing\" at point.
 Each element of the list should be one of the symbols supported by
 `bounds-of-thing-at-point'.  This variable is used by the command
@@ -1295,11 +1294,7 @@ used to set the value of `isearch-regexp-function'."
   (setq	isearch-mode " Isearch")  ;; forward? regexp?
   (force-mode-line-update)
 
-  (setq overriding-terminal-local-map isearch-mode-map)
   (run-hooks 'isearch-mode-hook)
-  ;; Remember the initial map possibly modified
-  ;; by external packages in isearch-mode-hook.  (Bug#16035)
-  (setq isearch--saved-overriding-local-map overriding-terminal-local-map)
 
   ;; Pushing the initial state used to be before running isearch-mode-hook,
   ;; but a hook might set `isearch-push-state-function' used in
@@ -1308,10 +1303,10 @@ used to set the value of `isearch-regexp-function'."
 
   (isearch-update)
 
-  (add-hook 'pre-command-hook 'isearch-pre-command-hook)
-  (add-hook 'post-command-hook 'isearch-post-command-hook)
-  (add-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer)
-  (add-hook 'kbd-macro-termination-hook 'isearch-done)
+  (add-hook 'pre-command-hook 'isearch-pre-command-hook nil t)
+  (add-hook 'post-command-hook 'isearch-post-command-hook nil t)
+  (add-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer nil t)
+  (add-hook 'kbd-macro-termination-hook 'isearch-done nil t)
 
   ;; isearch-mode can be made modal (in the sense of not returning to
   ;; the calling function until searching is completed) by entering
@@ -1406,10 +1401,11 @@ NOPUSH is t and EDIT is t."
                                      ,isearch-message
                                      ',isearch-case-fold-search)))
 
-  (remove-hook 'pre-command-hook 'isearch-pre-command-hook)
-  (remove-hook 'post-command-hook 'isearch-post-command-hook)
-  (remove-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer)
-  (remove-hook 'kbd-macro-termination-hook 'isearch-done)
+  (remove-hook 'pre-command-hook 'isearch-pre-command-hook t)
+  (remove-hook 'post-command-hook 'isearch-post-command-hook t)
+  (remove-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer t)
+  (remove-hook 'kbd-macro-termination-hook 'isearch-done t)
+
   (when (buffer-live-p isearch--current-buffer)
     (with-current-buffer isearch--current-buffer
       (setq isearch--current-buffer nil)
@@ -1417,7 +1413,6 @@ NOPUSH is t and EDIT is t."
 
   ;; Called by all commands that terminate isearch-mode.
   ;; If NOPUSH is non-nil, we don't push the string on the search ring.
-  (setq overriding-terminal-local-map nil)
   ;; (setq pre-command-hook isearch-old-pre-command-hook) ; for lemacs
   (setq minibuffer-message-timeout isearch-original-minibuffer-message-timeout)
   (isearch-dehighlight)
@@ -1792,32 +1787,32 @@ The following additional command keys are active while editing.
 \\[isearch-reverse-exit-minibuffer] to resume isearching backward.
 \\[isearch-complete-edit] to complete the search string using the search ring."
   (interactive)
-  (with-isearch-suspended
-   (let* ((message-log-max nil)
-	  ;; Don't add a new search string to the search ring here
-	  ;; in `read-from-minibuffer'. It should be added only
-	  ;; by `isearch-update-ring' called from `isearch-done'.
-	  (history-add-new-input nil)
-	  ;; Binding minibuffer-history-symbol to nil is a work-around
-	  ;; for some incompatibility with gmhist.
-	  (minibuffer-history-symbol)
-	  ;; Search string might have meta information on text properties.
-	  (minibuffer-allow-text-properties t))
-     (setq isearch-new-string
-	   (read-from-minibuffer
-	    (isearch-message-prefix nil isearch-nonincremental)
-	    (cons isearch-string (1+ (or (isearch-fail-pos)
-					 (length isearch-string))))
-	    minibuffer-local-isearch-map nil
-	    (if isearch-regexp
-		(cons 'regexp-search-ring
-		      (1+ (or regexp-search-ring-yank-pointer -1)))
-	      (cons 'search-ring
-		    (1+ (or search-ring-yank-pointer -1))))
-	    nil t)
-	   isearch-new-message
-	   (mapconcat 'isearch-text-char-description
-		      isearch-new-string "")))))
+  (let* ((message-log-max nil)
+	 ;; Don't add a new search string to the search ring here
+	 ;; in `read-from-minibuffer'. It should be added only
+	 ;; by `isearch-update-ring' called from `isearch-done'.
+	 (history-add-new-input nil)
+	 ;; Binding minibuffer-history-symbol to nil is a work-around
+	 ;; for some incompatibility with gmhist.
+	 (minibuffer-history-symbol)
+	 ;; Search string might have meta information on text properties.
+	 (minibuffer-allow-text-properties t))
+    (setq isearch-string
+	  (read-from-minibuffer
+	   (isearch-message-prefix nil isearch-nonincremental)
+	   (cons isearch-string (1+ (or (isearch-fail-pos)
+					(length isearch-string))))
+	   minibuffer-local-isearch-map nil
+	   (if isearch-regexp
+	       (cons 'regexp-search-ring
+		     (1+ (or regexp-search-ring-yank-pointer -1)))
+	     (cons 'search-ring
+		   (1+ (or search-ring-yank-pointer -1))))
+	   nil t)
+	  isearch-message
+	  (mapconcat 'isearch-text-char-description
+		     isearch-string ""))
+    (isearch-search-and-update)))
 
 (defun isearch-nonincremental-exit-minibuffer ()
   (interactive)
@@ -2395,11 +2390,10 @@ characters in that string."
 		 ;; Get the regexp for collection pattern.
 		 (let ((default (car occur-collect-regexp-history))
 		       regexp-collect)
-		   (with-isearch-suspended
-		    (setq regexp-collect
-			  (read-regexp
-			   (format-prompt "Regexp to collect" default)
-			   default 'occur-collect-regexp-history)))
+		   (setq regexp-collect
+			 (read-regexp
+			  (format-prompt "Regexp to collect" default)
+			  default 'occur-collect-regexp-history))
 		   regexp-collect))
 	     ;; Otherwise normal occur takes numerical prefix argument.
 	     (when current-prefix-arg
@@ -2537,17 +2531,17 @@ If search string is empty, just beep."
 (defun isearch-yank-from-kill-ring ()
   "Read a string from the `kill-ring' and append it to the search string."
   (interactive)
-  (with-isearch-suspended
-   (let ((string (read-from-kill-ring)))
-     (if (and isearch-case-fold-search
-              (eq 'not-yanks search-upper-case))
-         (setq string (downcase string)))
-     (if isearch-regexp (setq string (regexp-quote string)))
-     (setq isearch-yank-flag t)
-     (setq isearch-new-string (concat isearch-string string)
-           isearch-new-message (concat isearch-message
-                                       (mapconcat 'isearch-text-char-description
-                                                  string ""))))))
+  (let ((string (read-from-kill-ring)))
+    (if (and isearch-case-fold-search
+             (eq 'not-yanks search-upper-case))
+        (setq string (downcase string)))
+    (if isearch-regexp (setq string (regexp-quote string)))
+    (setq isearch-yank-flag t)
+    (setq isearch-string (concat isearch-string string)
+          isearch-message (concat isearch-message
+                                  (mapconcat 'isearch-text-char-description
+                                             string ""))))
+  (isearch-search-and-update))
 
 (defun isearch-yank-pop ()
   "Replace just-yanked search string with previously killed string.
@@ -2599,7 +2593,7 @@ Otherwise invoke whatever the calling mouse-2 command sequence
 is bound to outside of Isearch."
   (interactive "e")
   (let ((w (posn-window (event-start click)))
-        (binding (let ((overriding-terminal-local-map nil)
+        (binding (let (
                        ;; Key search depends on mode (bug#47755)
                        (isearch-mode nil))
                    (key-binding (this-command-keys-vector) t))))
@@ -2715,16 +2709,16 @@ If optional ARG is non-nil, yank the next ARG lines."
 Completion is available like in `read-char-by-name' used by `insert-char'.
 With argument, add COUNT copies of the character."
   (interactive "p")
-  (with-isearch-suspended
-   (let ((char (read-char-by-name "Add character to search (Unicode name or hex): ")))
-     (when char
-       (let ((string (if (and (integerp count) (> count 1))
-			 (make-string count char)
-		       (char-to-string char))))
-	 (setq isearch-new-string (concat isearch-string string)
-	       isearch-new-message (concat isearch-message
-					   (mapconcat 'isearch-text-char-description
-						      string ""))))))))
+  (let ((char (read-char-by-name "Add character to search (Unicode name or hex): ")))
+    (when char
+      (let ((string (if (and (integerp count) (> count 1))
+			(make-string count char)
+		      (char-to-string char))))
+	(setq isearch-string (concat isearch-string string)
+	      isearch-message (concat isearch-message
+				      (mapconcat 'isearch-text-char-description
+						 string ""))))))
+  (isearch-search-and-update))
 
 (defun isearch-search-and-update ()
   "Do the search and update the display."
@@ -3016,9 +3010,6 @@ See more for options in `search-exit-option'."
   (let* ((key (this-single-command-keys))
 	 (main-event (aref key 0)))
     (cond
-     ;; Don't exit Isearch if we're in the middle of some
-     ;; `set-transient-map' thingy like `universal-argument--mode'.
-     ((not (eq overriding-terminal-local-map isearch--saved-overriding-local-map)))
      ;; Don't exit Isearch for isearch key bindings.
      ((or (commandp (lookup-key isearch-mode-map key nil))
           (commandp
