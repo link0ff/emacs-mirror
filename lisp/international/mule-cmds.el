@@ -3088,35 +3088,11 @@ on encoding."
               (list name (concat (if char (list char) " ") "\t") "")))
           names))
 
-(defun mule--ucs-names-group (names)
-  (let* ((codes-and-names
-          (mapcar (lambda (name) (cons (gethash name ucs-names) name)) names))
-         (grouped
-          (seq-group-by
-           (lambda (code-name)
-             (let ((script (aref char-script-table (car code-name))))
-               (if script (symbol-name script) "ungrouped")))
-           codes-and-names))
-         names-with-header header)
-    (dolist (group (sort grouped (lambda (a b) (string< (car a) (car b)))))
-      (setq header t)
-      (dolist (code-name (cdr group))
-        (push (list
-               (cdr code-name)
-               (concat
-                (if header
-                    (progn
-                      (setq header nil)
-                      (concat "\n" (propertize
-                                    (format "* %s\n" (car group))
-                                    'face 'header-line)))
-                  "")
-                ;; prefix
-                (if (car code-name) (format "%c" (car code-name)) " ") "\t")
-               ;; suffix
-               "")
-              names-with-header)))
-    (nreverse names-with-header)))
+(defun mule--ucs-names-group (name transform)
+  (if transform
+      name
+    (let ((script (aref char-script-table (gethash name ucs-names))))
+      (if script (symbol-name script) "ungrouped"))))
 
 (defun char-from-name (string &optional ignore-case)
   "Return a character as a number from its Unicode name STRING.
@@ -3180,6 +3156,8 @@ as names, not numbers."
   (let* ((enable-recursive-minibuffers t)
 	 (completion-ignore-case t)
 	 (completion-tab-width 4)
+	 (completions-group read-char-by-name-group)
+	 (completions-format (if read-char-by-name-group 'one-column completions-format))
 	 (input
 	  (completing-read
 	   prompt
@@ -3189,10 +3167,11 @@ as names, not numbers."
 		   (display-sort-function
 		    . ,(when (eq read-char-by-name-sort 'code)
                          #'mule--ucs-names-sort-by-code))
+		   (group-function
+		    . ,(when read-char-by-name-group
+			 #'mule--ucs-names-group))
 		   (affixation-function
-		    . ,(if read-char-by-name-group
-                           #'mule--ucs-names-group
-                         #'mule--ucs-names-affixation))
+		    . ,#'mule--ucs-names-affixation)
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
