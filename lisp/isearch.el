@@ -1227,6 +1227,9 @@ isearching.
 The arg REGEXP-FUNCTION, if non-nil, should be a function.  It is
 used to set the value of `isearch-regexp-function'."
 
+  ;; (dolist (var '(isearch-forward ...))
+  ;;   (make-variable-buffer-local var))
+
   ;; Initialize global vars.
   (setq isearch-forward forward
 	isearch-regexp (or regexp
@@ -3549,9 +3552,8 @@ Optional third argument, if t, means if fail just return nil (no error).
     (when pos1
       ;; When using multiple buffers isearch, switch to the new buffer here,
       ;; because `save-excursion' above doesn't allow doing it inside funcall.
-      (if (and multi-isearch-next-buffer-current-function
-	       (buffer-live-p multi-isearch-current-buffer))
-	  (switch-to-buffer multi-isearch-current-buffer))
+      (when multi-isearch-next-buffer-current-function
+        (multi-isearch-switch-buffer))
       (goto-char pos1)
       pos1)))
 
