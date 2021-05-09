@@ -3088,11 +3088,14 @@ on encoding."
               (list name (concat (if char (list char) " ") "\t") "")))
           names))
 
-(defun mule--ucs-names-group (name transform)
-  (if transform
-      name
-    (let ((script (aref char-script-table (gethash name ucs-names))))
-      (if script (symbol-name script) "ungrouped"))))
+(defun mule--ucs-names-group (action arg)
+  (pcase action
+    ('title (let ((script (aref char-script-table (gethash arg ucs-names))))
+              (if script (symbol-name script) "ungrouped")))
+    ('transform arg)
+    ('sort (if read-char-by-name-group-sort
+               (sort arg (lambda (a b) (string< (car a) (car b))))
+             arg))))
 
 (defun char-from-name (string &optional ignore-case)
   "Return a character as a number from its Unicode name STRING.
@@ -3124,11 +3127,12 @@ Defines the sorting order either by character names or their codepoints."
   :group 'mule
   :version "28.1")
 
-(defcustom read-char-by-name-group nil
-  "How to group characters for `read-char-by-name' completion.
-When t, split characters to sections of Unicode blocks
-sorted alphabetically."
-  :type 'boolean
+(defcustom read-char-by-name-group-sort nil
+  "How to sort groups of characters for `read-char-by-name' completion.
+When t, sort sections of Unicode blocks alphabetically."
+  :type '(choice
+          (const :tag "Unsorted group names" nil)
+          (const :tag "Group names sorted alphabetically" t))
   :group 'mule
   :version "28.1")
 
@@ -3145,8 +3149,9 @@ preceded by an asterisk `*' and use completion, it will show all
 the characters whose names include that substring, not necessarily
 at the beginning of the name.
 
-The options `read-char-by-name-sort' and `read-char-by-name-group'
-define the sorting order of completion characters and how to group them.
+The options `read-char-by-name-sort', `completions-group', and
+`read-char-by-name-group-sort' define the sorting order of completion
+characters, how to group them, and how to sort groups.
 
 Accept a name like \"CIRCULATION FUNCTION\", a hexadecimal
 number like \"2A10\", or a number in hash notation (e.g.,
@@ -3156,8 +3161,6 @@ as names, not numbers."
   (let* ((enable-recursive-minibuffers t)
 	 (completion-ignore-case t)
 	 (completion-tab-width 4)
-	 (completions-group read-char-by-name-group)
-	 (completions-format (if read-char-by-name-group 'one-column completions-format))
 	 (input
 	  (completing-read
 	   prompt
@@ -3168,7 +3171,7 @@ as names, not numbers."
 		    . ,(when (eq read-char-by-name-sort 'code)
                          #'mule--ucs-names-sort-by-code))
 		   (group-function
-		    . ,(when read-char-by-name-group
+		    . ,(when completions-group
 			 #'mule--ucs-names-group))
 		   (affixation-function
 		    . ,#'mule--ucs-names-affixation)
