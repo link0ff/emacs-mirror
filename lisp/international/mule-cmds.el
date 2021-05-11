@@ -3161,6 +3161,10 @@ as names, not numbers."
   (let* ((enable-recursive-minibuffers t)
 	 (completion-ignore-case t)
 	 (completion-tab-width 4)
+	 ;; (completions-group-sort
+	 ;;  (if read-char-by-name-group-sort
+	 ;;      (lambda (a b) (string< (car a) (car b)))
+	 ;;    completions-group-sort))
 	 (input
 	  (completing-read
 	   prompt
