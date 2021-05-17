@@ -2117,7 +2117,9 @@ Optional arg HOW-TO determines how to treat the target.
 	   (lambda (from)
 	     (expand-file-name (file-name-nondirectory from) target))
 	 (lambda (_from) target))
-       marker-char))))
+       marker-char)
+      (when dired-auto-revert-buffer
+        (dired-fun-in-all-buffers target nil #'revert-buffer)))))
 
 ;; Read arguments for a marked-files command that wants a file name,
 ;; perhaps popping up the list of marked files.
