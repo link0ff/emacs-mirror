@@ -959,6 +959,8 @@ Each element is an `isearch--state' struct where the slots are
 
 (defvar isearch--saved-overriding-local-map nil)
 
+(put 'isearch-mode 'overriding-keymap t)
+
 ;; Minor-mode-alist changes - kind of redundant with the
 ;; echo area, but if isearching in multiple windows, it can be useful.
 ;; Also, clicking the mode-line indicator pops up
@@ -2583,7 +2585,7 @@ If search string is empty, just beep."
   "Read a string from the `kill-ring' and append it to the search string."
   (interactive)
   (with-isearch-suspended
-   (let ((string (read-from-kill-ring)))
+   (let ((string (read-from-kill-ring "Yank from kill-ring: ")))
      (if (and isearch-case-fold-search
               (eq 'not-yanks search-upper-case))
          (setq string (downcase string)))
@@ -2636,7 +2638,10 @@ always reads a string from the `kill-ring' using the minibuffer."
   ;; then it "used" the mark which we should hence deactivate.
   (when select-active-regions (deactivate-mark)))
 
-
+;; mouse-minibuffer-check: Minibuffer window is not active
+;; MAYBE bind mouse-2 in inactive-minibuffer during isearch-mode?
+(put 'mouse-yank-primary 'isearch-scroll t)
+(put 'isearch-mouse-2 'isearch-scroll t)
 (defun isearch-mouse-2 (click)
   "Handle mouse-2 in Isearch mode.
 For a click in the echo area, invoke `isearch-yank-x-selection'.
@@ -2648,6 +2653,7 @@ is bound to outside of Isearch."
                        ;; Key search depends on mode (bug#47755)
                        (isearch-mode nil))
                    (key-binding (this-command-keys-vector) t))))
+    (message "! isearch-mouse-2 %S" w)
     (if (and (window-minibuffer-p w)
 	     (not (minibuffer-window-active-p w))) ; in echo area
 	(isearch-yank-x-selection)
@@ -3089,6 +3095,7 @@ See more for options in `search-exit-option'."
      ;; A mouse click on the isearch message starts editing the search string.
      ((and (eq (car-safe main-event) 'down-mouse-1)
 	   (window-minibuffer-p (posn-window (event-start main-event))))
+      ;; (message "! main-event %S" main-event)
       ;; Swallow the up-event.
       (read--potential-mouse-event)
       (setq this-command 'isearch-edit-string))
