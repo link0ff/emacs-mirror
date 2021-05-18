@@ -561,6 +561,13 @@ To record all your input, use `open-dribble-file'."
               'font-lock-face 'help-key-binding
               'face 'help-key-binding))
 
+(defcustom describe-bindings-after-hook '(describe-bindings-outline)
+  "Hook run at the end of `describe-bindings'."
+  :type 'hook
+  :options '(describe-bindings-outline)
+  :group 'help
+  :version "28.1")
+
 (defun describe-bindings (&optional prefix buffer)
   "Display a buffer showing a list of all defined keys, and their definitions.
 The keys are displayed in order of precedence.
@@ -579,37 +586,25 @@ or a buffer name."
     ;; the current buffer.
     (with-current-buffer (help-buffer)
       (describe-buffer-bindings buffer prefix)
+      (run-hooks 'describe-bindings-after-hook))))
 
-      (setq-local outline-regexp ".*:$")
-      (setq-local outline-heading-end-regexp ":\n")
-      (setq-local outline-level (lambda () 1))
-      (setq-local outline-minor-mode-cycle t
-                  outline-minor-mode-highlight t)
-      (outline-minor-mode 1)
-      (save-excursion
-        (let ((inhibit-read-only t))
-          (goto-char (point-min))
-          (insert "Type TAB or S-TAB on headings to cycle their visibility.\n\n")
-          ;; Hide the longest body
-          (when (and (re-search-forward "Key translations" nil t)
-                     (fboundp 'outline-cycle))
-            (outline-cycle)))))))
-
-(defun describe-bindings-internal (&optional menus prefix)
-  "Show a list of all defined keys, and their definitions.
-We put that list in a buffer, and display the buffer.
-
-The optional argument MENUS, if non-nil, says to mention menu bindings.
-\(Ordinarily these are omitted from the output.)
-The optional argument PREFIX, if non-nil, should be a key sequence;
-then we display only bindings that start with that prefix."
-  (declare (obsolete describe-buffer-bindings "24.4"))
-  (let ((buf (current-buffer)))
-    (with-help-window (help-buffer)
-      ;; Be aware that `describe-buffer-bindings' puts its output into
-      ;; the current buffer.
-      (with-current-buffer (help-buffer)
-	(describe-buffer-bindings buf prefix menus)))))
+(defun describe-bindings-outline ()
+  "Hook to enable outlines in the output buffer of `describe-bindings'."
+  (setq-local outline-regexp ".*:$")
+  (setq-local outline-heading-end-regexp ":\n")
+  (setq-local outline-level (lambda () 1))
+  (setq-local outline-minor-mode-cycle t
+              outline-minor-mode-highlight t)
+  (outline-minor-mode 1)
+  (save-excursion
+    (let ((inhibit-read-only t))
+      (goto-char (point-min))
+      (insert (substitute-command-keys
+               "\\<outline-mode-cycle-map>Type \\[outline-cycle] or \\[outline-cycle-buffer] on headings to cycle their visibility.\n\n"))
+      ;; Hide the longest body
+      (when (and (re-search-forward "Key translations" nil t)
+                 (fboundp 'outline-cycle))
+        (outline-cycle)))))
 
 (defun where-is (definition &optional insert)
   "Print message listing key sequences that invoke the command DEFINITION.
