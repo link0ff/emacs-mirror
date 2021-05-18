@@ -2170,7 +2170,8 @@ Optional arg HOW-TO determines how to treat the target.
 	 (lambda (_from) target))
        marker-char)
       (when dired-auto-revert-buffer
-        (dired-fun-in-all-buffers target nil #'revert-buffer)))))
+        (dired-fun-in-all-buffers (file-name-directory target) nil
+                                  #'revert-buffer)))))
 
 ;; Read arguments for a marked-files command that wants a file name,
 ;; perhaps popping up the list of marked files.
