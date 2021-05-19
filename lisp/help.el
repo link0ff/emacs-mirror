@@ -561,10 +561,9 @@ To record all your input, use `open-dribble-file'."
               'font-lock-face 'help-key-binding
               'face 'help-key-binding))
 
-(defcustom describe-bindings-after-hook '(describe-bindings-outline)
-  "Hook run at the end of `describe-bindings'."
-  :type 'hook
-  :options '(describe-bindings-outline)
+(defcustom describe-bindings-outline t
+  "Non-nil enables outlines in the output buffer of `describe-bindings'."
+  :type 'boolean
   :group 'help
   :version "28.1")
 
@@ -586,25 +585,25 @@ or a buffer name."
     ;; the current buffer.
     (with-current-buffer (help-buffer)
       (describe-buffer-bindings buffer prefix)
-      (run-hooks 'describe-bindings-after-hook))))
 
-(defun describe-bindings-outline ()
-  "Hook to enable outlines in the output buffer of `describe-bindings'."
-  (setq-local outline-regexp ".*:$")
-  (setq-local outline-heading-end-regexp ":\n")
-  (setq-local outline-level (lambda () 1))
-  (setq-local outline-minor-mode-cycle t
-              outline-minor-mode-highlight t)
-  (outline-minor-mode 1)
-  (save-excursion
-    (let ((inhibit-read-only t))
-      (goto-char (point-min))
-      (insert (substitute-command-keys
-               "\\<outline-mode-cycle-map>Type \\[outline-cycle] or \\[outline-cycle-buffer] on headings to cycle their visibility.\n\n"))
-      ;; Hide the longest body
-      (when (and (re-search-forward "Key translations" nil t)
-                 (fboundp 'outline-cycle))
-        (outline-cycle)))))
+      (when describe-bindings-outline
+        (setq-local outline-regexp ".*:$")
+        (setq-local outline-heading-end-regexp ":\n")
+        (setq-local outline-level (lambda () 1))
+        (setq-local outline-minor-mode-cycle t
+                    outline-minor-mode-highlight t)
+        (outline-minor-mode 1)
+        (save-excursion
+          (let ((inhibit-read-only t))
+            (goto-char (point-min))
+            (insert (substitute-command-keys
+                     (concat "\\<outline-mode-cycle-map>Type "
+                             "\\[outline-cycle] or \\[outline-cycle-buffer] "
+                             "on headings to cycle their visibility.\n\n")))
+            ;; Hide the longest body
+            (when (and (re-search-forward "Key translations" nil t)
+                       (fboundp 'outline-cycle))
+              (outline-cycle))))))))
 
 (defun where-is (definition &optional insert)
   "Print message listing key sequences that invoke the command DEFINITION.
