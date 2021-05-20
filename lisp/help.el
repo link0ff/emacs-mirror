@@ -561,7 +561,7 @@ To record all your input, use `open-dribble-file'."
               'font-lock-face 'help-key-binding
               'face 'help-key-binding))
 
-(defcustom describe-bindings-outline t
+(defcustom describe-bindings-outline nil
   "Non-nil enables outlines in the output buffer of `describe-bindings'."
   :type 'boolean
   :group 'help
