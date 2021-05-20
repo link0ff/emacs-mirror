@@ -5734,7 +5734,7 @@ PROMPT is a string to prompt with."
            (complete-with-action action completions string pred)))
        nil nil nil
        (if history-pos
-           (cons 'read-from-kill-ring-history history-pos)
+           (cons 'read-from-kill-ring-history (1+ history-pos))
          'read-from-kill-ring-history)))))
 
 (defcustom yank-from-kill-ring-rotate t
@@ -5773,7 +5773,7 @@ When called from Lisp, insert STRING like `insert-for-yank' does."
   (when yank-from-kill-ring-rotate
     (let ((pos (seq-position kill-ring string)))
       (setq kill-ring-yank-pointer
-            (or (and pos (nthcdr (1+ pos) kill-ring))
+            (or (and pos (nthcdr pos kill-ring))
                 kill-ring))))
   (if (consp arg)
       ;; Swap point and mark like in `yank' and `yank-pop'.
@@ -8935,18 +8935,17 @@ and quit the completion window without exiting the minibuffer."
           (choice
            (save-excursion
              (goto-char (posn-point (event-start event)))
-             (let (beg end)
+             (let (beg)
                (cond
                 ((and (not (eobp)) (get-text-property (point) 'mouse-face))
-                 (setq end (point) beg (1+ (point))))
+                 (setq beg (1+ (point))))
                 ((and (not (bobp))
                       (get-text-property (1- (point)) 'mouse-face))
-                 (setq end (1- (point)) beg (point)))
+                 (setq beg (point)))
                 (t (error "No completion here")))
                (setq beg (previous-single-property-change beg 'mouse-face))
-               (setq end (or (next-single-property-change end 'mouse-face)
-                             (point-max)))
-               (buffer-substring-no-properties beg end)))))
+               (substring-no-properties
+                (get-text-property beg 'completion--string))))))
 
       (unless (buffer-live-p buffer)
         (error "Destination buffer is dead"))

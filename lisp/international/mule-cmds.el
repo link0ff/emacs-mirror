@@ -3154,8 +3154,8 @@ the characters whose names include that substring, not necessarily
 at the beginning of the name.
 
 The options `read-char-by-name-sort', `completions-group', and
-`completions-group-sort-function' define the sorting order of
-completion characters, whether to group them, and how to sort groups.
+`completions-group-sort' define the sorting order of completion characters,
+whether to group them, and how to sort groups.
 
 Accept a name like \"CIRCULATION FUNCTION\", a hexadecimal
 number like \"2A10\", or a number in hash notation (e.g.,
@@ -3173,12 +3173,12 @@ as names, not numbers."
 		 `(metadata
 		   (display-sort-function
 		    . ,(when (eq read-char-by-name-sort 'code)
-                         #'mule--ucs-names-sort-by-code))
+			 #'mule--ucs-names-sort-by-code))
+		   (affixation-function
+		    . ,#'mule--ucs-names-affixation)
 		   (group-function
 		    . ,(when completions-group
 			 #'mule--ucs-names-group))
-		   (affixation-function
-		    . ,#'mule--ucs-names-affixation)
 		   (category . unicode-name))
 	       (complete-with-action action (ucs-names) string pred)))))
 	 (char
