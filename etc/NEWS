@@ -749,8 +749,9 @@ This can be switched off on a per-usage basis by providing
 'dired-do-copy' with a 'C-u' prefix.
 
 *** New user option 'dired-do-revert-buffer'.
-Its non-nil value reverts the Dired buffer that is the destination
-of copy/rename/symlink/hardlink operations.
+Non-nil reverts the destination Dired buffer after preforming one
+of these operations: 'dired-do-copy', 'dired-do-rename',
+'dired-do-symlink', 'dired-do-hardlink'.
 
 *** New user option 'dired-mark-region' affects all Dired commands
 that mark files.  When non-nil and the region is active in Transient

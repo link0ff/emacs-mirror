@@ -2066,11 +2066,12 @@ ESC or `q' to not overwrite any of the remaining files,
   (dired-move-to-filename))
 
 (defcustom dired-do-revert-buffer nil
-  "Automatically revert Dired buffers after some operations.
+  "Automatically revert Dired buffers after `dired-do' operations.
 This option controls whether to refresh the directory listing in a
-Dired buffer that is the destination of copy/rename/symlink/hardlink operations.
+Dired buffer that is the destination of one of these operations:
+`dired-do-copy', `dired-do-rename', `dired-do-symlink', `dired-do-hardlink'.
 If the value is t, always revert the Dired buffer updated in the result
-of Dired operations.
+of these operations.
 If the value is a function, it is called with the destination directory name
 as a single argument, and the buffer is reverted after Dired operations
 if the function returns non-nil."
