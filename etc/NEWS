@@ -534,9 +534,13 @@ indentation is done using SMIE or with the old ad-hoc code.
 ** Icomplete
 
 +++
-*** New minor mode 'icomplete-vertical-mode'.
-This mode is intended to be used with Icomplete or Fido, to display the
-list of completions candidates vertically instead of horizontally.
+*** New minor mode 'icomplete-vertical-mode', alias 'fido-vertical-mode'
+This mode is intended to be used with Icomplete ('M-x icomplete-mode')
+or Fido ('M-x fido-mode'), to display the list of completions
+candidates vertically instead of horizontally.  When used with
+Icomplete, completions are rotated and selection kept at the top.
+When used with Fido, completions scroll like a typical dropdown
+widget.
 
 ---
 ** Specific warnings can now be disabled from the warning buffer.
@@ -1990,6 +1994,15 @@ This is so 'C-a' works as in other modes, and in particular holding
 Shift while typing 'C-a', i.e. 'C-S-a', will now highlight the text.
 
 ** Miscellaneous
+
+---
+*** New variable 'hl-line-overlay-priority'.
+This can be used to change the priority of the hl-line overlays.
+
++++
+*** New command 'mailcap-view-file'.
+This command will open a viewer based on the file type, as determined
+by ~/.mailcap and related files and variables.
 
 +++
 *** New command 'C-x C-k Q' to force redisplay in keyboard macros.
