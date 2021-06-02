@@ -534,7 +534,7 @@ indentation is done using SMIE or with the old ad-hoc code.
 ** Icomplete
 
 +++
-*** New minor mode 'icomplete-vertical-mode', alias 'fido-vertical-mode'
+*** New minor mode 'icomplete-vertical-mode', alias 'fido-vertical-mode'.
 This mode is intended to be used with Icomplete ('M-x icomplete-mode')
 or Fido ('M-x fido-mode'), to display the list of completions
 candidates vertically instead of horizontally.  When used with
@@ -834,6 +834,11 @@ completion over Git branch names.  The default is nil, which causes
 tags to be considered as well.
 
 ** Gnus
+
++++
+*** New user option 'gnus-process-mark-toggle'.
+If non-nil, the `#' command in the Group and Summary buffers will
+toggle instead of setting the process mark.
 
 +++
 *** New user option 'gnus-registry-register-all'.
