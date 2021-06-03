@@ -149,6 +149,9 @@
   :type '(choice (const nil) string)
   :version "25.1")
 
+(define-obsolete-variable-alias 'hide-ifdef-expand-reinclusion-protection
+  'hide-ifdef-expand-reinclusion-guard "28.1")
+
 (defcustom hide-ifdef-expand-reinclusion-guard t
   "Non-nil means don't hide an entire header file enclosed by #ifndef...#endif.
 Most C/C++ headers are usually wrapped with ifdefs to prevent re-inclusion:
@@ -211,17 +214,17 @@ Effective only if `hide-ifdef-expand-reinclusion-guard' is t."
 (defcustom hide-ifdef-verbose nil
   "Show some defining symbols on hiding for a visible feedback."
   :type 'boolean
-  :version "27.2")
+  :version "28.1")
 
 (defcustom hide-ifdef-evalulate-enter-hook nil
   "Hook function to be called when entering `hif-evaluate-macro'."
   :type 'hook
-  :version "27.2")
+  :version "28.1")
 
 (defcustom hide-ifdef-evalulate-leave-hook nil
   "Hook function to be called when leaving `hif-evaluate-macro'."
   :type 'hook
-  :version "27.2")
+  :version "28.1")
 
 (defvar hide-ifdef-mode-map
   ;; Set up the mode's main map, which leads via the prefix key to the submap.
