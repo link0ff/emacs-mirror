@@ -510,6 +510,13 @@ When emacsclient connects, Emacs will (by default) output a message
 about how to exit the client frame.  If 'server-client-instructions'
 is set to nil, this message is inhibited.
 
++++
+*** New command 'server-edit-abort'.
+This command (not bound to any key by default) can be used to abort
+an edit instead of marking it as "Done" (which the 'C-x #' command
+does).  The 'emacsclient' program exits with an abnormal status as
+result of this command.
+
 ** Perl mode
 
 ---
@@ -557,8 +564,8 @@ disabled entirely.
 
 ** Windmove
 
-*** New user options can be used to customize windmove keybindings.
-There options include 'windmove-default-keybindings',
+*** New user options to customize windmove keybindings.
+These options include 'windmove-default-keybindings',
 'windmove-display-default-keybindings',
 'windmove-delete-default-keybindings',
 'windmove-swap-states-default-keybindings'.
