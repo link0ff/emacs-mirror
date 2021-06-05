@@ -295,6 +295,17 @@ default, 9.5 MiB).  Press '?' or 'C-h' in that prompt to read more
 about the different options to visit a file, how you can disable the
 prompt, and how you can tweak the file size threshold.
 
++++
+** Improved support for terminal emulators that encode the Meta flag.
+Some terminal emulators set the 8th bit of Meta characters, and then
+encode the resulting character code as if it were non-ASCII character
+above codepoint 127.  Previously, the only way of using these in Emacs
+was to set up the terminal emulator to use the ESC characters to send
+Meta characters to Emacs, e.g., send "ESC x" when the user types
+'M-x'.  You can now avoid the need for this setup of such terminal
+emulators by using the new input-meta-mode with the special value
+'encoded' with these terminal emulators.
+
 
 * Editing Changes in Emacs 28.1
 
@@ -548,6 +559,16 @@ candidates vertically instead of horizontally.  When used with
 Icomplete, completions are rotated and selection kept at the top.
 When used with Fido, completions scroll like a typical dropdown
 widget.
+
+*** Default value of 'icomplete-compute-delay has been changed to 0.15 s.
+
+*** Default value of 'icomplete-max-delay-chars' has been changed to 2.
+
+*** Reduced blinking while completing the next completions set.
+Icomplete doesn't hide the hint with the previously computed
+completions anymore when compute delay is in effect, or the previous
+computation has been aborted by input. Instead it shows the previous
+completions until the new ones are ready.
 
 ---
 ** Specific warnings can now be disabled from the warning buffer.
