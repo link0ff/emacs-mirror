@@ -883,9 +883,14 @@ tags to be considered as well.
 ** Gnus
 
 +++
+*** The '#' command in the Group and Summary buffer now toggles,
+instead of sets, the process mark.
+
++++
 *** New user option 'gnus-process-mark-toggle'.
-If non-nil, the `#' command in the Group and Summary buffers will
-toggle instead of setting the process mark.
+If non-nil (the default), the `#' command in the Group and Summary
+buffers will toggle, instead of set, the process mark.
+
 
 +++
 *** New user option 'gnus-registry-register-all'.
@@ -3233,14 +3238,6 @@ The new variable 'xwidget-webkit-download-dir' says where to download to.
 ** On macOS, Emacs can now load dynamic modules with a ".dylib" suffix.
 'module-file-suffix' now has the value ".dylib" on macOS, but the
 ".so" suffix is supported as well.
-
-+++
-** On macOS, Emacs now supports native tabs (in macOS 10.12 and later).
-Native tabbing behavior is specified system-wide via System
-Preferences, under under "General => Prefer tabs when opening
-documents".  In macOS versions 10.15 and earlier, this option is
-located under Dock instead.  Note that this feature is unrelated to
-the Emacs 'tab-bar-mode'.
 
 +++
 ** On MS-Windows, Emacs can now toggle the IME.
