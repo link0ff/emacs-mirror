@@ -741,6 +741,7 @@ If ARGS are provided, then pass MESSAGE through `format-message'."
                 ;; Don't overwrite the face properties the caller has set
                 (text-properties-at 0 message))
       (setq message (apply #'propertize message minibuffer-message-properties)))
+    ;; Put overlay either on `minibuffer-message' property, or at EOB.
     (let* ((ovpos (minibuffer--message-overlay-pos))
            (ol (make-overlay ovpos ovpos nil t t))
            ;; A quit during sit-for normally only interrupts the sit-for,
@@ -756,7 +757,7 @@ If ARGS are provided, then pass MESSAGE through `format-message'."
               ;; The current C cursor code doesn't know to use the overlay's
               ;; marker's stickiness to figure out whether to place the cursor
               ;; before or after the string, so let's spoon-feed it the pos.
-              (put-text-property 0 1 'cursor 1 message))
+              (put-text-property 0 1 'cursor t message))
             (overlay-put ol 'after-string message)
             ;; Make sure the overlay with the message is displayed before
             ;; any other overlays in that position, in case they have
@@ -785,7 +786,9 @@ and `clear-minibuffer-message' called automatically via
 (defvar minibuffer-message-overlay nil)
 
 (defun minibuffer--message-overlay-pos ()
-  "Return position where `set-minibuffer-message' shall put message overlay."
+  "Return position where minibuffer message functions shall put message overlay.
+The minibuffer message functions include `minibuffer-message' and
+`set-minibuffer-message'."
   ;; Starting from point, look for non-nil `minibuffer-message'
   ;; property, and return its position.  If none found, return the EOB
   ;; position.
@@ -831,7 +834,7 @@ via `set-message-function'."
           ;; The current C cursor code doesn't know to use the overlay's
           ;; marker's stickiness to figure out whether to place the cursor
           ;; before or after the string, so let's spoon-feed it the pos.
-          (put-text-property 0 1 'cursor 1 message))
+          (put-text-property 0 1 'cursor t message))
         (overlay-put minibuffer-message-overlay 'after-string message)
         ;; Make sure the overlay with the message is displayed before
         ;; any other overlays in that position, in case they have
