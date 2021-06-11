@@ -605,6 +605,17 @@ These options include 'windmove-default-keybindings',
 ** Windows
 
 +++
+*** New option 'delete-window-choose-selected'.
+This allows to choose a frame's selected window after deleting the
+previously selected one.
+
++++
+*** New argument NO-OTHER for some window functions.
+'get-lru-window', ‘get-mru-window’ and 'get-largest-window' now accept a
+new optional argument NO-OTHER which, if non-nil, avoids returning a
+window whose 'no-other-window' parameter is non-nil.
+
++++
 *** New 'display-buffer' function 'display-buffer-use-least-recent-window'.
 This is like 'display-buffer-use-some-window', but won't reuse the
 current window, and when called repeatedly will try not to reuse a
@@ -1102,7 +1113,14 @@ grep-like tools.
 On systems where the grep command supports it, directories will be
 skipped.
 
-*** 'grep-find-template' now includes the 'find' option '-H'.
+*** Commands that use 'grep-find' now follow symlinks for command-line args.
+This is because the default value of 'grep-find-template' now includes
+the 'find' option '-H'.  Commands that use that variable, including
+indirectly via a call to 'xref-matches-in-directory', might be
+affected.  In particular, there should be no need anymore to ensure
+any directory names on the 'find' command lines end in a slash.
+This change is for better compatibility with old versions of non-GNU
+'find', such as the one used on macOS.
 
 ** Help
 
