@@ -1124,6 +1124,15 @@ This change is for better compatibility with old versions of non-GNU
 
 ** Help
 
++++
+*** New command 'help-view-source' ('s')
+This command will view the source file (if any) of the current help
+topic.
+
++++
+*** New command 'help-goto-info' ('i')
+This command will look up the current symbol (if any) in Info.
+
 ---
 *** The 'help-for-help' ('C-h C-h') screen has been redesigned.
 
@@ -2090,6 +2099,13 @@ This allows mode-specific alterations to how 'thing-at-point' works.
 This is so 'C-a' works as in other modes, and in particular holding
 Shift while typing 'C-a', i.e. 'C-S-a', will now highlight the text.
 
+** ERT
+
++++
+*** ERT can now output more verbose test failure reports.
+If the EMACS_TEST_VERBOSE environment variable is set, failure
+summaries will include the failing condition.
+
 ** Miscellaneous
 
 +++
@@ -2842,6 +2858,12 @@ customize them.
 
 
 * Lisp Changes in Emacs 28.1
+
++++
+** New function 'syntax-class-to-char'.
+This does almost the opposite of 'string-to-syntax' -- it returns the
+syntax descriptor (a character) given a raw syntax descriptor (an
+integer).
 
 +++
 ** New function 'buffer-local-boundp'.
