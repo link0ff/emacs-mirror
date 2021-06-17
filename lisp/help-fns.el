@@ -144,7 +144,7 @@ with the current prefix.  The files are chosen according to
    (when (boundp s)
      (concat
       (if (custom-variable-p s) "u" "v")
-      (and (local-variable-if-set-p s) "l")
+      (and (local-variable-if-set-p s) "'")
       (and (ignore-errors (not (equal (symbol-value s) (default-value s)))) "*")
       (and (get s 'byte-obsolete-variable) "-")))
    (and (facep s) "a")
@@ -156,7 +156,7 @@ with the current prefix.  The files are chosen according to
                    (doc (condition-case nil (documentation s) (error nil)))
                    (doc (and doc (substring doc 0 (string-match "\n" doc)))))
               (list c (propertize
-                       (format "%-4s " (help--symbol-class s))
+                       (format "%-4s" (help--symbol-class s))
                        'face 'completions-annotations)
                     (if doc (propertize (format " -- %s" doc)
                                         'face 'completions-annotations)
