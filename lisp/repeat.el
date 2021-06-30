@@ -416,9 +416,10 @@ When Repeat mode is enabled, and the command symbol has the property named
 
             ;; Exit when the last char is not among repeatable keys,
             ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
-            (when (and (zerop (minibuffer-depth)) ; avoid remapping in prompts
-                       (or (lookup-key map (this-command-keys-vector))
-                           prefix-arg))
+            (when (and (or (lookup-key map (this-command-keys-vector))
+                           prefix-arg)
+                       ;; TODO: check is still the same level to allow starting sequence in prompt
+                       (zerop (minibuffer-depth)))
 
               ;; Messaging
               (unless prefix-arg
