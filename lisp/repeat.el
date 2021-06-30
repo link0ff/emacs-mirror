@@ -492,25 +492,24 @@ When Repeat mode is enabled, and the command symbol has the property named
 (defun describe-repeat ()
   "Describe repeatable commands and keymaps."
   (interactive)
-  (let (used-gentemp)
-    (help-setup-xref (list #'describe-repeat)
-                     (called-interactively-p 'interactive))
-    (let ((keymaps nil))
-      (all-completions
-       "" obarray (lambda (s)
-                    (and (commandp s)
-                         (get s 'repeat-map)
-                         (push s (alist-get (get s 'repeat-map) keymaps)))))
-      (with-help-window (help-buffer)
-        (with-current-buffer standard-output
-          (princ "This is a list of repeatable keymaps and commands.\n\n")
+  (help-setup-xref (list #'describe-repeat)
+                   (called-interactively-p 'interactive))
+  (let ((keymaps nil))
+    (all-completions
+     "" obarray (lambda (s)
+                  (and (commandp s)
+                       (get s 'repeat-map)
+                       (push s (alist-get (get s 'repeat-map) keymaps)))))
+    (with-help-window (help-buffer)
+      (with-current-buffer standard-output
+        (princ "This is a list of repeatable keymaps and commands.\n\n")
 
-          (dolist (keymap (sort keymaps (lambda (a b) (string-lessp (car a) (car b)))))
-            (princ (format-message "`%s' keymap is repeatable by these commands:\n"
-                                   (car keymap)))
-            (dolist (command (sort (cdr keymap) 'string-lessp))
-              (princ (format-message " `%s'\n" command)))
-            (princ "\n")))))))
+        (dolist (keymap (sort keymaps (lambda (a b) (string-lessp (car a) (car b)))))
+          (princ (format-message "`%s' keymap is repeatable by these commands:\n"
+                                 (car keymap)))
+          (dolist (command (sort (cdr keymap) 'string-lessp))
+            (princ (format-message " `%s'\n" command)))
+          (princ "\n"))))))
 
 (provide 'repeat)
 
