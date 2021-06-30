@@ -537,6 +537,14 @@ an edit instead of marking it as "Done" (which the 'C-x #' command
 does).  The 'emacsclient' program exits with an abnormal status as
 result of this command.
 
++++
+*** New desktop integration for connecting to the server.
+If your operating system’s desktop environment is
+freedesktop.org-compatible (which is true of most GNU/Linux and other
+recent Unix-like GUIs), you may use the new "Emacs (Client)" desktop
+menu entry to open files in an existing Emacs instance rather than
+starting a new one.  The daemon starts if not already running.
+
 ** Perl mode
 
 ---
@@ -2134,6 +2142,11 @@ summaries will include the failing condition.
 
 ** Miscellaneous
 
++++
+*** New user option 'kill-transform-function'.
+This can be used to transform (and suppress) strings from entering the
+kill ring.
+
 ---
 *** `C-u M-x dig' will now prompt for a query type to use.
 
@@ -3057,6 +3070,11 @@ been added, and takes a callback to handle the return status.
 
 ---
 ** 'ascii' is now a coding system alias for 'us-ascii'.
+
++++
+** New function 'file-name-with-extension'.
+This function allows a canonical way to set/replace the extension of a
+filename string.
 
 +++
 ** New function 'file-backup-file-names'.
