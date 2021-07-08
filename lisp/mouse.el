@@ -207,6 +207,7 @@ items `Turn Off' and `Help'."
 	 (newmap (if ancestor
 		     (make-sparse-keymap (concat (format-mode-line mode-name)
                                                  " Mode"))
+                   ;; Use some from ‘menu-bar-edit-menu’
 		   menu-bar-edit-menu)))
     (if ancestor
 	(set-keymap-parent newmap ancestor))
@@ -1208,7 +1209,7 @@ overlay property, the value of that property determines what to do.
 for the `follow-link' event, the binding of that event determines
 what to do.
 
-The resulting value determine whether POS is inside a link:
+The resulting value determines whether POS is inside a link:
 
 - If the value is `mouse-face', POS is inside a link if there
 is a non-nil `mouse-face' property at POS.  Return t in this case.
@@ -2881,8 +2882,8 @@ is copied instead of being cut."
           (set-marker (nth 2 state) nil))
         (with-current-buffer (window-buffer window)
           (setq cursor-type (nth 3 state)))))))
-
 
+
 ;;; Bindings for mouse commands.
 
 (global-set-key [down-mouse-1]	'mouse-drag-region)
@@ -2899,6 +2900,8 @@ is copied instead of being cut."
 ;; Allow yanking also when the corresponding cursor is "in the fringe".
 (define-key function-key-map [right-fringe mouse-2] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-2] 'mouse--strip-first-event)
+
+;; (global-set-key [down-mouse-3]	'mouse-maybe-context-menu) ;; or add mouse-3-down-context-menu
 (global-set-key [mouse-3]	'mouse-save-then-kill)
 (define-key function-key-map [right-fringe mouse-3] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-3] 'mouse--strip-first-event)
