@@ -187,13 +187,13 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
   (cond
    ;; Delay context menu display.
    ((numberp mouse-3-down-context-menu)
-    (when mouse--down-3-timer
+    (when (timerp mouse--down-3-timer)
       (cancel-timer mouse--down-3-timer))
     (setq mouse--down-3-timer
           (run-with-timer
            (/ (abs mouse-3-down-context-menu) 1000.0) nil
            (lambda ()
-             (setq mouse--down-3-timer nil)
+             (setq mouse--down-3-timer t)
              (unless (eq (posn-window (event-end event)) (selected-window))
                (select-window (posn-window (event-end event))))
              (mouse-context-menu event))))
@@ -207,14 +207,17 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
 (defun mouse--click-3-maybe-context-menu (&optional _prompt)
   (cond
    ((numberp mouse-3-down-context-menu)
-    (if (not mouse--down-3-timer)
-        ;; Context menu was displayed on down-mouse-3.
-        []
+    (cond
+     ((timerp mouse--down-3-timer)
       ;; Don't wait for context menu and fall back to mouse-save-then-kill.
       (cancel-timer mouse--down-3-timer)
       (setq mouse--down-3-timer nil)
-      nil))
-   ;; Context menu was displayed on down-mouse-3.
+      nil)
+     (mouse--down-3-timer
+      ;; Context menu was displayed after delay.
+      (setq mouse--down-3-timer nil)
+      [])))
+   ;; Context menu was displayed immediately.
    (mouse-3-down-context-menu
     [])))
 
@@ -1062,6 +1065,7 @@ If PROMOTE-TO-REGION is non-nil and event is a multiple-click, select
 the corresponding element around point, with the resulting position of
 point determined by `mouse-select-region-move-to-beginning'."
   (interactive "e\np")
+  (message "! mouse-set-point")
   (mouse-minibuffer-check event)
   (if (and promote-to-region (> (event-click-count event) 1))
       (progn
@@ -1092,6 +1096,7 @@ This should be bound to a mouse drag event.
 See the `mouse-drag-copy-region' variable to control whether this
 command alters the kill ring or not."
   (interactive "e")
+  (message "! mouse-set-region")
   (mouse-minibuffer-check click)
   (select-window (posn-window (event-start click)))
   (let ((beg (posn-point (event-start click)))
@@ -1136,6 +1141,7 @@ command alters the kill ring or not."
 	(sit-for 1))
     (push-mark)
     (set-mark (point))
+    (message "! %S" (point))
     (if (numberp end) (goto-char end))
     (mouse-set-region-1)))
 
@@ -1224,6 +1230,7 @@ When the region already exists and `mouse-drag-and-drop-region'
 is non-nil, this moves the entire region of text to where mouse
 is dragged over to."
   (interactive "e")
+  (message "! mouse-drag-region")
   (if (and mouse-drag-and-drop-region
            (not (member 'triple (event-modifiers start-event)))
            (equal (mouse-posn-property (event-start start-event) 'face) 'region))
