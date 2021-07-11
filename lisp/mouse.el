@@ -182,29 +182,27 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
 
 (defvar mouse--down-3-timer nil)
 
-(defun mouse--down-3-maybe-context-menu (&optional _prompt)
+(defun mouse-maybe-context-menu (event)
+  (interactive "@e")
   (cond
    ;; Delay context menu display.
    ((numberp mouse-3-down-context-menu)
-    (let ((event last-input-event))
-      (when mouse--down-3-timer
-        (cancel-timer mouse--down-3-timer))
-      (setq mouse--down-3-timer
-            (run-with-timer
-             (/ (abs mouse-3-down-context-menu) 1000.0) nil
-             (lambda ()
-               (setq mouse--down-3-timer nil)
-                 (unless (eq (posn-window (event-start event)) (selected-window))
-                   (select-window (posn-window (event-start event))))
-               (mouse-context-menu event)))))
+    (when mouse--down-3-timer
+      (cancel-timer mouse--down-3-timer))
+    (setq mouse--down-3-timer
+          (run-with-timer
+           (/ (abs mouse-3-down-context-menu) 1000.0) nil
+           (lambda ()
+             (setq mouse--down-3-timer nil)
+             (unless (eq (posn-window (event-end event)) (selected-window))
+               (select-window (posn-window (event-end event))))
+             (mouse-context-menu event))))
     nil)
    ;; Immediately pop up context menu.
    (mouse-3-down-context-menu
-    (setf (car last-input-event) (event-convert-list `(shift down mouse-3)))
-    (vector last-input-event)
-    ;; TODO: use `popup-menu' here explicitly because
-    ;; then can select the clicked window with `select-window'
-    )))
+    (unless (eq (posn-window (event-end event)) (selected-window))
+      (select-window (posn-window (event-end event))))
+    (mouse-context-menu event))))
 
 (defun mouse--click-3-maybe-context-menu (&optional _prompt)
   (cond
@@ -220,8 +218,6 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
    (mouse-3-down-context-menu
     [])))
 
-(define-key key-translation-map [down-mouse-3]
-  #'mouse--down-3-maybe-context-menu)
 (define-key key-translation-map [mouse-3]
   #'mouse--click-3-maybe-context-menu)
 
@@ -1749,7 +1745,7 @@ if `mouse-drag-copy-region' is non-nil)."
      ((not (numberp click-pt)) nil)
      ;; If the user clicked without moving point, kill the region.
      ;; This also resets `mouse-selection-click-count'.
-     ((and (memq last-command '(mouse-save-then-kill ignore))
+     ((and (memq last-command '(mouse-save-then-kill mouse-maybe-context-menu))
 	   (eq click-pt mouse-save-then-kill-posn)
 	   (eq window (selected-window)))
       (if mouse-drag-copy-region
@@ -2977,7 +2973,7 @@ is copied instead of being cut."
 (define-key function-key-map [right-fringe mouse-2] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-2] 'mouse--strip-first-event)
 
-(global-set-key [down-mouse-3]	'ignore)
+(global-set-key [down-mouse-3]	'mouse-maybe-context-menu)
 (global-set-key [mouse-3]	'mouse-save-then-kill)
 (define-key function-key-map [right-fringe mouse-3] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-3] 'mouse--strip-first-event)
@@ -2994,9 +2990,9 @@ is copied instead of being cut."
               (if (zerop (or (frame-parameter nil 'menu-bar-lines) 0))
                   (mouse-menu-bar-map)
                 (mouse-menu-major-mode-map)))))
-(global-set-key [S-down-mouse-3]
-  `(menu-item ,(purecopy "Context Menu") ignore
-    :filter (lambda (_) (mouse-context-menu-map))))
+;; (global-set-key [S-down-mouse-3]
+;;   `(menu-item ,(purecopy "Context Menu") ignore
+;;     :filter (lambda (_) (mouse-context-menu-map))))
 
 ;; Binding mouse-1 to mouse-select-window when on mode-, header-, or
 ;; vertical-line prevents Emacs from signaling an error when the mouse
