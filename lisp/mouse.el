@@ -157,6 +157,67 @@ Expects to be bound to `(double-)mouse-1' in `key-translation-map'."
   #'mouse--click-1-maybe-follows-link)
 
 
+(defcustom mouse-3-down-context-menu 450
+  "Non-nil means that holding down Mouse-3 shows context menu.
+
+With the default setting, holding down the Mouse-3 button
+for more than 450 milliseconds performs the same action as C-Down-Mouse-3
+(which shows the menu), while an ordinary Mouse-3 click performs the
+original Mouse-3 binding (which typically sets the region where you
+click the mouse).
+
+If value is an integer, the time elapsed between pressing and
+releasing the mouse button determines whether to show the menu
+or perform the normal Mouse-3 action (typically set the region).
+The absolute numeric value specifies the maximum duration of a
+\"short click\" in milliseconds.  A positive value means that a
+short click shows the menu, and a longer click performs the
+normal action.  A negative value gives the opposite behavior.
+
+Otherwise, a single Mouse-3 click unconditionally shows the menu."
+  :version "28.1"
+  :type '(choice (const :tag "Disabled" nil)
+		 (number :tag "Single click time limit" :value 450)
+                 (other :tag "Single click" t)))
+
+(defvar mouse--down-3-timer nil)
+
+(defun mouse--down-3-maybe-context-menu (&optional _prompt)
+  (message "!1 %S" last-input-event)
+  (cond
+   ((and mouse-3-down-context-menu
+         (not (numberp mouse-3-down-context-menu)))
+    (setf (car last-input-event) (event-convert-list `(control down mouse-3)))
+    (vector last-input-event))
+   (mouse-3-down-context-menu
+    (message "!2 %S" last-input-event)
+    (setq mouse--down-3-timer
+          (run-with-timer
+           (/ (abs mouse-3-down-context-menu) 1000.0) nil
+           (lambda ()
+             (popup-menu
+              `((menu-item ,(purecopy "Menu Bar") ignore
+                           :filter (lambda (_)
+                                     (if (zerop (or (frame-parameter nil 'menu-bar-lines) 0))
+                                         (mouse-menu-bar-map)
+                                       (mouse-menu-major-mode-map)))))))))
+    nil)
+   (t nil)))
+
+(defun mouse--click-3-maybe-context-menu (&optional _prompt)
+  (when mouse--down-3-timer
+    (cancel-timer mouse--down-3-timer)
+    (setq mouse--down-3-timer nil)))
+
+(define-key key-translation-map [down-mouse-3]
+  #'mouse--down-3-maybe-context-menu)
+(define-key key-translation-map [mouse-3]
+  #'mouse--click-3-maybe-context-menu)
+
+;; BUT M-x customize-variable RET mouse-autoselect-window
+;; hold mouse-3 and move mouse-pointer to another window
+
+
 ;; Provide a mode-specific menu on a mouse button.
 
 (defun minor-mode-menu-from-indicator (indicator)
@@ -2902,6 +2963,7 @@ is copied instead of being cut."
 (define-key function-key-map [left-fringe mouse-2] 'mouse--strip-first-event)
 
 ;; (global-set-key [down-mouse-3]	'mouse-maybe-context-menu) ;; or add mouse-3-down-context-menu
+(global-set-key [down-mouse-3]	'ignore)
 (global-set-key [mouse-3]	'mouse-save-then-kill)
 (define-key function-key-map [right-fringe mouse-3] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-3] 'mouse--strip-first-event)

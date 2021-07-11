@@ -373,7 +373,7 @@ instead of running the @code{mouse-save-then-kill} command, rebind
 (@pxref{Init Rebinding}):
 
 @smallexample
-(global-set-key [mouse-3]
+(global-set-key [down-mouse-3]
   '(menu-item "Menu Bar" ignore
     :filter (lambda (_)
               (if (zerop (or (frame-parameter nil 'menu-bar-lines) 0))
