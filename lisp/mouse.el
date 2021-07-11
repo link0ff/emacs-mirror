@@ -161,7 +161,7 @@ Expects to be bound to `(double-)mouse-1' in `key-translation-map'."
   "Non-nil means that holding down Mouse-3 shows context menu.
 
 With the default setting, holding down the Mouse-3 button
-for more than 450 milliseconds performs the same action as C-Down-Mouse-3
+for more than 450 milliseconds performs the same action as S-Down-Mouse-3
 \(which shows the menu), while an ordinary Mouse-3 click performs the
 original Mouse-3 binding (which typically sets the region where you
 click the mouse).
@@ -172,12 +172,12 @@ or perform the normal Mouse-3 action (typically set the region).
 The absolute numeric value specifies the maximum duration of a
 \"short click\" in milliseconds.  A positive value means that a
 short click shows the menu, and a longer click performs the
-normal action.  A negative value gives the opposite behavior.
+normal action.
 
 Otherwise, a single Mouse-3 click unconditionally shows the menu."
   :version "28.1"
   :type '(choice (const :tag "Disabled" nil)
-		 (number :tag "Single click time limit" :value 450)
+                 (number :tag "Single click time limit" :value 450)
                  (other :tag "Single click" t)))
 
 (defvar mouse--down-3-timer nil)
@@ -187,19 +187,24 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
    ;; Delay context menu display.
    ((numberp mouse-3-down-context-menu)
     (let ((event last-input-event))
+      (when mouse--down-3-timer
+        (cancel-timer mouse--down-3-timer))
       (setq mouse--down-3-timer
             (run-with-timer
              (/ (abs mouse-3-down-context-menu) 1000.0) nil
              (lambda ()
                (setq mouse--down-3-timer nil)
-               ;; Avoid switching windows with e.g. mouse-autoselect-window=t
-               (when (eq (posn-window (event-start event)) (selected-window))
-                 (mouse-context-menu event))))))
+                 (unless (eq (posn-window (event-start event)) (selected-window))
+                   (select-window (posn-window (event-start event))))
+               (mouse-context-menu event)))))
     nil)
    ;; Immediately pop up context menu.
    (mouse-3-down-context-menu
     (setf (car last-input-event) (event-convert-list `(shift down mouse-3)))
-    (vector last-input-event))))
+    (vector last-input-event)
+    ;; TODO: use `popup-menu' here explicitly because
+    ;; then can select the clicked window with `select-window'
+    )))
 
 (defun mouse--click-3-maybe-context-menu (&optional _prompt)
   (cond
