@@ -1259,7 +1259,7 @@ component is used as the target of the symlink."
   (when (and (numberp destination) (zerop destination))
     (error "Implementation does not handle immediate return"))
 
-  (with-parsed-tramp-file-name default-directory nil
+  (with-parsed-tramp-file-name (expand-file-name default-directory) nil
     (let* ((name (file-name-nondirectory program))
 	   (name1 name)
 	   (i 0)
@@ -1589,14 +1589,13 @@ errors for shares like \"C$/\", which are common in Microsoft Windows."
 		     (format "File %s exists; overwrite anyway? " filename)))))
       (tramp-error v 'file-already-exists filename))
 
-    (let ((auto-saving
-	   (string-match-p "^#.+#$" (file-name-nondirectory filename)))
-	  file-locked
+    (let (file-locked
 	  (curbuf (current-buffer))
 	  (tmpfile (tramp-compat-make-temp-file filename)))
 
       ;; Lock file.
-      (when (and (not auto-saving) (file-remote-p lockname)
+      (when (and (not (auto-save-file-name-p (file-name-nondirectory filename)))
+		 (file-remote-p lockname)
 		 (not (eq (file-locked-p lockname) t)))
 	(setq file-locked t)
 	;; `lock-file' exists since Emacs 28.1.
