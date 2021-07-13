@@ -644,8 +644,8 @@ This is like `describe-bindings', but displays only Isearch keys."
     (define-key map "\C-x\\" 'isearch-transient-input-method)
 
     ;; People expect to be able to paste with the mouse.
-    (define-key map [mouse-2] #'isearch-mouse-2)
-    (define-key map [down-mouse-2] nil)
+    ;; (define-key map [mouse-2] #'isearch-mouse-2)
+    ;; (define-key map [down-mouse-2] #'isearch-mouse-2)
     (define-key map [xterm-paste] #'isearch-xterm-paste)
 
     ;; Some bindings you may want to put in your isearch-mode-hook.
@@ -1501,6 +1501,7 @@ NOPUSH is t and EDIT is t."
 Mouse commands are allowed in Isearch if they have a non-nil
 `isearch-scroll' property or if they are listed in
 `isearch-mouse-commands'."
+  (message "! isearch-mouse-leave-buffer")
   (unless (or (memq this-command isearch-mouse-commands)
               (eq (get this-command 'isearch-scroll) t))
     (isearch-done)))
@@ -2640,8 +2641,8 @@ always reads a string from the `kill-ring' using the minibuffer."
 
 ;; mouse-minibuffer-check: Minibuffer window is not active
 ;; MAYBE bind mouse-2 in inactive-minibuffer during isearch-mode?
-(put 'mouse-yank-primary 'isearch-scroll t)
-(put 'isearch-mouse-2 'isearch-scroll t)
+;; (put 'mouse-yank-primary 'isearch-scroll t)
+;; (put 'isearch-mouse-2 'isearch-scroll t)
 (defun isearch-mouse-2 (click)
   "Handle mouse-2 in Isearch mode.
 For a click in the echo area, invoke `isearch-yank-x-selection'.
@@ -3066,6 +3067,7 @@ before the command is executed globally with terminated Isearch.
 See more for options in `search-exit-option'."
   (let* ((key (this-single-command-keys))
 	 (main-event (aref key 0)))
+    (message "!1 main-event %S %S" main-event this-command)
     (cond
      ;; Don't exit Isearch if we're in the middle of some
      ;; `set-transient-map' thingy like `universal-argument--mode'.
@@ -3095,10 +3097,17 @@ See more for options in `search-exit-option'."
      ;; A mouse click on the isearch message starts editing the search string.
      ((and (eq (car-safe main-event) 'down-mouse-1)
 	   (window-minibuffer-p (posn-window (event-start main-event))))
-      ;; (message "! main-event %S" main-event)
+      (message "!3 main-event %S" main-event)
       ;; Swallow the up-event.
       (read--potential-mouse-event)
       (setq this-command 'isearch-edit-string))
+     ((and isearch-buffer-local
+           (eq (car-safe main-event) 'mouse-2)
+	   (window-minibuffer-p (posn-window (event-start main-event))))
+      (message "!2 main-event %S" main-event)
+      ;; Swallow the up-event.
+      (read--potential-mouse-event)
+      (setq this-command 'isearch-mouse-2))
      ;; Don't terminate the search for motion commands.
      ((and isearch-yank-on-move
            (symbolp this-command)
@@ -3582,11 +3591,14 @@ Optional third argument, if t, means if fail just return nil (no error).
 	  ;; Clear RETRY unless the search predicate says
 	  ;; to skip this search hit.
 	  (if (or (not isearch-success)
-		  (bobp) (eobp)
-		  (= (match-beginning 0) (match-end 0))
 		  (funcall isearch-filter-predicate
 			   (match-beginning 0) (match-end 0)))
-	      (setq retry nil)))
+	      (setq retry nil)
+	    ;; Advance point on empty matches before retrying
+	    (when (= (match-beginning 0) (match-end 0))
+	      (if (if isearch-forward (eobp) (bobp))
+		  (setq retry nil isearch-success nil)
+		(forward-char (if isearch-forward 1 -1))))))
 	(setq isearch-just-started nil)
 	(when isearch-success
 	  (setq isearch-other-end
@@ -4097,7 +4109,6 @@ Attempt to do the search exactly the way the pending Isearch would."
 	  ;; Clear RETRY unless the search predicate says
 	  ;; to skip this search hit.
 	  (if (or (not success)
-		  (= (point) bound) ; like (bobp) (eobp) in `isearch-search'.
 		  (= (match-beginning 0) (match-end 0))
 		  (funcall isearch-filter-predicate
 			   (match-beginning 0) (match-end 0)))
