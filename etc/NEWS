@@ -778,6 +778,11 @@ time zones will use a form like "+0100" instead of "CET".
 
 ** Dired
 
++++
+*** New user option 'dired-kill-when-opening-new-dired-buffer'.
+If non-nil, Dired will kill the current buffer when selecting a new
+directory to display.
+
 ---
 *** Behavior change on 'dired-clean-confirm-killing-deleted-buffers'.
 Previously, if 'dired-clean-up-buffers-too' was non-nil, and
@@ -1464,12 +1469,15 @@ buffer to a file under the "/tmp/" directory.  This is useful, if (in
 rare cases) Tramp blocks Emacs, and we need further debug information.
 
 +++
-*** Writing sensitive auto-save or backup files to the local temporary
-directory must be confirmed.  In order to suppress this confirmation,
-set user option 'tramp-allow-unsafe-temporary-files' to t.
+*** Tramp supports lock files now.
+In order to deactivate this, set user option
+'remote-file-name-inhibit-locks' to t.
 
 +++
-*** Tramp supports file locks now.
+*** Writing sensitive auto-save, backup or lock files to the local
+temporary directory must be confirmed.  In order to suppress this
+confirmation, set user option 'tramp-allow-unsafe-temporary-files' to
+t.
 
 ** Tempo
 
@@ -2181,6 +2189,10 @@ summaries will include the failing condition.
 *** New user option 'lock-file-name-transforms'.
 This option allows controlling where lock files are written.  It uses
 the same syntax as 'auto-save-file-name-transforms'.
+
++++
+*** New user option 'remote-file-name-inhibit-locks'.
+When non-nil, this option suppresses lock files for remote files.
 
 +++
 *** New user option 'kill-transform-function'.
