@@ -581,6 +581,11 @@ indentation is done using SMIE or with the old ad-hoc code.
 
 ** Icomplete
 
+---
+*** New user option 'icomplete-matches-format'.
+This allows controlling the current/total number of matches for the
+prompt prefix.
+
 +++
 *** New minor mode 'icomplete-vertical-mode', alias 'fido-vertical-mode'.
 This mode is intended to be used with Icomplete ('M-x icomplete-mode')
@@ -1421,6 +1426,10 @@ If non-nil, 'shell-mode' handles implicit "cd" commands, changing the
 directory if the command is a directory.  Useful for shells like "zsh"
 that has this feature.
 
++++
+*** 'comint-delete-output' can now save deleted text in the kill-ring.
+Interactively, 'C-u C-c C-o' triggers this new optional behavior.
+
 ** Eshell
 
 ---
@@ -1591,6 +1600,14 @@ and source file names from GDB.
 Defaults to 'libravatar', with 'unicornify' and 'gravatar' as options.
 
 ** Compilation mode
+
+---
+*** New function 'ansi-color-compilation-filter'.
+This function is meant to be used in 'compilation-filter-hook'.
+
+---
+*** New user option 'ansi-color-for-compilation-mode'.
+This controls what 'ansi-color-compilation-filter' does.
 
 *** Regexp matching of messages is now case-sensitive by default.
 The variable 'compilation-error-case-fold-search' can be set for
