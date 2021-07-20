@@ -92,6 +92,10 @@ proper pty support that Emacs needs.
 * Startup Changes in Emacs 28.1
 
 ---
+** File names given on the command line will now be pushed onto
+'file-name-history'.
+
+---
 ** In GTK builds, Emacs now supports startup notification.
 This means that Emacs won't steal keyboard focus upon startup
 (when started via the Desktop) if the user is typing into another
@@ -335,6 +339,10 @@ by dragging the tab lines of their topmost windows with the mouse.
 
 * Editing Changes in Emacs 28.1
 
+---
+** Dragging a file to Emacs will now also push the name of the file
+onto 'file-name-history'.
+
 +++
 ** A prefix arg now causes 'delete-other-frames' to only iconify frames.
 
@@ -475,6 +483,11 @@ This user option customizes 'outline-minor-mode'.  It puts
 highlighting on heading lines using standard outline faces.  This
 works well only when there are no conflicts with faces used by the
 major mode.
+
+** New commands 'copy-matching-lines' and 'kill-matching-lines'.
+These commands are similar to the command 'flush-lines',
+but add the matching lines to the kill ring as a single string,
+including the newlines that separate the lines.
 
 
 * Changes in Specialized Modes and Packages in Emacs 28.1
@@ -2669,6 +2682,15 @@ also keep the type information of their arguments.  Use the
 ---
 *** New face 'perl-heredoc', used for heredoc elements.
 
++++
+** A function can now be thrown to the 'exit' label in addition to t or nil.
+The command loop will call it with zero arguments before returning.
+
++++
+** New error symbol 'minibuffer-quit'.
+Signaling it has almost the same effect as 'quit' except that it
+doesn't cause keyboard macro termination.
+
 ---
 *** The command 'cperl-set-style' offers the new value "PBP".
 This value customizes Emacs to use the style recommended in Damian
@@ -2806,6 +2828,14 @@ This is to keep the same behavior as Eshell.
 
 
 * Incompatible Lisp Changes in Emacs 28.1
+
+---
+** 'kill-all-local-variables' has changed how it handles non-symbol hooks.
+The function is documented to eliminated all buffer-local bindings
+except variables with a 'permanent-local' property, or hooks that
+have elements with a 'permanent-local-hook' property.  In addition, it
+would also keep lambda expressions in hooks sometimes.  The latter has
+now been changed: The function will now also remove these.
 
 ---
 ** Some floating-point numbers are now handled differently by the Lisp reader.
@@ -3507,6 +3537,14 @@ This feature is experimental, and needs to be turned on to be used.
 To turn this on, set the variable 'w32-use-native-image-API' to a
 non-nil value.  Please report any bugs you find while using the native
 image API via 'M-x report-emacs-bug'.
+
+---
+** Native JSON functions now signal an error if libjansson is unavailable.
+This affects 'json-serialize', 'json-insert', 'json-parse-srtring',
+and 'json-parse-buffer'.  This can happen if Emacs was compiled with
+libjansson, but the DLL cannot be found and/or loaded by Emacs at run
+time.  Previously, Emacs would display a message and return nil in
+these cases.
 
 ---
 ** The user option 'make-pointer-invisible' is now honored on macOS.
