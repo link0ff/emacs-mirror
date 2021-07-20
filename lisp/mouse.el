@@ -300,9 +300,10 @@ not it is actually displayed."
                         (lambda (fun)
                           (setq menu (funcall fun menu))
                           nil)))
+    (setq menu (cons (car menu) (nreverse (cdr menu))))
     (when (functionp context-menu-filter-function)
       (setq menu (funcall context-menu-filter-function menu)))
-    (cons (car menu) (nreverse (cdr menu)))))
+    menu))
 
 (defun context-menu-undo (menu)
   (bindings--define-key menu [undo]
@@ -338,7 +339,7 @@ not it is actually displayed."
                            "\\[ns-copy-including-secondary]"
                          "\\[kill-ring-save]")))
   (bindings--define-key menu [paste]
-    `(menu-item "Paste" yank
+    `(menu-item "Paste" mouse-yank-primary
                 :visible (funcall
                           ',(lambda ()
                               (and (or
@@ -348,6 +349,20 @@ not it is actually displayed."
                                       kill-ring))
                                    (not buffer-read-only))))
                 :help "Paste (yank) text most recently cut/copied"))
+  (bindings--define-key menu (if (featurep 'ns) [select-paste]
+                               [paste-from-menu])
+    ;; ns-win.el said: Change text to be more consistent with
+    ;; surrounding menu items `paste', etc."
+    `(menu-item ,(if (featurep 'ns) "Select and Paste" "Paste from Kill Menu")
+                yank-menu
+                :visible (and (cdr yank-menu) (not buffer-read-only))
+                :help "Choose a string from the kill ring and paste it"))
+  (bindings--define-key menu [clear]
+    '(menu-item "Clear" delete-active-region
+                :visible (and mark-active
+                              (not buffer-read-only))
+                :help
+                "Delete the text in region between mark and current position"))
   (bindings--define-key menu [mark-whole-buffer]
     '(menu-item "Select All" mark-whole-buffer
                 :help "Mark the whole buffer for a subsequent cut/copy"))

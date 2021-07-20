@@ -4146,7 +4146,6 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
    "---"
    ["Exit" quit-window :help "Stop reading Info"]))
 
-;; (Info-context-menu (make-sparse-keymap "Context Menu"))
 (defun Info-context-menu (menu)
   (when (mouse-posn-property (event-start last-input-event) 'mouse-face)
     (bindings--define-key menu [Info-mouse-follow-nearest-node]
