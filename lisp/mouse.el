@@ -157,89 +157,6 @@ Expects to be bound to `(double-)mouse-1' in `key-translation-map'."
   #'mouse--click-1-maybe-follows-link)
 
 
-(defcustom mouse-3-down-context-menu 450
-  "Non-nil means that holding down Mouse-3 shows context menu.
-
-With the default setting, holding down the Mouse-3 button
-for more than 450 milliseconds performs the same action as S-Down-Mouse-3
-\(which shows the menu), while an ordinary Mouse-3 click performs the
-original Mouse-3 binding (which typically sets the region where you
-click the mouse).
-
-If value is an integer, the time elapsed between pressing and
-releasing the mouse button determines whether to show the menu
-or perform the normal Mouse-3 action (typically set the region).
-The absolute numeric value specifies the maximum duration of a
-\"short click\" in milliseconds.  A positive value means that a
-short click shows the menu, and a longer click performs the
-normal action.
-
-Otherwise, a single Mouse-3 click unconditionally shows the menu."
-  :version "28.1"
-  :type '(choice (const :tag "Disabled" nil)
-                 (number :tag "Single click time limit" :value 450)
-                 (other :tag "Single click" t)))
-
-(defvar mouse--down-3-timer nil)
-
-(defun mouse-maybe-context-menu (event)
-  "Bring up a context menu for a long click.
-See `mouse-3-down-context-menu' and `mouse-context-menu-function'."
-  (interactive "@e")
-  (cond
-   ;; Delay context menu display.
-   ((numberp mouse-3-down-context-menu)
-    (when (timerp mouse--down-3-timer)
-      (cancel-timer mouse--down-3-timer))
-    (setq mouse--down-3-timer
-          (run-with-timer
-           (/ (abs mouse-3-down-context-menu) 1000.0) nil
-           (lambda ()
-             (setq mouse--down-3-timer t)
-             (mouse-context-menu event))))
-    nil)
-   ;; Immediately pop up context menu.
-   (mouse-3-down-context-menu
-    (mouse-context-menu event))))
-
-(defun mouse--click-3-maybe-context-menu (&optional _prompt)
-  (cond
-   ((numberp mouse-3-down-context-menu)
-    (cond
-     ((timerp mouse--down-3-timer)
-      ;; Don't wait for context menu and fall back to mouse-save-then-kill.
-      (cancel-timer mouse--down-3-timer)
-      (setq mouse--down-3-timer nil)
-      nil)
-     (mouse--down-3-timer
-      ;; Context menu was displayed after delay.
-      (setq mouse--down-3-timer nil)
-      [])))
-   ;; Context menu was displayed immediately.
-   (mouse-3-down-context-menu
-    [])))
-
-;; (define-key key-translation-map [mouse-3]
-;;   #'mouse--click-3-maybe-context-menu)
-
-(defun mouse-context-menu-map ()
-  ;; Better to bind "Paste" to mouse-yank-at-click
-  ;; (unless (use-region-p)
-  ;;   (mouse-set-point last-input-event)) ;; (posn-set-point (event-end event))
-
-  ;; (cddr (assq 'edit (lookup-key global-map [menu-bar])))
-  menu-bar-edit-menu)
-
-(defun mouse-context-menu (event)
-  "Bring up a context menu for the current buffer.
-See `mouse-context-menu-function'."
-  (interactive "@e")
-  ;; TODO: only when clicked not on active region?
-  ;; (mouse-set-point event) ;; (posn-set-point (event-end event))
-  ;; (popup-menu (mouse-context-menu-map) event)
-  (push (cons 'context-menu (cdr event)) unread-command-events))
-
-
 ;; Provide a mode-specific menu on a mouse button.
 
 (defun minor-mode-menu-from-indicator (indicator)
@@ -1755,7 +1672,7 @@ if `mouse-drag-copy-region' is non-nil)."
      ((not (numberp click-pt)) nil)
      ;; If the user clicked without moving point, kill the region.
      ;; This also resets `mouse-selection-click-count'.
-     ((and (memq last-command '(mouse-save-then-kill mouse-maybe-context-menu))
+     ((and (eq last-command 'mouse-save-then-kill)
 	   (eq click-pt mouse-save-then-kill-posn)
 	   (eq window (selected-window)))
       (if mouse-drag-copy-region
@@ -2982,13 +2899,7 @@ is copied instead of being cut."
 ;; Allow yanking also when the corresponding cursor is "in the fringe".
 (define-key function-key-map [right-fringe mouse-2] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-2] 'mouse--strip-first-event)
-
-;; (global-set-key [down-mouse-3]	'mouse-maybe-context-menu)
-;; (global-set-key [down-mouse-3]	'mouse-context-menu)
-(global-set-key [down-mouse-3]
-  `(menu-item ,(purecopy "Context Menu") ignore
-              :filter (lambda (_) (mouse-context-menu-map))))
-;; (global-set-key [mouse-3]	'mouse-save-then-kill)
+(global-set-key [mouse-3]	'mouse-save-then-kill)
 (define-key function-key-map [right-fringe mouse-3] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-3] 'mouse--strip-first-event)
 
@@ -3004,10 +2915,6 @@ is copied instead of being cut."
               (if (zerop (or (frame-parameter nil 'menu-bar-lines) 0))
                   (mouse-menu-bar-map)
                 (mouse-menu-major-mode-map)))))
-
-(global-set-key [context-menu]
-  `(menu-item ,(purecopy "Context Menu") ignore
-    :filter (lambda (_) (mouse-context-menu-map))))
 
 ;; Binding mouse-1 to mouse-select-window when on mode-, header-, or
 ;; vertical-line prevents Emacs from signaling an error when the mouse
