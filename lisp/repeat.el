@@ -386,7 +386,8 @@ the map can't be set on the command symbol property `repeat-map'.")
 (define-minor-mode repeat-mode
   "Toggle Repeat mode.
 When Repeat mode is enabled, and the command symbol has the property named
-`repeat-map', this map is activated temporarily for the next command."
+`repeat-map', this map is activated temporarily for the next command.
+See `describe-repeat-maps' for a list of all repeatable command."
   :global t :group 'convenience
   (if (not repeat-mode)
       (remove-hook 'post-command-hook 'repeat-post-hook)
@@ -429,6 +430,7 @@ When Repeat mode is enabled, and the command symbol has the property named
               (when repeat-exit-key
                 (define-key map repeat-exit-key 'ignore))
 
+              ;; TODO: reset prefix-arg before next non-repeatable command
               (when (and repeat-keep-prefix (not prefix-arg))
                 (setq prefix-arg current-prefix-arg))
 
@@ -474,7 +476,7 @@ When Repeat mode is enabled, and the command symbol has the property named
       (let ((mess (repeat-echo-message-string keymap)))
         (if (current-message)
             (message "%s [%s]" (current-message) mess)
-          (message mess)))
+          (message "%s" mess)))
     (when (string-prefix-p "Repeat with " (current-message))
       (message nil))))
 
@@ -491,7 +493,8 @@ When Repeat mode is enabled, and the command symbol has the property named
     (force-mode-line-update t)))
 
 (defun describe-repeat-maps ()
-  "Describe mappings of commands repeatable by symbol property `repeat-map'."
+  "Describe mappings of commands repeatable by symbol property `repeat-map'.
+Used in `repeat-mode'."
   (interactive)
   (help-setup-xref (list #'describe-repeat-maps)
                    (called-interactively-p 'interactive))
