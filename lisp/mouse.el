@@ -183,6 +183,8 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
 (defvar mouse--down-3-timer nil)
 
 (defun mouse-maybe-context-menu (event)
+  "Bring up a context menu for a long click.
+See `mouse-3-down-context-menu' and `mouse-context-menu-function'."
   (interactive "@e")
   (cond
    ;; Delay context menu display.
@@ -194,14 +196,10 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
            (/ (abs mouse-3-down-context-menu) 1000.0) nil
            (lambda ()
              (setq mouse--down-3-timer t)
-             (unless (eq (posn-window (event-end event)) (selected-window))
-               (select-window (posn-window (event-end event))))
              (mouse-context-menu event))))
     nil)
    ;; Immediately pop up context menu.
    (mouse-3-down-context-menu
-    (unless (eq (posn-window (event-end event)) (selected-window))
-      (select-window (posn-window (event-end event))))
     (mouse-context-menu event))))
 
 (defun mouse--click-3-maybe-context-menu (&optional _prompt)
@@ -221,16 +219,25 @@ Otherwise, a single Mouse-3 click unconditionally shows the menu."
    (mouse-3-down-context-menu
     [])))
 
-(define-key key-translation-map [mouse-3]
-  #'mouse--click-3-maybe-context-menu)
+;; (define-key key-translation-map [mouse-3]
+;;   #'mouse--click-3-maybe-context-menu)
 
 (defun mouse-context-menu-map ()
-  (cddr (assq 'edit (lookup-key global-map [menu-bar]))))
+  ;; Better to bind "Paste" to mouse-yank-at-click
+  ;; (unless (use-region-p)
+  ;;   (mouse-set-point last-input-event)) ;; (posn-set-point (event-end event))
+
+  ;; (cddr (assq 'edit (lookup-key global-map [menu-bar])))
+  menu-bar-edit-menu)
 
 (defun mouse-context-menu (event)
-  "Show a context menu for the current buffer."
+  "Bring up a context menu for the current buffer.
+See `mouse-context-menu-function'."
   (interactive "@e")
-  (popup-menu (mouse-context-menu-map) event))
+  ;; TODO: only when clicked not on active region?
+  ;; (mouse-set-point event) ;; (posn-set-point (event-end event))
+  ;; (popup-menu (mouse-context-menu-map) event)
+  (push (cons 'context-menu (cdr event)) unread-command-events))
 
 
 ;; Provide a mode-specific menu on a mouse button.
@@ -1065,7 +1072,6 @@ If PROMOTE-TO-REGION is non-nil and event is a multiple-click, select
 the corresponding element around point, with the resulting position of
 point determined by `mouse-select-region-move-to-beginning'."
   (interactive "e\np")
-  (message "! mouse-set-point")
   (mouse-minibuffer-check event)
   (if (and promote-to-region (> (event-click-count event) 1))
       (progn
@@ -1096,7 +1102,6 @@ This should be bound to a mouse drag event.
 See the `mouse-drag-copy-region' variable to control whether this
 command alters the kill ring or not."
   (interactive "e")
-  (message "! mouse-set-region")
   (mouse-minibuffer-check click)
   (select-window (posn-window (event-start click)))
   (let ((beg (posn-point (event-start click)))
@@ -1141,7 +1146,6 @@ command alters the kill ring or not."
 	(sit-for 1))
     (push-mark)
     (set-mark (point))
-    (message "! %S" (point))
     (if (numberp end) (goto-char end))
     (mouse-set-region-1)))
 
@@ -1230,7 +1234,6 @@ When the region already exists and `mouse-drag-and-drop-region'
 is non-nil, this moves the entire region of text to where mouse
 is dragged over to."
   (interactive "e")
-  (message "! mouse-drag-region")
   (if (and mouse-drag-and-drop-region
            (not (member 'triple (event-modifiers start-event)))
            (equal (mouse-posn-property (event-start start-event) 'face) 'region))
@@ -2980,8 +2983,12 @@ is copied instead of being cut."
 (define-key function-key-map [right-fringe mouse-2] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-2] 'mouse--strip-first-event)
 
-(global-set-key [down-mouse-3]	'mouse-maybe-context-menu)
-(global-set-key [mouse-3]	'mouse-save-then-kill)
+;; (global-set-key [down-mouse-3]	'mouse-maybe-context-menu)
+;; (global-set-key [down-mouse-3]	'mouse-context-menu)
+(global-set-key [down-mouse-3]
+  `(menu-item ,(purecopy "Context Menu") ignore
+              :filter (lambda (_) (mouse-context-menu-map))))
+;; (global-set-key [mouse-3]	'mouse-save-then-kill)
 (define-key function-key-map [right-fringe mouse-3] 'mouse--strip-first-event)
 (define-key function-key-map [left-fringe mouse-3] 'mouse--strip-first-event)
 
@@ -2997,9 +3004,10 @@ is copied instead of being cut."
               (if (zerop (or (frame-parameter nil 'menu-bar-lines) 0))
                   (mouse-menu-bar-map)
                 (mouse-menu-major-mode-map)))))
-;; (global-set-key [S-down-mouse-3]
-;;   `(menu-item ,(purecopy "Context Menu") ignore
-;;     :filter (lambda (_) (mouse-context-menu-map))))
+
+(global-set-key [context-menu]
+  `(menu-item ,(purecopy "Context Menu") ignore
+    :filter (lambda (_) (mouse-context-menu-map))))
 
 ;; Binding mouse-1 to mouse-select-window when on mode-, header-, or
 ;; vertical-line prevents Emacs from signaling an error when the mouse
