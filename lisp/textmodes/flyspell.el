@@ -538,7 +538,7 @@ in your init file.
   (if flyspell-mode
       (condition-case err
           (progn
-            (when flyspell-use-mouse-3-for-menu
+            (when (or context-menu-mode flyspell-use-mouse-3-for-menu)
               (flyspell--set-use-mouse-3-for-menu 'flyspell-use-mouse-3-for-menu t))
             (flyspell-mode-on (called-interactively-p 'interactive)))
 	(error (message "Error enabling Flyspell mode:\n%s" (cdr err))
@@ -656,7 +656,7 @@ are both non-nil."
            show-msg)
       (let* ((binding (where-is-internal 'flyspell-auto-correct-word
                                          nil 'non-ascii))
-             (mouse-button (if flyspell-use-mouse-3-for-menu
+             (mouse-button (if (or context-menu-mode flyspell-use-mouse-3-for-menu)
                                "Mouse-3" "Mouse-2")))
         (message (format-message
                   "Welcome to Flyspell. Use %s to correct words."
@@ -1820,9 +1820,10 @@ for the overlay."
     (overlay-put overlay 'mouse-face mouse-face)
     (overlay-put overlay 'flyspell-overlay t)
     (overlay-put overlay 'evaporate t)
-    (overlay-put overlay 'help-echo (concat (if flyspell-use-mouse-3-for-menu
-                                                "mouse-3"
-                                              "mouse-2") ": correct word at point"))
+    (overlay-put overlay 'help-echo
+                 (concat (if (or context-menu-mode flyspell-use-mouse-3-for-menu)
+                             "mouse-3" "mouse-2")
+                         ": correct word at point"))
     ;; If misspelled text has a 'keymap' property, let that remain in
     ;; effect for the bindings that flyspell-mouse-map doesn't override.
     (set-keymap-parent flyspell-mouse-map (get-char-property beg 'keymap))
