@@ -4146,12 +4146,14 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
    "---"
    ["Exit" quit-window :help "Stop reading Info"]))
 
-(Info-context-menu (make-sparse-keymap "Context Menu"))
 (defun Info-context-menu (menu)
   (define-key menu [Info-separator] menu-bar-separator)
 
-  ;; TODO: try to add submenu minor-mode-map [menu-bar]
+  ;; Info mode submenu
+  (bindings--define-key menu [info]
+    `(menu-item "Info" ,(local-key-binding [menu-bar info])))
 
+  ;; Navigation commands
   (let ((easy-menu (make-sparse-keymap "Info")))
     (easy-menu-define nil easy-menu nil
       '("Info"
@@ -4169,10 +4171,12 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
       (when (consp item)
         (bindings--define-key menu (vector (car item)) (cdr item)))))
 
+  ;; Link commands
   (when (mouse-posn-property (event-start last-input-event) 'mouse-face)
     (bindings--define-key menu [Info-mouse-follow-nearest-node]
       '(menu-item "Follow Link" Info-mouse-follow-nearest-node
                   :help "Follow a link where you click")))
+
   menu)
 
 (defvar info-tool-bar-map
