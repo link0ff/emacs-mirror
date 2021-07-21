@@ -451,7 +451,7 @@ like <img alt=\"Some thing.\">."
     (define-key flyspell-mouse-map [mouse-2] 'flyspell-correct-word)
     (define-key flyspell-mouse-map [down-mouse-3] nil)))
 
-(defcustom flyspell-use-mouse-3-for-menu nil
+(defcustom flyspell-use-mouse-3-for-menu context-menu-mode
   "Non-nil means to bind `mouse-3' to `flyspell-correct-word'.
 If this is set, also unbind `mouse-2'."
   :type 'boolean
@@ -485,6 +485,9 @@ See also `flyspell-duplicate-distance'."
   :version "24.4")
 
 (defvar flyspell-overlay nil)
+
+(defun flyspell-context-menu (menu)
+  menu)
 
 ;;*---------------------------------------------------------------------*/
 ;;*    flyspell-mode ...                                                */
@@ -646,6 +649,7 @@ are both non-nil."
   ;; we bound flyspell action to hack-local-variables-hook
   (add-hook 'hack-local-variables-hook
 	    (function flyspell-hack-local-variables-hook) t t)
+  (add-hook 'context-menu-functions 'flyspell-context-menu 100 t)
   ;; set flyspell-generic-check-word-predicate based on the major mode
   (let ((mode-predicate (get major-mode 'flyspell-mode-predicate)))
     (if mode-predicate
@@ -749,6 +753,7 @@ has been used, the current word is not checked."
   (remove-hook 'after-change-functions 'flyspell-after-change-function t)
   (remove-hook 'hack-local-variables-hook
 	       (function flyspell-hack-local-variables-hook) t)
+  (remove-hook 'context-menu-functions 'flyspell-context-menu t)
   ;; We remove all the flyspell highlightings.
   (flyspell-delete-all-overlays)
   ;; We have to erase pre cache variables.
