@@ -279,7 +279,7 @@ not it is actually displayed."
 
 ;; Context menus.
 
-(defcustom context-menu-functions '(context-menu-region context-menu-undo)
+(defcustom context-menu-functions '(context-menu-undo context-menu-region context-menu-local)
   "List of functions that produce the contents of the context menu."
   :type 'hook
   :version "28.1")
@@ -300,13 +300,7 @@ not it is actually displayed."
     menu))
 
 (defun context-menu-undo (menu)
-  (bindings--define-key menu [undo-redo]
-    '(menu-item "Redo" undo-redo
-                :visible (and (not buffer-read-only)
-                              (undo--last-change-was-undo-p buffer-undo-list))
-                :help "Redo last undone edits"))
-
-  (bindings--define-key menu [undo]
+  (define-key-after menu [undo]
     '(menu-item "Undo" undo
                 :visible (and (not buffer-read-only)
                               (not (eq t buffer-undo-list))
@@ -314,40 +308,21 @@ not it is actually displayed."
                                   (listp pending-undo-list)
                                 (consp buffer-undo-list)))
                 :help "Undo last edits"))
+  (define-key-after menu [undo-redo]
+    '(menu-item "Redo" undo-redo
+                :visible (and (not buffer-read-only)
+                              (undo--last-change-was-undo-p buffer-undo-list))
+                :help "Redo last undone edits"))
+  (define-key-after menu [separator-undo] menu-bar-separator)
   menu)
 
 (defun context-menu-region (menu)
-  (bindings--define-key menu [mark-whole-buffer]
-    '(menu-item "Select All" mark-whole-buffer
-                :help "Mark the whole buffer for a subsequent cut/copy"))
-  (bindings--define-key menu [clear]
-    '(menu-item "Clear" delete-active-region
-                :visible (and mark-active
-                              (not buffer-read-only))
+  (define-key-after menu [cut]
+    '(menu-item "Cut" kill-region
+                :visible (and mark-active (not buffer-read-only))
                 :help
-                "Delete the text in region between mark and current position"))
-
-
-  (bindings--define-key menu (if (featurep 'ns) [select-paste]
-                               [paste-from-menu])
-    ;; ns-win.el said: Change text to be more consistent with
-    ;; surrounding menu items `paste', etc."
-    `(menu-item ,(if (featurep 'ns) "Select and Paste" "Paste from Kill Menu")
-                yank-menu
-                :visible (and (cdr yank-menu) (not buffer-read-only))
-                :help "Choose a string from the kill ring and paste it"))
-  (bindings--define-key menu [paste]
-    `(menu-item "Paste" mouse-yank-primary
-                :visible (funcall
-                          ',(lambda ()
-                              (and (or
-                                    (gui-backend-selection-exists-p 'CLIPBOARD)
-                                    (if (featurep 'ns) ; like paste-from-menu
-                                        (cdr yank-menu)
-                                      kill-ring))
-                                   (not buffer-read-only))))
-                :help "Paste (yank) text most recently cut/copied"))
-  (bindings--define-key menu [copy]
+                "Cut (kill) text in region between mark and current position"))
+  (define-key-after menu [copy]
     ;; ns-win.el said: Substitute a Copy function that works better
     ;; under X (for GNUstep).
     `(menu-item "Copy" ,(if (featurep 'ns)
@@ -358,11 +333,42 @@ not it is actually displayed."
                 :keys ,(if (featurep 'ns)
                            "\\[ns-copy-including-secondary]"
                          "\\[kill-ring-save]")))
-  (bindings--define-key menu [cut]
-    '(menu-item "Cut" kill-region
-                :visible (and mark-active (not buffer-read-only))
+  (define-key-after menu [paste]
+    `(menu-item "Paste" mouse-yank-primary
+                :visible (funcall
+                          ',(lambda ()
+                              (and (or
+                                    (gui-backend-selection-exists-p 'CLIPBOARD)
+                                    (if (featurep 'ns) ; like paste-from-menu
+                                        (cdr yank-menu)
+                                      kill-ring))
+                                   (not buffer-read-only))))
+                :help "Paste (yank) text most recently cut/copied"))
+  (define-key-after menu (if (featurep 'ns) [select-paste]
+                           [paste-from-menu])
+    ;; ns-win.el said: Change text to be more consistent with
+    ;; surrounding menu items `paste', etc."
+    `(menu-item ,(if (featurep 'ns) "Select and Paste" "Paste from Kill Menu")
+                yank-menu
+                :visible (and (cdr yank-menu) (not buffer-read-only))
+                :help "Choose a string from the kill ring and paste it"))
+  (define-key-after menu [clear]
+    '(menu-item "Clear" delete-active-region
+                :visible (and mark-active
+                              (not buffer-read-only))
                 :help
-                "Cut (kill) text in region between mark and current position"))
+                "Delete the text in region between mark and current position"))
+  (define-key-after menu [mark-whole-buffer]
+    '(menu-item "Select All" mark-whole-buffer
+                :help "Mark the whole buffer for a subsequent cut/copy"))
+  (define-key-after menu [separator-region] menu-bar-separator)
+  menu)
+
+(defun context-menu-local (menu)
+  "Major mode submenu."
+  (dolist (item (local-key-binding [menu-bar]))
+    (when (consp item)
+      (define-key-after menu (vector (car item)) (cdr item))))
   menu)
 
 (defvar context-menu--old-down-mouse-3 nil)

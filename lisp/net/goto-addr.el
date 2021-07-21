@@ -127,8 +127,8 @@ will have no effect.")
 (defun goto-address-context-menu (menu)
   (when (mouse-posn-property (event-start last-input-event) 'goto-address)
     (define-key menu [goto-address-separator] menu-bar-separator)
-    (bindings--define-key menu [goto-address-at-click]
-      '(menu-item "Follow Link" goto-address-at-click
+    (define-key menu [goto-address-at-mouse]
+      '(menu-item "Follow Link" goto-address-at-mouse
                   :help "Follow a link where you click")))
   menu)
 
@@ -253,8 +253,8 @@ address.  If no e-mail address found, return nil."
 	       (goto-char (match-beginning 0))))
       (match-string-no-properties 0)))
 
-(defun goto-address-at-click (click)
-  "Send to the e-mail address or load the URL at click."
+(defun goto-address-at-mouse (click)
+  "Send to the e-mail address or load the URL at mouse click."
   (interactive "e")
   (goto-address-at-point click))
 
