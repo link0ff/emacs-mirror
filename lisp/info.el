@@ -4117,9 +4117,9 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
     :help "Search for another occurrence of regular expression"]
    "---"
    ("History"
-    ["Back in history" Info-history-back :active Info-history
+    ["Back in History" Info-history-back :active Info-history
      :help "Go back in history to the last node you were at"]
-    ["Forward in history" Info-history-forward :active Info-history-forward
+    ["Forward in History" Info-history-forward :active Info-history-forward
      :help "Go forward in history"]
     ["Show History" Info-history :active Info-history-list
      :help "Go to menu of visited nodes"])
@@ -4146,34 +4146,28 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
    "---"
    ["Exit" quit-window :help "Stop reading Info"]))
 
+(Info-context-menu (make-sparse-keymap "Context Menu"))
 (defun Info-context-menu (menu)
   (define-key menu [Info-separator] menu-bar-separator)
 
-  ;; TODO: try to use easy-menu-define
   ;; TODO: try to add submenu minor-mode-map [menu-bar]
 
-  (bindings--define-key menu [Info-forward-node]
-    '(menu-item "Forward" Info-forward-node
-                :help "Go forward one node, considering all as a sequence"))
-  (bindings--define-key menu [Info-backward-node]
-    '(menu-item "Backward" Info-backward-node
-                :help "Go backward one node, considering all as a sequence"))
-  (bindings--define-key menu [Info-prev]
-    '(menu-item "Previous" Info-prev :visible (Info-check-pointer "prev[ious]*")
-                :help "Go to the previous node"))
-  (bindings--define-key menu [Info-next]
-    '(menu-item "Next" Info-next :visible (Info-check-pointer "next")
-                :help "Go to the next node"))
-  (bindings--define-key menu [Info-up]
-    '(menu-item "Up" Info-up :visible (Info-check-pointer "up")
-                :help "Go up in the Info tree"))
-
-  (bindings--define-key menu [Info-history-forward]
-    '(menu-item "Forward in History" Info-history-forward :visible Info-history-forward
-                :help "Go forward in history"))
-  (bindings--define-key menu [Info-history-back]
-    '(menu-item "Back in History" Info-history-back :visible Info-history
-                :help "Go back in history to the last node you were at"))
+  (let ((easy-menu (make-sparse-keymap "Info")))
+    (easy-menu-define nil easy-menu nil
+      '("Info"
+        ["Back in History" Info-history-back :visible Info-history
+         :help "Go back in history to the last node you were at"]
+        ["Forward in History" Info-history-forward :visible Info-history-forward
+         :help "Go forward in history"]
+        ["Up" Info-up :visible (Info-check-pointer "up")
+         :help "Go up in the Info tree"]
+        ["Next" Info-next :visible (Info-check-pointer "next")
+         :help "Go to the next node"]
+        ["Previous" Info-prev :visible (Info-check-pointer "prev[ious]*")
+         :help "Go to the previous node"]))
+    (dolist (item (reverse (lookup-key easy-menu [menu-bar info])))
+      (when (consp item)
+        (bindings--define-key menu (vector (car item)) (cdr item)))))
 
   (when (mouse-posn-property (event-start last-input-event) 'mouse-face)
     (bindings--define-key menu [Info-mouse-follow-nearest-node]
