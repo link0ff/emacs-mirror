@@ -279,9 +279,20 @@ not it is actually displayed."
 
 ;; Context menus.
 
-(defcustom context-menu-functions '(context-menu-undo context-menu-region context-menu-local)
+(defcustom context-menu-functions '(context-menu-undo context-menu-region ;; context-menu-local
+
+                                                      context-menu-global
+                                                      context-menu-local
+                                                      context-menu-minor
+
+)
   "List of functions that produce the contents of the context menu."
   :type 'hook
+  :options '(context-menu-undo
+             context-menu-region
+             context-menu-global
+             context-menu-local
+             context-menu-minor)
   :version "28.1")
 
 (defcustom context-menu-filter-function nil
@@ -299,7 +310,47 @@ not it is actually displayed."
       (setq menu (funcall context-menu-filter-function menu)))
     menu))
 
+(defun context-menu-global (menu)
+  "Global submenus."
+  (run-hooks 'activate-menubar-hook 'menu-bar-update-hook)
+  (define-key-after menu [separator-global-1] menu-bar-separator)
+  (dolist (item (lookup-key global-map [menu-bar]))
+    (when (consp item)
+      (define-key-after menu (vector (car item))
+        (if (consp (cdr item))
+            (copy-sequence (cdr item))
+          (cdr item)))))
+  (define-key-after menu [separator-global-2] menu-bar-separator)
+  menu)
+
+(defun context-menu-local (menu)
+  "Major mode submenus."
+  (run-hooks 'activate-menubar-hook 'menu-bar-update-hook)
+  (define-key-after menu [separator-local-1] menu-bar-separator)
+  (dolist (item (local-key-binding [menu-bar]))
+    (when (consp item)
+      (define-key-after menu (vector (car item))
+        (if (consp (cdr item))
+            (copy-sequence (cdr item))
+          (cdr item)))))
+  (define-key-after menu [separator-local-2] menu-bar-separator)
+  menu)
+
+(defun context-menu-minor (menu)
+  "Minor mode submenus."
+  (run-hooks 'activate-menubar-hook 'menu-bar-update-hook)
+  (define-key-after menu [separator-minor-1] menu-bar-separator)
+  (dolist (item (minor-mode-key-binding [menu-bar]))
+    (when (and (consp item) (symbol-value (car item)))
+      (define-key-after menu (vector (cadr item))
+        (if (consp (cddr item))
+            (copy-sequence (cddr item))
+          (cddr item)))))
+  (define-key-after menu [separator-minor-2] menu-bar-separator)
+  menu)
+
 (defun context-menu-undo (menu)
+  (define-key-after menu [separator-undo-1] menu-bar-separator)
   (define-key-after menu [undo]
     '(menu-item "Undo" undo
                 :visible (and (not buffer-read-only)
@@ -313,10 +364,11 @@ not it is actually displayed."
                 :visible (and (not buffer-read-only)
                               (undo--last-change-was-undo-p buffer-undo-list))
                 :help "Redo last undone edits"))
-  (define-key-after menu [separator-undo] menu-bar-separator)
+  (define-key-after menu [separator-undo-2] menu-bar-separator)
   menu)
 
 (defun context-menu-region (menu)
+  (define-key-after menu [separator-region-1] menu-bar-separator)
   (define-key-after menu [cut]
     '(menu-item "Cut" kill-region
                 :visible (and mark-active (not buffer-read-only))
@@ -361,14 +413,7 @@ not it is actually displayed."
   (define-key-after menu [mark-whole-buffer]
     '(menu-item "Select All" mark-whole-buffer
                 :help "Mark the whole buffer for a subsequent cut/copy"))
-  (define-key-after menu [separator-region] menu-bar-separator)
-  menu)
-
-(defun context-menu-local (menu)
-  "Major mode submenu."
-  (dolist (item (local-key-binding [menu-bar]))
-    (when (consp item)
-      (define-key-after menu (vector (car item)) (cdr item))))
+  (define-key-after menu [separator-region-2] menu-bar-separator)
   menu)
 
 (defvar context-menu--old-down-mouse-3 nil)
