@@ -279,13 +279,10 @@ not it is actually displayed."
 
 ;; Context menus.
 
-(defcustom context-menu-functions '(context-menu-undo context-menu-region ;; context-menu-local
-
-                                                      context-menu-global
-                                                      context-menu-local
-                                                      context-menu-minor
-
-)
+(defcustom context-menu-functions '(context-menu-undo
+                                    context-menu-region
+                                    context-menu-local
+                                    context-menu-minor)
   "List of functions that produce the contents of the context menu."
   :type 'hook
   :options '(context-menu-undo
@@ -301,6 +298,7 @@ not it is actually displayed."
   :version "28.1")
 
 (defun context-menu-map ()
+  "Return composite menu map."
   (let ((menu (make-sparse-keymap "Context Menu")))
     (run-hook-wrapped 'context-menu-functions
                       (lambda (fun)
@@ -416,6 +414,10 @@ not it is actually displayed."
   (define-key-after menu [separator-region-2] menu-bar-separator)
   menu)
 
+(defvar context-menu-entry
+  `(menu-item ,(purecopy "Context Menu") ignore
+              :filter (lambda (_) (context-menu-map))))
+
 (defvar context-menu--old-down-mouse-3 nil)
 (defvar context-menu--old-mouse-3 nil)
 
@@ -430,9 +432,7 @@ activates the menu whose contents depends on its surrounding context."
     (setq context-menu--old-mouse-3 (global-key-binding [mouse-3]))
     (global-unset-key [mouse-3])
     (setq context-menu--old-down-mouse-3 (global-key-binding [down-mouse-3]))
-    (global-set-key [down-mouse-3]
-                    '(menu-item "Context Menu" ignore
-                                :filter (lambda (_) (context-menu-map)))))
+    (global-set-key [down-mouse-3] context-menu-entry))
    (t
     (if (not context-menu--old-down-mouse-3)
         (global-unset-key [down-mouse-3])
