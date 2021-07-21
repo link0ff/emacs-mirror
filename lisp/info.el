@@ -4147,35 +4147,38 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
    ["Exit" quit-window :help "Stop reading Info"]))
 
 (defun Info-context-menu (menu)
-  (when (mouse-posn-property (event-start last-input-event) 'mouse-face)
-    (bindings--define-key menu [Info-mouse-follow-nearest-node]
-      '(menu-item "Follow link" Info-mouse-follow-nearest-node
-                  :help "Follow a link where you click")))
+  (define-key menu [Info-separator] menu-bar-separator)
 
-  (bindings--define-key menu [Info-history-back]
-    '(menu-item "Back in history" Info-history-back :visible Info-history
-                :help "Go back in history to the last node you were at"))
-  (bindings--define-key menu [Info-history-forward]
-    '(menu-item "Forward in history" Info-history-forward :visible Info-history-forward
-                :help "Go forward in history"))
+  ;; TODO: try to use easy-menu-define
+  ;; TODO: try to add submenu minor-mode-map [menu-bar]
 
-  (bindings--define-key menu [Info-up]
-    '(menu-item "Up" Info-up :visible (Info-check-pointer "up")
-                :help "Go up in the Info tree"))
-  (bindings--define-key menu [Info-next]
-    '(menu-item "Next" Info-next :visible (Info-check-pointer "next")
-                :help "Go to the next node"))
-  (bindings--define-key menu [Info-prev]
-    '(menu-item "Previous" Info-prev :visible (Info-check-pointer "prev[ious]*")
-                :help "Go to the previous node"))
-  (bindings--define-key menu [Info-backward-node]
-    '(menu-item "Backward" Info-backward-node
-                :help "Go backward one node, considering all as a sequence"))
   (bindings--define-key menu [Info-forward-node]
     '(menu-item "Forward" Info-forward-node
                 :help "Go forward one node, considering all as a sequence"))
+  (bindings--define-key menu [Info-backward-node]
+    '(menu-item "Backward" Info-backward-node
+                :help "Go backward one node, considering all as a sequence"))
+  (bindings--define-key menu [Info-prev]
+    '(menu-item "Previous" Info-prev :visible (Info-check-pointer "prev[ious]*")
+                :help "Go to the previous node"))
+  (bindings--define-key menu [Info-next]
+    '(menu-item "Next" Info-next :visible (Info-check-pointer "next")
+                :help "Go to the next node"))
+  (bindings--define-key menu [Info-up]
+    '(menu-item "Up" Info-up :visible (Info-check-pointer "up")
+                :help "Go up in the Info tree"))
 
-  (define-key menu [Info-separator] menu-bar-separator)
+  (bindings--define-key menu [Info-history-forward]
+    '(menu-item "Forward in History" Info-history-forward :visible Info-history-forward
+                :help "Go forward in history"))
+  (bindings--define-key menu [Info-history-back]
+    '(menu-item "Back in History" Info-history-back :visible Info-history
+                :help "Go back in history to the last node you were at"))
+
+  (when (mouse-posn-property (event-start last-input-event) 'mouse-face)
+    (bindings--define-key menu [Info-mouse-follow-nearest-node]
+      '(menu-item "Follow Link" Info-mouse-follow-nearest-node
+                  :help "Follow a link where you click")))
   menu)
 
 (defvar info-tool-bar-map
@@ -4477,7 +4480,7 @@ Advanced commands:
   (add-hook 'clone-buffer-hook 'Info-clone-buffer nil t)
   (add-hook 'change-major-mode-hook 'font-lock-defontify nil t)
   (add-hook 'isearch-mode-hook 'Info-isearch-start nil t)
-  (add-hook 'context-menu-functions 'Info-context-menu nil t)
+  (add-hook 'context-menu-functions 'Info-context-menu 5 t)
   (when Info-standalone
     (add-hook 'quit-window-hook 'save-buffers-kill-emacs nil t))
   (setq-local isearch-search-fun-function #'Info-isearch-search)

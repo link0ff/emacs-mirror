@@ -125,9 +125,11 @@ will have no effect.")
   "Keymap to hold goto-addr's mouse key defs under highlighted URLs.")
 
 (defun goto-address-context-menu (menu)
+  (define-key menu [goto-address-separator] menu-bar-separator)
+
   (when (mouse-posn-property (event-start last-input-event) 'goto-address)
     (bindings--define-key menu [goto-address-at-click]
-      '(menu-item "Follow link" goto-address-at-click
+      '(menu-item "Follow Link" goto-address-at-click
                   :help "Follow a link where you click"))
     (define-key menu [goto-address-separator] menu-bar-separator))
   menu)
@@ -280,13 +282,13 @@ Also fontifies the buffer appropriately (see `goto-address-fontify-p' and
   (cond
    (goto-address-mode
     (jit-lock-register #'goto-address-fontify-region)
-    (add-hook 'context-menu-functions 'goto-address-context-menu -10))
+    (add-hook 'context-menu-functions 'goto-address-context-menu 10 t))
    (t
     (jit-lock-unregister #'goto-address-fontify-region)
-    (remove-hook 'context-menu-functions 'goto-address-context-menu)
     (save-restriction
       (widen)
-      (goto-address-unfontify (point-min) (point-max))))))
+      (goto-address-unfontify (point-min) (point-max)))
+    (remove-hook 'context-menu-functions 'goto-address-context-menu t))))
 
 (defun goto-addr-mode--turn-on ()
   (when (not goto-address-mode)
