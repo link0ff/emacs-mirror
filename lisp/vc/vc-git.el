@@ -1776,6 +1776,7 @@ The difference to vc-do-command is that this function always invokes
         (process-environment
          (append
           `("GIT_DIR"
+            "GIT_LITERAL_PATHSPECS=1"
             ;; Avoid repository locking during background operations
             ;; (bug#21559).
             ,@(when revert-buffer-in-progress-p
@@ -1810,6 +1811,7 @@ The difference to vc-do-command is that this function always invokes
 	(process-environment
 	 (append
 	  `("GIT_DIR"
+            "GIT_LITERAL_PATHSPECS=1"
 	    ;; Avoid repository locking during background operations
 	    ;; (bug#21559).
 	    ,@(when revert-buffer-in-progress-p
