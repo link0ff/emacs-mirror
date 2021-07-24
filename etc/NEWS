@@ -119,9 +119,8 @@ page for 'seccomp' system call, for details about Secure Computing
 filters.
 
 ** Setting 'fill-column' to nil is obsolete.
-This undocumented use of 'fill-column' is now obsolete.  If you have
-set this value to nil disable auto filling, instead disable
-'auto-fill-mode' in the relevant mode instead.
+This undocumented use of 'fill-column' is now obsolete.  To disable
+auto filling, turn off 'auto-fill-mode' instead.
 
 For instance, you could add something like the following to your init
 file:
@@ -1144,6 +1143,12 @@ take the actual screenshot, and defaults to "ImageMagick import".
 ** Smtpmail
 
 +++
+*** New user option 'smtpmail-store-queue-variables'.
+If non-nil, SMTP variables will be stored together with the queued
+messages, and will then be used when sending with
+'M-x smtpmail-send-queued-mail'.
+
++++
 *** Allow direct selection of smtp authentication mechanism.
 A server entry retrieved by auth-source can request a desired smtp
 authentication mechanism by setting a value for the key 'smtp-auth'.
@@ -1595,6 +1600,10 @@ See the new user options 'package-name-column-width',
 'package-archive-column-width'.
 
 ** gdb-mi
+
+*** New user option 'gdb-registers-enable-filter'.
+If non-nil, apply a register filter based on
+'gdb-registers-filter-pattern-list'.
 
 +++
 *** gdb-mi can now store and restore window configurations.
@@ -2508,25 +2517,6 @@ point leaves the text.  If nil, the text is not hidden again.  Instead
 'M-x reveal-hide-revealed' can be used to hide all the revealed text.
 
 +++
-*** New user options to control the look of line/column numbers in the mode line.
-'mode-line-position-line-format' is the line number format (when
-'line-number-mode' is on), 'mode-line-position-column-format' is
-the column number format (when 'column-number-mode' is on), and
-'mode-line-position-column-line-format' is the combined format (when
-both modes are on).
-
-+++
-*** New user option 'mode-line-compact'.
-If non-nil, repeating spaces are compressed into a single space.  If
-'long', this is only done when the mode line is longer than the
-current window width (in characters).
-
-+++
-*** 'global-mode-string' constructs should end with a space.
-This was previously not formalized, which led to combinations of modes
-displaying data "smushed together" on the mode line.
-
-+++
 *** New command 'submit-emacs-patch'.
 This works like 'report-emacs-bug', but is more geared towards sending
 patches to the Emacs issue tracker.
@@ -3114,6 +3104,10 @@ The former is now declared obsolete.
 
 
 * Lisp Changes in Emacs 28.1
+
++++
+*** New function 'directory-append'.
+This appends a file name to a directory name and returns the result.
 
 +++
 *** New function 'split-string-shell-command'.

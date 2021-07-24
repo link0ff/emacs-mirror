@@ -160,4 +160,23 @@ Also check that an encoding error can appear in a symlink."
   (should-error (file-exists-p "/foo\0bar")
                 :type 'wrong-type-argument))
 
+(ert-deftest fileio-tests/directory-append ()
+  (should (equal (directory-append "foo" "bar") "foo/bar"))
+  (should (equal (directory-append "foo" "bar") "foo/bar"))
+  (should (equal (directory-append "foo" "bar" "zot") "foo/bar/zot"))
+  (should (equal (directory-append "foo/" "bar") "foo/bar"))
+  (should (equal (directory-append "foo//" "bar") "foo//bar"))
+  (should (equal (directory-append "foo/" "bar/" "zot") "foo/bar/zot"))
+  (should (equal (directory-append "fóo" "bar") "fóo/bar"))
+  (should (equal (directory-append "foo" "bár") "foo/bár"))
+  (should (equal (directory-append "fóo" "bár") "fóo/bár"))
+  (let ((string (make-string 5 ?a)))
+    (should (not (multibyte-string-p string)))
+    (aset string 2 255)
+    (should (not (multibyte-string-p string)))
+    (should (equal (directory-append "fóo" string) "fóo/aa\377aa")))
+  (should-error (directory-append "foo" ""))
+  (should-error (directory-append "" "bar"))
+  (should-error (directory-append "" "")))
+
 ;;; fileio-tests.el ends here

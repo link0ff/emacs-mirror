@@ -749,6 +749,94 @@ For that reason, you should normally use `make-temp-file' instead.  */)
 				   empty_unibyte_string, Qnil);
 }
 
+DEFUN ("directory-append", Fdirectory_append, Sdirectory_append, 1, MANY, 0,
+       doc: /* Append COMPONENTS to DIRECTORY and return the resulting string.
+COMPONENTS must be strings.
+DIRECTORY or the non-final elements in COMPONENTS may or may not end
+with a slash -- if they don't end with a slash, a slash will be
+inserted before contatenating.
+usage: (record DIRECTORY &rest COMPONENTS) */)
+  (ptrdiff_t nargs, Lisp_Object *args)
+{
+  ptrdiff_t chars = 0, bytes = 0, multibytes = 0;
+  Lisp_Object *elements = args;
+  Lisp_Object result;
+  ptrdiff_t i;
+
+  /* First go through the list to check the types and see whether
+     they're all of the same multibytedness. */
+  for (i = 0; i < nargs; i++)
+    {
+      Lisp_Object arg = args[i];
+      CHECK_STRING (arg);
+      if (SCHARS (arg) == 0)
+	xsignal1 (Qfile_error, build_string ("Empty file name"));
+      /* Multibyte and non-ASCII. */
+      if (STRING_MULTIBYTE (arg) && SCHARS (arg) != SBYTES (arg))
+	multibytes++;
+      /* We're not adding a slash to the final part. */
+      if (i == nargs - 1
+	  || IS_DIRECTORY_SEP (*(SSDATA (arg) + SBYTES (arg) - 1)))
+	{
+	  bytes += SBYTES (arg);
+	  chars += SCHARS (arg);
+	}
+      else
+	{
+	  bytes += SBYTES (arg) + 1;
+	  chars += SCHARS (arg) + 1;
+	}
+    }
+
+  /* Convert if needed. */
+  if (multibytes != 0 && multibytes != nargs)
+    {
+      elements = xmalloc (nargs * sizeof *elements);
+      bytes = 0;
+      for (i = 0; i < nargs; i++)
+	{
+	  Lisp_Object arg = args[i];
+	  /* Use multibyte or all-ASCII strings as is. */
+	  if (STRING_MULTIBYTE (arg) || string_ascii_p (arg))
+	    elements[i] = arg;
+	  else
+	    elements[i] = Fstring_to_multibyte (arg);
+	  arg = elements[i];
+	  /* We have to recompute the number of bytes. */
+	  if (i == nargs - 1
+	      || IS_DIRECTORY_SEP (*(SSDATA (arg) + SBYTES (arg) - 1)))
+	    bytes += SBYTES (arg);
+	  else
+	    bytes += SBYTES (arg) + 1;
+	}
+    }
+
+  /* Allocate an empty string. */
+  if (multibytes == 0)
+    result = make_uninit_string (chars);
+  else
+    result = make_uninit_multibyte_string (chars, bytes);
+  /* Null-terminate the string. */
+  *(SSDATA (result) + SBYTES (result)) = 0;
+
+  /* Copy over the data. */
+  char *p = SSDATA (result);
+  for (i = 0; i < nargs; i++)
+    {
+      Lisp_Object arg = elements[i];
+      memcpy (p, SSDATA (arg), SBYTES (arg));
+      p += SBYTES (arg);
+      /* The last element shouldn't have a slash added at the end. */
+      if (i < nargs - 1 && !IS_DIRECTORY_SEP (*(p - 1)))
+	*p++ = DIRECTORY_SEP;
+    }
+
+  if (elements != args)
+    xfree (elements);
+
+  return result;
+}
+
 /* NAME must be a string.  */
 static bool
 file_name_absolute_no_tilde_p (Lisp_Object name)
@@ -6488,6 +6576,7 @@ This includes interactive calls to `delete-file' and
   defsubr (&Sdirectory_file_name);
   defsubr (&Smake_temp_file_internal);
   defsubr (&Smake_temp_name);
+  defsubr (&Sdirectory_append);
   defsubr (&Sexpand_file_name);
   defsubr (&Ssubstitute_in_file_name);
   defsubr (&Scopy_file);
