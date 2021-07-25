@@ -766,6 +766,15 @@ faces in other ways.
 *** The new command 'recenter-current-error', bound to 'l' in Occur or
 compilation buffers, recenters the current displayed occurrence/error.
 
+---
+*** Occur mode may use a different type for 'occur-target' property values.
+The value was previously always a marker set to the start of the first
+match on the line but can now also be a list of (BEGIN . END) pairs
+of markers delimiting each match on the line.
+This is a fully compatible change to the internal occur-mode
+implementation, and code creating their own occur-mode buffers will
+work as before.
+
 ** EIEIO
 
 +++
@@ -2331,6 +2340,9 @@ previously no easy way to get back to the original displayed order
 after sorting, but giving a -1 numerical prefix to the sorting command
 will now restore the original order.
 
+---
+*** 'M-left' and 'M-right' now move between columns in 'tabulated-list-mode'.
+
 +++
 *** New utility function 'insert-into-buffer'.
 This is like 'insert-buffer-substring', but works in the opposite
@@ -3106,8 +3118,8 @@ The former is now declared obsolete.
 * Lisp Changes in Emacs 28.1
 
 +++
-*** New function 'directory-append'.
-This appends a file name to a directory name and returns the result.
+*** New function 'file-name-concat'.
+This appends path components to a directory name and returns the result.
 
 +++
 *** New function 'split-string-shell-command'.
