@@ -479,6 +479,7 @@ Typing 'TAB' on a heading line cycles the current section between
 anywhere in the buffer cycles the whole buffer between "only top-level
 headings", "all headings and subheadings", and "show all" states.
 
++++
 *** New user option 'outline-minor-mode-cycle'.
 This user option customizes 'outline-minor-mode', with the difference
 that 'TAB' and 'S-TAB' on heading lines cycle heading visibility.
@@ -487,12 +488,14 @@ Typing 'TAB' on a heading line cycles the current section between
 heading line cycles the whole buffer between "only top-level
 headings", "all headings and subheadings", and "show all" states.
 
+---
 *** New user option 'outline-minor-mode-highlight'.
 This user option customizes 'outline-minor-mode'.  It puts
 highlighting on heading lines using standard outline faces.  This
 works well only when there are no conflicts with faces used by the
 major mode.
 
++++
 ** New commands 'copy-matching-lines' and 'kill-matching-lines'.
 These commands are similar to the command 'flush-lines',
 but add the matching lines to the kill ring as a single string,
@@ -545,6 +548,11 @@ in better code.
 ---
 *** New function 'pcase-compile-patterns' to write other macros.
 
+*** Added 'cl-type' pattern.
+The new 'cl-type' pattern compares types using 'cl-typep', which allows
+comparing simple types like '(cl-type integer)', as well as forms like
+'(cl-type (integer 0 10))'.
+
 +++
 ** profiler.el
 The results displayed by 'profiler-report' now have the usage figures
@@ -588,8 +596,15 @@ This is used to fontify non-scalar variables.
 
 ** Python mode
 
+---
+*** New user option 'python-forward-sexp-function'.
+This allows the user to easier customize whether to use block-based
+navigation or not.
+
+---
 *** 'python-shell-interpreter' now defaults to python3 on systems with python3.
 
+---
 *** 'C-c C-r' can now be used on arbitrary regions.
 The command previously extended the start of the region to the start
 of the line, but will now actually send the marked region, as
@@ -597,6 +612,7 @@ documented.
 
 ** Ruby mode
 
+---
 *** 'ruby-use-smie' is declared obsolete.
 SMIE is now always enabled and 'ruby-use-smie' only controls whether
 indentation is done using SMIE or with the old ad-hoc code.
@@ -617,10 +633,13 @@ Icomplete, completions are rotated and selection kept at the top.
 When used with Fido, completions scroll like a typical dropdown
 widget.
 
+---
 *** Default value of 'icomplete-compute-delay' has been changed to 0.15 s.
 
+---
 *** Default value of 'icomplete-max-delay-chars' has been changed to 2.
 
+---
 *** Reduced blinking while completing the next completions set.
 Icomplete doesn't hide the hint with the previously computed
 completions anymore when compute delay is in effect, or the previous
@@ -642,6 +661,7 @@ disabled entirely.
 
 ** Windmove
 
++++
 *** New user options to customize windmove keybindings.
 These options include 'windmove-default-keybindings',
 'windmove-display-default-keybindings',
@@ -680,6 +700,7 @@ of the next command to be displayed in a new window.
 
 ** Frames
 
++++
 *** The key prefix 'C-x 5 5' displays next command buffer in a new frame.
 It's bound to the command 'other-frame-prefix' that requests the buffer
 of the next command to be displayed in a new frame.
@@ -2914,6 +2935,15 @@ This is to keep the same behavior as Eshell.
 
 
 * Incompatible Lisp Changes in Emacs 28.1
+
+---
+** 'replace-match' now runs modification hooks slightly later.
+The function is documented to leave point after the replacement text,
+but this was not always the case if a modification hook inserted text
+in front of the replaced text -- 'replace-match' would instead leave
+point where the end of the inserted text would have been before the
+hook ran.  'replace-match' now always leaves point after the
+replacement text.
 
 ---
 ** 'kill-all-local-variables' has changed how it handles non-symbol hooks.
