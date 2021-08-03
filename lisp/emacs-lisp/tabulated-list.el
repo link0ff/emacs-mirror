@@ -468,13 +468,15 @@ changing `tabulated-list-sort-key'."
             (when saved-pt-new (setq saved-pt saved-pt-new))))
       (setq saved-pt (tabulated-list-print-entries entries sorter update entry-id)))
     (set-buffer-modified-p nil)
+    ;; SEE commit cdd72c5d89 and bug#42747
     ;; If REMEMBER-POS was specified, move to the "old" location.
-    (if saved-pt
-	(progn (goto-char saved-pt)
-	       (move-to-column saved-col)
-	       (when window-line
-                 (recenter window-line)))
-      (goto-char (point-min)))))
+    ;; (if saved-pt
+    ;;     (progn (goto-char saved-pt)
+    ;;            (move-to-column saved-col)
+    ;;            (when window-line
+    ;;              (recenter window-line)))
+    ;;   (goto-char (point-min)))
+    ))
 
 (defun tabulated-list-print-entries (entries sorter update entry-id)
   (let (saved-pt)
