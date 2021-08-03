@@ -2328,12 +2328,15 @@ variables.")
 (defun exit-minibuffer ()
   "Terminate this minibuffer argument."
   (interactive)
-  ;; (minibuffer-hide-completions)
   (when (minibufferp)
     (when (not (minibuffer-innermost-command-loop-p))
       (error "%s" "Not in most nested command loop"))
     (when (not (innermost-minibuffer-p))
       (error "%s" "Not in most nested minibuffer")))
+  ;; When read_minibuf doesn't restore all previous windows,
+  ;; then at least pop down the completions window.
+  (unless read-minibuffer-restore-windows
+    (minibuffer-hide-completions))
   ;; If the command that uses this has made modifications in the minibuffer,
   ;; we don't want them to cause deactivation of the mark in the original
   ;; buffer.
