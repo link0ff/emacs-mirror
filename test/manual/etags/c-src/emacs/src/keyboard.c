@@ -7485,7 +7485,7 @@ menu_bar_items (Lisp_Object old)
 	   which does not normally happen after every command.  */
 	Lisp_Object tem;
 	ptrdiff_t nminor;
-	nminor = current_minor_maps (NULL, &tmaps);
+	nminor = current_minor_maps (NULL, &tmaps, 0);
 	SAFE_NALLOCA (maps, 1, nminor + 4);
 	nmaps = 0;
 	tem = KVAR (current_kboard, Voverriding_terminal_local_map);
@@ -8034,7 +8034,7 @@ tool_bar_items (Lisp_Object reuse, int *nitems)
 	 which does not normally happen after every command.  */
       Lisp_Object tem;
       ptrdiff_t nminor;
-      nminor = current_minor_maps (NULL, &tmaps);
+      nminor = current_minor_maps (NULL, &tmaps, 0);
       SAFE_NALLOCA (maps, 1, nminor + 4);
       nmaps = 0;
       tem = KVAR (current_kboard, Voverriding_terminal_local_map);

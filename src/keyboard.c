@@ -7471,7 +7471,7 @@ menu_bar_items (Lisp_Object old)
 	   properties may not work reliable, as they are only
 	   recognized when the menu-bar (or mode-line) is updated,
 	   which does not normally happen after every command.  */
-	ptrdiff_t nminor = current_minor_maps (NULL, &tmaps);
+	ptrdiff_t nminor = current_minor_maps (NULL, &tmaps, 0);
 	SAFE_NALLOCA (maps, 1, nminor + 4);
 	nmaps = 0;
 	Lisp_Object tem = KVAR (current_kboard, Voverriding_terminal_local_map);
@@ -8024,7 +8024,7 @@ tab_bar_items (Lisp_Object reuse, int *nitems)
 	 properties may not work reliably, as they are only
 	 recognized when the tab-bar (or mode-line) is updated,
 	 which does not normally happen after every command.  */
-      ptrdiff_t nminor = current_minor_maps (NULL, &tmaps);
+      ptrdiff_t nminor = current_minor_maps (NULL, &tmaps, 0);
       SAFE_NALLOCA (maps, 1, nminor + 4);
       nmaps = 0;
       Lisp_Object tem = KVAR (current_kboard, Voverriding_terminal_local_map);
@@ -8408,7 +8408,7 @@ tool_bar_items (Lisp_Object reuse, int *nitems)
 	 properties may not work reliably, as they are only
 	 recognized when the tool-bar (or mode-line) is updated,
 	 which does not normally happen after every command.  */
-      ptrdiff_t nminor = current_minor_maps (NULL, &tmaps);
+      ptrdiff_t nminor = current_minor_maps (NULL, &tmaps, 0);
       SAFE_NALLOCA (maps, 1, nminor + 4);
       nmaps = 0;
       Lisp_Object tem = KVAR (current_kboard, Voverriding_terminal_local_map);
