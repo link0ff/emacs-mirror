@@ -1544,7 +1544,7 @@ The template should have the following fields:
   "The program to use for regexp search inside files.
 
 This must reference a corresponding entry in `xref-search-program-alist'."
-  :type `(choice
+  :type '(choice
           (const :tag "Use Grep" grep)
           (const :tag "Use ripgrep" ripgrep)
           (symbol :tag "User defined"))

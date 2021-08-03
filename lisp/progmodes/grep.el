@@ -484,9 +484,14 @@ buffer `default-directory'."
 This gets tacked on the end of the generated expressions.")
 
 ;;;###autoload
-(defvar grep-program (purecopy "grep")
+(defcustom grep-program (purecopy "grep")
   "The default grep program for `grep-command' and `grep-find-command'.
-This variable's value takes effect when `grep-compute-defaults' is called.")
+This variable's value takes effect when `grep-compute-defaults' is called."
+  :type '(choice
+          (const :tag "Use Grep" "grep")
+          (const :tag "Use ripgrep" "rg")
+          (string :tag "User defined"))
+  :version "28.1")
 
 ;;;###autoload
 (defvar find-program (purecopy "find")
@@ -709,13 +714,14 @@ The value depends on `grep-command', `grep-template',
       (let ((grep-options
 	     (concat (if grep-use-null-device "-n" "-nH")
                      (if grep-use-null-filename-separator " --null")
+                     (if (equal grep-program "rg") " --no-heading")
                      (when (grep-probe grep-program
                                        `(nil nil nil "-e" "foo" ,(null-device))
                                        nil 1)
                        " -e"))))
 	(unless grep-command
 	  (setq grep-command
-		(format "%s %s %s " grep-program
+		(format "%s%s %s " grep-program
                         (or
                          (and grep-highlight-matches
                               (grep-probe
@@ -723,7 +729,7 @@ The value depends on `grep-command', `grep-template',
                                `(nil nil nil "--color" "x" ,(null-device))
                                nil 1)
                               (if (eq grep-highlight-matches 'always)
-                                  "--color=always" "--color=auto"))
+                                  " --color=always" " --color=auto"))
                          "")
                         grep-options)))
 	(unless grep-template
@@ -983,6 +989,8 @@ these include `opts', `dir', `files', `null-device', `excl' and
                              (push "--color=always" opts))
                             ((eq grep-highlight-matches 'auto)
                              (push "--color=auto" opts)))
+                           (when (equal grep-program "rg")
+                             (push "--no-heading" opts))
                            opts))
                 (excl . ,excl)
                 (dir . ,dir)
@@ -1131,7 +1139,7 @@ command before it's run."
 		       files
 		       nil
 		       (and grep-find-ignored-files
-			    (concat " --exclude="
+			    (concat (if (equal grep-program "rg") " -g=!" " --exclude=")
 				    (mapconcat
                                      (lambda (ignore)
                                        (cond ((stringp ignore)
@@ -1141,9 +1149,11 @@ command before it's run."
                                                    (shell-quote-argument
                                                     (cdr ignore))))))
 				     grep-find-ignored-files
-				     " --exclude=")))
-		       (and (eq grep-use-directories-skip t)
-			    '("--directories=skip"))))
+				     (if (equal grep-program "rg") " -g=!" " --exclude="))))
+		       (cond ((eq grep-use-directories-skip t)
+			      '("--directories=skip"))
+                             ((equal grep-program "rg")
+                              '("--max-depth=0")))))
 	(when command
 	  (if confirm
 	      (setq command
@@ -1339,7 +1349,8 @@ command before it's run."
 					    nil default-directory t))
 		  (confirm (equal current-prefix-arg '(4))))
 	     (list regexp files dir confirm grep-find-template)))))))
-  (let ((grep-find-template template)
+  (let ((grep-program "zgrep")
+        (grep-find-template template)
         ;; Set `grep-highlight-matches' to `always'
         ;; since `zgrep' puts filters in the grep output.
         (grep-highlight-matches 'always))

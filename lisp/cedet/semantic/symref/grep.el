@@ -150,15 +150,14 @@ This shell should support pipe redirect syntax."
                            "-l ")
                           ((eq (oref tool searchtype) 'regexp)
                            "-nE ")
-                          (t "-n ")))
+                          (t (if (equal grep-program "rg") "" "-n "))))
          (greppat (cond ((eq (oref tool searchtype) 'regexp)
                          (oref tool searchfor))
                         (t
                          ;; Can't use the word boundaries: Grep
                          ;; doesn't always agree with the language
                          ;; syntax on those.
-                         (format "\\(^\\|\\W\\)%s\\(\\W\\|$\\)"
-                                 (oref tool searchfor)))))
+                         (format "\\b%s\\b" (oref tool searchfor)))))
 	 ;; Misc
 	 (b (get-buffer-create "*Semantic SymRef*"))
 	 (ans nil)
