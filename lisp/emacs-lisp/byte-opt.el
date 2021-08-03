@@ -1348,6 +1348,7 @@ See Info node `(elisp) Integer Basics'."
 	 elt encode-char exp expt encode-time error-message-string
 	 fboundp fceiling featurep ffloor
 	 file-directory-p file-exists-p file-locked-p file-name-absolute-p
+         file-name-concat
 	 file-newer-than-file-p file-readable-p file-symlink-p file-writable-p
 	 float float-time floor format format-time-string frame-first-window
 	 frame-root-window frame-selected-window
@@ -1362,6 +1363,7 @@ See Info node `(elisp) Integer Basics'."
 	 local-variable-if-set-p local-variable-p locale-info
 	 log log10 logand logb logcount logior lognot logxor lsh
 	 make-byte-code make-list make-string make-symbol mark marker-buffer max
+         match-beginning match-end
 	 member memq memql min minibuffer-selected-window minibuffer-window
 	 mod multibyte-char-to-unibyte next-window nth nthcdr number-to-string
 	 parse-colon-path plist-get plist-member
