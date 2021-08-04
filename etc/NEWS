@@ -179,6 +179,9 @@ behavior, which mixed these two, can be approximated by customizing
 nor t.
 
 +++
+** New user option 'read-minibuffer-restore-windows'.
+
++++
 ** New system for displaying documentation for groups of functions.
 This can either be used by saying 'M-x shortdoc-display-group' and
 choosing a group, or clicking a button in the "*Help*" buffers when
@@ -809,6 +812,11 @@ work as before.
 *** The macro 'oref-default' can now be used with 'setf'.
 It is now defined as a generalized variable that can be used with
 'setf' to modify the value stored in a given class slot.
+
+---
+*** 'form' in '(eql form)' specializers in 'cl-defmethod' is now evaluated.
+This corresponds to the behaviour of defmethod in Common Lisp Object System.
+For compatibility, '(eql SYMBOL)' does not evaluate SYMBOL, for now.
 
 ** New minor mode 'cl-font-lock-built-in-mode' for 'lisp-mode'.
 The mode provides refined highlighting of built-in functions, types,
