@@ -2333,10 +2333,6 @@ variables.")
       (error "%s" "Not in most nested command loop"))
     (when (not (innermost-minibuffer-p))
       (error "%s" "Not in most nested minibuffer")))
-  ;; When read_minibuf doesn't restore all previous windows,
-  ;; then at least pop down the completions window.
-  (unless read-minibuffer-restore-windows
-    (minibuffer-hide-completions))
   ;; If the command that uses this has made modifications in the minibuffer,
   ;; we don't want them to cause deactivation of the mark in the original
   ;; buffer.
@@ -2345,6 +2341,16 @@ variables.")
   ;; this should do the trick in most cases.
   (setq deactivate-mark nil)
   (throw 'exit nil))
+
+(defun minibuffer-restore-windows ()
+  "Restore some windows on exit from minibuffer.
+When `read-minibuffer-restore-windows' is nil, then this function
+added to `minibuffer-exit-hook' will remove at least the window
+with the *Completions* buffer."
+  (unless read-minibuffer-restore-windows
+    (minibuffer-hide-completions)))
+
+(add-hook 'minibuffer-exit-hook 'minibuffer-restore-windows)
 
 (defun minibuffer-quit-recursive-edit ()
   "Quit the command that requested this recursive edit without error.
