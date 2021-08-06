@@ -989,8 +989,6 @@ these include `opts', `dir', `files', `null-device', `excl' and
                              (push "--color=always" opts))
                             ((eq grep-highlight-matches 'auto)
                              (push "--color=auto" opts)))
-                           (when (equal grep-program "rg")
-                             (push "--no-heading" opts))
                            opts))
                 (excl . ,excl)
                 (dir . ,dir)
