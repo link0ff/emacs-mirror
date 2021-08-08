@@ -3691,10 +3691,11 @@ w32_handle_tab_bar_click (struct frame *f, struct input_event *button_event)
   int y = XFIXNAT (button_event->y);
 
   if (button_event->modifiers & down_modifier)
-    handle_tab_bar_click (f, x, y, 1, 0);
+    handle_tab_bar_click (f, x, y, 1, 0, button_event->code + 1);
   else
     handle_tab_bar_click (f, x, y, 0,
-                          button_event->modifiers & ~up_modifier);
+                          button_event->modifiers & ~up_modifier,
+                          button_event->code + 1);
 }
 
 

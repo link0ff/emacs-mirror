@@ -3416,7 +3416,7 @@ extern void get_glyph_string_clip_rect (struct glyph_string *,
 extern Lisp_Object find_hot_spot (Lisp_Object, int, int);
 
 extern void handle_tab_bar_click (struct frame *,
-                                   int, int, bool, int);
+                                   int, int, bool, int, int);
 extern void handle_tool_bar_click (struct frame *,
                                    int, int, bool, int);
 

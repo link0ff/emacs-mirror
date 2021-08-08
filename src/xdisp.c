@@ -13747,7 +13747,7 @@ get_tab_bar_item (struct frame *f, int x, int y, struct glyph **glyph,
 
 void
 handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
-		      int modifiers)
+		      int modifiers, int button)
 {
   Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (f);
   struct window *w = XWINDOW (f->tab_bar_window);
@@ -13793,7 +13793,7 @@ handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
       event.kind = TAB_BAR_EVENT;
       event.frame_or_window = frame;
       event.arg = key;
-      event.modifiers = close_p ? ctrl_modifier | modifiers : modifiers;
+      event.modifiers = (close_p || button == 2) ? ctrl_modifier | modifiers : modifiers;
       kbd_buffer_store_event (&event);
       f->last_tab_bar_item = -1;
     }
@@ -13961,6 +13961,8 @@ tty_handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
       int lastc = SSDATA (caption)[SCHARS (caption) - 1];
       bool close_p = false;
       if ((x == clen - 1 || (clen > 1 && x == clen - 2)) && lastc == 'x')
+	close_p = true;
+      if (event->code == 1) /* mouse-2 */
 	close_p = true;
 
       event->code = 0;

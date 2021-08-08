@@ -229,7 +229,8 @@ a list of frames to update."
 This command is used when you click the mouse in the tab bar
 on a console which has no window system but does have a mouse."
   (interactive "e")
-  (let* ((x-position (car (posn-x-y (event-start event))))
+  (let* ((button (event-basic-type event))
+         (x-position (car (posn-x-y (event-start event))))
          (keymap (lookup-key (cons 'keymap (nreverse (current-active-maps))) [tab-bar]))
          (column 0))
     (when x-position
@@ -238,7 +239,9 @@ on a console which has no window system but does have a mouse."
                  (lambda (key binding)
                    (when (eq (car-safe binding) 'menu-item)
                      (when (> (+ column (length (nth 1 binding))) x-position)
-                       (if (get-text-property (- x-position column) 'close-tab (nth 1 binding))
+                       (if (or (eq button 'mouse-2)
+                               (get-text-property
+                                (- x-position column) 'close-tab (nth 1 binding)))
                            (let* ((close-key (vector (intern (format "C-%s" key))))
                                   (close-def (lookup-key keymap close-key)))
                              (when close-def
@@ -768,7 +771,8 @@ on the tab bar instead."
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
   (append
-   '(keymap (mouse-1 . tab-bar-handle-mouse))
+   '(keymap (mouse-1 . tab-bar-handle-mouse)
+            (mouse-2 . tab-bar-handle-mouse))
    (tab-bar-format-list tab-bar-format)))
 
 

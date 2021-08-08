@@ -9217,7 +9217,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
                 if (tab_bar_p && event->xbutton.button < 4)
 		  handle_tab_bar_click
 		    (f, x, y, event->xbutton.type == ButtonPress,
-		     x_x_to_emacs_modifiers (dpyinfo, event->xbutton.state));
+		     x_x_to_emacs_modifiers (dpyinfo, event->xbutton.state),
+		     event->xbutton.button);
               }
 
 #if ! defined (USE_GTK)
