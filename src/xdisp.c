@@ -13935,31 +13935,23 @@ tty_handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
     f->last_tab_bar_item = prop_idx;
   else
     {
-      /* Force reset of up_modifier bit from the event modifiers.  */
-      if (event->modifiers & up_modifier)
-        event->modifiers &= ~up_modifier;
-
-      /* Generate a TAB_BAR_EVENT event.  */
-      Lisp_Object key = AREF (f->tab_bar_items,
-			      prop_idx * TAB_BAR_ITEM_NSLOTS
-			      + TAB_BAR_ITEM_KEY);
-      /* Kludge alert: we assume the last two characters of a tab
-	 label are " x", and treat clicks on those 2 characters as a
-	 Close Tab command.  */
-      eassert (STRINGP (caption));
-      int lastc = SSDATA (caption)[SCHARS (caption) - 1];
-      bool close_p = false;
-      if ((x == clen - 1 || (clen > 1 && x == clen - 2)) && lastc == 'x')
-	close_p = true;
-      if (event->code == 1) /* mouse-2 */
-	close_p = true;
-
       f->last_tab_bar_item = -1;
-
-      return list2 (key, close_p ? Qt : Qnil);
     }
 
-  return Qnil;
+  /* Generate a TAB_BAR_EVENT event.  */
+  Lisp_Object key = AREF (f->tab_bar_items,
+			  prop_idx * TAB_BAR_ITEM_NSLOTS
+			  + TAB_BAR_ITEM_KEY);
+  /* Kludge alert: we assume the last two characters of a tab
+     label are " x", and treat clicks on those 2 characters as a
+     Close Tab command.  */
+  eassert (STRINGP (caption));
+  int lastc = SSDATA (caption)[SCHARS (caption) - 1];
+  bool close_p = false;
+  if ((x == clen - 1 || (clen > 1 && x == clen - 2)) && lastc == 'x')
+    close_p = true;
+
+  return Fcons (Qtab_bar, list2 (key, close_p ? Qt : Qnil));
 }
 
 
