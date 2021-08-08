@@ -13747,7 +13747,7 @@ get_tab_bar_item (struct frame *f, int x, int y, struct glyph **glyph,
 
 Lisp_Object
 handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
-		      int modifiers, int button)
+		      int modifiers)
 {
   Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (f);
   struct window *w = XWINDOW (f->tab_bar_window);
@@ -13785,7 +13785,8 @@ handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
       f->last_tab_bar_item = -1;
     }
 
-  return AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY);
+  return list2 (AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY),
+		close_p ? Qt : Qnil);
 }
 
 
@@ -13909,14 +13910,14 @@ tty_get_tab_bar_item (struct frame *f, int x, int *idx, ptrdiff_t *end)
    structure, store it in keyboard queue, and return true; otherwise
    return false.  MODIFIERS are event modifiers for generating the tab
    release event.  */
-bool
+Lisp_Object
 tty_handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
 			  struct input_event *event)
 {
   /* Did they click on the tab bar?  */
   if (y < FRAME_MENU_BAR_LINES (f)
       || y >= FRAME_MENU_BAR_LINES (f) + FRAME_TAB_BAR_LINES (f))
-    return false;
+    return Qnil;
 
   /* Find the tab-bar item where the X,Y coordinates belong.  */
   int prop_idx;
@@ -13924,11 +13925,11 @@ tty_handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
   Lisp_Object caption = tty_get_tab_bar_item (f, x, &prop_idx, &clen);
 
   if (NILP (caption))
-    return false;
+    return Qnil;
 
   if (NILP (AREF (f->tab_bar_items,
 		  prop_idx * TAB_BAR_ITEM_NSLOTS + TAB_BAR_ITEM_ENABLED_P)))
-    return false;
+    return Qnil;
 
   if (down_p)
     f->last_tab_bar_item = prop_idx;
@@ -13939,7 +13940,6 @@ tty_handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
         event->modifiers &= ~up_modifier;
 
       /* Generate a TAB_BAR_EVENT event.  */
-      Lisp_Object frame;
       Lisp_Object key = AREF (f->tab_bar_items,
 			      prop_idx * TAB_BAR_ITEM_NSLOTS
 			      + TAB_BAR_ITEM_KEY);
@@ -13954,18 +13954,12 @@ tty_handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
       if (event->code == 1) /* mouse-2 */
 	close_p = true;
 
-      event->code = 0;
-      XSETFRAME (frame, f);
-      event->kind = TAB_BAR_EVENT;
-      event->frame_or_window = frame;
-      event->arg = key;
-      if (close_p)
-	event->modifiers |= ctrl_modifier;
-      kbd_buffer_store_event (event);
       f->last_tab_bar_item = -1;
+
+      return list2 (key, close_p ? Qt : Qnil);
     }
 
-  return true;
+  return Qnil;
 }
 
 

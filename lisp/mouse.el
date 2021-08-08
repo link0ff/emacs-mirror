@@ -1361,7 +1361,7 @@ If PROPERTY is encountered in one of those places,
 its value is returned."
   (if (consp pos)
       (let ((w (posn-window pos)) (pt (posn-point pos))
-	    (str (posn-string pos)))
+	    (str (unless (eq (posn-area pos) 'tab-bar) (posn-string pos))))
         ;; FIXME: When STR has a `category' property and there's another
         ;; `category' property at PT, we should probably disregard the
         ;; `category' property at PT while doing the (get-char-property

@@ -224,39 +224,12 @@ a list of frames to update."
       (tab-bar--define-keys)
     (tab-bar--undefine-keys)))
 
-(defun tab-bar-mouse-select-tab (event)
-  (interactive "e")
-  (let* ((tab (nth 4 (event-start event)))
-         (binding (lookup-key (cons 'keymap (nreverse (current-active-maps)))
-                             (vector 'tab-bar tab))))
-    (if binding
-        (call-interactively binding)
-      (let ((tab-number (string-to-number
-                         (string-replace "tab-" "" (format "%S" tab)))))
-        (tab-bar-select-tab tab-number)))))
-
-(defun tab-bar-mouse-close-tab (event)
-  (interactive "e")
-  (let ((tab (nth 4 (event-start event))))
-    (tab-bar-close-tab tab)))
-
-(defun tab-bar-mouse-context-menu (event)
-  (interactive "e")
-  (if (and (listp event)
-           nil
-           (display-popup-menus-p)
-           (not tty-menu-open-use-tmm))
-      (x-popup-menu event (mouse-buffer-menu-map))
-    ;; tty menu doesn't support mouse clicks, so use tmm
-    (tmm-prompt (mouse-buffer-menu-keymap))))
-
 (defun tab-bar-handle-mouse (event)
   "Text-mode emulation of switching tabs on the tab bar.
 This command is used when you click the mouse in the tab bar
 on a console which has no window system but does have a mouse."
   (interactive "e")
-  (let* ((button (event-basic-type event))
-         (x-position (car (posn-x-y (event-start event))))
+  (let* ((x-position (car (posn-x-y (event-start event))))
          (keymap (lookup-key (cons 'keymap (nreverse (current-active-maps))) [tab-bar]))
          (column 0))
     (when x-position
@@ -265,9 +238,8 @@ on a console which has no window system but does have a mouse."
                  (lambda (key binding)
                    (when (eq (car-safe binding) 'menu-item)
                      (when (> (+ column (length (nth 1 binding))) x-position)
-                       (if (or (eq button 'mouse-2)
-                               (get-text-property
-                                (- x-position column) 'close-tab (nth 1 binding)))
+                       (if (get-text-property
+                            (- x-position column) 'close-tab (nth 1 binding))
                            (let* ((close-key (vector (intern (format "C-%s" key))))
                                   (close-def (lookup-key keymap close-key)))
                              (when close-def
@@ -278,6 +250,42 @@ on a console which has no window system but does have a mouse."
                  keymap))
         ;; Clicking anywhere outside existing tabs will add a new tab
         (tab-bar-new-tab)))))
+
+(defun tab-bar-mouse-select-tab (event)
+  (interactive "e")
+  (if (posn-window (event-start event))
+      (let* ((tab (posn-string (event-start event)))
+             (tab-symbol (nth 0 tab))
+             (tab-number (unless (eq tab-symbol 'current-tab)
+                           (string-to-number
+                            (string-replace "tab-" "" (format "%S" tab-symbol)))))
+             (tab-close (nth 1 tab)))
+        (if tab-close
+            (tab-bar-close-tab tab-number)
+          (let ((binding (lookup-key (cons 'keymap (nreverse (current-active-maps)))
+                                     (vector 'tab-bar tab-symbol))))
+            (if binding
+                (call-interactively binding)
+              (tab-bar-select-tab tab-number)))))
+    ;; TTY
+    (tab-bar-handle-mouse event)))
+
+(defun tab-bar-mouse-close-tab (event)
+  (interactive "e")
+  (let* ((tab (posn-string (event-start event)))
+         (tab-symbol (nth 0 tab))
+         (tab-number (string-to-number
+                      (string-replace "tab-" "" (format "%S" tab-symbol)))))
+    (tab-bar-close-tab tab-number)))
+
+(defun tab-bar-mouse-context-menu (event)
+  (interactive "e")
+  (if (and (listp event)
+           (display-popup-menus-p)
+           (not tty-menu-open-use-tmm))
+      (x-popup-menu event (mouse-buffer-menu-map))
+    ;; tty menu doesn't support mouse clicks, so use tmm
+    (tmm-prompt (mouse-buffer-menu-keymap))))
 
 (defun toggle-tab-bar-mode-from-frame (&optional arg)
   "Toggle tab bar on or off, based on the status of the current frame.
