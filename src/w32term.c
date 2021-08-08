@@ -5223,7 +5223,7 @@ w32_read_socket (struct terminal *terminal,
 		  inev.kind = NO_EVENT;
 
 		  if (!NILP (tab_bar_key))
-		    inev.arg = Fcons (Qtab_bar, tab_bar_key);
+		    inev.arg = tab_bar_key;
 
                 /* Is this in the tool-bar?  */
                 if (WINDOWP (f->tool_bar_window)

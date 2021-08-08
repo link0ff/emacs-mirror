@@ -13785,7 +13785,8 @@ handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
       f->last_tab_bar_item = -1;
     }
 
-  return list2 (AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY),
+  return list3 (Qtab_bar,
+		AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY),
 		close_p ? Qt : Qnil);
 }
 
@@ -13951,7 +13952,7 @@ tty_handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
   if ((x == clen - 1 || (clen > 1 && x == clen - 2)) && lastc == 'x')
     close_p = true;
 
-  return Fcons (Qtab_bar, list2 (key, close_p ? Qt : Qnil));
+  return list3 (Qtab_bar, key, close_p ? Qt : Qnil);
 }
 
 

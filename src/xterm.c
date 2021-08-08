@@ -9260,7 +9260,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
                     x_construct_mouse_click (&inev.ie, &event->xbutton, f);
 
 		  if (!NILP (tab_bar_key))
-		    inev.ie.arg = Fcons (Qtab_bar, tab_bar_key);
+		    inev.ie.arg = tab_bar_key;
                 }
             if (FRAME_X_EMBEDDED_P (f))
               xembed_send_message (f, event->xbutton.time,
