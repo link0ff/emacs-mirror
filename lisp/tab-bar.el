@@ -224,6 +224,32 @@ a list of frames to update."
       (tab-bar--define-keys)
     (tab-bar--undefine-keys)))
 
+(defun tab-bar-mouse-select-tab (event)
+  (interactive "e")
+  (let* ((tab (nth 4 (event-start event)))
+         (binding (lookup-key (cons 'keymap (nreverse (current-active-maps)))
+                             (vector 'tab-bar tab))))
+    (if binding
+        (call-interactively binding)
+      (let ((tab-number (string-to-number
+                         (string-replace "tab-" "" (format "%S" tab)))))
+        (tab-bar-select-tab tab-number)))))
+
+(defun tab-bar-mouse-close-tab (event)
+  (interactive "e")
+  (let ((tab (nth 4 (event-start event))))
+    (tab-bar-close-tab tab)))
+
+(defun tab-bar-mouse-context-menu (event)
+  (interactive "e")
+  (if (and (listp event)
+           nil
+           (display-popup-menus-p)
+           (not tty-menu-open-use-tmm))
+      (x-popup-menu event (mouse-buffer-menu-map))
+    ;; tty menu doesn't support mouse clicks, so use tmm
+    (tmm-prompt (mouse-buffer-menu-keymap))))
+
 (defun tab-bar-handle-mouse (event)
   "Text-mode emulation of switching tabs on the tab bar.
 This command is used when you click the mouse in the tab bar
@@ -618,19 +644,12 @@ the mode line.  Replacing `tab-bar-format-tabs' with
      `((,(intern (format "tab-%i" i))
         menu-item
         ,(funcall tab-bar-tab-name-format-function tab i)
-        ,(or
-          (alist-get 'binding tab)
-          `(lambda ()
-             (interactive)
-             (tab-bar-select-tab ,i)))
+        ,(alist-get 'binding tab)
         :help "Click to visit tab"))))
-   `((,(if (eq (car tab) 'current-tab) 'C-current-tab (intern (format "C-tab-%i" i)))
-      menu-item ""
-      ,(or
-        (alist-get 'close-binding tab)
-        `(lambda ()
-           (interactive)
-           (tab-bar-close-tab ,i)))))))
+   (when (alist-get 'close-binding tab)
+     `((,(if (eq (car tab) 'current-tab) 'C-current-tab (intern (format "C-tab-%i" i)))
+        menu-item ""
+        ,(alist-get 'close-binding tab))))))
 
 (defun tab-bar-format-tabs ()
   (let ((i 0))
@@ -771,8 +790,11 @@ on the tab bar instead."
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
   (append
-   '(keymap (mouse-1 . tab-bar-handle-mouse)
-            (mouse-2 . tab-bar-handle-mouse))
+   '(keymap (down-mouse-1 . tab-bar-mouse-select-tab)
+            (mouse-1 . ignore)
+            (down-mouse-2 . tab-bar-mouse-close-tab)
+            (mouse-2 . ignore)
+            (down-mouse-3 . tab-bar-mouse-context-menu))
    (tab-bar-format-list tab-bar-format)))
 
 

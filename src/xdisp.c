@@ -13745,7 +13745,7 @@ get_tab_bar_item (struct frame *f, int x, int y, struct glyph **glyph,
    false for button release.  MODIFIERS is event modifiers for button
    release.  */
 
-void
+Lisp_Object
 handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
 		      int modifiers, int button)
 {
@@ -13763,12 +13763,12 @@ handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
       /* If the button is released on a tab other than the one where
 	 it was pressed, don't generate the tab-bar button click event.  */
       || (ts != 0 && !down_p))
-    return;
+    return Qnil;
 
   /* If item is disabled, do nothing.  */
   enabled_p = AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_ENABLED_P);
   if (NILP (enabled_p))
-    return;
+    return Qnil;
 
   if (down_p)
     {
@@ -13779,24 +13779,13 @@ handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
     }
   else
     {
-      Lisp_Object key, frame;
-      struct input_event event;
-      EVENT_INIT (event);
-
       /* Show item in released state.  */
       if (!NILP (Vmouse_highlight))
 	show_mouse_face (hlinfo, DRAW_IMAGE_RAISED);
-
-      key = AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY);
-
-      XSETFRAME (frame, f);
-      event.kind = TAB_BAR_EVENT;
-      event.frame_or_window = frame;
-      event.arg = key;
-      event.modifiers = (close_p || button == 2) ? ctrl_modifier | modifiers : modifiers;
-      kbd_buffer_store_event (&event);
       f->last_tab_bar_item = -1;
     }
+
+  return AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY);
 }
 
 
