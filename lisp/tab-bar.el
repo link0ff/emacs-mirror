@@ -224,6 +224,11 @@ a list of frames to update."
       (tab-bar--define-keys)
     (tab-bar--undefine-keys)))
 
+(defun tab--symbol-to-number (symbol)
+  (unless (eq symbol 'current-tab)
+    (string-to-number
+     (string-replace "tab-" "" (format "%S" symbol)))))
+
 (defun tab-bar-handle-mouse (event)
   "Text-mode emulation of switching tabs on the tab bar.
 This command is used when you click the mouse in the tab bar
@@ -238,16 +243,12 @@ on a console which has no window system but does have a mouse."
                  (lambda (key binding)
                    (when (eq (car-safe binding) 'menu-item)
                      (when (> (+ column (length (nth 1 binding))) x-position)
-                       (let* ((tab-symbol key)
-                              (tab-number (unless (eq tab-symbol 'current-tab)
-                                            (string-to-number
-                                             (string-replace "tab-" "" (format "%S" tab-symbol))))))
-                         (if (get-text-property
-                              (- x-position column) 'close-tab (nth 1 binding))
-                             (tab-bar-close-tab tab-number)
-                           (if (nth 2 binding)
-                               (call-interactively (nth 2 binding))
-                             (tab-bar-select-tab tab-number))))
+                       (if (get-text-property
+                            (- x-position column) 'close-tab (nth 1 binding))
+                           (tab-bar-close-tab (tab--symbol-to-number key))
+                         (if (nth 2 binding)
+                             (call-interactively (nth 2 binding))
+                           (tab-bar-select-tab (tab--symbol-to-number key))))
                        (throw 'done t))
                      (setq column (+ column (length (nth 1 binding))))))
                  keymap))
@@ -259,11 +260,8 @@ on a console which has no window system but does have a mouse."
   (if (posn-window (event-start event))
       (let* ((tab (posn-string (event-start event)))
              (tab-symbol (nth 0 tab))
-             (tab-number (unless (eq tab-symbol 'current-tab)
-                           (string-to-number
-                            (string-replace "tab-" "" (format "%S" tab-symbol)))))
-             (tab-close (nth 1 tab)))
-        (if tab-close
+             (tab-number (tab--symbol-to-number tab-symbol)))
+        (if (nth 1 tab)
             (tab-bar-close-tab tab-number)
           (let ((binding (lookup-key (cons 'keymap (nreverse (current-active-maps)))
                                      (vector 'tab-bar tab-symbol))))
@@ -275,20 +273,21 @@ on a console which has no window system but does have a mouse."
 
 (defun tab-bar-mouse-close-tab (event)
   (interactive "e")
-  (let* ((tab (posn-string (event-start event)))
-         (tab-symbol (nth 0 tab))
-         (tab-number (string-to-number
-                      (string-replace "tab-" "" (format "%S" tab-symbol)))))
-    (tab-bar-close-tab tab-number)))
+  (tab-bar-close-tab (tab--symbol-to-number
+                      (nth 0 (posn-string (event-start event))))))
 
 (defun tab-bar-mouse-context-menu (event)
   (interactive "e")
-  (if (and (listp event)
-           (display-popup-menus-p)
-           (not tty-menu-open-use-tmm))
-      (x-popup-menu event (mouse-buffer-menu-map))
-    ;; tty menu doesn't support mouse clicks, so use tmm
-    (tmm-prompt (mouse-buffer-menu-keymap))))
+  (let* ((tab (posn-string (event-start event)))
+         (tab-number (tab--symbol-to-number (nth 0 tab)))
+         (menu (make-sparse-keymap "Context Menu")))
+
+    (define-key-after menu [close]
+      `(menu-item "Close" (lambda () (interactive)
+                            (tab-bar-close-tab ,tab-number))
+                  :help "Close the tab"))
+
+    (popup-menu menu event)))
 
 (defun toggle-tab-bar-mode-from-frame (&optional arg)
   "Toggle tab bar on or off, based on the status of the current frame.
