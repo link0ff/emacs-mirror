@@ -238,13 +238,16 @@ on a console which has no window system but does have a mouse."
                  (lambda (key binding)
                    (when (eq (car-safe binding) 'menu-item)
                      (when (> (+ column (length (nth 1 binding))) x-position)
-                       (if (get-text-property
-                            (- x-position column) 'close-tab (nth 1 binding))
-                           (let* ((close-key (vector (intern (format "C-%s" key))))
-                                  (close-def (lookup-key keymap close-key)))
-                             (when close-def
-                               (call-interactively close-def)))
-                         (call-interactively (nth 2 binding)))
+                       (let* ((tab-symbol key)
+                              (tab-number (unless (eq tab-symbol 'current-tab)
+                                            (string-to-number
+                                             (string-replace "tab-" "" (format "%S" tab-symbol))))))
+                         (if (get-text-property
+                              (- x-position column) 'close-tab (nth 1 binding))
+                             (tab-bar-close-tab tab-number)
+                           (if (nth 2 binding)
+                               (call-interactively (nth 2 binding))
+                             (tab-bar-select-tab tab-number))))
                        (throw 'done t))
                      (setq column (+ column (length (nth 1 binding))))))
                  keymap))
