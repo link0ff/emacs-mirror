@@ -181,7 +181,8 @@ nor t.
 +++
 ** New user option 'read-minibuffer-restore-windows'.
 When customized to nil, it uses 'minibuffer-restore-windows' in
-'minibuffer-exit-hook' to remove only the *Completions* window.
+'minibuffer-exit-hook' to remove only the window showing the
+"*Completions*" buffer.
 
 +++
 ** New system for displaying documentation for groups of functions.
@@ -797,7 +798,7 @@ The method of highlighting is specified by the user options
 'next-error-highlight' and 'next-error-highlight-no-select'.
 
 ---
-*** A fringe arrow in the '*Occur*' buffer indicates the selected match.
+*** A fringe arrow in the "*Occur*" buffer indicates the selected match.
 
 ---
 *** Occur mode may use a different type for 'occur-target' property values.
@@ -817,7 +818,7 @@ It is now defined as a generalized variable that can be used with
 
 ---
 *** 'form' in '(eql form)' specializers in 'cl-defmethod' is now evaluated.
-This corresponds to the behaviour of defmethod in Common Lisp Object System.
+This corresponds to the behavior of defmethod in Common Lisp Object System.
 For compatibility, '(eql SYMBOL)' does not evaluate SYMBOL, for now.
 
 ** New minor mode 'cl-font-lock-built-in-mode' for 'lisp-mode'.
@@ -1554,8 +1555,10 @@ like cell phones, tablets or cameras.
 *** New connection method "sshfs", which allows accessing remote files
 via a file system mounted with 'sshfs'.
 
----
-*** Tramp supports authentication via yubikey now.
++++
+*** Tramp supports SSH authentication via a hardware security key now.
+This requires at least OpenSSH 8.2, and a FIDO U2F compatible
+security key, like yubikey, solokey, or nitrokey.
 
 +++
 *** Trashed remote files are moved to the local trash directory.
@@ -1984,7 +1987,7 @@ to prevent aliasing and other unwanted effects.  The new image
 property ':transform-smoothing' can be set to t to force smoothing
 and nil to disable smoothing.
 
-The default behaviour of smoothing on down-scaling and not smoothing
+The default behavior of smoothing on down-scaling and not smoothing
 on up-scaling remains unchanged.
 
 +++
@@ -2078,11 +2081,12 @@ project's root directory, respectively.
 This command lets you interactively remove an entry from the list of projects
 in 'project-list-file'.
 
-*** 'project-find-file' now accepts non-existent file names (to
-facilitate creating a file inside some nested sub-directory easily).
+*** 'project-find-file' now accepts non-existent file names.
+This is to allow easy creation of files inside some nested
+sub-directory.
 
-*** 'project-find-file' doesn't use the string at point as default
-input, now it's only suggested as part of "future history".
+*** 'project-find-file' doesn't use the string at point as default input.
+Now it's only suggested as part of the "future history".
 
 ** xref
 
@@ -2983,7 +2987,7 @@ command, which updates the syntax highlighting in the current buffer.
 
 ** In 'f90-mode', the backslash character ('\') no longer escapes.
 For about a decade, the backslash character has no longer had a
-special escape syntax in Fortran F90.  To get the old behaviour back,
+special escape syntax in Fortran F90.  To get the old behavior back,
 say something like:
 
     (modify-syntax-entry ?\\ "\\" f90-mode-syntax-table)
@@ -3699,8 +3703,10 @@ Emacs constructs the nondirectory part of the auto-save file name by
 applying that 'secure-hash' to the buffer file name.  This avoids any
 risk of excessively long file names.
 
-** New variable 'etags-xref-prefer-current-file' to change the order
-of definitions returned by the etags Xref backend.
+---
+** New user option 'etags-xref-prefer-current-file'.
+When non-nil, matches for identifiers in the file visited by the
+current buffer will be shown first in the "*xref*" buffer.
 
 
 * Changes in Emacs 28.1 on Non-Free Operating Systems
