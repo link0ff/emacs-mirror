@@ -559,6 +559,10 @@ The new 'cl-type' pattern compares types using 'cl-typep', which allows
 comparing simple types like '(cl-type integer)', as well as forms like
 '(cl-type (integer 0 10))'.
 
+*** New macro 'pcase-setq'
+This macro is the 'setq' equivalent of 'pcase-let', which allows for
+destructuring patterns in a 'setq' form.
+
 +++
 ** profiler.el
 The results displayed by 'profiler-report' now have the usage figures
@@ -2399,6 +2403,20 @@ When non-nil, this option suppresses lock files for remote files.
 *** New minor mode 'lock-file-mode'.
 This command, called interactively, toggles the local value of
 'create-lockfiles' in the current buffer.
+
+** image-dired
+
+---
+*** 'image-dired-mouse-toggle-mark' now toggles files in the active region.
+
++++
+*** New user option 'image-dired-thumb-visible-marks'.
+If non-nil (the default), use 'image-dired-thumb-mark' to say what
+images are marked.
+
+*** New command 'image-dired-tag-marked-thumbnails'.
+
+*** New command 'image-dired-delete-marked'.
 
 ** Miscellaneous
 
