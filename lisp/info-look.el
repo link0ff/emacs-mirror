@@ -901,6 +901,12 @@ Return nil if there is nothing appropriate in the buffer near point."
  :parse-rule "[$@%]?\\([_a-zA-Z0-9]+\\|[^a-zA-Z]\\)")
 
 (info-lookup-maybe-add-help
+ :mode 'python-mode
+ :doc-spec `((,(if (Info-find-file "python3.9" t)
+                   "(python3.9)Index"
+                 "(python)Index"))))
+
+(info-lookup-maybe-add-help
  :mode 'cperl-mode
  :regexp "[$@%][^a-zA-Z]\\|\\$\\^[A-Z]\\|[$@%]?[a-zA-Z][_a-zA-Z0-9]*"
  :other-modes '(perl-mode))
