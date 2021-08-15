@@ -6649,8 +6649,9 @@ is temporarily turned on.  Furthermore, the mark will be deactivated
 by any subsequent point motion key that was not shift-translated, or
 by any action that normally deactivates the mark in Transient Mark mode.
 
-When the value is `permanent', the mark will not be deactivated
-by any subsequent point motion key that was not shift-translated.
+When the value is `permanent', the mark will be deactivated by any
+action which normally does that, but not by motion keys that were
+not shift-translated.
 
 See `this-command-keys-shift-translated' for the meaning of
 shift-translation."
