@@ -328,11 +328,13 @@ the same menu with changes such as added new menu items."
   "Major mode submenus."
   (run-hooks 'activate-menubar-hook 'menu-bar-update-hook)
   (define-key-after menu [separator-local] menu-bar-separator)
-  (map-keymap (lambda (key binding)
-                (when (consp binding)
-                  (define-key-after menu (vector key)
-                    (copy-sequence binding))))
-              (local-key-binding [menu-bar]))
+  (let ((keymap (local-key-binding [menu-bar])))
+    (when keymap
+      (map-keymap (lambda (key binding)
+                    (when (consp binding)
+                      (define-key-after menu (vector key)
+                        (copy-sequence binding))))
+                  keymap)))
   menu)
 
 (defun context-menu-minor (menu)
