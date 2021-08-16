@@ -285,6 +285,16 @@ on a console which has no window system but does have a mouse."
 
     (popup-menu menu event)))
 
+(defun tab-bar-mouse-move-tab (event)
+  (interactive "e")
+  (let* ((caption (car (posn-string (event-start event))))
+         (item (and caption (get-text-property 0 'menu-item caption)))
+         (from (tab--key-to-number (nth 0 item)))
+         (caption (car (posn-string (event-end event))))
+         (item (and caption (get-text-property 0 'menu-item caption)))
+         (to (tab--key-to-number (nth 0 item))))
+    (tab-bar-move-tab-to to from)))
+
 (defun toggle-tab-bar-mode-from-frame (&optional arg)
   "Toggle tab bar on or off, based on the status of the current frame.
 Used in the Show/Hide menu, to have the toggle reflect the current frame.
