@@ -27,10 +27,7 @@
 ;; bindings for the global tab bar.
 
 ;; The normal global binding for [tab-bar] (below) uses the value of
-;; `tab-bar-map' as the actual keymap to define the tab bar.  Modes
-;; may either bind items under the [tab-bar] prefix key of the local
-;; map to add to the global bar or may set `tab-bar-map'
-;; buffer-locally to override it.
+;; `tab-bar-map' as the actual keymap to define the tab bar.
 
 ;;; Code:
 
@@ -312,24 +309,31 @@ new frame when the global `tab-bar-mode' is enabled, by using
   (set-frame-parameter frame 'tab-bar-lines-keep-state
                        (not (frame-parameter frame 'tab-bar-lines-keep-state))))
 
-(defvar tab-bar-map (make-sparse-keymap)
-  "Keymap for the tab bar.
-Define this locally to override the global tab bar.")
+(defvar tab-bar-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [down-mouse-1] 'tab-bar-mouse-select-tab)
+    (define-key map [mouse-1] 'ignore)
+    (define-key map [down-mouse-2] 'tab-bar-mouse-close-tab)
+    (define-key map [mouse-2] 'ignore)
+    (define-key map [down-mouse-3] 'tab-bar-mouse-context-menu)
+
+    (global-set-key [mouse-4] 'tab-previous)
+    (global-set-key [mouse-5] 'tab-next)
+    ;; [tab-line wheel-up]
+    ;; S- move
+
+    map)
+  "Keymap for the commands used on the tab bar.")
 
 (global-set-key [tab-bar]
                 `(menu-item ,(purecopy "tab bar") ignore
                             :filter tab-bar-make-keymap))
 
-(defconst tab-bar-keymap-cache (make-hash-table :weakness t :test 'equal))
-
 (defun tab-bar-make-keymap (&optional _ignore)
   "Generate an actual keymap from `tab-bar-map'.
-Its main job is to show tabs in the tab bar."
-  (if (= 1 (length tab-bar-map))
-      (tab-bar-make-keymap-1)
-    (let ((key (cons (frame-terminal) tab-bar-map)))
-      (or (gethash key tab-bar-keymap-cache)
-          (puthash key tab-bar-map tab-bar-keymap-cache)))))
+Its main job is to show tabs in the tab bar
+and to bind mouse events to the commands."
+  (tab-bar-make-keymap-1))
 
 
 (defcustom tab-bar-show t
@@ -793,13 +797,7 @@ on the tab bar instead."
 
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
-  (append
-   '(keymap (down-mouse-1 . tab-bar-mouse-select-tab)
-            (mouse-1 . ignore)
-            (down-mouse-2 . tab-bar-mouse-close-tab)
-            (mouse-2 . ignore)
-            (down-mouse-3 . tab-bar-mouse-context-menu))
-   (tab-bar-format-list tab-bar-format)))
+  (append tab-bar-map (tab-bar-format-list tab-bar-format)))
 
 
 ;; Some window-configuration parameters don't need to be persistent.
