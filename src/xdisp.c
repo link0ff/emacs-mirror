@@ -13759,10 +13759,7 @@ handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
 
   frame_to_window_pixel_xy (w, &x, &y);
   ts = get_tab_bar_item (f, x, y, &glyph, &hpos, &vpos, &prop_idx, &close_p);
-  if (ts == -1
-      /* If the button is released on a tab other than the one where
-	 it was pressed, don't generate the tab-bar button click event.  */
-      || (ts != 0 && !down_p))
+  if (ts == -1)
     return Qnil;
 
   /* If item is disabled, do nothing.  */
@@ -13785,9 +13782,18 @@ handle_tab_bar_click (struct frame *f, int x, int y, bool down_p,
       f->last_tab_bar_item = -1;
     }
 
-  return list3 (Qtab_bar,
-		AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY),
-		close_p ? Qt : Qnil);
+  Lisp_Object caption =
+    Fcopy_sequence (AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_CAPTION));
+
+  AUTO_LIST2 (props, Qmenu_item,
+	      list3 (AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_KEY),
+		     AREF (f->tab_bar_items, prop_idx + TAB_BAR_ITEM_BINDING),
+		     close_p ? Qt : Qnil));
+
+  Fadd_text_properties (make_fixnum (0), make_fixnum (SCHARS (caption)),
+			props, caption);
+
+  return Fcons (Qtab_bar, Fcons (caption, make_fixnum (0)));
 }
 
 

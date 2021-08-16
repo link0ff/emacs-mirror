@@ -1364,7 +1364,7 @@ If PROPERTY is encountered in one of those places,
 its value is returned."
   (if (consp pos)
       (let ((w (posn-window pos)) (pt (posn-point pos))
-	    (str (unless (eq (posn-area pos) 'tab-bar) (posn-string pos))))
+	    (str (posn-string pos)))
         ;; FIXME: When STR has a `category' property and there's another
         ;; `category' property at PT, we should probably disregard the
         ;; `category' property at PT while doing the (get-char-property
@@ -1374,10 +1374,10 @@ its value is returned."
             ;; Mouse clicks in the fringe come with a position in
             ;; (nth 5).  This is useful but is not exactly where we clicked, so
             ;; don't look up that position's properties!
-	    (and pt (not (memq (posn-area pos) '(left-fringe right-fringe
-                                                 left-margin right-margin
-                                                 tab-bar)))
-		 (get-char-property pt property w))))
+            (and pt (not (memq (posn-area pos)
+                               '(left-fringe right-fringe
+                                 left-margin right-margin tab-bar)))
+                 (get-char-property pt property w))))
     (get-char-property pos property)))
 
 (defun mouse-on-link-p (pos)

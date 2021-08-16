@@ -221,10 +221,10 @@ a list of frames to update."
       (tab-bar--define-keys)
     (tab-bar--undefine-keys)))
 
-(defun tab--symbol-to-number (symbol)
-  (unless (eq symbol 'current-tab)
+(defun tab--key-to-number (key)
+  (unless (or (null key) (eq key 'current-tab))
     (string-to-number
-     (string-replace "tab-" "" (format "%S" symbol)))))
+     (string-replace "tab-" "" (format "%S" key)))))
 
 (defun tab-bar-handle-mouse (event)
   "Text-mode emulation of switching tabs on the tab bar.
@@ -242,10 +242,10 @@ on a console which has no window system but does have a mouse."
                      (when (> (+ column (length (nth 1 binding))) x-position)
                        (if (get-text-property
                             (- x-position column) 'close-tab (nth 1 binding))
-                           (tab-bar-close-tab (tab--symbol-to-number key))
+                           (tab-bar-close-tab (tab--key-to-number key))
                          (if (nth 2 binding)
                              (call-interactively (nth 2 binding))
-                           (tab-bar-select-tab (tab--symbol-to-number key))))
+                           (tab-bar-select-tab (tab--key-to-number key))))
                        (throw 'done t))
                      (setq column (+ column (length (nth 1 binding))))))
                  keymap))
@@ -255,28 +255,27 @@ on a console which has no window system but does have a mouse."
 (defun tab-bar-mouse-select-tab (event)
   (interactive "e")
   (if (posn-window (event-start event))
-      (let* ((tab (posn-string (event-start event)))
-             (tab-symbol (nth 0 tab))
-             (tab-number (tab--symbol-to-number tab-symbol)))
-        (if (nth 1 tab)
-            (tab-bar-close-tab tab-number)
-          (let ((binding (lookup-key (cons 'keymap (nreverse (current-active-maps)))
-                                     (vector 'tab-bar tab-symbol))))
-            (if binding
-                (call-interactively binding)
-              (tab-bar-select-tab tab-number)))))
+      (let* ((caption (car (posn-string (event-start event))))
+             (item (and caption (get-text-property 0 'menu-item caption))))
+        (if (nth 2 item)
+            (tab-bar-close-tab (tab--key-to-number (nth 0 item)))
+          (if (functionp (nth 1 item))
+              (call-interactively (nth 1 item))
+            (tab-bar-select-tab (tab--key-to-number (nth 0 item))))))
     ;; TTY
     (tab-bar-handle-mouse event)))
 
 (defun tab-bar-mouse-close-tab (event)
   (interactive "e")
-  (tab-bar-close-tab (tab--symbol-to-number
-                      (nth 0 (posn-string (event-start event))))))
+  (let* ((caption (car (posn-string (event-start event))))
+         (item (and caption (get-text-property 0 'menu-item caption))))
+    (tab-bar-close-tab (tab--key-to-number (nth 0 item)))))
 
 (defun tab-bar-mouse-context-menu (event)
   (interactive "e")
-  (let* ((tab (posn-string (event-start event)))
-         (tab-number (tab--symbol-to-number (nth 0 tab)))
+  (let* ((caption (car (posn-string (event-start event))))
+         (item (and caption (get-text-property 0 'menu-item caption)))
+         (tab-number (tab--key-to-number (nth 0 item)))
          (menu (make-sparse-keymap "Context Menu")))
 
     (define-key-after menu [close]
@@ -312,6 +311,7 @@ new frame when the global `tab-bar-mode' is enabled, by using
 (defvar tab-bar-map
   (let ((map (make-sparse-keymap)))
     (define-key map [down-mouse-1] 'tab-bar-mouse-select-tab)
+    (define-key map [drag-mouse-1] 'tab-bar-mouse-move-tab)
     (define-key map [mouse-1] 'ignore)
     (define-key map [down-mouse-2] 'tab-bar-mouse-close-tab)
     (define-key map [mouse-2] 'ignore)
@@ -910,11 +910,13 @@ ARG counts from 1.  Negative ARG counts tabs from the end of the tab bar."
     (let ((key (event-basic-type last-command-event)))
       (setq arg (if (and (characterp key) (>= key ?1) (<= key ?9))
                     (- key ?0)
-                  1))))
+                  0))))
 
   (let* ((tabs (funcall tab-bar-tabs-function))
          (from-index (tab-bar--current-tab-index tabs))
-         (to-index (if (< arg 0) (+ (length tabs) (1+ arg)) arg))
+         (to-index (cond ((< arg 0) (+ (length tabs) (1+ arg)))
+                         ((zerop arg) (1+ from-index))
+                         (t arg)))
          (to-index (1- (max 1 (min to-index (length tabs))))))
 
     (unless (eq from-index to-index)
