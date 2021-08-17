@@ -381,8 +381,18 @@ onto 'file-name-history'.
 +++
 ** A prefix arg now causes 'delete-other-frames' to only iconify frames.
 
+** Menus
+
 +++
-** The "Edit => Clear" menu item now obeys a rectangular region.
+*** New minor mode 'context-menu-mode' for context menus popped by 'mouse-3'.
+When this mode is enabled, clicking 'down-mouse-3' anywhere in the buffer
+pops up a menu whose contents depends on surrounding context near the
+mouse click.  You can customize the order of the default sub-menus in
+the context menu by customizing the user option
+'context-menu-functions'.
+
++++
+*** The "Edit => Clear" menu item now obeys a rectangular region.
 
 +++
 ** New command 'execute-extended-command-for-buffer'.
