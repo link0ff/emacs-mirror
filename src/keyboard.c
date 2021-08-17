@@ -5653,7 +5653,7 @@ make_lispy_event (struct input_event *event)
 	    if (CONSP (event->arg) && EQ (XCAR (event->arg), Qtab_bar))
 	      {
 		XSETCAR (XCDR (position), Qtab_bar);
-		position = nconc2(position, Fcons (XCDR (event->arg), Qnil));
+		position = nconc2 (position, Fcons (XCDR (event->arg), Qnil));
 	      }
 	  }
 #ifndef USE_TOOLKIT_SCROLL_BARS
