@@ -396,7 +396,7 @@ the same menu with changes such as added new menu items."
                            "\\[ns-copy-including-secondary]"
                          "\\[kill-ring-save]")))
   (define-key-after menu [paste]
-    `(menu-item "Paste" mouse-yank-primary
+    `(menu-item "Paste" mouse-yank-at-click
                 :visible (funcall
                           ',(lambda ()
                               (and (or
@@ -442,6 +442,7 @@ the same menu with changes such as added new menu items."
 
 (defvar context-menu--old-down-mouse-3 nil)
 (defvar context-menu--old-mouse-3 nil)
+(defvar context-menu--old-menu nil)
 
 (define-minor-mode context-menu-mode
   "Toggle Context Menu mode.
@@ -454,8 +455,13 @@ activates the menu whose contents depends on its surrounding context."
     (setq context-menu--old-mouse-3 (global-key-binding [mouse-3]))
     (global-unset-key [mouse-3])
     (setq context-menu--old-down-mouse-3 (global-key-binding [down-mouse-3]))
-    (global-set-key [down-mouse-3] context-menu-entry))
+    (global-set-key [down-mouse-3] context-menu-entry)
+    (setq context-menu--old-menu (global-key-binding [menu]))
+    (global-set-key [menu] context-menu-entry))
    (t
+    (when context-menu--old-menu
+      (global-set-key [menu] context-menu--old-menu)
+      (setq context-menu--old-menu nil))
     (if (not context-menu--old-down-mouse-3)
         (global-unset-key [down-mouse-3])
       (global-set-key [down-mouse-3] context-menu--old-down-mouse-3)
@@ -463,6 +469,14 @@ activates the menu whose contents depends on its surrounding context."
     (when context-menu--old-mouse-3
       (global-set-key [mouse-3] context-menu--old-mouse-3)
       (setq context-menu--old-mouse-3 nil)))))
+
+(defun context-menu-open ()
+  "Start key navigation of the context menu.
+This is the keyboard interface to \\[context-menu-map]."
+  (interactive)
+  (popup-menu (context-menu-map) (point)))
+
+(global-set-key [S-f10] 'context-menu-open)
 
 
 ;; Commands that operate on windows.
