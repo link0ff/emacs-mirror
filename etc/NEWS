@@ -2466,13 +2466,14 @@ images are marked.
 
 +++
 *** New user option 'file-preserve-symlinks-on-save'.
-This controls what Emacs does when saving buffers visited via a
-symbolic link, and 'file-precious-flag' is non-nil.
+This controls what Emacs does when saving buffers that visit files via
+symbolic links, and 'file-precious-flag' is non-nil.
 
 +++
 *** New user option 'copy-directory-create-symlink'.
 If non-nil, will make `copy-directory' (when used on a symbolic
-link) copy the link instead of following the link.
+link) copy the link instead of following the link.  The default is
+nil, so the default behavior is unchanged.
 
 +++
 *** New function 'replace-regexp-in-region'.
@@ -3110,6 +3111,12 @@ This is to keep the same behavior as Eshell.
 
 
 * Incompatible Lisp Changes in Emacs 28.1
+
+---
+** 'parse-partial-sexp' now signals an error if TO is smaller than FROM.
+Previously this would lead to the function interpreting FROM as TO and
+vice versa, which would be confusing when passing in OLDSTATE, which
+refers to the old state at FROM.
 
 +++
 ** 'overlays-in' now handles zero-length overlays slightly differently.
