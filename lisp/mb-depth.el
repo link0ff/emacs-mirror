@@ -68,13 +68,14 @@ Use the face `minibuffer-depth-nonselected'."
 (defvar-local minibuffer-depth-nonselected-overlay nil)
 
 (defun minibuffer-depth-select (w)
-  (if (eq (window-buffer w) (current-buffer))
+  (if (eq w (selected-window))
       (when (overlayp minibuffer-depth-nonselected-overlay)
         (delete-overlay minibuffer-depth-nonselected-overlay))
     (unless (eq major-mode 'completion-list-mode)
       (with-current-buffer (window-buffer w)
         (let ((ov (make-overlay (point-min) (point-max))))
           (overlay-put ov 'face 'minibuffer-depth-nonselected)
+          (overlay-put ov 'window w)
           (overlay-put ov 'evaporate t)
           (setq minibuffer-depth-nonselected-overlay ov))))))
 
@@ -95,7 +96,7 @@ The prompt should already have been inserted."
                              " ")))
       (overlay-put minibuffer-depth-overlay 'evaporate t)))
   (when minibuffer-depth-indicate-nonselected
-    (add-hook 'window-state-change-functions 'minibuffer-depth-select nil t)))
+    (add-hook 'window-selection-change-functions 'minibuffer-depth-select nil t)))
 
 ;;;###autoload
 (define-minor-mode minibuffer-depth-indicate-mode
