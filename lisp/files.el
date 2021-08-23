@@ -5033,7 +5033,7 @@ FILENAME has the format of a directory.
 See also `file-name-sans-extension'."
   (let ((extn (string-trim-left extension "[.]")))
     (cond ((string-empty-p filename)
-           (error "Empty filename: %s" filename))
+           (error "Empty filename"))
           ((string-empty-p extn)
            (error "Malformed extension: %s" extension))
           ((directory-name-p filename)
@@ -7501,7 +7501,7 @@ normally equivalent short `-D' option is just passed on to
 			      (unless (equal switches "")
 				;; Split the switches at any spaces so we can
 				;; pass separate options as separate args.
-				(split-string-shell-command switches)))
+				(split-string-and-unquote switches)))
 			    ;; Avoid lossage if FILE starts with `-'.
 			    '("--")
 			    (list file))))))
