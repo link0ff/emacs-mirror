@@ -310,6 +310,7 @@ the same menu with changes such as added new menu items."
                       (lambda (fun)
                         (setq menu (funcall fun menu))
                         nil))
+    ;; TODO: remove double separators
     (when (functionp context-menu-filter-function)
       (setq menu (funcall context-menu-filter-function menu)))
     menu))
@@ -473,7 +474,8 @@ activates the menu whose contents depends on its surrounding context."
   "Start key navigation of the context menu.
 This is the keyboard interface to \\[context-menu-map]."
   (interactive)
-  (popup-menu (context-menu-map) (point)))
+  (let ((inhibit-event-check t))
+    (popup-menu (context-menu-map) (point))))
 
 (global-set-key [S-f10] 'context-menu-open)
 
