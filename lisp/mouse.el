@@ -474,7 +474,7 @@ activates the menu whose contents depends on its surrounding context."
   "Start key navigation of the context menu.
 This is the keyboard interface to \\[context-menu-map]."
   (interactive)
-  (let ((inhibit-event-check t))
+  (let ((inhibit-mouse-event-check t))
     (popup-menu (context-menu-map) (point))))
 
 (global-set-key [S-f10] 'context-menu-open)
