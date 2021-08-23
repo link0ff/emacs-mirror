@@ -314,6 +314,17 @@ the same menu with changes such as added new menu items."
       (setq menu (funcall context-menu-filter-function menu)))
     menu))
 
+(defun context-menu-toolbar (menu)
+  "Tool bar menu items."
+  (run-hooks 'activate-menubar-hook 'menu-bar-update-hook)
+  (define-key-after menu [separator-toolbar] menu-bar-separator)
+  (map-keymap (lambda (key binding)
+                (when (consp binding)
+                  (define-key-after menu (vector key)
+                    (copy-sequence binding))))
+              (lookup-key global-map [tool-bar]))
+  menu)
+
 (defun context-menu-global (menu)
   "Global submenus."
   (run-hooks 'activate-menubar-hook 'menu-bar-update-hook)
