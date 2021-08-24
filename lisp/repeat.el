@@ -402,6 +402,8 @@ See `describe-repeat-maps' for a list of all repeatable command."
                (length commands)
                (length (delete-dups keymaps))))))
 
+(defvar repeat-allow-other-key t)
+
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
   (let ((was-in-progress repeat-in-progress))
@@ -417,7 +419,8 @@ See `describe-repeat-maps' for a list of all repeatable command."
 
             ;; Exit when the last char is not among repeatable keys,
             ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
-            (when (and (or (lookup-key map (this-command-keys-vector))
+            (when (and (or (or repeat-allow-other-key
+                               (commandp (lookup-key map (this-command-keys-vector))))
                            prefix-arg)
                        ;; TODO: check is still the same level to allow starting sequence in prompt
                        (zerop (minibuffer-depth)))
