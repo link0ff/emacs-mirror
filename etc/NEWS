@@ -375,6 +375,13 @@ emulators by using the new input-meta-mode with the special value
 This parameter, similar to 'drag-with-header-line', allows moving frames
 by dragging the tab lines of their topmost windows with the mouse.
 
+---
+** 'ansi-color' now supports "bright" color codes.
+"Bright" ANSI color codes are now displayed when applying ANSI color
+filters using the color values defined in 'ansi-bright-color-names-vector'.
+In addition, bold text with regular ANSI colors can be displayed as
+"bright" if 'ansi-color-bold-is-bright' is non-nil.
+
 
 * Editing Changes in Emacs 28.1
 
@@ -1565,10 +1572,6 @@ If non-nil, 'shell-mode' handles implicit "cd" commands, changing the
 directory if the command is a directory.  Useful for shells like "zsh"
 that has this feature.
 
-+++
-*** 'comint-delete-output' can now save deleted text in the kill-ring.
-Interactively, 'C-u C-c C-o' triggers this new optional behavior.
-
 ** Eshell
 
 ---
@@ -2371,6 +2374,13 @@ based on the current window size.  In previous versions of Emacs, this
 was always done (and that could lead to odd displays when resizing the
 window after starting).  This variable defaults to nil.
 
+---
+*** 'term-mode' now supports "bright" color codes.
+"Bright" ANSI color codes are now displayed using the color values
+defined in 'term-color-bright-*'.  In addition, bold text with regular
+ANSI colors can be displayed as "bright" if 'ansi-color-bold-is-bright'
+is non-nil.
+
 ** Widget
 
 +++
@@ -3029,6 +3039,21 @@ default are unaffected.)
 'so-long-mode-preserved-variables' allow specified mode and variable
 states to be maintained if 'so-long-mode' replaces the original major
 mode.  By default, these new options support 'view-mode'.
+
+** Comint
+
++++
+*** Support for OSC escape sequences.
+Adding the new 'comint-osc-process-output' to
+'comint-output-filter-functions' enables the interpretation of OSC
+("Operating System Command") escape sequences in comint buffers.  By
+default, only OSC 8, for hyperlinks, is acted upon.  Adding more
+entries to `comint-osc-handlers' allows a customized treatment of
+further escape sequences.
+
++++
+*** 'comint-delete-output' can now save deleted text in the kill-ring.
+Interactively, 'C-u C-c C-o' triggers this new optional behavior.
 
 
 * New Modes and Packages in Emacs 28.1

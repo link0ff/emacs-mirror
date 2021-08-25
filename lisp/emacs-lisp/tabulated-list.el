@@ -519,6 +519,8 @@ changing `tabulated-list-sort-key'."
 ;; <<<<<<< HEAD
     saved-pt))
 ;; ||||||| ff796823e5
+;;    (when update
+;;      (delete-region (point) (point-max)))
 ;;     (set-buffer-modified-p nil)
 ;;     ;; If REMEMBER-POS was specified, move to the "old" location.
 ;;     (if saved-pt
