@@ -2436,6 +2436,12 @@ that makes it a valid button.
 *** New variable 'thing-at-point-provider-alist'.
 This allows mode-specific alterations to how 'thing-at-point' works.
 
+---
+*** thingatpt now respects fields.
+'thing-at-point' (and all functions that use it, like
+'symbol-at-point') will narrow to the current field (if any) before
+trying to identify the thing at point.
+
 ** Enriched mode
 
 ---
@@ -3847,6 +3853,11 @@ locales.  They are also available as aliases 'ebcdic-cp-*' (e.g.,
 'ebcdic-cp-fi' for the Finnish variant 'ibm278'), and 'cp2xx' (e.g.,
 'cp278' for 'ibm278').  There are also new charsets 'ibm2xx' to
 support these coding-systems.
+
+---
+** New function 'get-locale-names'.
+This utility function returns a list of locale names on the current
+system.
 
 ---
 ** 'while-no-input-ignore-events' accepts more special events.
