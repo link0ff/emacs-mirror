@@ -567,7 +567,8 @@ it will display time aligned to the right on the tab bar instead of
 the mode line.  Replacing `tab-bar-format-tabs' with
 `tab-bar-format-tabs-groups' will group tabs on the tab bar."
   :type 'hook
-  :options '(tab-bar-format-history
+  :options '(tab-bar-format-menu ;; like "add" icon here and tab-line
+             tab-bar-format-history
              tab-bar-format-tabs
              tab-bar-format-tabs-groups
              tab-bar-separator

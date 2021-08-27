@@ -442,22 +442,6 @@ like <img alt=\"Some thing.\">."
     map)
   "Minor mode keymap for Flyspell mode--for the whole buffer.")
 
-;; correct on mouse 3
-(defun flyspell--set-use-mouse-3-for-menu (var value)
-  (set-default var value)
-  (if value
-      (progn (define-key flyspell-mouse-map [mouse-2] nil)
-             (define-key flyspell-mouse-map [down-mouse-3] 'flyspell-correct-word))
-    (define-key flyspell-mouse-map [mouse-2] 'flyspell-correct-word)
-    (define-key flyspell-mouse-map [down-mouse-3] nil)))
-
-(defcustom flyspell-use-mouse-3-for-menu context-menu-mode
-  "Non-nil means to bind `mouse-3' to `flyspell-correct-word'.
-If this is set, also unbind `mouse-2'."
-  :type 'boolean
-  :set 'flyspell--set-use-mouse-3-for-menu
-  :version "28.1")
-
 ;; dash character machinery
 (defvar-local flyspell-consider-dash-as-word-delimiter-flag nil
   "Non-nil means that the `-' char is considered as a word delimiter.")
@@ -486,8 +470,12 @@ See also `flyspell-duplicate-distance'."
 
 (defvar flyspell-overlay nil)
 
-(defun flyspell-context-menu (menu)
-  menu)
+(defun flyspell-context-menu (_menu)
+  "Context menu for `context-menu-mode'."
+  ;; TODO: refactor `flyspell-correct-word' and related functions to return
+  ;; a keymap menu where every menu item is bound to a lambda that calls
+  ;; `flyspell-do-correct' with an argument that is a correct word.
+  'flyspell-correct-word)
 
 ;;*---------------------------------------------------------------------*/
 ;;*    flyspell-mode ...                                                */
@@ -540,10 +528,7 @@ in your init file.
   :group 'flyspell
   (if flyspell-mode
       (condition-case err
-          (progn
-            (when (or context-menu-mode flyspell-use-mouse-3-for-menu)
-              (flyspell--set-use-mouse-3-for-menu 'flyspell-use-mouse-3-for-menu t))
-            (flyspell-mode-on (called-interactively-p 'interactive)))
+	  (flyspell-mode-on (called-interactively-p 'interactive))
 	(error (message "Error enabling Flyspell mode:\n%s" (cdr err))
 	       (flyspell-mode -1)))
     (flyspell-mode-off)))
@@ -649,7 +634,6 @@ are both non-nil."
   ;; we bound flyspell action to hack-local-variables-hook
   (add-hook 'hack-local-variables-hook
 	    (function flyspell-hack-local-variables-hook) t t)
-  (add-hook 'context-menu-functions 'flyspell-context-menu 100 t)
   ;; set flyspell-generic-check-word-predicate based on the major mode
   (let ((mode-predicate (get major-mode 'flyspell-mode-predicate)))
     (if mode-predicate
@@ -660,8 +644,7 @@ are both non-nil."
            show-msg)
       (let* ((binding (where-is-internal 'flyspell-auto-correct-word
                                          nil 'non-ascii))
-             (mouse-button (if (or context-menu-mode flyspell-use-mouse-3-for-menu)
-                               "Mouse-3" "Mouse-2")))
+             (mouse-button (if context-menu-mode "Mouse-3" "Mouse-2")))
         (message (format-message
                   "Welcome to Flyspell. Use %s to correct words."
                   (if binding
@@ -753,7 +736,6 @@ has been used, the current word is not checked."
   (remove-hook 'after-change-functions 'flyspell-after-change-function t)
   (remove-hook 'hack-local-variables-hook
 	       (function flyspell-hack-local-variables-hook) t)
-  (remove-hook 'context-menu-functions 'flyspell-context-menu t)
   ;; We remove all the flyspell highlightings.
   (flyspell-delete-all-overlays)
   ;; We have to erase pre cache variables.
@@ -1826,13 +1808,14 @@ for the overlay."
     (overlay-put overlay 'flyspell-overlay t)
     (overlay-put overlay 'evaporate t)
     (overlay-put overlay 'help-echo
-                 (concat (if (or context-menu-mode flyspell-use-mouse-3-for-menu)
-                             "mouse-3" "mouse-2")
+                 (concat (if context-menu-mode "mouse-3" "mouse-2")
                          ": correct word at point"))
-    ;; If misspelled text has a 'keymap' property, let that remain in
-    ;; effect for the bindings that flyspell-mouse-map doesn't override.
-    (set-keymap-parent flyspell-mouse-map (get-char-property beg 'keymap))
-    (overlay-put overlay 'keymap flyspell-mouse-map)
+    (if context-menu-mode
+        (overlay-put overlay 'context-menu-function 'flyspell-context-menu)
+      ;; If misspelled text has a 'keymap' property, let that remain in
+      ;; effect for the bindings that flyspell-mouse-map doesn't override.
+      (set-keymap-parent flyspell-mouse-map (get-char-property beg 'keymap))
+      (overlay-put overlay 'keymap flyspell-mouse-map))
     (when (eq face 'flyspell-incorrect)
       (and (stringp flyspell-before-incorrect-word-string)
            (overlay-put overlay 'before-string
