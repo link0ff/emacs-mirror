@@ -480,8 +480,9 @@ See `describe-repeat-maps' for a list of all repeatable command."
         (if (current-message)
             (message "%s [%s]" (current-message) mess)
           (message "%s" mess)))
-    (when (string-search "Repeat with " (current-message))
-      (message nil))))
+    (and (current-message)
+         (string-search "Repeat with " (current-message))
+         (message nil))))
 
 (defvar repeat-echo-mode-line-string
   (propertize "[Repeating...] " 'face 'mode-line-emphasis)
