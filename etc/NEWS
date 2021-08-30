@@ -1493,6 +1493,13 @@ deleting.
 +++
 **** The spec element 'function-form' is obsolete, use 'form' instead.
 
+---
+*** rfc2368.el is now obsolete.
+Use rfc6068.el instead.  The main difference is that
+'rfc2368-parse-mailto-url' and 'rfc2368-unhexify-string' assumed that
+the strings were all-ASCII, while 'rfc6068-parse-mailto-url' and
+'rfc2068-unhexify-string' parse UTF-8 strings.
+
 +++
 *** New function 'def-edebug-elem-spec' to define Edebug spec elements.
 These used to be defined with 'def-edebug-spec' thus conflating the
@@ -3038,9 +3045,10 @@ mode.  By default, these new options support 'view-mode'.
 Adding the new 'comint-osc-process-output' to
 'comint-output-filter-functions' enables the interpretation of OSC
 ("Operating System Command") escape sequences in comint buffers.  By
-default, only OSC 8, for hyperlinks, is acted upon.  Adding more
-entries to `comint-osc-handlers' allows a customized treatment of
-further escape sequences.
+default, only OSC 8, for hyperlinks, and OSC 7, for directory
+tracking, are acted upon.  Adding more entries to
+`comint-osc-handlers' allows a customized treatment of further escape
+sequences.
 
 +++
 *** 'comint-delete-output' can now save deleted text in the kill-ring.
@@ -3874,7 +3882,7 @@ risk of excessively long file names.
 +++
 ** New user option 'kill-buffer-delete-auto-save-files'.
 If non-nil, killing a buffer that has an auto-save file will prompt
-the user for whether that buffer should be deleted.  (Note that
+the user for whether that file should be deleted.  (Note that
 'delete-auto-save-files', if non-nil, was previously documented to
 result in deletion of auto-save files when killing a buffer without
 unsaved changes, but this has apparently not worked for several
