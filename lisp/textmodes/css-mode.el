@@ -274,12 +274,13 @@
     ("color" color)
     ("opacity" alphavalue)
 
-    ;; CSS Containment Module Level 1
-    ;; (https://www.w3.org/TR/css-contain-1/#property-index)
-    ("contain" "none" "strict" "content" "size" "layout" "paint")
+    ;; CSS Containment Module Level 2
+    ;; (https://www.w3.org/TR/css-contain-2/#property-index)
+    ("contain" "none" "strict" "content" "size" "layout" "style" "paint")
+    ("content-visibility" "visible" "auto" "hidden")
 
-    ;; CSS Grid Layout Module Level 1
-    ;; (https://www.w3.org/TR/css-grid-1/#property-index)
+    ;; CSS Grid Layout Module Level 2
+    ;; (https://www.w3.org/TR/css-grid-2/#property-index)
     ("grid" grid-template grid-template-rows "auto-flow" "dense"
      grid-auto-columns grid-auto-rows grid-template-columns)
     ("grid-area" grid-line)
@@ -298,41 +299,32 @@
     ("grid-template" "none" grid-template-rows grid-template-columns
      line-names string track-size line-names explicit-track-list)
     ("grid-template-areas" "none" string)
-    ("grid-template-columns" "none" track-list auto-track-list)
-    ("grid-template-rows" "none" track-list auto-track-list)
+    ("grid-template-columns" "none" track-list auto-track-list "subgrid")
+    ("grid-template-rows" "none" track-list auto-track-list "subgrid")
 
     ;; CSS Box Alignment Module Level 3
-    ;; (https://www.w3.org/TR/css-align-3/#alignment-values)
-    ("align-content" "center" "start" "end" "flex-start" "flex-end"
-     "normal" "first" "last" "baseline" "space-between" "space-around"
-     "space-evenly" "stretch" "safe" "unsafe")
-    ("align-items" "normal" "stretch" "center" "start" "end"
-     "flex-start" "flex-end" "baseline" "first" "last" "baseline"
-     "safe" "unsafe")
-    ("align-self" "auto" "normal" "center" "start" "end"
-     "self-start" "self-end" "flex-start" "flex-end"
-     "baseline" "first" "last" "stretch" "safe" "unsafe")
-    ("justify-content" "center" "start" "end" "flex-start" "flex-end"
-     "left" "right" "normal" "space-between" "space-around"
-     "space-evenly"  "stretch" "safe" "unsafe")
-    ("justify-items" "auto" "normal" "stretch" "center" "start" "end"
-     "flex-start" "flex-end" "self-start" "self-end" "left" "right"
-     "baseline" "first" "last" "legacy" "safe" "unsafe")
-    ("justify-self" "auto" "normal" "stretch" "center" "start" "end"
-     "flex-start" "flex-end" "self-start" "self-end" "left" "right"
-     "baseline" "first" "last" "safe" "unsafe")
-    ("place-content" "center" "start" "end" "left" "right" "flex-start"
-     "flex-end" "baseline" "first" "last" "space-evenly" "space-around"
-     "space-between")
-    ("place-items" "auto" "normal" "center" "start" "end"
-     "self-start" "self-end" "flex-start" "flex-end"
-     "left" "right" "baseline" "first" "last" "stretch")
-    ("place-self" "auto" "center" "start" "end" "self-start" "self-end"
-     "flex-start" "flex-end" "normal" "left" "right" "baseline"
-     "first" "last" "stretch")
+    ;; (https://www.w3.org/TR/css-align-3/#property-index)
+    ("align-content"
+     baseline-position content-distibution overflow-position content-position)
+    ("align-items"
+     "normal" "stretch" baseline-position overflow-position self-position)
+    ("align-self"
+     "auto" "normal" "stretch"
+     baseline-position overflow-position self-position)
+    ("justify-content" "normal"
+     content-distibution overflow-position content-position "left" "right")
+    ("justify-items"
+     "normal" "stretch" baseline-position overflow-position self-position
+     "left" "right" "legacy")
+    ("justify-self"
+     "auto" "normal" "stretch" baseline-position overflow-position self-position
+     "left" "right")
+    ("place-content" align-content justify-content)
+    ("place-items" align-items justify-items)
+    ("place-self" justify-self align-self)
 
-    ;; CSS Flexible Box Layout Module Level 1
-    ;; (https://www.w3.org/TR/css-flexbox-1/#property-index)
+    ;; CSS Flexible Box Layout Module Level 2
+    ;; (https://www.w3.org/TR/css-flexbox-2/#property-index)
     ("flex" "none" flex-grow flex-shrink flex-basis)
     ("flex-basis" "auto" "content" width)
     ("flex-direction" "row" "row-reverse" "column" "column-reverse")
@@ -779,6 +771,13 @@ further value candidates, since that list would be infinite.")
     (padding-width length percentage)
     (position
      "left" "center" "right" "top" "bottom" percentage length)
+    (baseline-position "left" "right" "baseline")
+    (content-distribution
+     "space-between" "space-around" "space-evenly" "stretch")
+    (overflow-position "unsafe" "safe")
+    (content-position "center" "start" "end" "flex-start" "flex-end")
+    (self-position
+     "center" "start" "end" "self-start" "self-end" "flex-start" "flex-end")
     (radial-gradient "radial-gradient()")
     (relative-size "larger" "smaller")
     (repeat-style
