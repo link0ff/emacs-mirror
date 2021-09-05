@@ -591,6 +591,7 @@ Important: the match ends just after the marker.")
       (forward-char 2)))
   (point))
 
+;; TODO: fix wrong column clicked reported on emacs-devel
 (defun proced-header-line ()
   "Return header line for Proced buffer."
   (let ((base (line-number-display-width 'columns))

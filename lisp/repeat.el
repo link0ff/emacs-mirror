@@ -482,6 +482,8 @@ See `describe-repeat-maps' for a list of all repeatable command."
           (message "%s" mess)))
     (and (current-message)
          (string-search "Repeat with " (current-message))
+         ;; TODO: remove regexp "[?Repeat with ...]?" and keep ole message
+         ;; can be tested in isearch and window resize C-x {
          (message nil))))
 
 (defvar repeat-echo-mode-line-string
