@@ -306,18 +306,31 @@ the same menu with changes such as added new menu items."
 
 (defun context-menu-map ()
   "Return composite menu map."
-  (let ((menu (make-sparse-keymap (propertize "Context Menu" 'hide t))))
-    (let ((fun (mouse-posn-property (event-start last-input-event)
-                                    'context-menu-function)))
-      (if (functionp fun)
-          (setq menu (funcall fun menu))
-        (run-hook-wrapped 'context-menu-functions
-                          (lambda (fun)
-                            (setq menu (funcall fun menu))
-                            nil))))
-    ;; TODO: remove double separators
+  (let* ((menu (make-sparse-keymap (propertize "Context Menu" 'hide t)))
+         (click last-input-event)
+         (fun (mouse-posn-property (event-start click)
+                                   'context-menu-function)))
+    (if (functionp fun)
+        ;; (setq menu (funcall fun menu click))
+        (setq menu (funcall fun menu))
+      (run-hook-wrapped 'context-menu-functions
+                        (lambda (fun)
+                          ;; (setq menu (funcall fun menu click))
+                          (setq menu (funcall fun menu))
+                          nil)))
+
+    ;; Remove double separators
+    (let ((l menu))
+      (while l
+        (when (and (equal (cdr-safe (car l)) menu-bar-separator)
+                   (equal (cdr-safe (cadr l)) menu-bar-separator))
+          (setcdr l (cddr l)))
+        (setq l (cdr l))))
+
     (when (functionp context-menu-filter-function)
-      (setq menu (funcall context-menu-filter-function menu)))
+      ;; (setq menu (funcall context-menu-filter-function menu click))
+      (setq menu (funcall context-menu-filter-function menu))
+      )
     menu))
 
 (defun context-menu-toolbar (menu)
@@ -387,68 +400,62 @@ the same menu with changes such as added new menu items."
 
 (defun context-menu-undo (menu)
   "Undo menu."
-  (when (cddr menu)
-    (define-key-after menu [separator-undo] menu-bar-separator))
-  (define-key-after menu [undo]
-    '(menu-item "Undo" undo
-                :visible (and (not buffer-read-only)
-                              (not (eq t buffer-undo-list))
-                              (if (eq last-command 'undo)
-                                  (listp pending-undo-list)
-                                (consp buffer-undo-list)))
-                :help "Undo last edits"))
-  (define-key-after menu [undo-redo]
-    '(menu-item "Redo" undo-redo
-                :visible (and (not buffer-read-only)
-                              (undo--last-change-was-undo-p buffer-undo-list))
-                :help "Redo last undone edits"))
+  (define-key-after menu [separator-undo] menu-bar-separator)
+  (when (and (not buffer-read-only)
+             (not (eq t buffer-undo-list))
+             (if (eq last-command 'undo)
+                 (listp pending-undo-list)
+               (consp buffer-undo-list)))
+    (define-key-after menu [undo]
+      '(menu-item "Undo" undo
+                  :help "Undo last edits")))
+  (when (and (not buffer-read-only)
+             (undo--last-change-was-undo-p buffer-undo-list))
+    (define-key-after menu [undo-redo]
+      '(menu-item "Redo" undo-redo
+                  :help "Redo last undone edits")))
   menu)
 
 (defun context-menu-region (menu)
   "Region commands menu."
-  (when (cddr menu)
-    (define-key-after menu [separator-region] menu-bar-separator))
-  (define-key-after menu [cut]
-    '(menu-item "Cut" kill-region
-                :visible (and mark-active (not buffer-read-only))
-                :help
-                "Cut (kill) text in region between mark and current position"))
-  (define-key-after menu [copy]
-    ;; ns-win.el said: Substitute a Copy function that works better
-    ;; under X (for GNUstep).
-    `(menu-item "Copy" ,(if (featurep 'ns)
-                            'ns-copy-including-secondary
-                          'kill-ring-save)
-                :visible mark-active
-                :help "Copy text in region between mark and current position"
-                :keys ,(if (featurep 'ns)
-                           "\\[ns-copy-including-secondary]"
-                         "\\[kill-ring-save]")))
-  (define-key-after menu [paste]
-    `(menu-item "Paste" mouse-yank-at-click
-                :visible (funcall
-                          ',(lambda ()
-                              (and (or
-                                    (gui-backend-selection-exists-p 'CLIPBOARD)
-                                    (if (featurep 'ns) ; like paste-from-menu
-                                        (cdr yank-menu)
-                                      kill-ring))
-                                   (not buffer-read-only))))
-                :help "Paste (yank) text most recently cut/copied"))
-  (define-key-after menu (if (featurep 'ns) [select-paste]
-                           [paste-from-menu])
-    ;; ns-win.el said: Change text to be more consistent with
-    ;; surrounding menu items `paste', etc."
-    `(menu-item ,(if (featurep 'ns) "Select and Paste" "Paste from Kill Menu")
-                yank-menu
-                :visible (and (cdr yank-menu) (not buffer-read-only))
-                :help "Choose a string from the kill ring and paste it"))
-  (define-key-after menu [clear]
-    '(menu-item "Clear" delete-active-region
-                :visible (and mark-active
-                              (not buffer-read-only))
-                :help
-                "Delete the text in region between mark and current position"))
+  (define-key-after menu [separator-region] menu-bar-separator)
+  (when (and mark-active (not buffer-read-only))
+    (define-key-after menu [cut]
+      '(menu-item "Cut" kill-region
+                  :help
+                  "Cut (kill) text in region between mark and current position")))
+  (when mark-active
+    (define-key-after menu [copy]
+      ;; ns-win.el said: Substitute a Copy function that works better
+      ;; under X (for GNUstep).
+      `(menu-item "Copy" ,(if (featurep 'ns)
+                              'ns-copy-including-secondary
+                            'kill-ring-save)
+                  :help "Copy text in region between mark and current position"
+                  :keys ,(if (featurep 'ns)
+                             "\\[ns-copy-including-secondary]"
+                           "\\[kill-ring-save]"))))
+  (when (and (or (gui-backend-selection-exists-p 'CLIPBOARD)
+                 (if (featurep 'ns) ; like paste-from-menu
+                     (cdr yank-menu)
+                   kill-ring))
+             (not buffer-read-only))
+    (define-key-after menu [paste]
+      `(menu-item "Paste" mouse-yank-at-click
+                  :help "Paste (yank) text most recently cut/copied")))
+  (when (and (cdr yank-menu) (not buffer-read-only))
+    (define-key-after menu (if (featurep 'ns) [select-paste]
+                             [paste-from-menu])
+      ;; ns-win.el said: Change text to be more consistent with
+      ;; surrounding menu items `paste', etc."
+      `(menu-item ,(if (featurep 'ns) "Select and Paste" "Paste from Kill Menu")
+                  yank-menu
+                  :help "Choose a string from the kill ring and paste it")))
+  (when (and mark-active (not buffer-read-only))
+    (define-key-after menu [clear]
+      '(menu-item "Clear" delete-active-region
+                  :help
+                  "Delete the text in region between mark and current position")))
   (define-key-after menu [mark-whole-buffer]
     '(menu-item "Select All" mark-whole-buffer
                 :help "Mark the whole buffer for a subsequent cut/copy"))
@@ -493,8 +500,11 @@ activates the menu whose contents depends on its surrounding context."
   "Start key navigation of the context menu.
 This is the keyboard interface to \\[context-menu-map]."
   (interactive)
-  (let ((inhibit-mouse-event-check t))
-    (popup-menu (context-menu-map) (point))))
+  (let ((inhibit-mouse-event-check t)
+        (map (context-menu-map)))
+    (if (commandp map)
+        (call-interactively map)
+      (popup-menu map (point)))))
 
 (global-set-key [S-f10] 'context-menu-open)
 
@@ -1204,6 +1214,13 @@ non-nil means move point to beginning of region."
 		 (const :tag "Move point to beginning of region" t))
   :version "26.1")
 
+(defun mouse-adjust-set-point (event)
+  (interactive "e")
+  ;; (message "! mouse-adjust-set-point %S %S %S" (region-active-p) (mark t) event)
+  (if (mark t)
+      (mouse-set-region event (mark t))
+    (mouse-set-point event)))
+
 (defun mouse-set-point (event &optional promote-to-region)
   "Move point to the position clicked on with the mouse.
 This should be bound to a mouse click event type.
@@ -1211,6 +1228,7 @@ If PROMOTE-TO-REGION is non-nil and event is a multiple-click, select
 the corresponding element around point, with the resulting position of
 point determined by `mouse-select-region-move-to-beginning'."
   (interactive "e\np")
+  (message "! mouse-set-point %S" event)
   (mouse-minibuffer-check event)
   (if (and promote-to-region (> (event-click-count event) 1))
       (progn
@@ -1233,9 +1251,13 @@ point determined by `mouse-select-region-move-to-beginning'."
        (eq mouse-last-region-end (region-end))
        (eq mouse-last-region-tick (buffer-modified-tick))))
 
-(defvar mouse--drag-start-event nil)
+(defvar mouse--drag-start-event nil) ; Unused?
 
-(defun mouse-set-region (click)
+(defun mouse-adjust-set-region (click)
+  (interactive "e")
+  (mouse-set-region click (mark t)))
+
+(defun mouse-set-region (click &optional adjust)
   "Set the region to the text dragged over, and copy to kill ring.
 This should be bound to a mouse drag event.
 See the `mouse-drag-copy-region' variable to control whether this
@@ -1243,7 +1265,7 @@ command alters the kill ring or not."
   (interactive "e")
   (mouse-minibuffer-check click)
   (select-window (posn-window (event-start click)))
-  (let ((beg (posn-point (event-start click)))
+  (let ((beg (or adjust (posn-point (event-start click))))
         (end
          (if (eq (posn-window (event-end click)) (selected-window))
              (posn-point (event-end click))
@@ -1257,12 +1279,13 @@ command alters the kill ring or not."
         ;; our way around this problem by remembering the start-event in
         ;; `mouse-drag-start' and fetching the click-count from there.
         (when (and (<= click-count 1)
-                   (equal beg (posn-point (event-start drag-start))))
+                   (equal beg (or adjust (posn-point (event-start drag-start)))))
           (setq click-count (event-click-count drag-start)))
         ;; Occasionally we get spurious drag events where the user hasn't
         ;; dragged his mouse, but instead Emacs has dragged the text under the
         ;; user's mouse.  Try to recover those cases (bug#17562).
-        (when (and (equal (posn-x-y (event-start click))
+        (when (and (not adjust)
+                   (equal (posn-x-y (event-start click))
                           (posn-x-y (event-end click)))
                    (not (eq (car drag-start) 'mouse-movement)))
           (setq end beg))
@@ -1381,6 +1404,20 @@ is dragged over to."
     (run-hooks 'mouse-leave-buffer-hook)
     (mouse-drag-track start-event)))
 
+(defun mouse-adjust-drag-region (start-event)
+  "Adjust region."
+  (interactive "e")
+  (run-hooks 'mouse-leave-buffer-hook)
+  (let ((adjust
+         (with-current-buffer (window-buffer (posn-window (event-start
+                                                           start-event)))
+           (when (region-active-p)
+             (cons (region-beginning) (region-end))))))
+    ;; (when beg
+    ;;   (setf (nth 1 (event-start start-event)) beg)
+    ;;   (setf (nth 5 (event-start start-event)) beg))
+    (mouse-drag-track start-event adjust)))
+
 ;; Inhibit the region-confinement when undoing mouse-drag-region
 ;; immediately after the command.  Otherwise, the selection left
 ;; active around the dragged text would prevent an undo of the whole
@@ -1493,9 +1530,10 @@ at the same position."
 		    "mouse-1" (substring msg 7)))))))
   msg)
 
-(defun mouse-drag-track (start-event)
-    "Track mouse drags by highlighting area between point and cursor.
+(defun mouse-drag-track (start-event &optional adjust)
+  "Track mouse drags by highlighting area between point and cursor.
 The region will be defined with mark and point."
+  ;; (message "! %S" start-event)
   (mouse-minibuffer-check start-event)
   (setq mouse-selection-click-count-buffer (current-buffer))
   (deactivate-mark)
@@ -1509,6 +1547,9 @@ The region will be defined with mark and point."
          ;; window, now let's jump to the place of the event, where things
          ;; are happening.
          (_ (mouse-set-point start-event))
+         ;; (_ (if adjust (goto-char (if (< start-point (car adjust))
+         ;;                              (car adjust) (cdr adjust)))
+         ;;      (mouse-set-point start-event)))
          (echo-keystrokes 0)
 	 (bounds (window-edges start-window))
 	 (make-cursor-line-fully-visible nil)
@@ -1540,7 +1581,9 @@ The region will be defined with mark and point."
                 (if (eq transient-mark-mode 'lambda)
                     '(only)
                   (cons 'only transient-mark-mode)))
-    (let ((range (mouse-start-end start-point start-point click-count)))
+    (let ((range (mouse-start-end (if adjust (car adjust) start-point)
+                                  (if adjust (cdr adjust) start-point)
+                                  click-count)))
       (push-mark (nth 0 range) t t)
       (goto-char (nth 1 range)))
 
@@ -1556,7 +1599,7 @@ The region will be defined with mark and point."
          (lambda (event) (interactive "e")
            (let* ((end (event-end event))
                   (end-point (posn-point end)))
-             (unless (eq end-point start-point)
+             (unless (eq end-point (or (car adjust) start-point))
                ;; As soon as the user moves, we can re-enable auto-hscroll.
                (setq auto-hscroll-mode auto-hscroll-mode-saved)
                ;; And remember that we have moved, so mouse-set-region can know
@@ -1564,23 +1607,26 @@ The region will be defined with mark and point."
                (setcar start-event 'mouse-movement))
              (if (and (eq (posn-window end) start-window)
                       (integer-or-marker-p end-point))
-                 (mouse--drag-set-mark-and-point start-point
+                 (mouse--drag-set-mark-and-point (or (car adjust) start-point)
                                                  end-point click-count)
                (let ((mouse-row (cdr (cdr (mouse-position)))))
                  (cond
                   ((null mouse-row))
                   ((< mouse-row top)
                    (mouse-scroll-subr start-window (- mouse-row top)
-                                      nil start-point))
+                                      nil (or (car adjust) start-point)))
                   ((>= mouse-row bottom)
                    (mouse-scroll-subr start-window (1+ (- mouse-row bottom))
-                                      nil start-point))))))))
+                                      nil (or (car adjust) start-point)))))))))
        map)
      t (lambda ()
          (setq track-mouse old-track-mouse)
          (setq auto-hscroll-mode auto-hscroll-mode-saved)
-         (deactivate-mark)
-         (pop-mark)))))
+         (unless (and context-menu-mode
+                      (eq (car-safe (aref (this-command-keys-vector) 0))
+                          'down-mouse-3))
+           (deactivate-mark)
+           (pop-mark))))))
 
 (defun mouse--drag-set-mark-and-point (start click click-count)
   (let* ((range (mouse-start-end start click click-count))
@@ -3111,6 +3157,10 @@ is copied instead of being cut."
 (global-set-key [mouse-1]	'mouse-set-point)
 (global-set-key [drag-mouse-1]	'mouse-set-region)
 
+(global-set-key [S-down-mouse-1] 'mouse-adjust-drag-region)
+(global-set-key [S-mouse-1]      'mouse-adjust-set-point)
+(global-set-key [S-drag-mouse-1] 'mouse-adjust-set-region)
+
 (defun mouse--strip-first-event (_prompt)
   (substring (this-single-command-raw-keys) 1))
 
@@ -3128,8 +3178,8 @@ is copied instead of being cut."
 ;; By binding these to down-going events, we let the user use the up-going
 ;; event to make the selection, saving a click.
 (global-set-key [C-down-mouse-1] 'mouse-buffer-menu)
-(if (not (eq system-type 'ms-dos))
-    (global-set-key [S-down-mouse-1] 'mouse-appearance-menu))
+;; (if (not (eq system-type 'ms-dos))
+;;     (global-set-key [S-down-mouse-1] 'mouse-appearance-menu))
 ;; C-down-mouse-2 is bound in facemenu.el.
 (global-set-key [C-down-mouse-3]
   `(menu-item ,(purecopy "Menu Bar") ignore

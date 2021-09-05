@@ -1898,6 +1898,8 @@ documentation for the major and minor modes of that buffer."
     (mapatoms
      (lambda (sym)
        (when (and (commandp sym)
+                  ;; Ignore 'ignore'.
+                  ;; (not (eq sym 'ignore))
                   ;; Ignore aliases.
                   (not (symbolp (symbol-function sym)))
                   ;; Ignore everything bound.
