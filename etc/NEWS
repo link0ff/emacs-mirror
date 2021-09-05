@@ -1,6 +1,6 @@
 GNU Emacs NEWS -- history of user-visible changes.
 
-Copyright (C) 2017-2021 Free Software Foundation, Inc.
+Copyright (C) 2019-2021 Free Software Foundation, Inc.
 See the end of the file for license conditions.
 
 Please send Emacs bug reports to 'bug-gnu-emacs@gnu.org'.
@@ -996,6 +996,11 @@ keys, add the following to your init file:
 (global-set-key "\C-x4\C-j" nil)
 
 ** Change Logs and VC
+
++++
+*** 'vc-revert-show-diff' now has a third possible value: 'kill'.
+If this variable is 'kill', then the diff buffer will be killed after
+the 'vc-revert' action instead of buried.
 
 *** More VC commands can be used from non-file buffers.
 The relevant commands are those that don't change the VC state.
@@ -2814,6 +2819,14 @@ never be narrower than 19 characters.
 'gomoku-move-sw' and 'gomoku-move-ne' now work correctly, and
 horizontal movements now stop at the edge of the board.
 
++++
+*** New diary sexp 'diary-offset'.
+It offsets another diary sexp by a number of days.  This is useful
+when for example your organization has a committee meeting two days
+after every monthly meeting which takes place on the third Thursday,
+or if you would like to attend a virtual meeting scheduled in a
+different timezone causing a difference in the date.
+
 ** xterm-mouse mode
 
 ---
@@ -3433,6 +3446,12 @@ The former is now declared obsolete.
 
 
 * Lisp Changes in Emacs 28.1
+
++++
+*** Doc strings can now link to customization groups.
+Text like "customization group `whitespace'" will be made into a
+button.  When clicked, it'll take the user to a Custom buffer
+displaying that customization group.
 
 +++
 *** New macro 'with-existing-directory'.

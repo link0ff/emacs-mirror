@@ -861,7 +861,9 @@ See `run-hooks'."
 
 (defcustom vc-revert-show-diff t
   "If non-nil, `vc-revert' shows a `vc-diff' buffer before querying."
-  :type 'boolean
+  :type '(choice (const :tag "Show and bury afterwards" t)
+                 (const :tag "Show and kill afterwards" kill)
+                 (const :tag "Don't show" nil))
   :version "24.1")
 
 ;; Header-insertion hair
@@ -2787,7 +2789,7 @@ to the working revision (except for keyword expansion)."
 				       (if (= nfiles 1) "" "s"))))))
 	    (error "Revert canceled")))
       (when diff-buffer
-	(quit-windows-on diff-buffer)))
+	(quit-windows-on diff-buffer (eq vc-revert-show-diff 'kill))))
     (dolist (file files)
       (message "Reverting %s..." (vc-delistify files))
       (vc-revert-file file)
