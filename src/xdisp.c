@@ -12223,6 +12223,7 @@ clear_message (bool current_p, bool last_displayed_p)
       message_cleared_p = true;
 
       /* Before release obsolete ignoring return value in NEWS for some bug# */
+      /* ../../patch/clear-message.patch */
       if (FUNCTIONP (Vclear_message_function))
         {
           ptrdiff_t count = SPECPDL_INDEX ();
