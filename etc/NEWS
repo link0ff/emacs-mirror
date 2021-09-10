@@ -1031,6 +1031,12 @@ search string is at least this long.  'lazy-highlight-initial-delay'
 still applies for shorter search strings, which avoids flicker in the
 search buffer due to too many matches being highlighted.
 
+---
+*** The default 'search-whitespace-regexp' value has changed.
+This used to be "\\s-+", which meant that it was mode-dependent whether
+newlines were included in the whitespace set.  This has now been
+changed to only match spaces and tab characters.
+
 ** Dired
 
 +++
@@ -1125,6 +1131,18 @@ keys, add the following to your init file:
 *** 'dired-query' now uses 'read-char-from-minibuffer'.
 Using it instead of 'read-char-choice' allows using 'C-x o'
 to switch to the help window displayed after typing 'C-h'.
+
++++
+** New user option 'isearch-allow-motion'.
+When 'isearch-allow-motion' is set, the commands 'beginning-of-buffer',
+'end-of-buffer', 'scroll-up-command' and 'scroll-down-command', when
+invoked during I-search, move respectively to the first occurrence of
+the current search string in the buffer, the last one, the first one
+after the current window, and the last one before the current window.
+Additionally, users can change the meaning of other motion commands
+during I-search by using their 'isearch-motion' property.  The
+option 'isearch-motion-changes-direction' controls whether the
+direction of the search changes after a motion command.
 
 ** Outline
 
@@ -1937,7 +1955,7 @@ security key, like yubikey, solokey, or nitrokey.
 
 +++
 *** Trashed remote files are moved to the local trash directory.
-All remote files, which are trashed, are moved to the local trash
+All remote files that are trashed are moved to the local trash
 directory, except remote encrypted files, which are always deleted.
 
 +++
@@ -1972,6 +1990,9 @@ In order to deactivate this, set user option
 Writing auto-save, backup or lock files to the local temporary
 directory must be confirmed.  In order to suppress this confirmation,
 set user option 'tramp-allow-unsafe-temporary-files' to t.
+
++++
+*** 'make-directory' of a remote directory honors the default file modes.
 
 ** gdb-mi
 
@@ -2383,7 +2404,9 @@ When non-nil, matches for identifiers in the file visited by the
 current buffer will be shown first in the "*xref*" buffer.
 
 *** The etags Xref backend now honors 'tags-apropos-additional-actions'.
-You can customize it to augment the output of 'xref-find-apropos'.
+You can customize it to augment the output of 'xref-find-apropos',
+like it affected the output of 'tags-apropos', which is obsolete since
+Emacs 25.1.
 
 ** Battery
 
