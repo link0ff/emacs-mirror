@@ -311,15 +311,13 @@ the same menu with changes such as added new menu items."
          (fun (mouse-posn-property (event-start click)
                                    'context-menu-function)))
     (if (functionp fun)
-        ;; (setq menu (funcall fun menu click))
-        (setq menu (funcall fun menu))
+        (setq menu (funcall fun menu click))
       (run-hook-wrapped 'context-menu-functions
                         (lambda (fun)
-                          ;; (setq menu (funcall fun menu click))
-                          (setq menu (funcall fun menu))
+                          (setq menu (funcall fun menu click))
                           nil)))
 
-    ;; Remove double separators
+    ;; Remove duplicate separators
     (let ((l menu))
       (while l
         (when (and (equal (cdr-safe (car l)) menu-bar-separator)
@@ -328,9 +326,7 @@ the same menu with changes such as added new menu items."
         (setq l (cdr l))))
 
     (when (functionp context-menu-filter-function)
-      ;; (setq menu (funcall context-menu-filter-function menu click))
-      (setq menu (funcall context-menu-filter-function menu))
-      )
+      (setq menu (funcall context-menu-filter-function menu click)))
     menu))
 
 (defun context-menu-toolbar (menu)
