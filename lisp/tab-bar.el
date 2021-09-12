@@ -161,7 +161,7 @@ For easier selection of tabs by their numbers, consider customizing
     (add-text-properties 0 (length tab-bar-new-button)
                          `(display (image :type xpm
                                           :file "tabs/new.xpm"
-                                          :margin ,tab-bar-button-margin
+                                          :margin ,(cons tab-bar-button-margin 0)
                                           :ascent center))
                          tab-bar-new-button))
 
@@ -171,7 +171,7 @@ For easier selection of tabs by their numbers, consider customizing
     (add-text-properties 0 (length tab-bar-close-button)
                          `(display (image :type xpm
                                           :file "tabs/close.xpm"
-                                          :margin ,tab-bar-button-margin
+                                          :margin ,(cons tab-bar-button-margin 0)
                                           :ascent center))
                          tab-bar-close-button)))
 
@@ -271,7 +271,7 @@ a list of frames to update."
   (interactive "e")
   (let* ((item (tab-bar--event-to-item (event-start event)))
          (tab-number (tab-bar--key-to-number (nth 0 item)))
-         (menu (make-sparse-keymap "Context Menu")))
+         (menu (make-sparse-keymap (propertize "Context Menu" 'hide t))))
 
     (define-key-after menu [close]
       `(menu-item "Close" (lambda () (interactive)
@@ -1659,7 +1659,7 @@ and can restore them."
           (add-text-properties 0 (length tab-bar-back-button)
                                `(display (image :type xpm
                                                 :file "tabs/left-arrow.xpm"
-                                                :margin ,tab-bar-button-margin
+                                                :margin ,(cons tab-bar-button-margin 0)
                                                 :ascent center))
                                tab-bar-back-button))
         (when (and tab-bar-mode (not (get-text-property 0 'display tab-bar-forward-button)))
@@ -1667,7 +1667,7 @@ and can restore them."
           (add-text-properties 0 (length tab-bar-forward-button)
                                `(display (image :type xpm
                                                 :file "tabs/right-arrow.xpm"
-                                                :margin ,tab-bar-button-margin
+                                                :margin ,(cons tab-bar-button-margin 0)
                                                 :ascent center))
                                tab-bar-forward-button))
 
@@ -1916,7 +1916,7 @@ The optional argument ALL-FRAMES specifies the frames to consider:
 
 - A frame means consider all tabs on that frame only.
 
-Any other value of ALL-FRAMES means consider all tabs on the
+- Any other value of ALL-FRAMES means consider all tabs on the
 selected frame and no others.
 
 When the optional argument IGNORE-CURRENT-TAB is non-nil,

@@ -294,6 +294,7 @@ to `delete-selection-mode'."
 (put 'newline 'delete-selection t)
 (put 'electric-newline-and-maybe-indent 'delete-selection t)
 (put 'open-line 'delete-selection t)
+(put 'just-one-space 'delete-selection t)
 
 ;; This is very useful for canceling a selection in the minibuffer without
 ;; aborting the minibuffer.
