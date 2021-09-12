@@ -154,8 +154,8 @@ positions of the thing found."
 ;;;###autoload
 (defun thing-at-mouse (event thing &optional no-properties)
   "Return the THING at mouse click.
-Like `thing-at-point', but reacts to the event
-where the mouse button is clicked."
+Like `thing-at-point', but tries to use the event
+where the mouse button is clicked to find a thing nearby."
   (save-excursion
     (mouse-set-point event)
     (thing-at-point thing no-properties)))

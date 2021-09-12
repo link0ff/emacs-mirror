@@ -1377,11 +1377,9 @@ any buffer where (dictionary-tooltip-mode 1) has been called."
 		  (current-word)))))
     (dictionary-search word)))
 
-;; (defun context-menu-dictionary (menu click)
-(defun context-menu-dictionary (menu)
+(defun context-menu-dictionary (menu click)
   "Dictionary context menu."
-  ;; (when (thing-at-mouse click 'word)
-  (when (thing-at-mouse last-input-event 'word)
+  (when (thing-at-mouse click 'word)
     (define-key menu [dictionary-separator] menu-bar-separator)
     (define-key menu [dictionary-search-word-at-mouse]
       '(menu-item "Dictionary Search" dictionary-search-word-at-mouse
