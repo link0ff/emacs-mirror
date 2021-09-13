@@ -1285,9 +1285,9 @@ the variables 'bookmark-bmenu-use-header-line' and
 'bookmark-bmenu-inline-header-height' are now declared obsolete.
 
 ---
-*** New user option 'bookmark-fontify'.
-If non-nil, setting a bookmark will colorize the current line with
-'bookmark-face'.
+*** New user option 'bookmark-set-fringe-mark'.
+If non-nil, setting a bookmark will set a fringe mark on the current
+line, and jumping to a bookmark will also set this mark.
 
 ---
 *** New user option 'bookmark-menu-confirm-deletion'.
@@ -2125,6 +2125,7 @@ modified flag.  The default is nil, to preserve the old behavior.
 
 ** CC Mode
 
++++
 *** Added support for Doxygen documentation style.
 'doxygen' is now a valid 'c-doc-comment-style' which recognises all
 comment styles supported by Doxygen (namely '///', '//!', '/** … */'
@@ -2139,6 +2140,7 @@ use 'doxygen' by default one might evaluate:
 
 or use it in a custom 'c-style'.
 
++++
 *** Added support to line up '?' and ':' of a ternary operator.
 The new 'c-lineup-ternary-bodies' function can be used as a lineup
 function to align question mark and colon which are part of a ternary
@@ -2908,13 +2910,16 @@ structures.
 This is for symmetry with 'visual-line-mode', which disables
 'truncate-lines'.
 
-** 'electric-indent-mode' now also indents inside strings and comments,
-(unless the indentation function doesn't, of course).
+---
+** 'electric-indent-mode' now also indents inside strings and comments.
+(This only happens when indentation function also supports this.)
+
 To recover the previous behavior you can use:
 
     (add-hook 'electric-indent-functions
               (lambda (_) (if (nth 8 (syntax-ppss)) 'no-indent)))
 
+---
 ** The 'M-o' ('facemenu-keymap') global binding has been removed.
 To restore the old binding, say something like:
 
@@ -2926,6 +2931,7 @@ To restore the old binding, say something like:
 The last two lines are not strictly necessary if you don't care about
 having those two commands on the 'M-o' keymap; see the next section.
 
+---
 ** The 'M-o M-s' and 'M-o M-S' global bindings have been removed.
 Use 'M-x center-line' and 'M-x center-paragraph' instead.  See the
 previous section for how to get back the old bindings.  Alternatively,
@@ -2935,10 +2941,12 @@ before, you can add the following to your init file:
   (define-key global-map "\M-o\M-s" 'center-line)
   (define-key global-map "\M-o\M-S" 'center-paragraph)
 
+---
 ** The 'M-o M-o' global binding has been removed.
 Use 'M-x font-lock-fontify-block' instead, or the new 'C-x x f'
 command, which updates the syntax highlighting in the current buffer.
 
+---
 ** The escape sequence '\e[29~' in Xterm is now mapped to 'menu'.
 Xterm sends this sequence for both 'F16' and 'Menu' keys
 It used to be mapped to 'print' but we couldn't find a terminal
@@ -2952,17 +2960,20 @@ If non-nil (the default), Emacs pushes pasted text onto the kill ring
 (if using an xterm-like terminal that supports bracketed paste).
 Setting this to nil inhibits that.
 
-** 'vc-print-branch-log' shows the change log for BRANCH from its root
-directory instead of the default directory.
+---
+** 'vc-print-branch-log' shows the change log from its root directory.
+It previously used to use the default directory.
 
 ---
 ** 'project-shell' and 'shell' now use 'pop-to-buffer-same-window'.
 This is to keep the same behavior as Eshell.
 
-** In 'nroff-mode', 'center-line' is now bound to 'M-o M-s'.
+---
+** In 'nroff-mode', 'center-line' is no longer bound to a key.
 The original key binding was 'M-s', which interfered with I-search,
 since the latter uses 'M-s' as a prefix key of the search prefix map.
 
+---
 ** In 'f90-mode', the backslash character ('\') no longer escapes.
 For about a decade, the backslash character has no longer had a
 special escape syntax in Fortran F90.  To get the old behavior back,
@@ -2970,6 +2981,7 @@ say something like:
 
     (modify-syntax-entry ?\\ "\\" f90-mode-syntax-table)
 
++++
 ** Setting 'fill-column' to nil is obsolete.
 This undocumented use of 'fill-column' is now obsolete.  To disable
 auto filling, turn off 'auto-fill-mode' instead.
@@ -2982,6 +2994,7 @@ file:
 
 * Incompatible Lisp Changes in Emacs 28.1
 
++++
 ** Emacs now prints a backtrace when signaling an error in batch mode.
 This makes debugging Emacs Lisp scripts run in batch mode easier.  To
 get back the old behavior, set the new variable
@@ -2995,6 +3008,7 @@ integer 2.  Such numerals are now read as floats with the exponent included:
 2.e6 is now read as the floating-point value 2000000.0.
 That is, '(read-from-string "1.e3")' => '(1000.0 . 4)' now.
 
+---
 ** 'equal' no longer examines some contents of window configurations.
 Instead, it considers window configurations to be equal only if they
 are 'eq'.  To compare contents, use 'compare-window-configurations'
@@ -3023,6 +3037,7 @@ hooks 'kill-buffer-hook', 'kill-buffer-query-functions', and
 'buffer-list-update-hook' for the temporary buffers they create.  This
 avoids slowing them down when a lot of these hooks are defined.
 
++++
 ** New face 'child-frame-border' and frame parameter 'child-frame-border-width'.
 The face and width of child frames borders can now be determined
 separately from those of normal frames.  To minimize backward
@@ -3075,6 +3090,7 @@ replacement text.
 'minibuffer-completion-table' and related variables are now set buffer-locally
 in the minibuffer instead of being set via a global let-binding.
 
+---
 ** XML serialization functions now reject invalid characters.
 Previously, 'xml-print' would produce invalid XML when given a string
 with characters that are not valid in XML (see
@@ -3083,12 +3099,14 @@ https://www.w3.org/TR/xml/#charsets).  Now it rejects such strings.
 ---
 ** JSON
 
+---
 *** JSON number parsing is now stricter.
 Numbers with a leading plus sign, leading zeros, or a missing integer
 component are now rejected by 'json-read' and friends.  This makes
 them more compliant with the JSON specification and consistent with
 the native JSON parsing functions.
 
+---
 *** JSON functions support the semantics of RFC 8259.
 The JSON functions 'json-serialize', 'json-insert',
 'json-parse-string', and 'json-parse-buffer' now implement some of the
@@ -3119,8 +3137,10 @@ these cases.
 These were actually rendered obsolete in Emacs 21 but were never
 marked as such.
 
+---
 ** 'pcomplete-ignore-case' is now an obsolete alias of 'completion-ignore-case'.
 
++++
 ** 'completions-annotations' face is not used when the caller puts own face.
 This affects the suffix specified by completion 'annotation-function'.
 
@@ -3129,7 +3149,8 @@ This affects the suffix specified by completion 'annotation-function'.
 This is instead of the erroneous 'minibuffer-inactive-mode' it
 formerly had.
 
-** 'make-text-button' no longer text properties of its first argument.
+---
+** 'make-text-button' no longer modifies text properties of its first argument.
 When its first argument is a string, 'make-text-button' no longer
 modifies the string's text properties; instead, it uses and returns
 a copy of the string.  This helps avoid trouble when strings are
@@ -3141,6 +3162,7 @@ If 'minibuffer-allow-text-properties' is non-nil, doing completion
 over a table of strings with properties will no longer remove all the
 properties before returning.  This affects things like 'completing-read'.
 
+---
 ** 'dns-query' now consistently uses Lisp integers to represent integers.
 Formerly it made an exception for integer components of SOA records,
 because SOA serial numbers can exceed fixnum ranges on 32-bit platforms.
@@ -3155,6 +3177,7 @@ the Emacs Lisp reference manual for background.
 +++
 ** The error 'ftp-error' belongs also to category 'remote-file-error'.
 
++++
 ** The WHEN argument of 'make-obsolete' and related functions is mandatory.
 The use of those functions without a WHEN argument was marked obsolete
 back in Emacs 23.1.  The affected functions are: 'make-obsolete',
@@ -3175,6 +3198,7 @@ These variables describe facts about the SQL standard and
 product-specific additions.  There should be no need for users to
 customize them.
 
+---
 ** Some locale-related variables have been removed.
 The Lisp variables 'previous-system-messages-locale' and
 'previous-system-time-locale' have been removed, as they were created
@@ -3184,12 +3208,15 @@ by mistake and were not useful to Lisp code.
 ** Function 'lm-maintainer' is replaced with 'lm-maintainers'.
 The former is now declared obsolete.
 
++++
 ** 'facemenu.el' is no longer preloaded.
 To use functions/variables from the package, you now have to say
 '(require 'facemenu)' or similar.
 
+---
 ** 'facemenu-color-alist' is now obsolete, and is not used.
 
+---
 ** The variable 'keyboard-type' is obsolete and not dynamically scoped any more.
 
 +++
@@ -3382,6 +3409,7 @@ It is written as '(:success BODY...)' where BODY is executed
 whenever the protected form terminates without error, with the
 specified variable bound to the the value of the protected form.
 
++++
 ** New function 'benchmark-call' to measure the execution time of a function.
 Additionally, the number of repetitions can be expressed as a minimal duration
 in seconds.
@@ -3409,6 +3437,7 @@ If bound to non-nil, a command with '(interactive "e")' doesn't signal
 an error when invoked by input event that is not a mouse click (e.g.,
 a key sequence).
 
+---
 ** New variable 'redisplay-skip-initial-frame' to enable batch redisplay tests.
 Setting it to nil forces the redisplay to do its job even in the
 initial frame used in batch mode.
@@ -3480,10 +3509,13 @@ To load the file after byte-compiling, add a call to 'load' from Lisp
 or use 'M-x emacs-lisp-byte-compile-and-load' interactively.
 
 ** Macroexp
+
 ---
 *** New function 'macroexp-file-name' to know the name of the current file.
+
 ---
 *** New function 'macroexp-compiling-p' to know if we're compiling.
+
 ---
 *** New function 'macroexp-warn-and-return' to help emit warnings.
 This used to be named 'macroexp--warn-and-return' and has proved useful
@@ -3525,11 +3557,13 @@ in better code.
 ---
 *** New function 'pcase-compile-patterns' to write other macros.
 
++++
 *** Added 'cl-type' pattern.
 The new 'cl-type' pattern compares types using 'cl-typep', which allows
 comparing simple types like '(cl-type integer)', as well as forms like
 '(cl-type (integer 0 10))'.
 
++++
 *** New macro 'pcase-setq'.
 This macro is the 'setq' equivalent of 'pcase-let', which allows for
 destructuring patterns in a 'setq' form.
@@ -3597,10 +3631,30 @@ This splits a shell command string into separate components,
 respecting quoting with single ('like this') and double ("like this")
 quotes, as well as backslash quoting (like\ this).
 
-** New string manipulation functions added to subr-x.el.
-the functions are 'string-clean-whitespace', 'string-fill',
-'string-limit', 'string-lines', 'string-pad' and
-'string-chop-newline'.
++++
+** New function 'string-clean-whitespace'.
+This removed whitespace from a string
+
++++
+** New function 'string-fill'.
+Word-wrap a string so that no lines are longer that a specific length.
+
++++
+** New function 'string-limit'.
+Return (up to) a specific substring length.
+
++++
+** New function 'string-lines'.
+Return a list of strings representing the individual lines in a
+string.
+
++++
+** New function 'string-pad'.
+Pad a string to a specific length.
+
++++
+** New function 'string-chop-newline'.
+Remove a trailing newline from a string.
 
 +++
 ** New function 'replace-regexp-in-region'.
@@ -3645,6 +3699,7 @@ This is identical to 'ignore', but returns t instead.
 This is identical to 'sxhash-equal' but also accounts for string
 properties.
 
+---
 ** New function 'buffer-line-statistics'.
 This function returns some statistics about the line lengths in a buffer.
 
@@ -3683,8 +3738,7 @@ the current system.
 
 +++
 ** New function 'insert-into-buffer'.
-This is like 'insert-buffer-substring', but works in the opposite
-direction.
+This inserts the contents of the current buffer into another buffer.
 
 +++
 ** New function 'json-available-p'.
@@ -3828,6 +3882,7 @@ Until it is solved you could ignore such errors by performing
 
     (setq debug-ignored-errors (cons 'remote-file-error debug-ignored-errors))
 
++++
 ** New macro 'named-let' added to subr-x.el.
 It provides Scheme's "named let" looping construct.
 
@@ -3840,6 +3895,7 @@ non-nil value to get back the old behavior, whereby after reading
 from a subprocess, Emacs would check for output of other subprocesses
 in a way that is likely to read from the same process again.
 
++++
 ** 'set-process-buffer' now updates the process mark.
 The mark will be set to point to the end of the new buffer.
 
@@ -4041,6 +4097,7 @@ form below the header line.  It is enabled by default in
 ---
 ** 'ascii' is now a coding system alias for 'us-ascii'.
 
+---
 ** New coding-systems for EBCDIC variants.
 New coding-systems 'ibm256', 'ibm273', 'ibm274', 'ibm277', 'ibm278',
 'ibm280', 'ibm281', 'ibm284', 'ibm285', 'ibm290', 'ibm297'.  These are
@@ -4103,8 +4160,11 @@ The new variable 'xwidget-webkit-download-dir' says where to download to.
 
 ---
 *** New command 'xwidget-webkit-clone-and-split-below'.
+Open a new window below displaying the current URL.
+
+---
 *** New command 'xwidget-webkit-clone-and-split-right'.
-These are used in 'xwidget-webkit-mode'.
+Open a new window to the right displaying the current URL.
 
 ---
 *** New variable 'xwidget-webkit-enable-plugins'.
