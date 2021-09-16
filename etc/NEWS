@@ -1208,7 +1208,7 @@ Thus, packages on nonGNU ELPA will appear by default in the list shown
 by 'list-packages'.
 
 ---
-*** '/ s' ('package-menu-filter-by-status') changes parameter handling.
+*** '/ s' ('package-menu-filter-by-status') changed parameter handling.
 The command was documented to take a comma-separated list of statuses
 to filter by, but instead it used the parameter as a regexp.  The
 command has been changed so that it now works as documented, and
@@ -3404,9 +3404,9 @@ ledit.el, lmenu.el, lucid.el and old-whitespace.el.
 
 ---
 ** Some functions and variables obsolete since Emacs 22 have been removed:
-'gnus-article-hide-pgp-hook', 'gnus-inews-mark-gcc-as-read',
-'gnus-treat-display-xface', 'gnus-treat-strip-pgp',
-'nnmail-spool-file'.
+'erc-current-network', 'gnus-article-hide-pgp-hook',
+'gnus-inews-mark-gcc-as-read', 'gnus-treat-display-xface',
+'gnus-treat-strip-pgp', 'nnmail-spool-file'.
 
 ---
 ** The obsolete function 'thread-alive-p' has been removed.
@@ -4083,6 +4083,11 @@ The special events 'dbus-event' and 'file-notify' are now ignored in
 ---
 ** 'start-process-shell-command' and 'start-file-process-shell-command'
 do not support the old calling conventions any longer.
+
++++
+** 'yes-or-no-p' and 'y-or-n-p' PROMPT parameter no longer needs trailing space.
+This has been the case since Emacs 24.4 but was not announced or
+documented until now.
 
 +++
 ** The 'uniquify' argument in 'auto-save-file-name-transforms' can be a symbol.
