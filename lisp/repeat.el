@@ -476,15 +476,18 @@ See `describe-repeat-maps' for a list of all repeatable command."
 (defun repeat-echo-message (keymap)
   "Display available repeating keys in the echo area."
   (if keymap
-      (let ((mess (repeat-echo-message-string keymap)))
+      (let ((message (repeat-echo-message-string keymap)))
         (if (current-message)
-            (message "%s [%s]" (current-message) mess)
-          (message "%s" mess)))
-    (and (current-message)
-         (string-search "Repeat with " (current-message))
-         ;; TODO: remove regexp "[?Repeat with ...]?" and keep ole message
-         ;; can be tested in isearch and window resize C-x {
-         (message nil))))
+            (message "%s [%s]" (current-message) message)
+          (message "%s" message)))
+    (let ((message (current-message)))
+      (when message
+        (cond
+         ((string-prefix-p "Repeat with " message)
+          (message nil))
+         ((string-search " [Repeat with " message)
+          (message "%s" (replace-regexp-in-string
+                         " \\[Repeat with .*\\'" "" message))))))))
 
 (defvar repeat-echo-mode-line-string
   (propertize "[Repeating...] " 'face 'mode-line-emphasis)
