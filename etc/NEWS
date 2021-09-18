@@ -240,7 +240,7 @@ the user for whether that file should be deleted.  (Note that
 result in deletion of auto-save files when killing a buffer without
 unsaved changes, but this has apparently not worked for several
 decades, so the documented semantics of this variable has been changed
-to match the behaviour.)
+to match the behavior.)
 
 +++
 ** New user option 'next-error-message-highlight'.
@@ -294,6 +294,17 @@ personalize the uniquified buffer name.
 ---
 ** 'remove-hook' is now an interactive command.
 
+---
+** 'expand-file-name' now checks for null bytes in filenames.
+The function will now check for null bytes in both NAME and
+DEFAULT-DIRECTORY arguments, as well as in the 'default-directory'
+buffer-local variable, when its value is used.  If null bytes are
+found, 'expand-file-name' will signal an error.
+This means that practically all file-related operations will now check
+file names for null bytes, thus avoiding subtle bugs with silently
+using only the part of file name up to the first null byte.
+
+---
 ** Frames
 
 +++
@@ -391,9 +402,6 @@ nor t.
 When customized to nil, it uses 'minibuffer-restore-windows' in
 'minibuffer-exit-hook' to remove only the window showing the
 "*Completions*" buffer.
-
-
-* Editing Changes in Emacs 28.1
 
 ---
 *** New variable 'redisplay-adhoc-scroll-in-resize-mini-windows'.
@@ -689,7 +697,7 @@ Applies to buttons that indicate a face.
 +++
 *** New face 'font-lock-doc-markup-face'.
 Intended for documentation mark-up syntax and tags inside text that
-uses 'font-lock-doc-face', with which it should harmonise.  It would
+uses 'font-lock-doc-face', with which it should harmonize.  It would
 typically be used in structured documentation comments in program
 source code by language-specific modes, for mark-up conventions like
 Haddock, Javadoc or Doxygen.  By default this face inherits from
@@ -810,11 +818,28 @@ leak information from the reporting user.
 *** Rudimentary support for the 'st' terminal emulator.
 Emacs now supports 256 color display on the 'st' terminal emulator.
 
----
-*** Prefer "chat.freenode.net" to "irc.freenode.net".
-"chat.freenode.net" has been the preferred address for connecting to the
-freenode IRC network for years now.  Occurrences of "irc.freenode.net"
-have been replaced with "chat.freenode.net" throughout Emacs.
++++
+*** Update IRC-related references to point to Libera.Chat.
+In June 2021, the Free Software Foundation and the GNU Project moved
+their official IRC channels from the Freenode network to Libera.Chat
+in the aftermath of the changes in Freenode's governance structure and
+policies in May and June 2021.  The decision-making process took into
+account the feedback received from the community against a set of
+criteria devised by a working group drawn from both GNU and the FSF
+to gauge a chat network's acceptability to software freedom activists.
+
+For the original announcement and the follow-up update, including more
+details, see:
+
+https://lists.gnu.org/archive/html/info-gnu/2021-06/msg00005.html
+https://lists.gnu.org/archive/html/info-gnu/2021-06/msg00007.html
+
+Given the relocation of GNU and FSF's official IRC channels, as well
+as #emacs and various other Emacs-themed channels (see the link below)
+to Libera.Chat, IRC-related references in the Emacs repository have
+now been updated to point to Libera.Chat.
+
+https://lists.gnu.org/archive/html/info-gnu-emacs/2021-06/msg00000.html
 
 
 * Editing Changes in Emacs 28.1
@@ -1220,7 +1245,7 @@ Clicking the dictionary name changes the current dictionary.
 ** Package
 
 *** The new NonGNU ELPA archive is enabled by default alongside GNU ELPA.
-Thus, packages on nonGNU ELPA will appear by default in the list shown
+Thus, packages on NonGNU ELPA will appear by default in the list shown
 by 'list-packages'.
 
 ---
@@ -2411,10 +2436,12 @@ have been renamed to have "proper" public names and documented
 ('xref-show-definitions-buffer' and
 'xref-show-definitions-buffer-at-bottom').
 
-*** New command 'xref-quit-and-pop-marker-stack' and a binding for it
-in "*xref*" buffers ('M-,').  This combination is easy to press
-semi-accidentally if the user wants to go back in the middle of
-choosing the exact definition to go to, and this should do TRT.
++++
+*** New command 'xref-quit-and-pop-marker-stack'.
+This command is bound to 'M-,' in "*xref*" buffers.  This combination
+is easy to press semi-accidentally if the user wants to go back in the
+middle of choosing the exact definition to go to, and this should do
+TRT.
 
 ---
 *** New value 'project-relative' for 'xref-file-name-display'.
@@ -2433,6 +2460,7 @@ binding in 'xref--xref-buffer-mode-map'.
 When non-nil, matches for identifiers in the file visited by the
 current buffer will be shown first in the "*xref*" buffer.
 
++++
 *** The etags Xref backend now honors 'tags-apropos-additional-actions'.
 You can customize it to augment the output of 'xref-find-apropos',
 like it affected the output of 'tags-apropos', which is obsolete since
@@ -2685,6 +2713,7 @@ The 'erc-current-nick-highlight-type', 'erc-pal-highlight-type',
 'erc-dangerous-host-highlight-type' variables now support a 'message'
 type for highlighting the entire message but not the sender's nick.
 
+---
 *** erc-status-sidebar.el is now part of ERC.
 The 'erc-status-sidebar' package which provides a HexChat-like
 activity overview sidebar for joined IRC channels is now part of ERC.
@@ -2708,22 +2737,26 @@ separated) and clearer documentation.
 
 ** xwidget-webkit mode
 
+---
 *** New xwidget commands.
 'xwidget-webkit-uri' (return the current URL), 'xwidget-webkit-title'
 (return the current title), and 'xwidget-webkit-goto-history' (goto a
 point in history).
 
+---
 *** Pixel-based scrolling.
 The 'xwidget-webkit-scroll-up', 'xwidget-webkit-scroll-down' commands
 now supports scrolling arbitrary pixel values.  It now treats the
 optional 2nd argument as the pixel values to scroll.
 
+---
 *** New commands for scrolling.
 The new commands 'xwidget-webkit-scroll-up-line',
 'xwidget-webkit-scroll-down-line', 'xwidget-webkit-scroll-forward',
 'xwidget-webkit-scroll-backward' can be used to scroll webkit by the
 height of lines or width of chars.
 
+---
 *** New user option 'xwidget-webkit-bookmark-jump-new-session'.
 When non-nil, use a new xwidget webkit session after bookmark jump.
 Otherwise, it will use 'xwidget-webkit-last-session'.
@@ -2912,6 +2945,7 @@ your code to be edited with an Emacs version older than 27.1.
 ---
 *** 'mspools-show' is now autoloaded.
 
+---
 *** Loading dunnet.el in batch mode doesn't start the game any more.
 Instead you need to do "emacs -f dun-batch" to start the game in
 batch mode.
@@ -2955,6 +2989,7 @@ direction with e.g. 'C-x o M-- o o'.  Also it can help to set a new
 step with e.g. 'C-x { C-5 { { {', which will set the window resizing
 step to 5 columns.
 
+---
 ** New themes 'modus-vivendi' and 'modus-operandi'.
 These themes are designed to conform with the highest standard for
 color-contrast accessibility (WCAG AAA).  You can load either of them
@@ -4133,12 +4168,6 @@ If this symbol is one of the members of 'secure-hash-algorithms',
 Emacs constructs the nondirectory part of the auto-save file name by
 applying that 'secure-hash' to the buffer file name.  This avoids any
 risk of excessively long file names.
-
----
-** File names checked for null bytes.
-Functions operating on local file names now check that the file names
-don't contain any NUL bytes.  This avoids subtle bugs caused by
-silently using only the part of the file name until the first NUL byte.
 
 +++
 ** New user option 'process-file-return-signal-string'.

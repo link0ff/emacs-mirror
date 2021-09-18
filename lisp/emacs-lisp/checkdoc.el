@@ -29,11 +29,12 @@
 ;; to forget.  The main checkdoc engine will perform the stylistic
 ;; checks needed to make sure these styles are remembered.
 ;;
-;; There are two ways to use checkdoc:
-;;   1) Periodically use `checkdoc' or `checkdoc-current-buffer'.
+;; There are three ways to use checkdoc:
+;;   1) Use `flymake-mode'.
+;;   2) Periodically use `checkdoc' or `checkdoc-current-buffer'.
 ;;      `checkdoc' is a more interactive version of
 ;;      `checkdoc-current-buffer'
-;;   2) Use `checkdoc-minor-mode' to automatically check your
+;;   3) Use `checkdoc-minor-mode' to automatically check your
 ;;      documentation whenever you evaluate Lisp code with C-M-x
 ;;      or [menu-bar emacs-lisp eval-buffer].  Additional key-bindings
 ;;      are also provided under C-c ? KEY
@@ -463,7 +464,7 @@ be re-created.")
   "Interactively check the entire buffer for style errors.
 The current status of the check will be displayed in a buffer which
 the users will view as each check is completed."
-  (interactive)
+  (interactive nil emacs-lisp-mode)
   (let ((status (list "Checking..." "-" "-" "-"))
 	(checkdoc-spellcheck-documentation-flag
 	 (car (memq checkdoc-spellcheck-documentation-flag
@@ -530,7 +531,7 @@ buffer.  Allows navigation forward and backwards through document
 errors.  Does not check for comment or space warnings.
 Optional argument SHOWSTATUS indicates that we should update the
 checkdoc status window instead of the usual behavior."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (let ((checkdoc-spellcheck-documentation-flag
 	 (car (memq checkdoc-spellcheck-documentation-flag
                     '(interactive t)))))
@@ -551,7 +552,7 @@ buffer.  Allows navigation forward and backwards through document
 errors.  Does not check for comment or space warnings.
 Optional argument SHOWSTATUS indicates that we should update the
 checkdoc status window instead of the usual behavior."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (let ((checkdoc-spellcheck-documentation-flag
 	 (car (memq checkdoc-spellcheck-documentation-flag
                     '(interactive t)))))
@@ -851,7 +852,7 @@ spacing are all verified."
 With a prefix argument (in Lisp, the argument TAKE-NOTES),
 store all errors found in a warnings buffer,
 otherwise stop after the first error."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (if (called-interactively-p 'interactive)
       (message "Checking buffer for style..."))
   ;; Assign a flag to spellcheck flag
@@ -890,7 +891,7 @@ Only documentation strings are checked.
 Use `checkdoc-continue' to continue checking if an error cannot be fixed.
 Prefix argument TAKE-NOTES means to collect all the warning messages into
 a separate buffer."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (let ((p (point)))
     (goto-char (point-min))
     (if (and take-notes (called-interactively-p 'interactive))
@@ -905,7 +906,7 @@ a separate buffer."
   "Find the next doc string in the current buffer which has a style error.
 Prefix argument TAKE-NOTES means to continue through the whole
 buffer and save warnings in a separate buffer."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (let ((wrong nil) (msg nil)
 	;; Assign a flag to spellcheck flag
 	(checkdoc-spellcheck-documentation-flag
@@ -974,7 +975,7 @@ don't move point."
 Prefix argument TAKE-NOTES non-nil means to save warnings in a
 separate buffer.  Otherwise print a message.  This returns the error
 if there is one."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (if take-notes (checkdoc-start-section "checkdoc-comments"))
   (if (not buffer-file-name)
       (error "Can only check comments for a file buffer"))
@@ -996,7 +997,7 @@ Prefix argument TAKE-NOTES non-nil means to save warnings in a
 separate buffer.  Otherwise print a message.  This returns the error
 if there is one.
 Optional argument INTERACT permits more interactive fixing."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (if take-notes (checkdoc-start-section "checkdoc-rogue-spaces"))
   (let* ((checkdoc-autofix-flag (if take-notes 'never checkdoc-autofix-flag))
 	 (e (checkdoc-rogue-space-check-engine nil nil interact))
@@ -1013,7 +1014,7 @@ Optional argument INTERACT permits more interactive fixing."
 (defun checkdoc-message-text (&optional take-notes)
   "Scan the buffer for occurrences of the error function, and verify text.
 Optional argument TAKE-NOTES causes all errors to be logged."
-  (interactive "P")
+  (interactive "P" emacs-lisp-mode)
   (if take-notes (checkdoc-start-section "checkdoc-message-text"))
   (let* ((p (point)) e
 	 (checkdoc-autofix-flag (if take-notes 'never checkdoc-autofix-flag))
@@ -1545,7 +1546,9 @@ may require more formatting")
      ;;     Instead, use the `\\[...]' construct to stand for them.
      (save-excursion
        (let ((f nil) (m nil) (start (point))
-	     (re "[^`‘A-Za-z0-9_]\\([CMA]-[a-zA-Z]\\|\\(\\([CMA]-\\)?\
+             ;; Ignore the "A-" modifier: it is uncommon in practice,
+             ;; and leads to false positives in regexp ranges.
+             (re "[^`‘A-Za-z0-9_]\\([CMs]-[a-zA-Z]\\|\\(\\([CMs]-\\)?\
 mouse-[0-3]\\)\\)\\>"))
 	 ;; Find the first key sequence not in a sample
 	 (while (and (not f) (setq m (re-search-forward re e t)))
@@ -2078,7 +2081,7 @@ If the offending word is in a piece of quoted text, then it is skipped."
                      (not (thing-at-point-looking-at
                            help-xref-url-regexp)))
                 (if (checkdoc-autofix-ask-replace
-                     b e (format "Text %s should be capitalized.  Fix? "
+                     b e (format "Text %s should be capitalized.  Fix?"
                                  text)
                      (capitalize text) t)
                     nil
@@ -2475,6 +2478,31 @@ Argument END is the maximum bounds to search in."
 	  (setq return type))))
     return))
 
+(defun checkdoc--fix-y-or-n-p ()
+  "Fix `y-or-n-p' prompt to end with \"?\" or \"? \".
+The space is technically redundant, but also more compatible with
+Emacs versions before Emacs 24.1.  In the future, we might treat
+a space as a style error."
+  (when (and (save-excursion (forward-sexp 1)
+                             (forward-char -3)
+                             (not (looking-at "\\? ")))
+             (save-excursion (forward-sexp 1)
+                             (forward-char -2)
+                             (not (looking-at "\\?"))))
+    (if (and
+         (save-excursion (forward-sexp 1)
+                         (forward-char -1)
+                         (looking-at "\""))
+         (checkdoc-autofix-ask-replace
+          (match-beginning 0) (match-end 0)
+          (format-message
+           "`y-or-n-p' argument should end with \"? \".  Fix?")
+          "?\"" t))
+        nil
+      (checkdoc-create-error
+       "`y-or-n-p' argument should end with \"?\""
+       (match-beginning 0) (match-end 0)))))
+
 (defun checkdoc-message-text-engine (&optional type)
   "Return or fix errors found in strings passed to a message display function.
 According to the documentation for the function `error', the error list
@@ -2530,63 +2558,20 @@ Argument TYPE specifies the type of question, such as `error' or `y-or-n-p'."
 	  "Error messages should *not* end with a period"
 	  (match-beginning 0) (match-end 0))
        nil)
-     ;; `y-or-n-p' documentation explicitly says:
-     ;; It should end in a space; `y-or-n-p' adds `(y or n) ' to it.
-     ;; I added the ? requirement.  Without it, it is unclear that we
-     ;; ask a question and it appears to be an undocumented style.
-     (if (eq type 'y-or-n-p)
-	 (if (not (save-excursion (forward-sexp 1)
-				  (forward-char -3)
-				  (not (looking-at "\\? "))))
-	     nil
-	   (if (save-excursion (forward-sexp 1)
-			       (forward-char -2)
-			       (looking-at "\\?"))
-	       ;; If we see a ?, then replace with "? ".
-	       (if (checkdoc-autofix-ask-replace
-		    (match-beginning 0) (match-end 0)
-                    (format-message
-                     "`y-or-n-p' argument should end with \"? \".  Fix? ")
-		    "? " t)
-		   nil
-		 (checkdoc-create-error
-		  "`y-or-n-p' argument should end with \"? \""
-		  (match-beginning 0) (match-end 0)))
-	     (if (save-excursion (forward-sexp 1)
-				 (forward-char -2)
-				 (looking-at " "))
-		 (if (checkdoc-autofix-ask-replace
-		      (match-beginning 0) (match-end 0)
-                      (format-message
-                       "`y-or-n-p' argument should end with \"? \".  Fix? ")
-		      "? " t)
-		     nil
-		   (checkdoc-create-error
-		    "`y-or-n-p' argument should end with \"? \""
-		    (match-beginning 0) (match-end 0)))
-	       (if (and ;; if this isn't true, we have a problem.
-		    (save-excursion (forward-sexp 1)
-				    (forward-char -1)
-				    (looking-at "\""))
-		    (checkdoc-autofix-ask-replace
-		     (match-beginning 0) (match-end 0)
-                     (format-message
-                      "`y-or-n-p' argument should end with \"? \".  Fix? ")
-		     "? \"" t))
-		   nil
-		 (checkdoc-create-error
-		  "`y-or-n-p' argument should end with \"? \""
-		  (match-beginning 0) (match-end 0)))))))
+     ;; From `(elisp) Programming Tips': "A question asked in the
+     ;; minibuffer with `yes-or-no-p' or `y-or-n-p' should start with
+     ;; a capital letter and end with '?'."
+     (when (eq type 'y-or-n-p)
+       (checkdoc--fix-y-or-n-p))
      ;; Now, let's just run the spell checker on this guy.
      (checkdoc-ispell-docstring-engine (save-excursion (forward-sexp 1)
-						       (point)))
-     )))
+                                                       (point))))))
 
 ;;; Auto-fix helper functions
 ;;
 (defun checkdoc-y-or-n-p (question)
   "Like `y-or-n-p', but pays attention to `checkdoc-autofix-flag'.
-Argument QUESTION is the prompt passed to `y-or-n-p'."
+  Argument QUESTION is the prompt passed to `y-or-n-p'."
   (prog1
       (if (or (not checkdoc-autofix-flag)
 	      (eq checkdoc-autofix-flag 'never))
