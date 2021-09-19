@@ -381,7 +381,8 @@ Keymap to display on major mode.")
 Keymap to display on minor modes.")
 
 (defvar mode-line-modes
-  (let ((recursive-edit-help-echo "Recursive edit, type C-M-c to get out"))
+  (let ((recursive-edit-help-echo
+         "Recursive edit, type M-C-c to get out"))
     (list (propertize "%[" 'help-echo recursive-edit-help-echo)
 	  "("
 	  `(:propertize ("" mode-name)
