@@ -145,6 +145,13 @@ Emoji" by default for that script.  Use:
 to change the font used.
 
 +++
+** Zero Width Joiner (ZWJ) and emoji sequences are now composed.
+Emacs can now compose (almost) all the Unicode-14 ZWJ and emoji
+sequences (if a suitable font is installed) so that they are displayed
+as single glyphs instead of multiple ones.  'Noto Color Emoji' is one
+such suitable font.
+
++++
 ** New command 'execute-extended-command-for-buffer'.
 This new command, bound to 'M-S-x', works like
 'execute-extended-command', but limits the set of commands to the
@@ -1184,6 +1191,9 @@ keys, add the following to your init file:
 Using it instead of 'read-char-choice' allows using 'C-x o'
 to switch to the help window displayed after typing 'C-h'.
 
+---
+*** 'dired-compress-file' now queries for a directory to uncompress to.
+
 +++
 ** New user option 'isearch-allow-motion'.
 When 'isearch-allow-motion' is set, the commands 'beginning-of-buffer',
@@ -1738,6 +1748,9 @@ tags to be considered as well.
 ---
 *** New user option 'vc-git-log-switches'.
 String or list of strings specifying switches for Git log under VC.
+
+---
+*** The macro 'vc-call' no longer evaluates its second argument twice.
 
 ** Gnus
 
@@ -2384,7 +2397,7 @@ project's root directory, respectively.
 This specifies the file in which to save the list of known projects.
 
 +++
-*** New command 'project-remove-known-project'.
+*** New command 'project-forget-project'.
 This command lets you interactively remove an entry from the list of projects
 in 'project-list-file'.
 
@@ -2396,6 +2409,9 @@ sub-directory.
 +++
 *** 'project-find-file' doesn't use the string at point as default input.
 Now it's only suggested as part of the "future history".
+
++++
+*** New command 'project-find-dir' runs Dired in a directory inside project.
 
 ** Xref
 
@@ -3689,6 +3705,12 @@ This used to be named 'macroexp--warn-and-return' and has proved useful
 and well-behaved enough to lose the "internal" marker.
 
 ** map.el
+
+---
+*** Alist keys are now consistently compared with 'equal' by default.
+Until now, 'map-elt' and 'map-delete' compared alist keys with 'eq' by
+default.  They now use 'equal' instead, for consistency with
+'map-put!' and 'map-contains-key'.
 
 *** Pcase 'map' pattern added keyword symbols abbreviation.
 A pattern like '(map :sym)' binds the map's value for ':sym' to 'sym',

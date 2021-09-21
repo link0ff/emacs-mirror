@@ -360,7 +360,6 @@
        (format "%s@%s" (plist-get auth-info :user) (plist-get auth-info :host))))))
 
 (ert-deftest auth-source-test-netrc-create-secret ()
-  (skip-unless secrets-enabled)
   (let* ((netrc-file (make-temp-file "auth-source-test"))
          (auth-sources (list netrc-file))
          (auth-source-save-behavior t)
@@ -390,6 +389,7 @@
 
             ;; Check, that the item has been created indeed.
             (auth-source-forget+ :host t)
+            (setq auth-source-netrc-cache nil)
             (setq auth-info (car (auth-source-search :host host))
 	          auth-passwd (plist-get auth-info :secret)
 	          auth-passwd (if (functionp auth-passwd)
