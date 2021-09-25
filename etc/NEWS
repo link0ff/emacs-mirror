@@ -529,12 +529,14 @@ the mouse pointer is in the tab line by scrolling left or right.
 *** New tab-line faces and options.
 The face 'tab-line-tab-special' is used for tabs whose buffers are
 special, i.e. buffers that don't visit a file.  The face
-'tab-line-tab-inactive-alternate' is used to display inactive tabs
-with an alternating background color, making them easier to
-distinguish, especially if the face 'tab-line-tab' is configured to
-not display with a box; this alternate face is only applied when the
-option 'tab-line-tab-face-functions' is so configured.  That option
-may also be used to customize tab-line faces in other ways.
+'tab-line-tab-modified' is used to display modified, file-backed
+buffers.  The face 'tab-line-tab-inactive-alternate' is used to
+display inactive tabs with an alternating background color, making
+them easier to distinguish, especially if the face 'tab-line-tab' is
+configured to not display with a box; this alternate face is only
+applied when the option 'tab-line-tab-face-functions' is so
+configured.  That option may also be used to customize tab-line faces
+in other ways.
 
 ** Mouse wheel
 
@@ -3273,6 +3275,13 @@ local variable would not be heeded.  This has now changed, and a file
 with a 'lexical-binding' cookie is always heeded.  To revert to the
 old behavior, set 'permanently-enabled-local-variables' to nil.
 
++++
+** '&rest' in argument lists must always be followed by a variable name.
+Omitting the variable name after '&rest' was previously tolerated in
+some cases but not consistently so; it could lead to crashes or
+outright wrong results.  Since the utility was marginal at best, it is
+now an error to omit the variable.
+
 ---
 ** 'kill-all-local-variables' has changed how it handles non-symbol hooks.
 The function is documented to eliminate all buffer-local bindings
@@ -3674,7 +3683,7 @@ used in.
 ** 'condition-case' now allows for a success handler.
 It is written as '(:success BODY...)' where BODY is executed
 whenever the protected form terminates without error, with the
-specified variable bound to the the value of the protected form.
+specified variable bound to the value of the protected form.
 
 +++
 ** New function 'benchmark-call' to measure the execution time of a function.
