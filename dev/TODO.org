@@ -87,7 +87,7 @@ C-x p F - project-or-external-find-file
 C-x p G - project-or-external-find-regexp
 C-x p b - project-switch-to-buffer
 C-x p c - project-compile
-C-x p d - project-dired
+# C-x p d - project-dired
 C-x p e - project-eshell
 C-x p f - project-find-file
 C-x p g - project-find-regexp
@@ -97,12 +97,12 @@ C-x p r - project-query-replace-regexp
 C-x p s - project-shell
 C-x p v - project-vc-dir
 
-needs:
-project-find-file-name
-project-find-directory
+# needs:
+# project-find-file-name
+# project-find-directory
 
-C-z p d - projectile-find-dir
-C-z p D - projectile-dired
+# C-z p d - projectile-find-dir
+# C-z p D - projectile-dired
 
 C-z p ESC - projectile-project-buffers-other-buffer
 C-z p C - projectile-configure-project
