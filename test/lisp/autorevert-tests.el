@@ -514,6 +514,7 @@ This expects `auto-revert--messages' to be bound by
             (lambda () (buffer-local-value
                    'auto-revert-notify-watch-descriptor buf-3))
             (auto-revert--timeout))
+           (message "Hallo0")
            (should (buffer-local-value
                     'auto-revert-notify-watch-descriptor buf-3))
            (auto-revert-test--write-file "3-a" file-3)
@@ -527,9 +528,10 @@ This expects `auto-revert--messages' to be bound by
            (auto-revert-test--wait-for-buffer-text
             buf-1 "1-b" (auto-revert--timeout))
            ;; On emba, `buf-1' is a killed buffer.
-           (when (buffer-live-p buf-1)
-             (should (buffer-local-value
-                      'auto-revert-notify-watch-descriptor buf-1)))
+           (message "Hallo1 %s %s %s" file-1 buf-1 (get-file-buffer file-1))
+           (should
+            (buffer-local-value
+             'auto-revert-notify-watch-descriptor (get-file-buffer file-1)))
 
            ;; Write a buffer to a new file, then modify the new file on disk.
            (with-current-buffer buf-2
@@ -538,6 +540,7 @@ This expects `auto-revert--messages' to be bound by
            (auto-revert-test--write-file "2-b" file-2b)
            (auto-revert-test--wait-for-buffer-text
             buf-2 "2-b" (auto-revert--timeout))
+           (message "Hallo2")
            (should (buffer-local-value
                     'auto-revert-notify-watch-descriptor buf-2)))
 

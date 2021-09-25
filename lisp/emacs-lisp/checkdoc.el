@@ -1653,7 +1653,10 @@ mouse-[0-3]\\)\\)\\>"))
 		   me (match-end 1))
 	     (if (and sym (boundp sym) (fboundp sym)
                       checkdoc--disambiguate-symbol-flag
-		      (save-excursion
+                      ;; Mode names do not need disambiguating.  (Bug#4110)
+                      (not (string-match (rx "-mode" string-end)
+                                         (symbol-name sym)))
+                      (save-excursion
 			(goto-char mb)
 			(forward-word-strictly -1)
 			(not (looking-at
@@ -1685,20 +1688,28 @@ function,command,variable,option or symbol." ms1))))))
      ;;   first line can be wider if necessary to fit the
      ;;   information that ought to be there.
      (save-excursion
-       (let ((start (point))
-	     (eol nil))
+       (let* ((start (point))
+              (eol nil)
+              ;; Respect this file local variable.
+              (max-column (max 80 byte-compile-docstring-max-column))
+              ;; Allow the first line to be three characters longer, to
+              ;; fit the leading ` "' while still having a docstring
+              ;; shorter than e.g. 80 characters.
+              (first t)
+              (get-max-column (lambda () (+ max-column (if first 3 0)))))
 	 (while (and (< (point) e)
 		     (or (progn (end-of-line) (setq eol (point))
-				(< (current-column) 80))
+                                (< (current-column) (funcall get-max-column)))
 			 (progn (beginning-of-line)
 				(re-search-forward "\\\\\\\\[[<{]"
 						   eol t))
-			 (checkdoc-in-sample-code-p start e)))
+                         (checkdoc-in-sample-code-p start e)))
+           (setq first nil)
 	   (forward-line 1))
 	 (end-of-line)
-	 (if (and (< (point) e) (> (current-column) 80))
+         (if (and (< (point) e) (> (current-column) (funcall get-max-column)))
 	     (checkdoc-create-error
-	      "Some lines are over 80 columns wide"
+              (format "Some lines are over %d columns wide" max-column)
 	      s (save-excursion (goto-char s) (line-end-position))))))
      ;; Here we deviate to tests based on a variable or function.
      ;; We must do this before checking for symbols in quotes because there
@@ -2093,18 +2104,19 @@ The text checked is between START and LIMIT."
 
 (defun checkdoc-in-abbreviation-p (begin)
   "Return non-nil if point is at an abbreviation.
-Examples of abbreviations handled: \"e.g.\", \"i.e.\", \"cf.\"."
+Examples of recognized abbreviations: \"e.g.\", \"i.e.\", \"cf.\"."
   (save-excursion
     (goto-char begin)
     (condition-case nil
-        (let ((single-letter t))
+        (let (single-letter)
           (forward-word -1)
           ;; Skip over all dots backwards, as `forward-word' will only
           ;; go one dot at a time in a string like "e.g.".
           (while (save-excursion (forward-char -1)
                                  (looking-at (rx ".")))
-            (setq single-letter nil)
             (forward-word -1))
+          (when (= (point) (1- begin))
+            (setq single-letter t))
           ;; Piece of an abbreviation.
           (looking-at
            (if single-letter
@@ -2120,7 +2132,7 @@ Examples of abbreviations handled: \"e.g.\", \"i.e.\", \"cf.\"."
                   "etc"                           ; etc.
                   "vs"                            ; vs.
                   ;; Some non-standard or less common ones that we
-                  ;; might as well ignore.
+                  ;; might as well accept.
                   "Inc" "Univ" "misc" "resp")
                  "."))))
       (error t))))

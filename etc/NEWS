@@ -745,18 +745,21 @@ Applies to headings of shortdoc sections.
 *** New face 'separator-line'.
 This is used by 'make-separator-line' (see below).
 
++++
 *** 'redisplay-skip-fontification-on-input' helps Emacs keep up with fast input.
 This is another attempt to solve the problem of handling high key repeat rate
 and other "slow scrolling" situations.  It is hoped it behaves better
 than 'fast-but-imprecise-scrolling' and 'jit-lock-defer-time'.
 It is not enabled by default.
 
+---
 *** Obsolete aliases are no longer hidden from command completion.
 Completion of command names now considers obsolete aliases as
 candidates, if they were marked obsolete in the current major version
 of Emacs.  Invoking a command via an obsolete alias now mentions the
 obsolescence fact and shows the new name of the command.
 
++++
 *** Support for '(box . SIZE)' 'cursor-type'.
 By default, 'box' cursor always has a filled box shape.  But if you
 specify 'cursor-type' to be '(box . SIZE)', the cursor becomes a hollow
@@ -998,10 +1001,10 @@ If nil, Emacs does not prompt, but instead shows the buffer with its
 contents before the change, and provides instructions how to revert
 the buffer.
 
+---
 ** New value 'save-some-buffers-root' of 'save-some-buffers-default-predicate'.
-They allow to ask about saving only those files that are under the
-project root or in subdirectories of the directory that was default
-during command invocation.
+When using this predicate, only buffers under the current project root
+will be considered when saving buffers with 'save-some-buffers'.
 
 ---
 ** New user option 'save-place-abbreviate-file-names'.
@@ -1255,6 +1258,10 @@ These arguments default to active region when used interactively.
 
 +++
 *** New command 'ispell-comment-or-string-at-point'.
+
+---
+*** New user option 'ispell-help-timeout'.
+This controls how long the ispell help (on the '?' key) is displayed.
 
 ** Flyspell mode
 
@@ -1696,8 +1703,10 @@ work as before.
 
 ** Emacs Lisp mode
 
+---
 *** The mode-line now indicates whether we're using lexical or dynamic scoping.
 
++++
 *** A space between an open paren and a symbol changes the indentation rule.
 The presence of a space between an open paren and a symbol now is
 taken as a statement by the programmer that this should be indented
@@ -2467,6 +2476,7 @@ visit. 'xref-auto-jump-to-first-xref' changes their behavior much in
 the same way as 'xref-auto-jump-to-first-definition' affects the
 "find-definitions" commands.
 
+---
 *** New user options 'xref-search-program' and 'xref-search-program-alist'.
 So far 'grep' and 'ripgrep' are supported.  'ripgrep' seems to offer better
 performance in certain cases, in particular for case-insensitive
@@ -2477,9 +2487,11 @@ searches.
 These commands are bound respectively to 'P' and 'N', and navigate to
 the first item of the previous or next group in the "*xref*" buffer.
 
+---
 *** New alternative value for 'xref-show-definitions-function':
 'xref-show-definitions-completing-read'.
 
+---
 *** The two existing alternatives for 'xref-show-definitions-function'
 have been renamed to have "proper" public names and documented
 ('xref-show-definitions-buffer' and
@@ -2593,8 +2605,9 @@ This new command (bound to 'C-c C-l') regenerates the current hunk.
 This is like 'filename', but is a full path, and is nil if the file
 doesn't exist.
 
++++
 *** New 'thing-at-point' target: 'string'.
-If point is inside a string, it returns the enclosed string.
+If point is inside a string, it returns that string.
 
 +++
 *** New variable 'thing-at-point-provider-alist'.
@@ -2802,6 +2815,7 @@ declared obsolete and rewritten as 'erc-track-select-mode-line-face',
 with different expected arguments (the current and old faces are now
 separated) and clearer documentation.
 
+---
 *** Add '/opme' and '/deopme' convenience commands.
 The new '/opme' convenience command asks ChanServ to set the operator
 status for the current nick in the current channel, and '/deopme'
@@ -3219,6 +3233,14 @@ For instance, you could add something like the following to your init
 file:
 
     (add-hook 'foo-mode-hook (lambda () (auto-fill-mode -1))
+
+---
+** Indentation of 'cl-flet' and 'cl-labels' has changed.
+These forms now indent like this:
+
+    (cl-flet ((bla (x)
+		(* x x)))
+      (bla 42))
 
 
 * Incompatible Lisp Changes in Emacs 28.1
@@ -3690,8 +3712,13 @@ initial frame used in batch mode.
 +++
 ** Doc strings can now link to customization groups.
 Text like "customization group `whitespace'" will be made into a
-button.  When clicked, it'll take the user to a Custom buffer
-displaying that customization group.
+button.  When clicked, it will open a Custom buffer displaying that
+customization group.
+
++++
+** Doc strings can now link to man pages.
+Text like "man page `chmod(1)'" will be made into a button.  When
+clicked, it will open a Man mode buffer displaying that man page.
 
 +++
 ** Buffers can now be created with certain hooks disabled.
@@ -3723,6 +3750,11 @@ instead of only becoming available after doing (for instance)
 
 ---
 ** ':safe' settings in 'defcustom' are now propagated to the loaddefs files.
+
++++
+** New ':type' for 'defcustom' for nonnegative integers.
+The new 'natnum' type can be used for options that should be
+nonnegative integers.
 
 +++
 ** ERT can now output more verbose test failure reports.
@@ -3889,7 +3921,7 @@ quotes, as well as backslash quoting (like\ this).
 
 +++
 ** New function 'string-clean-whitespace'.
-This removed whitespace from a string
+This removes whitespace from a string.
 
 +++
 ** New function 'string-fill'.
@@ -4208,8 +4240,8 @@ first COUNT file names that match the expression.  The same COUNT
 parameter has been added to 'directory-files-and-attributes'.
 
 +++
-** 'count-lines' now takes an optional parameter to
-ignore invisible lines.
+** 'count-lines' can now ignore invisible lines.
+This is controlled by the optional parameter IGNORE-INVISIBLE-LINES.
 
 ---
 ** 'count-words' now crosses field boundaries.
@@ -4229,7 +4261,7 @@ The new optional "," parameter has been added, and
 
 +++
 ** 'parse-time-string' can now parse ISO 8601 format strings.
-These have the format like "2020-01-15T16:12:21-08:00".
+These have a format like "2020-01-15T16:12:21-08:00".
 
 ---
 ** 'make-network-process', 'make-serial-process' ':coding' behavior change.
