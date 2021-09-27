@@ -3080,12 +3080,13 @@ Supported keywords for slots are:
                            `(nth ,pos cl-x))))))
 	      (push slot slots)
 	      (push default-value defaults)
-	      ;; The arg "cl-x" is referenced by name in eg pred-form
+              ;; The arg "cl-x" is referenced by name in e.g. pred-form
 	      ;; and pred-check, so changing it is not straightforward.
 	      (push `(,defsym ,accessor (cl-x)
-                       ,(format "Access slot \"%s\" of `%s' struct CL-X.%s"
-                                slot name
-                                (if doc (concat "\n" doc) ""))
+                       ,(concat
+                         (internal--format-docstring-line
+                          "Access slot \"%s\" of `%s' struct CL-X." slot name)
+                         (if doc (concat "\n" doc) ""))
                        (declare (side-effect-free t))
                        ,access-body)
                     forms)
