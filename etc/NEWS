@@ -1077,10 +1077,17 @@ This command is bound to 'C-x C-k d'.
 It used to be enabled when Emacs is started in GUI mode but not when started
 in text mode.  The cursor still only actually blinks in GUI frames.
 
+** 'show-paren-mode' is now enabled by default.
+To go back to the previous behavior, customize the user option by the
+same name to nil.
+
 +++
 ** New minor mode 'show-paren-local-mode'.
 It serves as a local counterpart for 'show-paren-mode', allowing you
-to toggle it separately in different buffers.
+to toggle it separately in different buffers.  To use it only in
+programming modes, for example, add the following to your init file:
+
+(add-hook 'prog-mode-hook #'show-paren-local-mode)
 
 
 * Changes in Specialized Modes and Packages in Emacs 28.1
@@ -1557,6 +1564,10 @@ emacs-version)'.  Other package names, like "tramp", could also be included.
 This allows users to use (define-key eshell-mode-map ...) as usual.
 Some modules have their own minor mode now to account for these
 changes.
+
+*** Support for bookmark.el.
+The command `bookmark-set' (bound to `C-x r m') is now supported, and
+will create a bookmark that opens the current directory in Eshell.
 
 ** Archive mode
 
@@ -2384,6 +2395,11 @@ The function that is invoked when clicking on or otherwise following a
 'mailto:' link in an EWW buffer can now be customized.  For more
 information, see the related entry about 'shr-browse-url' above.
 
+---
+*** Support for bookmark.el.
+The command `bookmark-set' (bound to `C-x r m') is now supported, and
+will create a bookmark that opens the current URL in EWW.
+
 ** SHR
 
 ---
@@ -2802,11 +2818,6 @@ Allowed inputs are seconds or ISO8601-like periods like "1h" or "4h30m".
 Italic text is displayed in the new 'erc-italic-face'.
 
 ---
-*** The erc-compat.el library is now marked obsolete.
-This file contained ERC compatibility code for Emacs 21 and XEmacs
-which is no longer needed.
-
----
 *** erc-match.el now supports 'message' highlight type (not including the nick).
 The 'erc-current-nick-highlight-type', 'erc-pal-highlight-type',
 'erc-fool-highlight-type', 'erc-keyword-highlight-type', and
@@ -2841,6 +2852,11 @@ separated) and clearer documentation.
 The new '/opme' convenience command asks ChanServ to set the operator
 status for the current nick in the current channel, and '/deopme'
 unsets it.
+
+---
+*** Fix the order of '/whois' arguments sent to the server.
+Per RFC 1459 and RFC 2812, when given, the optional 'server' argument
+for the WHOIS command must come before the 'user' argument, not after.
 
 ** xwidget-webkit mode
 
