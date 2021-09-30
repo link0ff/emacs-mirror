@@ -2117,7 +2117,9 @@ or (if one of MODES is a minor mode), if it is switched on in BUFFER."
     (mapcar
      (lambda (command-name)
        (let* ((fun (and (stringp command-name) (intern-soft command-name)))
-              (binding (where-is-internal fun overriding-local-map t))
+              (binding (unless (eq fun 'ignore)
+                         ;; When there is an error in context-menu
+                         (where-is-internal fun overriding-local-map t)))
               (obsolete (get fun 'byte-obsolete-info))
               (alias (symbol-function fun))
               (suffix (cond ((symbolp alias)

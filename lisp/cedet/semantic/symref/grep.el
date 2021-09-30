@@ -155,8 +155,8 @@ This shell should support pipe redirect syntax."
 	 (grepflags (cond ((eq (oref tool resulttype) 'file)
                            "-l ")
                           ((eq (oref tool searchtype) 'regexp)
-                           "-nE ")
-                          (t "-nw ")))
+                           "-E ")
+                          (t "-w ")))
          (searchfor (oref tool searchfor))
          (greppat (if (eq (oref tool searchtype) 'regexp)
                       searchfor
