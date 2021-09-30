@@ -957,7 +957,11 @@ for CJK text mixed with Latin text.
 +++
 ** New command 'undo-redo'.
 It undoes previous undo commands, but doesn't record itself as an
-undoable command.
+undoable command.  It is bound to 'C-?' and 'C-M-_', the first binding
+works well in graphical mode, and the second one is easy to hit on tty.
+
+For full conventional undo/redo behavior, you can also customize the
+user option 'undo-no-redo' to t.
 
 +++
 ** New commands 'copy-matching-lines' and 'kill-matching-lines'.
@@ -2878,9 +2882,13 @@ status for the current nick in the current channel, and '/deopme'
 unsets it.
 
 ---
-*** Fix the order of '/whois' arguments sent to the server.
-Per RFC 1459 and RFC 2812, when given, the optional 'server' argument
-for the WHOIS command must come before the 'user' argument, not after.
+*** Add '/wii' convenience command for whois with idle time.
+The new '/wii' convenience command calls the '/whois' command with the
+given nick as both arguments, which is useful for displaying the whois
+information for the nick along with idle time, even if the nick is on
+a different server than the one the current user is connected to.
+Using the given nick itself instead of the server it is connected to
+is not standardized, but is widely supported across IRC networks.
 
 ** xwidget-webkit mode
 
@@ -3020,6 +3028,11 @@ This includes support for the capabilities: 'server-time', 'batch',
 See 'rcirc-reconnect-attempts'.
 
 ** MPC
+
+---
+*** New command 'mpc-goto-playing-song'.
+This command, bound to 'o' in any 'mpc-mode' buffer, moves point to
+the currently playing song in the "*Songs*" buffer.
 
 ---
 *** New user option 'mpc-cover-image-re'.
@@ -3284,6 +3297,9 @@ These forms now indent like this:
     (cl-flet ((bla (x)
 		(* x x)))
       (bla 42))
+
+This change also affects 'cl-macrolet', 'cl-flet*' and
+'cl-symbol-macrolet'.
 
 
 * Incompatible Lisp Changes in Emacs 28.1
