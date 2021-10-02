@@ -1,6 +1,6 @@
 GNU Emacs NEWS -- history of user-visible changes.
 
-Copyright (C) 2019-2021 Free Software Foundation, Inc.
+Copyright (C) 2021 Free Software Foundation, Inc.
 See the end of the file for license conditions.
 
 Please send Emacs bug reports to 'bug-gnu-emacs@gnu.org'.
@@ -54,11 +54,22 @@ This change also affects 'cl-macrolet', 'cl-flet*' and
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
 
+** image-dired
+
+---
+*** New command for the thumbnail buffer.
+The new command 'image-dired-unmark-all-marks' has been added with a
+binding in the menu.
+
+
+** subr-x
+*** New macro 'with-memoization' provides a very primitive form of memoization
+
 
 * New Modes and Packages in Emacs 29.1
 
 +++
-** New mode 'erts-mode'
+** New mode 'erts-mode'.
 This mode is used to edit files geared towards testing actions in
 Emacs buffers, like indentation and the like.  The new ert function
 'ert-test-erts-file' is used to parse these files.
