@@ -125,7 +125,11 @@ function `tab-line-tab-face-group'."
   :group 'tab-line-faces)
 
 (defface tab-line-close-highlight
-  '((t :foreground "red"))
+  '((((class color) (min-colors 88))
+     :box (:line-width 1 :style released-button)
+     :background "grey85"
+     :foreground "black")
+    (t :inverse-video nil))
   "Tab line face for highlighting of the close button."
   :version "27.1"
   :group 'tab-line-faces)
@@ -481,22 +485,23 @@ should return the formatted tab name to display in the tab line."
                  'tab-line-tab-inactive)))
     (dolist (fn tab-line-tab-face-functions)
       (setf face (funcall fn tab tabs face buffer-p selected-p)))
-    (apply 'propertize
-           (concat (propertize name
-                               'keymap tab-line-tab-map
-                               ;; Don't turn mouse-1 into mouse-2 (bug#49247)
-                               'follow-link 'ignore)
-                   (or (and (or buffer-p (assq 'buffer tab) (assq 'close tab))
-                            tab-line-close-button-show
-                            (not (eq tab-line-close-button-show
-                                     (if selected-p 'non-selected 'selected)))
-                            tab-line-close-button)
-                       ""))
-           `(
-             tab ,tab
-             ,@(if selected-p '(selected t))
-             face ,face
-             mouse-face tab-line-highlight))))
+    (concat
+     (apply 'propertize name
+            `(
+              tab ,tab
+              ,@(if selected-p '(selected t))
+              face ,face
+              mouse-face tab-line-highlight
+              keymap ,tab-line-tab-map
+              ;; Don't turn mouse-1 into mouse-2 (bug#49247)
+              follow-link ignore
+              ))
+     (or (and (or buffer-p (assq 'buffer tab) (assq 'close tab))
+              tab-line-close-button-show
+              (not (eq tab-line-close-button-show
+                       (if selected-p 'non-selected 'selected)))
+              (propertize tab-line-close-button 'face face))
+         ""))))
 
 (defun tab-line-format-template (tabs)
   "Template for displaying tab line for selected window."
@@ -574,7 +579,10 @@ For use in `tab-line-tab-face-functions'."
                           ;; handle tab-line scrolling
                           (window-parameter nil 'tab-line-hscroll)
                           ;; for setting face 'tab-line-tab-current'
-                          (eq (selected-window) (old-selected-window))))
+                          (eq (selected-window) (old-selected-window))
+                          (and (memq 'tab-line-tab-face-modified
+                                     tab-line-tab-face-functions)
+                               (buffer-file-name) (buffer-modified-p))))
          (cache (window-parameter nil 'tab-line-cache)))
     ;; Enable auto-hscroll again after it was disabled on manual scrolling.
     ;; The moment to enable it is when the window-buffer was updated.
