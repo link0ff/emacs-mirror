@@ -482,7 +482,7 @@ errors.  Perhaps we could arrange to display these error indications
 on top of the scroll bar itself.  That depends on to what extent
 toolkit scroll bars are extensible.
 
-** [MAYBE in infoman] Provide user-friendly ways to list all available font families
+** Provide user-friendly ways to list all available font families
 Also for listing fonts, displaying a font as a sample, etc.
 
 ** Provide a convenient way to select a color with the mouse
@@ -845,7 +845,7 @@ packages (e.g. tamago, anthy) or an input method via XIM.
 ** Let LEIM handle the Mode_switch key like XIM does
 I.e. a toggle like C-\ but which can also be used as a modifier.
 
-** (infoman) Improve Help buffers
+** Improve Help buffers
 Change the face of previously visited links (like Info, but also with
 regard to namespace), and give the value of lisp expressions, e.g
 auto-mode-alist, the right face.
@@ -1690,7 +1690,7 @@ stored in the Lisp_Object itself.
 Currently, it mixes up the predicate to apply when doing completion
 and the one to use when terminating the selection.
 
-** (no need to merge! ibuffer is a separate fancy package, move to ELPA?) Merge ibuffer.el and buff-menu.el
+** Merge ibuffer.el and buff-menu.el
 More specifically do what's needed to make ibuffer.el the default, or
 just an extension of buff-menu.el.
 
