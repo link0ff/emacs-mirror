@@ -557,7 +557,7 @@ This will generate compile-time constants from BINDINGS."
   "Gaudy highlighting from Emacs Lisp mode used in Backtrace mode.")
 
 (defun lisp-string-in-doc-position-p (listbeg startpos)
-   "Return true if a doc string may occur at STARTPOS inside a list.
+   "Return non-nil if a doc string may occur at STARTPOS inside a list.
 LISTBEG is the position of the start of the innermost list
 containing STARTPOS."
   (let* ((firstsym (and listbeg
@@ -590,7 +590,7 @@ containing STARTPOS."
                 (= (point) startpos))))))
 
 (defun lisp-string-after-doc-keyword-p (listbeg startpos)
-  "Return true if `:documentation' symbol ends at STARTPOS inside a list.
+  "Return non-nil if `:documentation' symbol ends at STARTPOS inside a list.
 LISTBEG is the position of the start of the innermost list
 containing STARTPOS."
   (and listbeg                          ; We are inside a Lisp form.
@@ -1162,18 +1162,6 @@ STATE is the `parse-partial-sexp' state for current position."
                                  (goto-char (scan-lists (point) -1 0))
                                  (point)))))))))))
 
-(defun lisp-indent--defvar-keymap (state)
-  "Return the indent position in the options part of a `defvar-keymap' form."
-  (save-excursion
-    (let ((parens (ppss-open-parens state)))
-      (and (equal (nth 1 parens) (ppss-innermost-start state))
-           (progn
-             (goto-char (nth 0 parens))
-             (looking-at-p "(defvar-keymap"))
-           (progn
-             (goto-char (ppss-innermost-start state))
-             (1+ (current-column)))))))
-
 (defun lisp-indent-function (indent-point state)
   "This function is the normal value of the variable `lisp-indent-function'.
 The function `calculate-lisp-indent' calls this to determine
@@ -1207,12 +1195,10 @@ Lisp function does not specify a special indentation."
     (if (and (elt state 2)
              (not (looking-at "\\sw\\|\\s_")))
         ;; car of form doesn't seem to be a symbol
-        (cond
-         ((lisp--local-defform-body-p state)
-          ;; We nevertheless check whether we are in flet-like form
-          ;; as we presume local function names could be non-symbols.
-          (lisp-indent-defform state indent-point))
-         (t
+        (if (lisp--local-defform-body-p state)
+            ;; We nevertheless check whether we are in flet-like form
+            ;; as we presume local function names could be non-symbols.
+            (lisp-indent-defform state indent-point)
           (if (not (> (save-excursion (forward-line 1) (point))
                       calculate-lisp-indent-last-sexp))
 	      (progn (goto-char calculate-lisp-indent-last-sexp)
@@ -1224,28 +1210,25 @@ Lisp function does not specify a special indentation."
 	  ;; thing on that line has to be complete sexp since we are
           ;; inside the innermost containing sexp.
           (backward-prefix-chars)
-          (current-column)))
-      ;; Indent `defvar-keymap' arguments.
-      (or (lisp-indent--defvar-keymap state)
-          ;; Other forms.
-          (let ((function (buffer-substring (point)
-					    (progn (forward-sexp 1) (point))))
-	        method)
-	    (setq method (or (function-get (intern-soft function)
-                                           'lisp-indent-function)
-			     (get (intern-soft function) 'lisp-indent-hook)))
-	    (cond ((or (eq method 'defun)
-		       (and (null method)
-			    (> (length function) 3)
-			    (string-match "\\`def" function))
-                       ;; Check whether we are in flet-like form.
-                       (lisp--local-defform-body-p state))
-	           (lisp-indent-defform state indent-point))
-	          ((integerp method)
-	           (lisp-indent-specform method state
-				         indent-point normal-indent))
-	          (method
-	           (funcall method indent-point state))))))))
+          (current-column))
+      (let ((function (buffer-substring (point)
+					(progn (forward-sexp 1) (point))))
+	    method)
+	(setq method (or (function-get (intern-soft function)
+                                       'lisp-indent-function)
+			 (get (intern-soft function) 'lisp-indent-hook)))
+	(cond ((or (eq method 'defun)
+		   (and (null method)
+			(> (length function) 3)
+			(string-match "\\`def" function))
+                   ;; Check whether we are in flet-like form.
+                   (lisp--local-defform-body-p state))
+	       (lisp-indent-defform state indent-point))
+	      ((integerp method)
+	       (lisp-indent-specform method state
+				     indent-point normal-indent))
+	      (method
+	       (funcall method indent-point state)))))))
 
 (defcustom lisp-body-indent 2
   "Number of columns to indent the second line of a `(def...)' form."
