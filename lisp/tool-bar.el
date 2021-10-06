@@ -257,9 +257,9 @@ holds a keymap."
   (tool-bar-add-item-from-menu 'dired "diropen" nil :vert-only t)
   (tool-bar-add-item-from-menu 'kill-this-buffer "close" nil :vert-only t)
   (tool-bar-add-item-from-menu 'save-buffer "save" nil
-			       :label "Save" :vert-only t)
+			       :label "Save")
   (define-key-after (default-value 'tool-bar-map) [separator-1] menu-bar-separator)
-  (tool-bar-add-item-from-menu 'undo "undo" nil :vert-only t)
+  (tool-bar-add-item-from-menu 'undo "undo" nil)
   (define-key-after (default-value 'tool-bar-map) [separator-2] menu-bar-separator)
   (tool-bar-add-item-from-menu (lookup-key menu-bar-edit-menu [cut])
 			       "cut" nil :vert-only t)
@@ -283,17 +283,7 @@ holds a keymap."
   ;; 				(popup-menu menu-bar-help-menu))
   ;; 		       'help
   ;; 		       :help "Pop up the Help menu"))
-
-  ;; (define-key-after (default-value 'tool-bar-map) [global-menu-bar]
-  ;;   `(menu-item (propertize " " 'display '(space :align-to (- right 5)))
-  ;;               (lambda ()
-  ;;                 (interactive)
-  ;;                 (popup-menu (mouse-menu-bar-map)))
-  ;;               :image ,(tool-bar--image-expression "newsticker/narrow")
-  ;;               :visible '(zerop (or (frame-parameter nil 'menu-bar-lines) 0))
-  ;;               :vert-only t
-  ;;               :help "Pop up the global menu bar"))
-  )
+)
 
 (if (featurep 'move-toolbar)
     (defcustom tool-bar-position 'top
