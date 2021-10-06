@@ -1275,13 +1275,6 @@ non-nil means move point to beginning of region."
 		 (const :tag "Move point to beginning of region" t))
   :version "26.1")
 
-(defun mouse-adjust-set-point (event)
-  (interactive "e")
-  ;; (message "! mouse-adjust-set-point %S %S %S" (region-active-p) (mark t) event)
-  (if (mark t)
-      (mouse-set-region event (mark t))
-    (mouse-set-point event)))
-
 (defun mouse-set-point (event &optional promote-to-region)
   "Move point to the position clicked on with the mouse.
 This should be bound to a mouse click event type.
@@ -1289,7 +1282,6 @@ If PROMOTE-TO-REGION is non-nil and event is a multiple-click, select
 the corresponding element around point, with the resulting position of
 point determined by `mouse-select-region-move-to-beginning'."
   (interactive "e\np")
-  ;; (message "! mouse-set-point %S" event)
   (mouse-minibuffer-check event)
   (if (and promote-to-region (> (event-click-count event) 1))
       (progn
@@ -1312,13 +1304,9 @@ point determined by `mouse-select-region-move-to-beginning'."
        (eq mouse-last-region-end (region-end))
        (eq mouse-last-region-tick (buffer-modified-tick))))
 
-(defvar mouse--drag-start-event nil) ; Unused?
+(defvar mouse--drag-start-event nil)
 
-(defun mouse-adjust-set-region (click)
-  (interactive "e")
-  (mouse-set-region click (mark t)))
-
-(defun mouse-set-region (click &optional adjust)
+(defun mouse-set-region (click)
   "Set the region to the text dragged over, and copy to kill ring.
 This should be bound to a mouse drag event.
 See the `mouse-drag-copy-region' variable to control whether this
@@ -1326,7 +1314,7 @@ command alters the kill ring or not."
   (interactive "e")
   (mouse-minibuffer-check click)
   (select-window (posn-window (event-start click)))
-  (let ((beg (or adjust (posn-point (event-start click))))
+  (let ((beg (posn-point (event-start click)))
         (end
          (if (eq (posn-window (event-end click)) (selected-window))
              (posn-point (event-end click))
@@ -1340,13 +1328,12 @@ command alters the kill ring or not."
         ;; our way around this problem by remembering the start-event in
         ;; `mouse-drag-start' and fetching the click-count from there.
         (when (and (<= click-count 1)
-                   (equal beg (or adjust (posn-point (event-start drag-start)))))
+                   (equal beg (posn-point (event-start drag-start))))
           (setq click-count (event-click-count drag-start)))
         ;; Occasionally we get spurious drag events where the user hasn't
         ;; dragged his mouse, but instead Emacs has dragged the text under the
         ;; user's mouse.  Try to recover those cases (bug#17562).
-        (when (and (not adjust)
-                   (equal (posn-x-y (event-start click))
+        (when (and (equal (posn-x-y (event-start click))
                           (posn-x-y (event-end click)))
                    (not (eq (car drag-start) 'mouse-movement)))
           (setq end beg))
@@ -1465,20 +1452,6 @@ is dragged over to."
     (run-hooks 'mouse-leave-buffer-hook)
     (mouse-drag-track start-event)))
 
-(defun mouse-adjust-drag-region (start-event)
-  "Adjust region."
-  (interactive "e")
-  (run-hooks 'mouse-leave-buffer-hook)
-  (let ((adjust
-         (with-current-buffer (window-buffer (posn-window (event-start
-                                                           start-event)))
-           (when (region-active-p)
-             (cons (region-beginning) (region-end))))))
-    ;; (when beg
-    ;;   (setf (nth 1 (event-start start-event)) beg)
-    ;;   (setf (nth 5 (event-start start-event)) beg))
-    (mouse-drag-track start-event adjust)))
-
 ;; Inhibit the region-confinement when undoing mouse-drag-region
 ;; immediately after the command.  Otherwise, the selection left
 ;; active around the dragged text would prevent an undo of the whole
@@ -1592,10 +1565,9 @@ at the same position."
 		    "mouse-1" (substring msg 7)))))))
   msg)
 
-(defun mouse-drag-track (start-event &optional adjust)
-  "Track mouse drags by highlighting area between point and cursor.
+(defun mouse-drag-track (start-event)
+    "Track mouse drags by highlighting area between point and cursor.
 The region will be defined with mark and point."
-  ;; (message "! %S" start-event)
   (mouse-minibuffer-check start-event)
   (setq mouse-selection-click-count-buffer (current-buffer))
   (deactivate-mark)
@@ -1608,9 +1580,6 @@ The region will be defined with mark and point."
          ;; window, now let's jump to the place of the event, where things
          ;; are happening.
          (_ (mouse-set-point start-event))
-         ;; (_ (if adjust (goto-char (if (< start-point (car adjust))
-         ;;                              (car adjust) (cdr adjust)))
-         ;;      (mouse-set-point start-event)))
          (echo-keystrokes 0)
 	 (bounds (window-edges start-window))
 	 (make-cursor-line-fully-visible nil)
@@ -3232,10 +3201,6 @@ is copied instead of being cut."
 (global-set-key [mouse-1]	'mouse-set-point)
 (global-set-key [drag-mouse-1]	'mouse-set-region)
 
-(global-set-key [S-down-mouse-1] 'mouse-adjust-drag-region)
-(global-set-key [S-mouse-1]      'mouse-adjust-set-point)
-(global-set-key [S-drag-mouse-1] 'mouse-adjust-set-region)
-
 (defun mouse--strip-first-event (_prompt)
   (substring (this-single-command-raw-keys) 1))
 
@@ -3253,8 +3218,8 @@ is copied instead of being cut."
 ;; By binding these to down-going events, we let the user use the up-going
 ;; event to make the selection, saving a click.
 (global-set-key [C-down-mouse-1] 'mouse-buffer-menu)
-;; (if (not (eq system-type 'ms-dos))
-;;     (global-set-key [S-down-mouse-1] 'mouse-appearance-menu))
+(if (not (eq system-type 'ms-dos))
+    (global-set-key [S-down-mouse-1] 'mouse-appearance-menu))
 ;; C-down-mouse-2 is bound in facemenu.el.
 (global-set-key [C-down-mouse-3]
   `(menu-item ,(purecopy "Menu Bar") ignore
