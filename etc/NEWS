@@ -27,6 +27,10 @@ applies, and please also update docstrings as needed.
 
 * Startup Changes in Emacs 29.1
 
++++
+** Emacs now has a --fingerprint option.
+This will output a string identifying the current Emacs build.
+
 
 * Changes in Emacs 29.1
 
@@ -133,6 +137,11 @@ with recent versions of Firefox.
 
 
 * Lisp Changes in Emacs 29.1
+
++++
+** :keys in 'menu-item' can now be a function.
+If so, it is called whenever the menu is computed, and can be used to
+calculate the keys dynamically.
 
 +++
 ** New major mode 'clean-mode'.

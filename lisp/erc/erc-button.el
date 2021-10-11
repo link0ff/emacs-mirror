@@ -393,7 +393,7 @@ REGEXP is the regular expression which matched for this button."
   "Check text at point for a callback function.
 If the text at point has a `erc-callback' property,
 call it with the value of the `erc-data' text property."
-  (declare (advertised-calling-convention () "29.1"))
+  (declare (advertised-calling-convention () "28.1"))
   (interactive)
   (let* ((data (get-text-property (point) 'erc-data))
          (fun (get-text-property (point) 'erc-callback)))
