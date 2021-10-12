@@ -328,17 +328,15 @@ ignored if VISIBLE-HEADERS is non-nil."
 (defun mh-summary-height ()
   "Return ideal value for the variable `mh-summary-height'.
 The current frame height is taken into consideration."
-  (or (and (fboundp 'frame-height)
-           (> (frame-height) 24)
+  (or (and (> (frame-height) 24)
            (min 10 (/ (frame-height) 6)))
       4))
 
 
 
-;; Infrastructure to generate show-buffer functions from folder functions
-;; XEmacs does not have deactivate-mark? What is the equivalent of
-;; transient-mark-mode for XEmacs? Should we be restoring the mark in the
-;; folder buffer after the operation has been carried out.
+;; Infrastructure to generate show-buffer functions from folder functions.
+;; Should we be restoring the mark in the folder buffer after the
+;; operation has been carried out?
 (defmacro mh-defun-show-buffer (function original-function
                                          &optional dont-return)
   "Define FUNCTION to run ORIGINAL-FUNCTION in folder buffer.
@@ -833,15 +831,14 @@ The hook `mh-show-mode-hook' is called upon entry to this mode.
 See also `mh-folder-mode'.
 
 \\{mh-show-mode-map}"
-  (mh-do-in-gnu-emacs
-   (if (boundp 'tool-bar-map)
-       (set (make-local-variable 'tool-bar-map) mh-show-tool-bar-map)))
-  (set (make-local-variable 'mail-header-separator) mh-mail-header-separator)
+  (if (boundp 'tool-bar-map)
+      (setq-local tool-bar-map mh-show-tool-bar-map))
+  (setq-local mail-header-separator mh-mail-header-separator)
   (setq paragraph-start (default-value 'paragraph-start))
   (setq buffer-invisibility-spec '((vanish . t) t))
-  (set (make-local-variable 'line-move-ignore-invisible) t)
+  (setq-local line-move-ignore-invisible t)
   (make-local-variable 'font-lock-defaults)
-  ;;(set (make-local-variable 'font-lock-support-mode) nil)
+  ;;(setq-local font-lock-support-mode nil)
   (cond
    ((equal mh-highlight-citation-style 'font-lock)
     (setq font-lock-defaults '(mh-show-font-lock-keywords-with-cite t)))

@@ -3568,6 +3568,9 @@ If either NAME or VAL are specified, both should be specified."
 (defvar suspend-resume-hook nil
   "Normal hook run by `suspend-emacs', after Emacs is continued.")
 
+(defvar after-pdump-load-hook nil
+  "Normal hook run after loading the .pdmp file.")
+
 (defvar temp-buffer-show-hook nil
   "Normal hook run by `with-output-to-temp-buffer' after displaying the buffer.
 When the hook runs, the temporary buffer is current, and the window it
@@ -4386,11 +4389,6 @@ is allowed once again.  (Immediately, if `inhibit-quit' is nil.)"
 	   ;; call, and that might allow it to exit thru a condition-case
 	   ;; that intends to handle the quit signal next time.
 	   (eval '(ignore nil)))))
-
-;; Don't throw `throw-on-input' on those events by default.
-(setq while-no-input-ignore-events
-      '(focus-in focus-out help-echo iconify-frame
-        make-frame-visible selection-request))
 
 (defmacro while-no-input (&rest body)
   "Execute BODY only as long as there's no pending input.
