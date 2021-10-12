@@ -390,7 +390,10 @@ When Repeat mode is enabled, and the command symbol has the property named
 See `describe-repeat-maps' for a list of all repeatable command."
   :global t :group 'convenience
   (if (not repeat-mode)
-      (remove-hook 'post-command-hook 'repeat-post-hook)
+      (progn
+        (remove-hook 'pre-command-hook 'repeat-pre-hook)
+        (remove-hook 'post-command-hook 'repeat-post-hook))
+    (add-hook 'pre-command-hook 'repeat-pre-hook)
     (add-hook 'post-command-hook 'repeat-post-hook)
     (let* ((keymaps nil)
            (commands (all-completions
@@ -402,7 +405,9 @@ See `describe-repeat-maps' for a list of all repeatable command."
                (length commands)
                (length (delete-dups keymaps))))))
 
-(defvar repeat-allow-other-key t)
+(defun repeat-pre-hook ()
+  "Function run before commands to handle repeatable keys."
+)
 
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
@@ -419,10 +424,10 @@ See `describe-repeat-maps' for a list of all repeatable command."
 
             ;; Exit when the last char is not among repeatable keys,
             ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
-            (when (and (or (or repeat-allow-other-key
-                               (commandp (lookup-key map (this-command-keys-vector))))
+            (when (and (or (lookup-key map (this-command-keys-vector))
                            prefix-arg)
-                       ;; TODO: check is still the same level to allow starting sequence in prompt
+                       ;; TODO: check if still the same level to allow sequences in prompt
+                       ;; Avoid remapping in prompts
                        (zerop (minibuffer-depth)))
 
               ;; Messaging
