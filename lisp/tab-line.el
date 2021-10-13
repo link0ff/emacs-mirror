@@ -129,11 +129,7 @@ function `tab-line-tab-face-group'."
   :group 'tab-line-faces)
 
 (defface tab-line-close-highlight
-  '((((class color) (min-colors 88))
-     :box (:line-width 1 :style released-button)
-     :background "grey85"
-     :foreground "black")
-    (t :inverse-video nil))
+  '((t :foreground "red"))
   "Tab line face for highlighting of the close button."
   :version "27.1"
   :group 'tab-line-faces)
@@ -489,23 +485,22 @@ should return the formatted tab name to display in the tab line."
                  'tab-line-tab-inactive)))
     (dolist (fn tab-line-tab-face-functions)
       (setf face (funcall fn tab tabs face buffer-p selected-p)))
-    (concat
-     (apply 'propertize name
-            `(
-              tab ,tab
-              ,@(if selected-p '(selected t))
-              face ,face
-              mouse-face tab-line-highlight
-              keymap ,tab-line-tab-map
-              ;; Don't turn mouse-1 into mouse-2 (bug#49247)
-              follow-link ignore
-              ))
-     (or (and (or buffer-p (assq 'buffer tab) (assq 'close tab))
-              tab-line-close-button-show
-              (not (eq tab-line-close-button-show
-                       (if selected-p 'non-selected 'selected)))
-              (propertize tab-line-close-button 'face face))
-         ""))))
+    (apply 'propertize
+           (concat (propertize name
+                               'keymap tab-line-tab-map
+                               ;; Don't turn mouse-1 into mouse-2 (bug#49247)
+                               'follow-link 'ignore)
+                   (or (and (or buffer-p (assq 'buffer tab) (assq 'close tab))
+                            tab-line-close-button-show
+                            (not (eq tab-line-close-button-show
+                                     (if selected-p 'non-selected 'selected)))
+                            tab-line-close-button)
+                       ""))
+           `(
+             tab ,tab
+             ,@(if selected-p '(selected t))
+             face ,face
+             mouse-face tab-line-highlight))))
 
 (defun tab-line-format-template (tabs)
   "Template for displaying tab line for selected window."
