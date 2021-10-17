@@ -407,7 +407,11 @@ See `describe-repeat-maps' for a list of all repeatable command."
 
 (defun repeat-pre-hook ()
   "Function run before commands to handle repeatable keys."
-)
+  ;; Reset prefix-arg before next non-repeatable command,
+  ;; e.g. `C-- C-x o o up'
+  ;; (when (and repeat-keep-prefix (not repeat-in-progress))
+  ;;   (setq prefix-arg nil))
+  )
 
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
@@ -418,17 +422,15 @@ See `describe-repeat-maps' for a list of all repeatable command."
                          (and (symbolp real-this-command)
                               (get real-this-command 'repeat-map)))))
         (when rep-map
-          (when (boundp rep-map)
+          (when (and (symbolp rep-map) (boundp rep-map))
             (setq rep-map (symbol-value rep-map)))
           (let ((map (copy-keymap rep-map)))
 
             ;; Exit when the last char is not among repeatable keys,
             ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
-            (when (and (or (lookup-key map (this-command-keys-vector))
-                           prefix-arg)
-                       ;; TODO: check if still the same level to allow sequences in prompt
-                       ;; Avoid remapping in prompts
-                       (zerop (minibuffer-depth)))
+            (when (and (zerop (minibuffer-depth)) ; avoid remapping in prompts
+                       (or (lookup-key map (this-command-keys-vector))
+                           prefix-arg))
 
               ;; Messaging
               (unless prefix-arg
@@ -438,7 +440,6 @@ See `describe-repeat-maps' for a list of all repeatable command."
               (when repeat-exit-key
                 (define-key map repeat-exit-key 'ignore))
 
-              ;; TODO: reset prefix-arg before next non-repeatable command
               (when (and repeat-keep-prefix (not prefix-arg))
                 (setq prefix-arg current-prefix-arg))
 

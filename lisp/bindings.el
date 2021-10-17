@@ -993,6 +993,9 @@ if `inhibit-field-text-motion' is non-nil."
     map)
   "Keymap to repeat undo key sequences `C-x u u'.  Used in `repeat-mode'.")
 (put 'undo 'repeat-map 'undo-repeat-map)
+(put 'undo 'repeat-ignore-keys '([?\C-x ?u]))
+(put 'undo 'repeat-allow-keys '([?\C-x ?u]))
+(put 'undo 'repeat-exit-keys '([?\C-x ?u]))
 
 (define-key global-map '[(control ??)] 'undo-redo)
 (define-key global-map [?\C-\M-_] 'undo-redo)
