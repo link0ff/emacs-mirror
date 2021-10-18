@@ -24,6 +24,12 @@ applies, and please also update docstrings as needed.
 
 * Installation Changes in Emacs 29.1
 
+** Emacs now installs the .pdmp file using a unique fingerprint in the name.
+The file is typically installed using a file name akin to
+...dir/libexec/emacs/29.0.50/x86_64-pc-linux-gnu/emacs-<fingerprint>.pdmp
+If a constant file name is required, the file can be renamed to
+"emacs.pdmp", and Emacs will find it during startup anyway.
+
 
 * Startup Changes in Emacs 29.1
 
@@ -85,6 +91,14 @@ effectively dragged.
 ** New user option 'yank-menu-max-items'.
 Customize this option to limit the amount of entries in the menu
 "Edit->Paste from Kill Menu".  The default is 60.
+
+** show-paren-mode
+
++++
+*** New user option 'show-paren-context-when-offscreen'.
+When non-nil, if the point is in a closing delimiter and the opening
+delimiter is offscreen, shows some context around the opening
+delimiter in the echo area.
 
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
@@ -155,6 +169,26 @@ Emacs buffers, like indentation and the like.  The new ert function
 
 
 * Incompatible Lisp Changes in Emacs 29.1
+
+---
+** 'def' indentation changes.
+In 'emacs-lisp-mode', forms with a symbol with a name that start with
+"def" have been automatically indented as if they were 'defun'-like
+forms, for instance:
+
+  (defzot 1
+    2 3)
+
+This heuristic has now been removed, and all functions/macros that
+want to be indented this way have to be marked with
+
+  (declare (indent defun))
+
+or the like.  If the function/macro definition itself can't be
+changed, the indentation can also be adjusted by saying something
+like:
+
+  (put 'defzot 'lisp-indent-function 'defun)
 
 ---
 ** The 'inhibit-changing-match-data' variable is now obsolete.
