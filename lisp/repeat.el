@@ -354,7 +354,7 @@ number of seconds."
 (defvar repeat-exit-timer nil
   "Timer activated after the last key typed in the repeating key sequence.")
 
-(defcustom repeat-keep-prefix t
+(defcustom repeat-keep-prefix nil
   "Keep the prefix arg of the previous command."
   :type 'boolean
   :group 'convenience
@@ -429,7 +429,7 @@ See `describe-repeat-maps' for a list of all repeatable command."
             ;; Exit when the last char is not among repeatable keys,
             ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
             (when (and (zerop (minibuffer-depth)) ; avoid remapping in prompts
-                       (or (lookup-key map (this-command-keys-vector))
+                       (or (lookup-key map (vector last-nonmenu-event))
                            prefix-arg))
 
               ;; Messaging
