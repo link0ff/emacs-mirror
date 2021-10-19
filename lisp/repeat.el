@@ -405,59 +405,84 @@ See `describe-repeat-maps' for a list of all repeatable command."
                (length commands)
                (length (delete-dups keymaps))))))
 
+(defun repeat-map ()
+  "Return a map for keys repeatable after the current command."
+  (when repeat-mode
+    (let ((rep-map (or repeat-map
+                       (and (symbolp real-this-command)
+                            (get real-this-command 'repeat-map)))))
+      (when rep-map
+        (when (and (symbolp rep-map) (boundp rep-map))
+          (setq rep-map (symbol-value rep-map)))
+
+        (if repeat-exit-key
+            ;; `repeat-exit-key' modifies the map by adding keys
+            (copy-keymap rep-map)
+          rep-map)))))
+
+(defun repeat-map-valid (map)
+  "Check if MAP can be used for the next command.
+Can contain more conditions."
+  (and map
+       ;; Avoid using repeatable keys when minibuffer prompt pops up
+       (zerop (minibuffer-depth))
+       ;; Exit when the last char is not among repeatable keys,
+       ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
+       (or (lookup-key map (vector last-nonmenu-event))
+           ;; `prefix-arg' can affect next repeatable commands
+           ;; (and repeat-keep-prefix prefix-arg)
+           )))
+
 (defun repeat-pre-hook ()
   "Function run before commands to handle repeatable keys."
-  ;; Reset prefix-arg before next non-repeatable command,
-  ;; e.g. `C-- C-x o o up'
-  ;; (when (and repeat-keep-prefix (not repeat-in-progress))
-  ;;   (setq prefix-arg nil))
-  )
+  ;; Reset prefix-arg before the next non-repeatable command,
+  ;; e.g. `C-- C-x o o C-n' or `C-x o C-- o C-n', so `C-n'
+  ;; should not use `prefix-arg' to go in opposite direction.
+  (when (and repeat-keep-prefix prefix-arg repeat-in-progress)
+    (let ((map (repeat-map)))
+      (if map
+          ;; Optimize to use less logic in `repeat-map'
+          ;; when called again from `repeat-post-hook'
+          (setq repeat-map map)
+        ;; When `repeat-post-hook' will exit the repeatable sequence,
+        ;; this means the current command is not repeatable,
+        ;; so reset `prefix-arg' enabled for repeatable commands only.
+        (setq prefix-arg nil)))))
 
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
   (let ((was-in-progress repeat-in-progress))
     (setq repeat-in-progress nil)
-    (when repeat-mode
-      (let ((rep-map (or repeat-map
-                         (and (symbolp real-this-command)
-                              (get real-this-command 'repeat-map)))))
-        (when rep-map
-          (when (and (symbolp rep-map) (boundp rep-map))
-            (setq rep-map (symbol-value rep-map)))
-          (let ((map (copy-keymap rep-map)))
 
-            ;; Exit when the last char is not among repeatable keys,
-            ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
-            (when (and (zerop (minibuffer-depth)) ; avoid remapping in prompts
-                       (or (lookup-key map (vector last-nonmenu-event))
-                           prefix-arg))
+    (let ((map (repeat-map)))
+      (when (repeat-map-valid map)
 
-              ;; Messaging
-              (unless prefix-arg
-                (funcall repeat-echo-function map))
+        ;; Messaging
+        (unless prefix-arg ;; Don't overwrite prefix arg echo
+          (funcall repeat-echo-function map))
 
-              ;; Adding an exit key
-              (when repeat-exit-key
-                (define-key map repeat-exit-key 'ignore))
+        ;; Adding an exit key
+        (when repeat-exit-key
+          (define-key map repeat-exit-key 'ignore))
 
-              (when (and repeat-keep-prefix (not prefix-arg))
-                (setq prefix-arg current-prefix-arg))
+        (when (and repeat-keep-prefix (not prefix-arg))
+          (setq prefix-arg current-prefix-arg))
 
-              (setq repeat-in-progress t)
-              (let ((exitfun (set-transient-map map)))
+        (setq repeat-in-progress t)
+        (let ((exitfun (set-transient-map map)))
 
-                (when repeat-exit-timer
-                  (cancel-timer repeat-exit-timer)
-                  (setq repeat-exit-timer nil))
+          (when repeat-exit-timer
+            (cancel-timer repeat-exit-timer)
+            (setq repeat-exit-timer nil))
 
-                (when repeat-exit-timeout
-                  (setq repeat-exit-timer
-                        (run-with-idle-timer
-                         repeat-exit-timeout nil
-                         (lambda ()
-                           (setq repeat-in-progress nil)
-                           (funcall exitfun)
-                           (funcall repeat-echo-function nil)))))))))))
+          (when repeat-exit-timeout
+            (setq repeat-exit-timer
+                  (run-with-idle-timer
+                   repeat-exit-timeout nil
+                   (lambda ()
+                     (setq repeat-in-progress nil)
+                     (funcall exitfun)
+                     (funcall repeat-echo-function nil))))))))
 
     (setq repeat-map nil)
     (when (and was-in-progress (not repeat-in-progress))
