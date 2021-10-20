@@ -107,10 +107,10 @@ delimiter in the echo area.
 
 ---
 *** Alignment in 'text-mode' has changed.
-Previously, 'M-x align' didn't do anything, and you have to say 'C-u
+Previously, 'M-x align' didn't do anything, and you had to say 'C-u
 M-x align' for it to work.  This has now been changed.  The default
-for regexp for 'C-u M-x align-regexp' has also been changed to be
-easier for inexperienced users to use.
+regexp for 'C-u M-x align-regexp' has also been changed to be easier
+for inexperienced users to use.
 
 ** eww
 
@@ -235,6 +235,17 @@ with recent versions of Firefox.
 
 
 * Lisp Changes in Emacs 29.1
+
+** Locale
+
+---
+*** New variable 'current-locale-environment'.
+This holds the value of the previous call to 'set-locale-environment'.
+
+---
+*** New macro 'with-locale-environment'.
+This macro can be used to change the locale temporarily while
+executing code.
 
 +++
 ** 'define-key' now understands a new strict 'kbd' representation for keys.
