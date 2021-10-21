@@ -37,8 +37,7 @@ first expansion being replaced rather than the destination."
    (goto-char 8)
    (save-window-excursion
      (set-window-buffer nil (current-buffer))
-     ;; M-/ SPC M-/ M-/
-     (execute-kbd-macro "\257 \257\257"))
+     (execute-kbd-macro (kbd "M-/ SPC M-/ M-/")))
    (should (string= (buffer-string) "ab  x\nab y\nab  y"))))
 
 (ert-deftest dabbrev-completion-test ()
@@ -52,8 +51,7 @@ buffers unless a prefix argument is used."
       (goto-char 6)
       (save-window-excursion
         (set-window-buffer nil (current-buffer))
-        ;; C-M-/
-        (execute-kbd-macro [201326639]))
+        (execute-kbd-macro (kbd "C-M-/")))
       (should (string= (buffer-string) "abc\nabc")))))
 
 (ert-deftest dabbrev-completion-test-with-argument ()
@@ -67,8 +65,7 @@ multiple expansions."
       (goto-char 6)
       (save-window-excursion
         (set-window-buffer nil (current-buffer))
-        ;; C-u C-u C-M-/
-        (execute-kbd-macro [21 21 201326639]))
+        (execute-kbd-macro (kbd "C-u C-u C-M-/")))
       (should (string= (buffer-string) "abc\na")))))
 
 ;;; dabbrev-tests.el ends here
