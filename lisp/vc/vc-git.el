@@ -1328,7 +1328,7 @@ or BRANCH^ (where \"^\" can be repeated)."
 
 (defun vc-git-expanded-log-entry (revision)
   (with-temp-buffer
-    (apply #'vc-git-command t nil nil (list "log" revision "-1" "--"))
+    (apply #'vc-git-command t nil nil (list "log" revision "-1"  "--no-color" "--"))
     (goto-char (point-min))
     (unless (eobp)
       ;; Indent the expanded log entry.
