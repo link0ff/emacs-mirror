@@ -406,56 +406,75 @@ See `describe-repeat-maps' for a list of all repeatable command."
                (length (delete-dups keymaps))))))
 
 (defun repeat-map ()
-  "Return a map for keys repeatable after the current command."
-  (when repeat-mode
-    (let ((rep-map (or repeat-map
-                       (and (symbolp real-this-command)
-                            (get real-this-command 'repeat-map)))))
-      (when rep-map
-        (when (and (symbolp rep-map) (boundp rep-map))
-          (setq rep-map (symbol-value rep-map)))
+  "Return a transient map for keys repeatable after the current command."
+  (let ((rep-map (or repeat-map
+                     (and (symbolp real-this-command)
+                          (get real-this-command 'repeat-map)))))
+    (when rep-map
+      (when (and (symbolp rep-map) (boundp rep-map))
+        (setq rep-map (symbol-value rep-map)))
+      rep-map)))
 
-        (if repeat-exit-key
-            ;; `repeat-exit-key' modifies the map by adding keys
-            (copy-keymap rep-map)
-          rep-map)))))
+(defvar repeat-last-prefix-command nil)
 
-(defun repeat-map-valid (map)
-  "Check if MAP can be used for the next command.
+(defun repeat-check-map (map)
+  "Decides whether MAP can be used for the next command.
 Can contain more conditions."
   (and map
-       ;; Avoid using repeatable keys when minibuffer prompt pops up
+       ;; Avoid using repeatable keys when a minibuffer prompt pops up.
+       ;; FIXME: Instead of disallowing repeatable keys in the minibuffer,
+       ;; it would be better to detect when `minibuffer-depth' changes
+       ;; during a repeatable sequence, but this is impossible to do
+       ;; when a repeatable command that activates own minibuffer
+       ;; was called from the minibuffer, e.g. `M-x repeatable-command RET'
+       ;; where in `exit-minibuffer' (bound to RET) minibuffer-depth is 1,
+       ;; and if repeatable-command uses the minibuffer, it's also 1.
        (zerop (minibuffer-depth))
-       ;; Exit when the last char is not among repeatable keys,
-       ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
-       (or (lookup-key map (vector last-nonmenu-event))
-           ;; `prefix-arg' can affect next repeatable commands
-           ;; (and repeat-keep-prefix prefix-arg)
-           )))
+       (or
+        ;; Allow prefix commands change `prefix-arg' for next repeatable
+        ;; commands, i.e. don't disable transient map on such sequence
+        ;; `C-x } C-1 C-2 }' that changes window enlargement step to 12.
+        (and repeat-keep-prefix
+             (or (memq this-command
+                       '( universal-argument universal-argument-more
+                          digit-argument negative-argument))
+                 prefix-arg))
+        ;; Exit when the last char is not among repeatable keys,
+        ;; so e.g. `C-x u u' repeats undo, whereas `C-/ u' doesn't.
+        (lookup-key map (vector last-nonmenu-event)))))
 
 (defun repeat-pre-hook ()
   "Function run before commands to handle repeatable keys."
   ;; Reset prefix-arg before the next non-repeatable command,
-  ;; e.g. `C-- C-x o o C-n' or `C-x o C-- o C-n', so `C-n'
+  ;; e.g. `C-- C-x } } C-n' or `C-x } C-- } C-n', so `C-n'
   ;; should not use `prefix-arg' to go in opposite direction.
-  (when (and repeat-keep-prefix prefix-arg repeat-in-progress)
-    (let ((map (repeat-map)))
-      (if map
-          ;; Optimize to use less logic in `repeat-map'
-          ;; when called again from `repeat-post-hook'
-          (setq repeat-map map)
-        ;; When `repeat-post-hook' will exit the repeatable sequence,
-        ;; this means the current command is not repeatable,
-        ;; so reset `prefix-arg' enabled for repeatable commands only.
-        (setq prefix-arg nil)))))
+  (when (and repeat-mode repeat-keep-prefix prefix-arg repeat-in-progress)
+    (if (not (memq this-command
+                   '( universal-argument universal-argument-more
+                      digit-argument negative-argument)))
+        (let ((map (repeat-map)))
+          (if (repeat-check-map map)
+              ;; Optimize to use less logic in the function `repeat-map'.
+              ;; When called again from `repeat-post-hook' it will use
+              ;; the variable `repeat-map'.
+              (setq repeat-map map)
+            ;; When `repeat-post-hook' will exit the repeatable sequence,
+            ;; this means the current command is not repeatable,
+            ;; so reset `prefix-arg' enabled for repeatable commands only.
+            (setq prefix-arg nil)))
+      (unless (memq repeat-last-prefix-command
+                    '( universal-argument universal-argument-more
+                       digit-argument negative-argument))
+        (setq prefix-arg nil)))
+    (setq repeat-last-prefix-command this-command)))
 
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
   (let ((was-in-progress repeat-in-progress))
     (setq repeat-in-progress nil)
 
-    (let ((map (repeat-map)))
-      (when (repeat-map-valid map)
+    (let ((map (when repeat-mode (repeat-map))))
+      (when (repeat-check-map map)
 
         ;; Messaging
         (unless prefix-arg ;; Don't overwrite prefix arg echo
@@ -463,9 +482,14 @@ Can contain more conditions."
 
         ;; Adding an exit key
         (when repeat-exit-key
+          (setq map (copy-keymap map))
           (define-key map repeat-exit-key 'ignore))
 
-        (when (and repeat-keep-prefix (not prefix-arg))
+        ;; When the current command is not one of commands
+        ;; that set `prefix-arg' then keep the current prefix arg
+        ;; for the next command via `prefix-arg'.
+        (when (and repeat-keep-prefix
+                   (not prefix-arg))
           (setq prefix-arg current-prefix-arg))
 
         (setq repeat-in-progress t)
@@ -475,14 +499,18 @@ Can contain more conditions."
             (cancel-timer repeat-exit-timer)
             (setq repeat-exit-timer nil))
 
-          (when repeat-exit-timeout
-            (setq repeat-exit-timer
-                  (run-with-idle-timer
-                   repeat-exit-timeout nil
-                   (lambda ()
-                     (setq repeat-in-progress nil)
-                     (funcall exitfun)
-                     (funcall repeat-echo-function nil))))))))
+          (let ((repeat-exit-timeout
+                 (or (and (symbolp real-this-command)
+                          (get real-this-command 'repeat-exit-timeout))
+                     repeat-exit-timeout)))
+            (when repeat-exit-timeout
+              (setq repeat-exit-timer
+                    (run-with-idle-timer
+                     repeat-exit-timeout nil
+                     (lambda ()
+                       (setq repeat-in-progress nil)
+                       (funcall exitfun)
+                       (funcall repeat-echo-function nil)))))))))
 
     (setq repeat-map nil)
     (when (and was-in-progress (not repeat-in-progress))
