@@ -204,6 +204,18 @@ external "exiftool" command to be available.  The user options
 The new command 'image-dired-unmark-all-marks' has been added with a
 binding in the menu.
 
+---
+*** Support Thumbnail Managing Standard v0.9.0 (Dec 2020).
+This standard allows sharing generated thumbnails across different
+programs.  Version 0.9.0 adds two larger thumbnail sizes: 512x512 and
+1024x1024 pixels.  See the user option `image-dired-thumbnail-storage'
+to use it; it is not enabled by default.
+
+---
+*** Support GraphicsMagick command line tools.
+Support for the GraphicsMagick command line tool ("gm") has been
+added, and is used instead of ImageMagick when it is available.
+
 ** Dired
 
 ---
@@ -283,6 +295,24 @@ Use 'exif-parse-file' and 'exif-field' instead.
 
 
 * Lisp Changes in Emacs 29.1
+
+** XDG support
+
+*** New function 'xdg-state-home' returns $XDG_STATE_HOME.
+This new location, introduced in the XDG Base Directory Specification
+version 0.8 (8th May 2021), "contains state data that should persist
+between (application) restarts, but that is not important or portable
+enough to the user that it should be stored in $XDG_DATA_HOME".
+
++++
+** New macro 'with-delayed-message'.
+This macro is like 'progn', but will output the specified message if
+the body takes longer to execute than the specified timeout.
+
+---
+** New function 'funcall-with-delayed-message'.
+This function is like 'funcall', but will output the specified message
+is the function take longer to execute that the specified timeout.
 
 ** Locale
 

@@ -59,16 +59,22 @@
 ;; PREREQUISITES
 ;; =============
 ;;
-;; * The ImageMagick package.  Currently, `convert' and `mogrify' are
-;; used.  Find it here: https://www.imagemagick.org.
+;; * The GraphicsMagick or ImageMagick package; Image-Dired uses
+;;   whichever is available.
+;;
+;;   A) For GraphicsMagick, `gm' is used.
+;;      Find it here:  http://www.graphicsmagick.org/
+;;
+;;   B) For ImageMagick, `convert' and `mogrify' are used.
+;;      Find it here:  https://www.imagemagick.org.
 ;;
 ;; * For non-lossy rotation of JPEG images, the JpegTRAN program is
-;; needed.
+;;   needed.
 ;;
 ;; * For `image-dired-set-exif-data' to work, the command line tool `exiftool' is
-;; needed.  It can be found here: https://exiftool.org/.  This
-;; function is, among other things, used for writing comments to
-;; image files using `image-dired-thumbnail-set-image-description'.
+;;   needed.  It can be found here: https://exiftool.org/.  This
+;;   function is, among other things, used for writing comments to
+;;   image files using `image-dired-thumbnail-set-image-description'.
 ;;
 ;;
 ;; USAGE
@@ -88,8 +94,8 @@
 ;; * Supports all image formats that Emacs and convert supports, but
 ;;   the thumbnails are hard-coded to JPEG or PNG format.  It uses
 ;;   JPEG by default, but can optionally follow the Thumbnail Managing
-;;   Standard, which mandates PNG.  See the user option
-;;   `image-dired-thumbnail-storage'.
+;;   Standard (v0.9.0, Dec 2020), which mandates PNG.  See the user
+;;   option `image-dired-thumbnail-storage'.
 ;;
 ;; * WARNING: The "database" format used might be changed so keep a
 ;;   backup of `image-dired-db-file' when testing new versions.
@@ -151,6 +157,7 @@
 (require 'exif)
 (require 'image-mode)
 (require 'widget)
+(require 'xdg)
 
 (eval-when-compile
   (require 'cl-lib)
@@ -180,22 +187,35 @@ values, they will be stored in the JPEG format:
   where the image file is.
 
 It can also use the \"Thumbnail Managing Standard\", which allows
-sharing of thumbnails across different programs.  This method
-means that thumbnails are saved in the PNG format, and allows for
-use the following file sizes:
+sharing of thumbnails across different programs.  Thumbnails will
+be stored in \"$XDG_CACHE_HOME/thumbnails/\" instead of in
+`image-dired-dir'.  Thumbnails are saved in the PNG format, and
+can be one of the following sizes:
 
 - `standard' means use thumbnails sized 128x128.
 - `standard-large' means use thumbnails sized 256x256.
+- `standard-x-large' means use thumbnails sized 512x512.
+- `standard-xx-large' means use thumbnails sized 1024x1024.
 
-Note that with this method of storing thumbnails, they will be
-saved in subdirectories of `image-dired-dir'.  For more
-information on the Thumbnail Managing Standard, see:
+For more information on the Thumbnail Managing Standard, see:
 https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html"
   :type '(choice :tag "How to store thumbnail files"
                  (const :tag "Use image-dired-dir" use-image-dired-dir)
-                 (const :tag "Thumbnail Managing Standard (normal 128x128)" standard)
-                 (const :tag "Thumbnail Managing Standard (large 256x256)" standard-large)
-                 (const :tag "Per-directory" per-directory)))
+                 (const :tag "Thumbnail Managing Standard (normal 128x128)"
+                        standard)
+                 (const :tag "Thumbnail Managing Standard (large 256x256)"
+                        standard-large)
+                 (const :tag "Thumbnail Managing Standard (larger 512x512)"
+                        standard-x-large)
+                 (const :tag "Thumbnail Managing Standard (extra large 1024x1024)"
+                        standard-xx-large)
+                 (const :tag "Per-directory" per-directory))
+  :version "29.1")
+
+(defconst image-dired--thumbnail-standard-sizes
+  '( standard standard-large
+     standard-x-large standard-xx-large)
+  "List of symbols representing thumbnail sizes in Thumbnail Managing Standard.")
 
 (defcustom image-dired-db-file
   (expand-file-name ".image-dired_db" image-dired-dir)
@@ -229,36 +249,45 @@ expects to find pictures in this directory."
   :type 'string)
 
 (defcustom image-dired-cmd-create-thumbnail-program
-  "convert"
+  (if (executable-find "gm") "gm" "convert")
   "Executable used to create thumbnail.
 Used together with `image-dired-cmd-create-thumbnail-options'."
-  :type 'file)
+  :type 'file
+  :version "29.1")
 
 (defcustom image-dired-cmd-create-thumbnail-options
-  '("-size" "%wx%h" "%f[0]" "-resize" "%wx%h>" "-strip" "jpeg:%t")
+  (let ((opts '("-size" "%wx%h" "%f[0]"
+                "-resize" "%wx%h>"
+                "-strip" "jpeg:%t")))
+    (if (executable-find "gm") (cons "convert" opts) opts))
   "Options of command used to create thumbnail image.
 Used with `image-dired-cmd-create-thumbnail-program'.
 Available format specifiers are: %w which is replaced by
 `image-dired-thumb-width', %h which is replaced by `image-dired-thumb-height',
 %f which is replaced by the file name of the original image and %t
 which is replaced by the file name of the thumbnail file."
-  :version "26.1"
+  :version "29.1"
   :type '(repeat (string :tag "Argument")))
 
-(defcustom image-dired-cmd-create-temp-image-program "convert"
+(defcustom image-dired-cmd-create-temp-image-program
+  (if (executable-find "gm") "gm" "convert")
   "Executable used to create temporary image.
 Used together with `image-dired-cmd-create-temp-image-options'."
-  :type 'file)
+  :type 'file
+  :version "29.1")
 
 (defcustom image-dired-cmd-create-temp-image-options
-  '("-size" "%wx%h" "%f[0]" "-resize" "%wx%h>" "-strip" "jpeg:%t")
+  (let ((opts '("-size" "%wx%h" "%f[0]"
+                "-resize" "%wx%h>"
+                "-strip" "jpeg:%t")))
+    (if (executable-find "gm") (cons "convert" opts) opts))
   "Options of command used to create temporary image for display window.
 Used together with `image-dired-cmd-create-temp-image-program',
 Available format specifiers are: %w and %h which are replaced by
 the calculated max size for width and height in the image display window,
 %f which is replaced by the file name of the original image and %t which
 is replaced by the file name of the temporary file."
-  :version "26.1"
+  :version "29.1"
   :type '(repeat (string :tag "Argument")))
 
 (defcustom image-dired-cmd-pngnq-program
@@ -339,20 +368,22 @@ Available format specifiers are the same as in
   :type '(repeat (string :tag "Argument")))
 
 (defcustom image-dired-cmd-rotate-thumbnail-program
-  "mogrify"
+  (if (executable-find "gm") "gm" "mogrify")
   "Executable used to rotate thumbnail.
 Used together with `image-dired-cmd-rotate-thumbnail-options'."
-  :type 'file)
+  :type 'file
+  :version "29.1")
 
 (defcustom image-dired-cmd-rotate-thumbnail-options
-  '("-rotate" "%d" "%t")
+  (let ((opts '("-rotate" "%d" "%t")))
+    (if (executable-find "gm") (cons "mogrify" opts) opts))
   "Arguments of command used to rotate thumbnail image.
 Used with `image-dired-cmd-rotate-thumbnail-program'.
 Available format specifiers are: %d which is replaced by the
 number of (positive) degrees to rotate the image, normally 90 or 270
 \(for 90 degrees right and left), %t which is replaced by the file name
 of the thumbnail file."
-  :version "26.1"
+  :version "29.1"
   :type '(repeat (string :tag "Argument")))
 
 (defcustom image-dired-cmd-rotate-original-program
@@ -410,6 +441,8 @@ Used by `image-dired-gallery-generate' to leave out \"hidden\" images."
   (cond
    ((eq 'standard image-dired-thumbnail-storage) 128)
    ((eq 'standard-large image-dired-thumbnail-storage) 256)
+   ((eq 'standard-x-large image-dired-thumbnail-storage) 512)
+   ((eq 'standard-xx-large image-dired-thumbnail-storage) 1024)
    (t 100))
   "Size of thumbnails, in pixels.
 This is the default size for both `image-dired-thumb-width'
@@ -519,15 +552,19 @@ Including parameters.  Used when displaying original image from
   :type '(choice string
                  (const :tag "Not Set" nil)))
 
-(defcustom image-dired-main-image-directory "~/pics/"
+(defcustom image-dired-main-image-directory
+  (or (xdg-user-dir "PICTURES") "~/pics/")
   "Name of main image directory, if any.
 Used by `image-dired-copy-with-exif-file-name'."
-  :type 'string)
+  :type 'string
+  :version "29.1")
 
-(defcustom image-dired-show-all-from-dir-max-files 50
-  "Maximum number of files to show using `image-dired-show-all-from-dir'
-before warning."
-  :type 'integer)
+(defcustom image-dired-show-all-from-dir-max-files 100
+  "Maximum number of files in directory before prompting.
+If there are more files than this in a selected directory, the
+`image-dired-show-all-from-dir' command will show a prompt."
+  :type 'integer
+  :version "29.1")
 
 (defmacro image-dired--with-db-file (&rest body)
   "Run BODY in a temp buffer containing `image-dired-db-file'.
@@ -583,7 +620,7 @@ Add text properties ORIGINAL-FILE-NAME and ASSOCIATED-DIRED-BUFFER."
      (or (and (file-exists-p file)
               (image-type-from-file-header file))
          (and (memq image-dired-thumbnail-storage
-                    '(standard standard-large))
+                    image-dired--thumbnail-standard-sizes)
               'png)
          'jpeg)
      image-dired-thumb-relief
@@ -599,35 +636,39 @@ Add text properties ORIGINAL-FILE-NAME and ASSOCIATED-DIRED-BUFFER."
            'comment (image-dired-get-comment original-file-name)))))
 
 (defun image-dired-thumb-name (file)
-  "Return thumbnail file name for FILE.
-Depending on the value of `image-dired-thumbnail-storage', the file
-name will vary.  For central thumbnail file storage, make a
-MD5-hash of the image file's directory name and add that to make
-the thumbnail file name unique.  For per-directory storage, just
-add a subdirectory.  For standard storage, produce the file name
-according to the Thumbnail Managing Standard."
-  (cond ((memq image-dired-thumbnail-storage '(standard standard-large))
-         (let* ((xdg (getenv "XDG_CACHE_HOME"))
-                (dir (if (and xdg (file-name-absolute-p xdg))
-                         xdg "~/.cache"))
-                (thumbdir (cl-case image-dired-thumbnail-storage
-                            (standard "thumbnails/normal")
-                            (standard-large "thumbnails/large"))))
+  "Return absolute file name for thumbnail FILE.
+Depending on the value of `image-dired-thumbnail-storage', the
+file name of the thumbnail will vary:
+- For `use-image-dired-dir', make a SHA1-hash of the image file's
+  directory name and add that to make the thumbnail file name
+  unique.
+- For `per-directory' storage, just add a subdirectory.
+- For `standard' storage, produce the file name according to the
+  Thumbnail Managing Standard.  Among other things, an MD5-hash
+  of the image file's directory name will be added to the
+  filename.
+See also `image-dired-thumbnail-storage'."
+  (cond ((memq image-dired-thumbnail-storage
+               image-dired--thumbnail-standard-sizes)
+         (let ((thumbdir (cl-case image-dired-thumbnail-storage
+                           (standard "thumbnails/normal")
+                           (standard-large "thumbnails/large")
+                           (standard-x-large "thumbnails/x-large")
+                           (standard-xx-large "thumbnails/xx-large"))))
            (expand-file-name
+            ;; MD5 is mandated by the Thumbnail Managing Standard.
             (concat (md5 (concat "file://" (expand-file-name file))) ".png")
-            (expand-file-name thumbdir dir))))
+            (expand-file-name thumbdir (xdg-cache-home)))))
         ((eq 'use-image-dired-dir image-dired-thumbnail-storage)
          (let* ((f (expand-file-name file))
-                (md5-hash
-                 ;; Is MD5 hashes fast enough? The checksum of a
-                 ;; thumbnail file name need not be that
-                 ;; "cryptographically" good so a faster one could
-                 ;; be used here.
-                 (md5 (file-name-as-directory (file-name-directory f)))))
+                (hash
+                 ;; SHA1 is slightly faster than MD5, so let's use it.
+                 ;; (We don't need anything crytographically strong.)
+                 (sha1 (file-name-as-directory (file-name-directory f)))))
            (format "%s%s%s.thumb.%s"
                    (file-name-as-directory (expand-file-name (image-dired-dir)))
                    (file-name-base f)
-                   (if md5-hash (concat "_" md5-hash) "")
+                   (if hash (concat "_" hash) "")
                    (file-name-extension f))))
         ((eq 'per-directory image-dired-thumbnail-storage)
          (let ((f (expand-file-name file)))
@@ -646,6 +687,8 @@ DIMENSION should be either the symbol `width' or `height'."
   (cond
    ((eq 'standard image-dired-thumbnail-storage) 128)
    ((eq 'standard-large image-dired-thumbnail-storage) 256)
+   ((eq 'standard-x-large image-dired-thumbnail-storage) 512)
+   ((eq 'standard-xx-large image-dired-thumbnail-storage) 1024)
    (t (cl-ecase dimension
         (width image-dired-thumb-width)
         (height image-dired-thumb-height)))))
@@ -760,7 +803,7 @@ Increase at own risk.")
                  (mapcar
                   (lambda (arg) (format-spec arg spec))
                   (if (memq image-dired-thumbnail-storage
-                            '(standard standard-large))
+                            image-dired--thumbnail-standard-sizes)
                       image-dired-cmd-create-standard-thumbnail-options
                     image-dired-cmd-create-thumbnail-options))))
 
@@ -779,7 +822,7 @@ Increase at own risk.")
               ;; PNG thumbnail has been created since we are
               ;; following the XDG thumbnail spec, so try to optimize
               (when (memq image-dired-thumbnail-storage
-                          '(standard standard-large))
+                          image-dired--thumbnail-standard-sizes)
                 (cond
                  ((and image-dired-cmd-pngnq-program
                        (executable-find image-dired-cmd-pngnq-program))
