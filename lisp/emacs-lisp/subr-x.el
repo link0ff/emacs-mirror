@@ -441,6 +441,19 @@ is inserted before adjusting the number of empty lines."
      ((< (- (point) start) lines)
       (insert (make-string (- lines (- (point) start)) ?\n))))))
 
+;;;###autoload
+(defun string-pixel-width (string)
+  "Return the width of STRING in pixels."
+  (with-temp-buffer
+    (insert string)
+    (save-window-excursion
+      ;; Avoid errors if the selected window is a dedicated one,
+      ;; and they just want to insert a document into it.
+      (set-window-dedicated-p nil nil)
+      (set-window-buffer nil (current-buffer))
+      (car (window-text-pixel-size
+            nil (line-beginning-position) (point))))))
+
 (provide 'subr-x)
 
 ;;; subr-x.el ends here
