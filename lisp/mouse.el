@@ -364,7 +364,7 @@ Some context functions add menu items below the separator."
                 (when (consp binding)
                   (define-key-after menu (vector key)
                     (copy-sequence binding))))
-              (menu-bar-keymap global-map))
+              (menu-bar-keymap (lookup-key global-map [menu-bar])))
   menu)
 
 (defun context-menu-local (menu _click)
@@ -377,7 +377,7 @@ Some context functions add menu items below the separator."
                     (when (consp binding)
                       (define-key-after menu (vector key)
                         (copy-sequence binding))))
-                  keymap)))
+                  (menu-bar-keymap keymap))))
   menu)
 
 (defun context-menu-minor (menu _click)
@@ -2480,7 +2480,7 @@ a large number if you prefer a mixed multitude.  The default is 4."
     ("Text" . "Text")
     ("Outline" . "Text")
     ("\\(HT\\|SG\\|X\\|XHT\\)ML" . "SGML")
-    ("log\\|diff\\|vc\\|cvs\\|Git\\|Annotate" . "Version Control")
+    ("vc.*log\\|diff\\|vc\\|cvs\\|Git\\|Annotate" . "Version Control")
     ("Threads\\|Memory\\|Disassembly\\|Breakpoints\\|Frames\\|Locals\\|Registers\\|Inferior I/O\\|Debugger"
      . "GDB")
     ("Lisp" . "Lisp")))

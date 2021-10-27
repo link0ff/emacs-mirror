@@ -980,7 +980,7 @@ if `inhibit-field-text-motion' is non-nil."
 ;; New binding analogous to M-:.
 (define-key ctl-x-map "\M-:" 'repeat-complex-command)
 (define-key ctl-x-map "u" 'undo)
-(put 'undo :advertised-binding [?\C-x ?u])
+(put 'undo :advertised-binding [?\C-x ?u]) ; use same format for repeat-allow-keys
 ;; Many people are used to typing C-/ on GUI frames and getting C-_.
 (define-key global-map [?\C-/] 'undo)
 (define-key global-map "\C-_" 'undo)
@@ -996,6 +996,7 @@ if `inhibit-field-text-motion' is non-nil."
 (put 'undo 'repeat-ignore-keys '([?\C-x ?u]))
 (put 'undo 'repeat-allow-keys '([?\C-x ?u]))
 (put 'undo 'repeat-exit-keys '([?\C-x ?u]))
+;; maybe better combined `repeat-exit-map'?
 
 (define-key global-map '[(control ??)] 'undo-redo)
 (define-key global-map [?\C-\M-_] 'undo-redo)
