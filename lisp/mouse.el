@@ -271,6 +271,7 @@ not it is actually displayed."
     ;; FIXME: We have a problem here: we have to use the global/local/minor
     ;; so they're displayed in the expected order, but later on in the command
     ;; loop, they're actually looked up in the opposite order.
+    ;; TODO: try menu-bar-keymap
     (apply 'append
            global-menu
            local-menu
