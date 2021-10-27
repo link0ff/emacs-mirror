@@ -580,7 +580,14 @@ Used in `repeat-mode'."
           (princ (format-message "`%s' keymap is repeatable by these commands:\n"
                                  (car keymap)))
           (dolist (command (sort (cdr keymap) 'string-lessp))
-            (princ (format-message " `%s'\n" command)))
+            ;; TODO: repeat.el:583:27: Warning: the function `help-fns--analyze-function'
+            ;; is not known to be defined.
+            (let* ((info (help-fns--analyze-function command))
+                   (map (list (symbol-value (car keymap))))
+                   (desc (key-description
+                          (or (where-is-internal command map t)
+                              (where-is-internal (nth 3 info) map t)))))
+              (princ (format-message " `%s' (bound to '%s')\n" command desc))))
           (princ "\n"))))))
 
 (provide 'repeat)
