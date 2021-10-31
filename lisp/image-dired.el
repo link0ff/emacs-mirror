@@ -100,7 +100,7 @@
 ;; * WARNING: The "database" format used might be changed so keep a
 ;;   backup of `image-dired-db-file' when testing new versions.
 ;;
-;; * `image-dired-display-image-mode' does not support animation
+;; * `image-dired-display-image-mode' does not support animation.
 ;;
 ;; TODO
 ;; ====
@@ -131,14 +131,14 @@
 ;;   it probably needs rewriting `image-dired-display-thumbs' to be more general.
 ;;
 ;; * Find some way of toggling on and off really nice keybindings in
-;;   dired (for example, using C-n or <down> instead of C-S-n).
+;;   Dired (for example, using C-n or <down> instead of C-S-n).
 ;;   Richard suggested that we could keep C-t as prefix for
-;;   image-dired commands as it is currently not used in dired.  He
+;;   image-dired commands as it is currently not used in Dired.  He
 ;;   also suggested that `dired-next-line' and `dired-previous-line'
 ;;   figure out if image-dired is enabled in the current buffer and,
 ;;   if it is, call `image-dired-dired-next-line' and `image-dired-dired-previous-line',
 ;;   respectively.  Update: This is partly done; some bindings have
-;;   now been added to dired.
+;;   now been added to Dired.
 ;;
 ;; * Enhanced gallery creation with basic CSS-support and pagination
 ;;   of tag pages with many pictures.
@@ -172,7 +172,7 @@
 (defcustom image-dired-dir (locate-user-emacs-file "image-dired/")
   "Directory where thumbnail images are stored.
 
-The value of this option will be ignored if Image Dired is
+The value of this option will be ignored if Image-Dired is
 customized to use the Thumbnail Managing Standard; they will be
 saved in \"$XDG_CACHE_HOME/thumbnails/\" instead.  See
 `image-dired-thumbnail-storage'."
@@ -180,7 +180,7 @@ saved in \"$XDG_CACHE_HOME/thumbnails/\" instead.  See
 
 (defcustom image-dired-thumbnail-storage 'use-image-dired-dir
   "How `image-dired' stores thumbnail files.
-There are two ways that Image Dired can store and generate
+There are two ways that Image-Dired can store and generate
 thumbnails.  If you set this variable to one of the two following
 values, they will be stored in the JPEG format:
 
@@ -376,25 +376,6 @@ Available format specifiers are the same as in
   :version "26.1"
   :type '(repeat (string :tag "Argument")))
 
-(defcustom image-dired-cmd-rotate-thumbnail-program
-  (if (executable-find "gm") "gm" "mogrify")
-  "Executable used to rotate thumbnail.
-Used together with `image-dired-cmd-rotate-thumbnail-options'."
-  :type 'file
-  :version "29.1")
-
-(defcustom image-dired-cmd-rotate-thumbnail-options
-  (let ((opts '("-rotate" "%d" "%t")))
-    (if (executable-find "gm") (cons "mogrify" opts) opts))
-  "Arguments of command used to rotate thumbnail image.
-Used with `image-dired-cmd-rotate-thumbnail-program'.
-Available format specifiers are: %d which is replaced by the
-number of (positive) degrees to rotate the image, normally 90 or 270
-\(for 90 degrees right and left), %t which is replaced by the file name
-of the thumbnail file."
-  :version "29.1"
-  :type '(repeat (string :tag "Argument")))
-
 (defcustom image-dired-cmd-rotate-original-program
   "jpegtran"
   "Executable used to rotate original image.
@@ -457,7 +438,7 @@ Used by `image-dired-gallery-generate' to leave out \"hidden\" images."
 This is the default size for both `image-dired-thumb-width'
 and `image-dired-thumb-height'.
 
-The value of this option will be ignored if Image Dired is
+The value of this option will be ignored if Image-Dired is
 customized to use the Thumbnail Managing Standard; the standard
 sizes will be used instead.  See `image-dired-thumbnail-storage'."
   :type 'integer)
@@ -573,11 +554,15 @@ Used by `image-dired-copy-with-exif-file-name'."
   :type 'string
   :version "29.1")
 
-(defcustom image-dired-show-all-from-dir-max-files 100
+(defcustom image-dired-show-all-from-dir-max-files 500
   "Maximum number of files in directory before prompting.
-If there are more files than this in a selected directory, the
-`image-dired-show-all-from-dir' command will show a prompt."
-  :type 'integer
+
+If there are more image files than this in a selected directory,
+the `image-dired-show-all-from-dir' command will ask for
+confirmation before creating the thumbnail buffer.  If this
+variable is nil, it will never ask."
+  :type '(choice integer
+                 (const :tag "Disable warning" nil))
   :version "29.1")
 
 (defvar image-dired-debug nil
@@ -1061,7 +1046,7 @@ calling `image-dired-restore-window-configuration'."
   "Restore window configuration.
 Restore any changes to the window configuration made by calling
 `image-dired-dired-with-window-configuration'."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (if image-dired-saved-window-configuration
       (set-window-configuration image-dired-saved-window-configuration)
     (message "No saved window configuration")))
@@ -1125,24 +1110,30 @@ thumbnail buffer to be selected."
 
 ;;;###autoload
 (defun image-dired-show-all-from-dir (dir)
-  "Make a preview buffer for all images in DIR and display it.
-If the number of files in DIR matching `image-file-name-regexp'
-exceeds `image-dired-show-all-from-dir-max-files', a warning will be
-displayed."
-  (interactive "DImage Dired: ")
+  "Make a thumbnail buffer for all images in DIR and display it.
+Any file matching `image-file-name-regexp' is considered an image
+file.
+
+If the number of image files in DIR exceeds
+`image-dired-show-all-from-dir-max-files', ask for confirmation
+before creating the thumbnail buffer.  If that variable is nil,
+never ask for confirmation."
+  (interactive "DImage-Dired: ")
   (dired dir)
   (dired-mark-files-regexp (image-file-name-regexp))
-  (let ((files (dired-get-marked-files)))
-    (if (or (<= (length files) image-dired-show-all-from-dir-max-files)
-            (and (> (length files) image-dired-show-all-from-dir-max-files)
-                 (y-or-n-p
-                  (format
-                   "Directory contains more than %d image files.  Proceed? "
-                   image-dired-show-all-from-dir-max-files))))
-        (progn
-          (image-dired-display-thumbs)
-          (pop-to-buffer image-dired-thumbnail-buffer))
-      (message "Canceled."))))
+  (let ((files (dired-get-marked-files nil nil nil t)))
+    (cond ((and (null (cdr files)))
+           (message "No image files in directory"))
+          ((or (not image-dired-show-all-from-dir-max-files)
+               (<= (length (cdr files)) image-dired-show-all-from-dir-max-files)
+               (and (> (length (cdr files)) image-dired-show-all-from-dir-max-files)
+                    (y-or-n-p
+                     (format
+                      "Directory contains more than %d image files.  Proceed?"
+                      image-dired-show-all-from-dir-max-files))))
+           (image-dired-display-thumbs)
+           (pop-to-buffer image-dired-thumbnail-buffer))
+          (t (message "Image-Dired canceled")))))
 
 ;;;###autoload
 (defalias 'image-dired 'image-dired-show-all-from-dir)
@@ -1425,7 +1416,7 @@ image."
 
 (defun image-dired-next-line ()
   "Move to next line and display properties."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (let ((goal-column (current-column)))
     (forward-line 1)
     (move-to-column goal-column))
@@ -1439,7 +1430,7 @@ image."
 
 (defun image-dired-previous-line ()
   "Move to previous line and display properties."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (let ((goal-column (current-column)))
     (forward-line -1)
     (move-to-column goal-column))
@@ -1533,25 +1524,25 @@ Dired."
 
 (defun image-dired-mark-thumb-original-file ()
   "Mark original image file in associated Dired buffer."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (image-dired-modify-mark-on-thumb-original-file 'mark)
   (image-dired-forward-image))
 
 (defun image-dired-unmark-thumb-original-file ()
   "Unmark original image file in associated Dired buffer."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (image-dired-modify-mark-on-thumb-original-file 'unmark)
   (image-dired-forward-image))
 
 (defun image-dired-flag-thumb-original-file ()
   "Flag original image file for deletion in associated Dired buffer."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (image-dired-modify-mark-on-thumb-original-file 'flag)
   (image-dired-forward-image))
 
 (defun image-dired-toggle-mark-thumb-original-file ()
   "Toggle mark on original image file in associated Dired buffer."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (image-dired-modify-mark-on-thumb-original-file 'toggle))
 
 (defun image-dired-unmark-all-marks ()
@@ -1566,7 +1557,7 @@ Do this in the Dired buffer and update this thumbnail buffer."
   "Jump to the Dired buffer associated with the current image file.
 You probably want to use this together with
 `image-dired-track-original-file'."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (let ((buf (image-dired-associated-dired-buffer))
         window frame)
     (setq window (image-dired-get-buffer-window buf))
@@ -1641,8 +1632,6 @@ You probably want to use this together with
     (define-key map "\C-m" 'image-dired-display-thumbnail-original-image)
     (define-key map [C-return] 'image-dired-thumbnail-display-external)
 
-    (define-key map "l" 'image-dired-rotate-thumbnail-left)
-    (define-key map "r" 'image-dired-rotate-thumbnail-right)
     (define-key map "L" 'image-dired-rotate-original-left)
     (define-key map "R" 'image-dired-rotate-original-right)
 
@@ -1676,34 +1665,34 @@ You probably want to use this together with
     (easy-menu-define nil map
       "Menu for `image-dired-thumbnail-mode'."
       '("Image-Dired"
-        ["Quit" quit-window]
-        ["Delete thumbnail from buffer" image-dired-delete-char]
-        ["Delete marked images" image-dired-delete-marked]
-        ["Unmark all marks" image-dired-unmark-all-marks]
-        ["Remove tag from current or marked thumbnails"
-         image-dired-tag-thumbnail-remove]
-        ["Tag current or marked thumbnails" image-dired-tag-thumbnail]
-        ["Comment thumbnail" image-dired-comment-thumbnail]
-        ["Refresh thumb" image-dired-refresh-thumb]
-        ["Dynamic line up" image-dired-line-up-dynamic]
-        ["Line up thumbnails" image-dired-line-up]
+        ["Display image" image-dired-display-thumbnail-original-image]
+        ["Display in external viewer" image-dired-thumbnail-display-external]
 
-        ["Rotate thumbnail left" image-dired-rotate-thumbnail-left]
-        ["Rotate thumbnail right" image-dired-rotate-thumbnail-right]
-        ["Rotate original left" image-dired-rotate-original-left]
-        ["Rotate original right" image-dired-rotate-original-right]
+        ["Mark original" image-dired-mark-thumb-original-file]
+        ["Unmark original" image-dired-unmark-thumb-original-file]
+        ["Flag original for deletion" image-dired-flag-thumb-original-file]
+
+        ["Track original" image-dired-track-original-file]
+        ["Jump to dired buffer" image-dired-jump-original-dired-buffer]
 
         ["Toggle movement tracking on/off" image-dired-toggle-movement-tracking]
 
-        ["Jump to dired buffer" image-dired-jump-original-dired-buffer]
-        ["Track original" image-dired-track-original-file]
+        ["Rotate original right" image-dired-rotate-original-right]
+        ["Rotate original left" image-dired-rotate-original-left]
+        ["Rotate thumbnail right" image-dired-rotate-thumbnail-right]
+        ["Rotate thumbnail left" image-dired-rotate-thumbnail-left]
 
-        ["Flag original for deletion" image-dired-flag-thumb-original-file]
-        ["Unmark original" image-dired-unmark-thumb-original-file]
-        ["Mark original" image-dired-mark-thumb-original-file]
-
-        ["Display in external viewer" image-dired-thumbnail-display-external]
-        ["Display image" image-dired-display-thumbnail-original-image]))
+        ["Line up thumbnails" image-dired-line-up]
+        ["Dynamic line up" image-dired-line-up-dynamic]
+        ["Refresh thumb" image-dired-refresh-thumb]
+        ["Comment thumbnail" image-dired-comment-thumbnail]
+        ["Tag current or marked thumbnails" image-dired-tag-thumbnail]
+        ["Remove tag from current or marked thumbnails"
+         image-dired-tag-thumbnail-remove]
+        ["Unmark all marks" image-dired-unmark-all-marks]
+        ["Delete marked images" image-dired-delete-marked]
+        ["Delete thumbnail from buffer" image-dired-delete-char]
+        ["Quit" quit-window]))
     map)
   "Keymap for `image-dired-thumbnail-mode'.")
 
@@ -1736,9 +1725,9 @@ You probably want to use this together with
     (easy-menu-define nil map
       "Menu for `image-dired-display-image-mode-map'."
       '("Image-Dired"
-        ["Quit" quit-window]
+        ["Display original, full size" image-dired-display-current-image-full]
         ["Display original, sized to fit" image-dired-display-current-image-sized]
-        ["Display original, full size" image-dired-display-current-image-full]))
+        ["Quit" quit-window]))
     map)
   "Keymap for `image-dired-display-image-mode'.")
 
@@ -1808,25 +1797,25 @@ Resized or in full-size."
     (easy-menu-define nil map
       "Menu for `image-dired-minor-mode'."
       '("Image-dired"
-        ["Copy with EXIF file name" image-dired-copy-with-exif-file-name]
-        ["Comment files" image-dired-dired-comment-files]
-        ["Mark tagged files" image-dired-mark-tagged-files]
-        ["Jump to thumbnail buffer" image-dired-jump-thumbnail-buffer]
-
-        ["Toggle movement tracking" image-dired-toggle-movement-tracking]
-        ["Toggle append browsing" image-dired-toggle-append-browsing]
-        ["Toggle display properties" image-dired-toggle-dired-display-properties]
-
-        ["Display in external viewer" image-dired-dired-display-external]
-        ["Display image" image-dired-dired-display-image]
-        ["Display this thumbnail" image-dired-display-thumb]
-        ["Display thumbnails append" image-dired-display-thumbs-append]
+        ["Display thumb for next file" image-dired-next-line-and-display]
+        ["Display thumb for previous file" image-dired-previous-line-and-display]
+        ["Mark and display next" image-dired-mark-and-display-next]
 
         ["Create thumbnails for marked files" image-dired-create-thumbs]
 
-        ["Mark and display next" image-dired-mark-and-display-next]
-        ["Display thumb for previous file" image-dired-previous-line-and-display]
-        ["Display thumb for next file" image-dired-next-line-and-display]))
+        ["Display thumbnails append" image-dired-display-thumbs-append]
+        ["Display this thumbnail" image-dired-display-thumb]
+        ["Display image" image-dired-dired-display-image]
+        ["Display in external viewer" image-dired-dired-display-external]
+
+        ["Toggle display properties" image-dired-toggle-dired-display-properties]
+        ["Toggle append browsing" image-dired-toggle-append-browsing]
+        ["Toggle movement tracking" image-dired-toggle-movement-tracking]
+
+        ["Jump to thumbnail buffer" image-dired-jump-thumbnail-buffer]
+        ["Mark tagged files" image-dired-mark-tagged-files]
+        ["Comment files" image-dired-dired-comment-files]
+        ["Copy with EXIF file name" image-dired-copy-with-exif-file-name]))
     map)
   "Keymap for `image-dired-minor-mode'.")
 
@@ -1895,7 +1884,7 @@ Ask user for number of images to show and the delay in between."
 
 (defun image-dired-delete-char ()
   "Remove current thumbnail from thumbnail buffer and line up."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (let ((inhibit-read-only t))
     (delete-char 1)
     (when (= (following-char) ?\s)
@@ -2112,33 +2101,9 @@ With prefix argument ARG, display image in its original size."
   "Return non-nil if there is an `image-dired' thumbnail at point."
   (get-text-property (point) 'image-dired-thumbnail))
 
-(defun image-dired-rotate-thumbnail (degrees)
-  "Rotate thumbnail DEGREES degrees."
-  (image-dired--check-executable-exists
-   'image-dired-cmd-rotate-thumbnail-program)
-  (if (not (image-dired-image-at-point-p))
-      (message "No thumbnail at point")
-    (let* ((file (image-dired-thumb-name (image-dired-original-file-name)))
-           (thumb (expand-file-name file))
-           (spec (list (cons ?d degrees) (cons ?t thumb))))
-      (apply #'call-process image-dired-cmd-rotate-thumbnail-program nil nil nil
-             (mapcar (lambda (arg) (format-spec arg spec))
-                     image-dired-cmd-rotate-thumbnail-options))
-      (clear-image-cache thumb))))
-
-(defun image-dired-rotate-thumbnail-left ()
-  "Rotate thumbnail left (counter clockwise) 90 degrees."
-  (interactive)
-  (image-dired-rotate-thumbnail "270"))
-
-(defun image-dired-rotate-thumbnail-right ()
-  "Rotate thumbnail counter right (clockwise) 90 degrees."
-  (interactive)
-  (image-dired-rotate-thumbnail "90"))
-
 (defun image-dired-refresh-thumb ()
   "Force creation of new image for current thumbnail."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (let* ((file (image-dired-original-file-name))
          (thumb (expand-file-name (image-dired-thumb-name file))))
     (clear-image-cache (expand-file-name thumb))
@@ -2246,7 +2211,7 @@ default value at the prompt."
 
 (defun image-dired-copy-with-exif-file-name ()
   "Copy file with unique name to main image directory.
-Copy current or all marked files in dired to a new file in your
+Copy current or all marked files in Dired to a new file in your
 main image directory, using a file name generated by
 `image-dired-get-exif-file-name'.  A typical usage for this if when
 copying images from a digital camera into the image directory.
@@ -2273,13 +2238,13 @@ function.  The result is a couple of new files in
 
 (defun image-dired-display-next-thumbnail-original ()
   "In thumbnail buffer, move to next thumbnail and display the image."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (image-dired-forward-image)
   (image-dired-display-thumbnail-original-image))
 
 (defun image-dired-display-previous-thumbnail-original ()
   "Move to previous thumbnail and display image."
-  (interactive)
+  (interactive nil image-dired-thumbnail-mode)
   (image-dired-backward-image)
   (image-dired-display-thumbnail-original-image))
 
@@ -2844,7 +2809,7 @@ tags to their respective image file.  Internal function used by
 (defun image-dired-bookmark-jump (bookmark)
   "Default bookmark handler for Image-Dired buffers."
   ;; User already cached thumbnails, so disable any checking.
-  (let ((image-dired-show-all-from-dir-max-files most-positive-fixnum))
+  (let ((image-dired-show-all-from-dir-max-files nil))
     (image-dired (bookmark-prop-get bookmark 'location))
     ;; TODO: Go to the bookmarked file, if it exists.
     ;; (bookmark-prop-get bookmark 'image-dired-file)
@@ -2901,6 +2866,56 @@ by the image file name and %t which is replaced by the tag name."
           (replace-match "" nil t))
         (setq tag-value (buffer-substring (point-min) (point-max)))))
     tag-value))
+
+(defcustom image-dired-cmd-rotate-thumbnail-program
+  (if (executable-find "gm") "gm" "mogrify")
+  "Executable used to rotate thumbnail.
+Used together with `image-dired-cmd-rotate-thumbnail-options'."
+  :type 'file
+  :version "29.1")
+(make-obsolete-variable 'image-dired-cmd-rotate-thumbnail-program nil "29.1")
+
+(defcustom image-dired-cmd-rotate-thumbnail-options
+  (let ((opts '("-rotate" "%d" "%t")))
+    (if (executable-find "gm") (cons "mogrify" opts) opts))
+  "Arguments of command used to rotate thumbnail image.
+Used with `image-dired-cmd-rotate-thumbnail-program'.
+Available format specifiers are: %d which is replaced by the
+number of (positive) degrees to rotate the image, normally 90 or 270
+\(for 90 degrees right and left), %t which is replaced by the file name
+of the thumbnail file."
+  :version "29.1"
+  :type '(repeat (string :tag "Argument")))
+(make-obsolete-variable 'image-dired-cmd-rotate-thumbnail-options nil "29.1")
+
+(defun image-dired-rotate-thumbnail (degrees)
+  "Rotate thumbnail DEGREES degrees."
+  (declare (obsolete image-dired-refresh-thumb "29.1"))
+  (image-dired--check-executable-exists
+   'image-dired-cmd-rotate-thumbnail-program)
+  (if (not (image-dired-image-at-point-p))
+      (message "No thumbnail at point")
+    (let* ((file (image-dired-thumb-name (image-dired-original-file-name)))
+           (thumb (expand-file-name file))
+           (spec (list (cons ?d degrees) (cons ?t thumb))))
+      (apply #'call-process image-dired-cmd-rotate-thumbnail-program nil nil nil
+             (mapcar (lambda (arg) (format-spec arg spec))
+                     image-dired-cmd-rotate-thumbnail-options))
+      (clear-image-cache thumb))))
+
+(defun image-dired-rotate-thumbnail-left ()
+  "Rotate thumbnail left (counter clockwise) 90 degrees."
+  (declare (obsolete image-dired-refresh-thumb "29.1"))
+  (interactive)
+  (with-suppressed-warnings ((obsolete image-dired-rotate-thumbnail))
+    (image-dired-rotate-thumbnail "270")))
+
+(defun image-dired-rotate-thumbnail-right ()
+  "Rotate thumbnail counter right (clockwise) 90 degrees."
+  (declare (obsolete image-dired-refresh-thumb "29.1"))
+  (interactive)
+  (with-suppressed-warnings ((obsolete image-dired-rotate-thumbnail))
+    (image-dired-rotate-thumbnail "90")))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;;;;;;; TEST-SECTION ;;;;;;;;;;;

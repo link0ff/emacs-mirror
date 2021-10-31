@@ -4116,9 +4116,9 @@ struct xpm_cached_color
 };
 
 /* The hash table used for the color cache, and its bucket vector
-   size.  */
+   size (which should be prime).  */
 
-#define XPM_COLOR_CACHE_BUCKETS	1001
+#define XPM_COLOR_CACHE_BUCKETS 1009
 static struct xpm_cached_color **xpm_color_cache;
 
 /* Initialize the color cache.  */
@@ -8249,6 +8249,11 @@ gif_image_p (Lisp_Object object)
 /* Giflib before 5.0 didn't define these macros.  */
 # ifndef GIFLIB_MAJOR
 #  define GIFLIB_MAJOR 4
+#  define DISPOSAL_UNSPECIFIED    0    /* No disposal specified.  */
+#  define DISPOSE_DO_NOT          1    /* Leave image in place.  */
+#  define DISPOSE_BACKGROUND      2    /* Set area too background color.  */
+#  define DISPOSE_PREVIOUS        3    /* Restore to previous content.  */
+#  define NO_TRANSPARENT_COLOR    -1
 # endif
 
 /* GifErrorString is declared to return char const * when GIFLIB_MAJOR
@@ -8272,6 +8277,8 @@ DEF_DLL_FN (GifFileType *, DGifOpenFileName, (const char *));
 #  else
 DEF_DLL_FN (GifFileType *, DGifOpen, (void *, InputFunc, int *));
 DEF_DLL_FN (GifFileType *, DGifOpenFileName, (const char *, int *));
+DEF_DLL_FN (int, DGifSavedExtensionToGCB,
+	    (GifFileType *, int, GraphicsControlBlock *));
 #  endif
 #  if HAVE_GIFERRORSTRING
 DEF_DLL_FN (char const *, GifErrorString, (int));
@@ -8289,6 +8296,9 @@ init_gif_functions (void)
   LOAD_DLL_FN (library, DGifSlurp);
   LOAD_DLL_FN (library, DGifOpen);
   LOAD_DLL_FN (library, DGifOpenFileName);
+#  if GIFLIB_MAJOR >= 5
+  LOAD_DLL_FN (library, DGifSavedExtensionToGCB);
+#  endif
 #  if HAVE_GIFERRORSTRING
   LOAD_DLL_FN (library, GifErrorString);
 #  endif
@@ -8299,12 +8309,18 @@ init_gif_functions (void)
 #  undef DGifOpen
 #  undef DGifOpenFileName
 #  undef DGifSlurp
+#  if GIFLIB_MAJOR >= 5
+#   undef DGifSavedExtensionToGCB
+#  endif
 #  undef GifErrorString
 
 #  define DGifCloseFile fn_DGifCloseFile
 #  define DGifOpen fn_DGifOpen
 #  define DGifOpenFileName fn_DGifOpenFileName
 #  define DGifSlurp fn_DGifSlurp
+#  if GIFLIB_MAJOR >= 5
+#   define DGifSavedExtensionToGCB fn_DGifSavedExtensionToGCB
+#  endif
 #  define GifErrorString fn_GifErrorString
 
 # endif /* WINDOWSNT */
@@ -8382,7 +8398,7 @@ gif_load (struct frame *f, struct image *img)
       if (!STRINGP (file))
 	{
 	  image_error ("Cannot find image file `%s'", specified_file);
-	  return 0;
+	  return false;
 	}
 
       Lisp_Object encoded_file = ENCODE_FILE (file);
@@ -8405,8 +8421,7 @@ gif_load (struct frame *f, struct image *img)
 	  else
 #endif
 	  image_error ("Cannot open `%s'", file);
-
-	  return 0;
+	  return false;
 	}
     }
   else
@@ -8414,7 +8429,7 @@ gif_load (struct frame *f, struct image *img)
       if (!STRINGP (specified_data))
 	{
 	  image_error ("Invalid image data `%s'", specified_data);
-	  return 0;
+	  return false;
 	}
 
       /* Read from memory! */
@@ -8438,7 +8453,7 @@ gif_load (struct frame *f, struct image *img)
 	  else
 #endif
 	  image_error ("Cannot open memory source `%s'", img->spec);
-	  return 0;
+	  return false;
 	}
     }
 
@@ -8446,8 +8461,7 @@ gif_load (struct frame *f, struct image *img)
   if (!check_image_size (f, gif->SWidth, gif->SHeight))
     {
       image_size_error ();
-      gif_close (gif, NULL);
-      return 0;
+      goto gif_error;
     }
 
   /* Read entire contents.  */
@@ -8458,8 +8472,7 @@ gif_load (struct frame *f, struct image *img)
 	image_error ("Error reading `%s'", img->spec);
       else
 	image_error ("Error reading GIF data");
-      gif_close (gif, NULL);
-      return 0;
+      goto gif_error;
     }
 
   /* Which sub-image are we to display?  */
@@ -8470,8 +8483,7 @@ gif_load (struct frame *f, struct image *img)
       {
 	image_error ("Invalid image number `%s' in image `%s'",
 		     image_number, img->spec);
-	gif_close (gif, NULL);
-	return 0;
+	goto gif_error;
       }
   }
 
@@ -8488,8 +8500,7 @@ gif_load (struct frame *f, struct image *img)
   if (!check_image_size (f, width, height))
     {
       image_size_error ();
-      gif_close (gif, NULL);
-      return 0;
+      goto gif_error;
     }
 
   /* Check that the selected subimages fit.  It's not clear whether
@@ -8506,18 +8517,14 @@ gif_load (struct frame *f, struct image *img)
 	     && 0 <= subimg_left && subimg_left <= width - subimg_width))
 	{
 	  image_error ("Subimage does not fit in image");
-	  gif_close (gif, NULL);
-	  return 0;
+	  goto gif_error;
 	}
     }
 
   /* Create the X image and pixmap.  */
   Emacs_Pix_Container ximg;
   if (!image_create_x_image_and_pixmap (f, img, width, height, 0, &ximg, 0))
-    {
-      gif_close (gif, NULL);
-      return 0;
-    }
+    goto gif_error;
 
   /* Clear the part of the screen image not covered by the image.
      Full animated GIF support requires more here (see the gif89 spec,
@@ -8576,13 +8583,17 @@ gif_load (struct frame *f, struct image *img)
 	 char *, which invites problems with bytes >= 0x80.  */
       struct SavedImage *subimage = gif->SavedImages + j;
       unsigned char *raster = (unsigned char *) subimage->RasterBits;
-      int transparency_color_index = -1;
-      int disposal = 0;
       int subimg_width = subimage->ImageDesc.Width;
       int subimg_height = subimage->ImageDesc.Height;
       int subimg_top = subimage->ImageDesc.Top;
       int subimg_left = subimage->ImageDesc.Left;
 
+      /* From gif89a spec: 1 = "keep in place", 2 = "restore
+	 to background".  Treat any other value like 2.  */
+      int disposal = DISPOSAL_UNSPECIFIED;
+      int transparency_color_index = NO_TRANSPARENT_COLOR;
+
+#if GIFLIB_MAJOR < 5
       /* Find the Graphic Control Extension block for this sub-image.
 	 Extract the disposal method and transparency color.  */
       for (i = 0; i < subimage->ExtensionBlockCount; i++)
@@ -8593,24 +8604,29 @@ gif_load (struct frame *f, struct image *img)
 	      && extblock->ByteCount == 4
 	      && extblock->Bytes[0] & 1)
 	    {
-	      /* From gif89a spec: 1 = "keep in place", 2 = "restore
-		 to background".  Treat any other value like 2.  */
 	      disposal = (extblock->Bytes[0] >> 2) & 7;
 	      transparency_color_index = (unsigned char) extblock->Bytes[3];
 	      break;
 	    }
 	}
+#else
+      GraphicsControlBlock gcb;
+      DGifSavedExtensionToGCB (gif, j, &gcb);
+      disposal = gcb.DisposalMode;
+      transparency_color_index = gcb.TransparentColor;
+#endif
 
       /* We can't "keep in place" the first subimage.  */
       if (j == 0)
-	disposal = 2;
+	disposal = DISPOSE_BACKGROUND;
 
-      /* For disposal == 0, the spec says "No disposal specified. The
-	 decoder is not required to take any action."  In practice, it
-	 seems we need to treat this like "keep in place", see e.g.
+      /* For disposal == 0 (DISPOSAL_UNSPECIFIED), the spec says
+	 "No disposal specified.  The decoder is not required to take
+	 any action."  In practice, it seems we need to treat this
+	 like "keep in place" (DISPOSE_DO_NOT), see e.g.
 	 https://upload.wikimedia.org/wikipedia/commons/3/37/Clock.gif */
-      if (disposal == 0)
-	disposal = 1;
+      if (disposal == DISPOSAL_UNSPECIFIED)
+	disposal = DISPOSE_DO_NOT;
 
       gif_color_map = subimage->ImageDesc.ColorMap;
       if (!gif_color_map)
@@ -8649,7 +8665,7 @@ gif_load (struct frame *f, struct image *img)
 	      for (x = 0; x < subimg_width; x++)
 		{
 		  int c = raster[y * subimg_width + x];
-		  if (transparency_color_index != c || disposal != 1)
+		  if (transparency_color_index != c || disposal != DISPOSE_DO_NOT)
                     {
                       PUT_PIXEL (ximg, x + subimg_left, row + subimg_top,
                                  pixel_colors[c]);
@@ -8663,7 +8679,7 @@ gif_load (struct frame *f, struct image *img)
 	    for (x = 0; x < subimg_width; ++x)
 	      {
 		int c = raster[y * subimg_width + x];
-		if (transparency_color_index != c || disposal != 1)
+		if (transparency_color_index != c || disposal != DISPOSE_DO_NOT)
                   {
                     PUT_PIXEL (ximg, x + subimg_left, y + subimg_top,
                                pixel_colors[c]);
@@ -8733,7 +8749,11 @@ gif_load (struct frame *f, struct image *img)
   /* Put ximg into the image.  */
   image_put_x_image (f, img, ximg, 0);
 
-  return 1;
+  return true;
+
+ gif_error:
+  gif_close (gif, NULL);
+  return false;
 }
 
 #endif /* HAVE_GIF */
