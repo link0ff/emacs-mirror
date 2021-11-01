@@ -561,11 +561,13 @@ To record all your input, use `open-dribble-file'."
               'font-lock-face 'help-key-binding
               'face 'help-key-binding))
 
-(defcustom describe-bindings-outline nil
+(defcustom describe-bindings-outline t
   "Non-nil enables outlines in the output buffer of `describe-bindings'."
   :type 'boolean
   :group 'help
-  :version "28.1")
+  :version "29.1")
+
+(declare-function outline-hide-subtree "outline")
 
 (defun describe-bindings (&optional prefix buffer)
   "Display a buffer showing a list of all defined keys, and their definitions.
@@ -592,18 +594,18 @@ or a buffer name."
         (setq-local outline-level (lambda () 1))
         (setq-local outline-minor-mode-cycle t
                     outline-minor-mode-highlight t)
+        (setq-local outline-minor-mode-use-buttons t)
         (outline-minor-mode 1)
         (save-excursion
+          (goto-char (point-min))
           (let ((inhibit-read-only t))
-            (goto-char (point-min))
-            (insert (substitute-command-keys
-                     (concat "\\<outline-minor-mode-cycle-map>Type "
-                             "\\[outline-cycle] or \\[outline-cycle-buffer] "
-                             "on headings to cycle their visibility.\n\n")))
             ;; Hide the longest body
-            (when (and (re-search-forward "Key translations" nil t)
-                       (fboundp 'outline-cycle))
-              (outline-cycle))))))))
+            (when (re-search-forward "Key translations" nil t)
+              (outline-hide-subtree))
+            ;; Hide ^Ls.
+            (while (search-forward "\n\f\n" nil t)
+              (put-text-property (1+ (match-beginning 0)) (1- (match-end 0))
+                                 'invisible t))))))))
 
 (defun where-is (definition &optional insert)
   "Print message listing key sequences that invoke the command DEFINITION.
@@ -1253,10 +1255,7 @@ maps to look through.
 
 If MENTION_SHADOW is non-nil, then when something is shadowed by
 SHADOW, don't omit it; instead, mention it but say it is
-shadowed.
-
-Any inserted text ends in two newlines (used by
-`help-make-xrefs')."
+shadowed."
   (let* ((amaps (accessible-keymaps startmap prefix))
          (orig-maps (if no-menu
                         (progn
@@ -1273,17 +1272,8 @@ Any inserted text ends in two newlines (used by
                             result))
                       amaps))
          (maps orig-maps)
-         (print-title (or maps always-title)))
-    ;; Print title.
-    (when print-title
-      (insert (concat (if title
-                          (concat title
-                                  (if prefix
-                                      (concat " Starting With "
-                                              (help--key-description-fontified prefix)))
-                                  ":\n"))
-                      "key             binding\n"
-                      "---             -------\n")))
+         (print-title (or maps always-title))
+         (start-point (point)))
     ;; Describe key bindings.
     (setq help--keymaps-seen nil)
     (while (consp maps)
@@ -1308,8 +1298,24 @@ Any inserted text ends in two newlines (used by
           (describe-map (cdr elt) elt-prefix transl partial
                         sub-shadows no-menu mention-shadow)))
       (setq maps (cdr maps)))
-    (when print-title
-      (insert "\n"))))
+    ;; Print title...
+    (when (and print-title
+               ;; ... unless the keymap was empty.
+               (/= (point) start-point))
+      (save-excursion
+        (goto-char start-point)
+        (when (eolp)
+          (delete-region (point) (1+ (point))))
+        (insert
+         (concat
+          (if title
+              (concat title
+                      (if prefix
+                          (concat " Starting With "
+                                  (help--key-description-fontified prefix)))
+                      ":\n"))
+          "\nKey             Binding\n"
+          (make-separator-line)))))))
 
 (defun help--shadow-lookup (keymap key accept-default remap)
   "Like `lookup-key', but with command remapping.
