@@ -1250,10 +1250,10 @@ If NOMENU is non-nil, then omit menu-bar commands.
 If TRANSL is non-nil, the definitions are actually key
 translations so print strings and vectors differently.
 
-If ALWAYS_TITLE is non-nil, print the title even if there are no
+If ALWAYS-TITLE is non-nil, print the title even if there are no
 maps to look through.
 
-If MENTION_SHADOW is non-nil, then when something is shadowed by
+If MENTION-SHADOW is non-nil, then when something is shadowed by
 SHADOW, don't omit it; instead, mention it but say it is
 shadowed."
   (let* ((amaps (accessible-keymaps startmap prefix))
@@ -1349,12 +1349,21 @@ Return nil if the key sequence is too long."
                                          font-lock-face nil)))
     (setq help--previous-description-column description-column)
     (cond ((symbolp definition)
-           (insert (symbol-name definition) "\n"))
+           (insert-text-button (symbol-name definition)
+                               'type 'help-function
+                               'help-args (list definition))
+           (insert "\n"))
           ((or (stringp definition) (vectorp definition))
            (insert "Keyboard Macro\n"))
           ((keymapp definition)
            (insert "Prefix Command\n"))
-          (t (insert "??\n")))))
+          ((byte-code-function-p definition)
+           (insert "[byte-code]\n"))
+          ((and (consp definition)
+                (memq (car definition) '(closure lambda)))
+           (insert (format "[%s]\n" (car definition))))
+          (t
+           (insert "??\n")))))
 
 (defun help--describe-translation (definition)
   ;; Converted from describe_translation in keymap.c.
@@ -1453,10 +1462,6 @@ TRANSL, PARTIAL, SHADOW, NOMENU, MENTION-SHADOW are as in
                (definition (cadr elem))
                (shadowed (caddr elem))
                (end start))
-          (when first
-            (setq help--previous-description-column 0)
-            (insert "\n")
-            (setq first nil))
           ;; Find consecutive chars that are identically defined.
           (when (fixnump start)
             (while (and (cdr vect)
@@ -1471,24 +1476,32 @@ TRANSL, PARTIAL, SHADOW, NOMENU, MENTION-SHADOW are as in
                                (eq this-shadowed next-shadowed))))
               (setq vect (cdr vect))
               (setq end (caar vect))))
-          ;; Now START .. END is the range to describe next.
-          ;; Insert the string to describe the event START.
-          (insert (help--key-description-fontified (vector start) prefix))
-          (when (not (eq start end))
-            (insert " .. " (help--key-description-fontified (vector end) prefix)))
-          ;; Print a description of the definition of this character.
-          ;; Called function will take care of spacing out far enough
-          ;; for alignment purposes.
-          (if transl
-              (help--describe-translation definition)
-            (help--describe-command definition))
-          ;; Print a description of the definition of this character.
-          ;; elt_describer will take care of spacing out far enough for
-          ;; alignment purposes.
-          (when shadowed
-            (goto-char (max (1- (point)) (point-min)))
-            (insert "\n  (this binding is currently shadowed)")
-            (goto-char (min (1+ (point)) (point-max)))))
+          (when (or (not (eq start end))
+                    ;; Don't output keymap prefixes.
+                    (not (keymapp definition)))
+            (when first
+              (setq help--previous-description-column 0)
+              (insert "\n")
+              (setq first nil))
+            ;; Now START .. END is the range to describe next.
+            ;; Insert the string to describe the event START.
+            (insert (help--key-description-fontified (vector start) prefix))
+            (when (not (eq start end))
+              (insert " .. " (help--key-description-fontified (vector end)
+                                                              prefix)))
+            ;; Print a description of the definition of this character.
+            ;; Called function will take care of spacing out far enough
+            ;; for alignment purposes.
+            (if transl
+                (help--describe-translation definition)
+              (help--describe-command definition))
+            ;; Print a description of the definition of this character.
+            ;; elt_describer will take care of spacing out far enough for
+            ;; alignment purposes.
+            (when shadowed
+              (goto-char (max (1- (point)) (point-min)))
+              (insert "\n  (this binding is currently shadowed)")
+              (goto-char (min (1+ (point)) (point-max))))))
         ;; Next item in list.
         (setq vect (cdr vect))))))
 
