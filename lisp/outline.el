@@ -281,8 +281,8 @@ buttons should look."
   :version "29.1")
 
 (defcustom outline-minor-mode-buttons
-  '(("▶️". "🔽")
-    ("▶" . "▼"))
+  '(("▶️" "🔽" outline--valid-emoji-p)
+    ("▶" "▼" outline--valid-char-p))
   "List of close/open pairs to use if using buttons."
   :type 'sexp
   :version "29.1")
@@ -951,13 +951,19 @@ If non-nil, EVENT should be a mouse event."
   (outline-flag-subtree t))
 
 (defun outline--make-button (type)
-  (cl-loop for (close . open) in outline-minor-mode-buttons
-           when (and (char-displayable-p (aref close 0))
-                     (char-displayable-p (aref open 0)))
+  (cl-loop for (close open test) in outline-minor-mode-buttons
+           when (and (funcall test close) (funcall test open))
            return (concat (if (eq type 'close)
                               close
                             open)
                           " " (buffer-substring (point) (1+ (point))))))
+
+(defun outline--valid-emoji-p (string)
+  (when-let ((font (car (internal-char-font nil ?😀))))
+    (font-has-char-p font (aref string 0))))
+
+(defun outline--valid-char-p (string)
+  (char-displayable-p (aref string 0)))
 
 (defun outline--make-button-overlay (type)
   (let ((o (seq-find (lambda (o)
@@ -965,6 +971,8 @@ If non-nil, EVENT should be a mouse event."
                      (overlays-at (point)))))
     (unless o
       (setq o (make-overlay (point) (1+ (point))))
+      (overlay-put o 'follow-link 'mouse-face)
+      (overlay-put o 'mouse-face 'highlight)
       (overlay-put o 'outline-button t))
     (overlay-put o 'display (outline--make-button type))
     o))
@@ -978,7 +986,6 @@ If non-nil, EVENT should be a mouse event."
                    (define-keymap
                      :parent outline-minor-mode-cycle-map
                      ["RET"] #'outline-hide-subtree
-                     ["<follow-link>"] 'mouse-face
                      ["<mouse-2>"] #'outline-hide-subtree)))))
 
 (defun outline--insert-close-button ()
@@ -990,7 +997,6 @@ If non-nil, EVENT should be a mouse event."
                    (define-keymap
                      :parent outline-minor-mode-cycle-map
                      ["RET"] #'outline-show-subtree
-                     ["<follow-link>"] 'mouse-face
                      ["<mouse-2>"] #'outline-show-subtree)))))
 
 (defun outline--fix-up-all-buttons ()
