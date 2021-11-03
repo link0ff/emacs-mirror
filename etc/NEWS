@@ -244,8 +244,8 @@ external "exiftool" command to be available.  The user options
 
 ---
 *** New command for the thumbnail buffer.
-The new command 'image-dired-unmark-all-marks' has been added with a
-binding in the menu.
+The new command 'image-dired-unmark-all-marks' has been added.  It is
+bound to "U" in the thumbnail buffer.
 
 ---
 *** Support Thumbnail Managing Standard v0.9.0 (Dec 2020).
@@ -405,6 +405,14 @@ This holds the value of the previous call to 'set-locale-environment'.
 *** New macro 'with-locale-environment'.
 This macro can be used to change the locale temporarily while
 executing code.
+
+** Tabulated List Mode
+
++++
+*** A column can now be set to an image descriptor.
+The `tabulated-list-entries' variable now supports using an image
+descriptor, which means to insert an image in that column instead of
+text.  See the documentation string of that variable for details.
 
 +++
 ** 'define-key' now understands a new strict 'kbd' representation for keys.
