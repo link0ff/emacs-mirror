@@ -151,7 +151,26 @@ change the terminal used on a remote host.
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
 
+** Message
+
+---
+*** New user option 'mml-attach-file-at-the-end'.
+If non-nil, 'C-c C-a' will put attached files at the end of the message.
+
+** Gnus
+
++++
+*** New user option 'gnus-treat-emojize-symbols'.
+If non-nil, symbols that have an emoji representation will be
+displayed as emojis.
+
++++
+*** New command 'gnus-article-emojize-symbols'.
+This is bound to 'W D e' and will display symbols that have emoji
+representation as emojis.
+
 ** EIEIO
+
 +++
 *** 'slot-value' can now be used to read slots of 'cl-defstruct' objects
 
@@ -235,6 +254,21 @@ as opposed to via the command-line.
 
 ** Image-Dired
 
++++
+*** 'image-dired-display-image-mode' is now based on 'image-mode'.
+This avoids converting images in the background, and makes Image-Dired
+noticeably faster.  New keybindings from 'image-mode' are now
+available in the "*image-dired-display-image*" buffer; press '?' or
+'h' in that buffer to see the full list.  Finally, some commands and
+user options that are no longer needed are now obsolete:
+'image-dired-cmd-create-temp-image-options',
+'image-dired-cmd-create-temp-image-program',
+'image-dired-display-current-image-full',
+'image-dired-display-current-image-sized',
+'image-dired-display-window-height-correction',
+'image-dired-display-window-width-correction',
+'image-dired-temp-image-file'.
+
 ---
 *** Reduce dependency on external "exiftool" command.
 The 'image-dired-copy-with-exif-file-name' no longer requires an
@@ -258,6 +292,12 @@ to use it; it is not enabled by default.
 *** Support GraphicsMagick command line tools.
 Support for the GraphicsMagick command line tool ("gm") has been
 added, and is used instead of ImageMagick when it is available.
+
+---
+*** New face 'image-dired-thumb-flagged'.
+If 'image-dired-thumb-mark' is non-nil (the default), this face is
+used for images that are flagged for deletion in the Dired buffer
+associated with Image-Dired.
 
 ---
 *** Support for bookmark.el.
