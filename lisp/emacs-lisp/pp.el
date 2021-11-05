@@ -82,12 +82,18 @@ to make output that `read' can handle, whenever this is possible."
   "Output the pretty-printed representation of OBJECT, any Lisp object.
 Quoting characters are printed as needed to make output that `read'
 can handle, whenever this is possible.
+
+This function does not apply special formatting rules for Emacs
+Lisp code.  See `pp-emacs-lisp-code' instead.
+
 Output stream is STREAM, or value of `standard-output' (which see)."
   (princ (pp-to-string object) (or stream standard-output)))
 
 ;;;###autoload
-(defun pp-display-expression (expression out-buffer-name)
+(defun pp-display-expression (expression out-buffer-name &optional lisp)
   "Prettify and display EXPRESSION in an appropriate way, depending on length.
+If LISP, format with `pp-emacs-lisp-code'; use `pp' otherwise.
+
 If a temporary buffer is needed for representation, it will be named
 after OUT-BUFFER-NAME."
   (let* ((old-show-function temp-buffer-show-function)
@@ -115,7 +121,10 @@ after OUT-BUFFER-NAME."
                       (message "See buffer %s." out-buffer-name)))
                 (message "%s" (buffer-substring (point-min) (point))))))))
     (with-output-to-temp-buffer out-buffer-name
-      (pp expression)
+      (if lisp
+          (with-current-buffer standard-output
+            (pp-emacs-lisp-code expression))
+        (pp expression))
       (with-current-buffer standard-output
 	(emacs-lisp-mode)
 	(setq buffer-read-only nil)
@@ -179,6 +188,168 @@ Ignores leading comment characters."
   (if arg
       (insert (pp-to-string (macroexpand-1 (pp-last-sexp))))
     (pp-macroexpand-expression (pp-last-sexp))))
+
+;;;###autoload
+(defun pp-emacs-lisp-code (sexp)
+  "Insert SEXP into the current buffer, formatted as Emacs Lisp code."
+  (require 'edebug)
+  (let ((standard-output (current-buffer)))
+    (save-restriction
+      (narrow-to-region (point) (point))
+      (pp--insert-lisp sexp)
+      (insert "\n")
+      (goto-char (point-min))
+      (indent-sexp)
+      (while (re-search-forward " +$" nil t)
+        (replace-match "")))))
+
+(defun pp--insert-lisp (sexp)
+  (cl-case (type-of sexp)
+    (vector (pp--format-vector sexp))
+    (cons (cond
+           ((consp (cdr sexp))
+            (if (and (length= sexp 2)
+                     (eq (car sexp) 'quote))
+                (cond
+                 ((symbolp (cadr sexp))
+                  (let ((print-quoted t))
+                    (prin1 sexp)))
+                 ((consp (cadr sexp))
+                  (insert "'")
+                  (pp--format-list (cadr sexp)
+                                   (set-marker (make-marker) (1- (point))))))
+              (pp--format-list sexp)))
+           (t
+            (princ sexp))))
+    ;; Print some of the smaller integers as characters, perhaps?
+    (integer
+     (if (<= ?0 sexp ?z)
+         (let ((print-integers-as-characters t))
+           (princ sexp))
+       (princ sexp)))
+    (string
+     (let ((print-escape-newlines t))
+       (prin1 sexp)))
+    (otherwise (princ sexp))))
+
+(defun pp--format-vector (sexp)
+  (prin1 sexp))
+
+(defun pp--format-list (sexp &optional start)
+  (if (and (symbolp (car sexp))
+           (not (keywordp (car sexp))))
+      (pp--format-function sexp)
+    (insert "(")
+    (pp--insert start (pop sexp))
+    (while sexp
+      (pp--insert " " (pop sexp)))
+    (insert ")")))
+
+(defun pp--format-function (sexp)
+  (let* ((sym (car sexp))
+         (edebug (get sym 'edebug-form-spec))
+         (indent (get sym 'lisp-indent-function))
+         (doc (get sym 'doc-string-elt)))
+    (when (eq indent 'defun)
+      (setq indent 2))
+    ;; We probably want to keep all the elements before the doc string
+    ;; on a single line.
+    (when doc
+      (setq indent (1- doc)))
+    ;; Special-case closures -- these shouldn't really exist in actual
+    ;; source code, so there's no indentation information.  But make
+    ;; them output slightly better.
+    (when (and (not indent)
+               (eq sym 'closure))
+      (setq indent 0))
+    (pp--insert "(" sym)
+    (pop sexp)
+    ;; Get the first entries on the first line.
+    (if indent
+        (pp--format-definition sexp indent edebug)
+      (let ((prev 0))
+        (while sexp
+          (let ((start (point)))
+            ;; Don't put sexps on the same line as a multi-line sexp
+            ;; preceding it.
+            (pp--insert (if (> prev 1) "\n" " ")
+                        (pop sexp))
+            (setq prev (count-lines start (point)))))))
+    (insert ")")))
+
+(defun pp--format-definition (sexp indent edebug)
+  (while (and (cl-plusp indent)
+              sexp)
+    (insert " ")
+    (if (and (consp (car edebug))
+             (eq (caar edebug) '&rest))
+        (pp--insert-binding (pop sexp))
+      (if (null (car sexp))
+          (insert "()")
+        (pp--insert-lisp (car sexp)))
+      (pop sexp))
+    (pop edebug)
+    (cl-decf indent))
+  (when (stringp (car sexp))
+    (insert "\n")
+    (prin1 (pop sexp)))
+  ;; Then insert the rest with line breaks before each form.
+  (while sexp
+    (insert "\n")
+    (if (keywordp (car sexp))
+        (progn
+          (pp--insert-lisp (pop sexp))
+          (when sexp
+            (pp--insert " " (pop sexp))))
+      (pp--insert-lisp (pop sexp)))))
+
+(defun pp--insert-binding (sexp)
+  (insert "(")
+  (while sexp
+    (if (consp (car sexp))
+        ;; Newlines after each (...) binding.
+        (progn
+          (pp--insert-lisp (car sexp))
+          (when (cdr sexp)
+            (insert "\n")))
+      ;; Keep plain symbols on the same line.
+      (pp--insert " " (car sexp)))
+    (pop sexp))
+  (insert ")"))
+
+(defun pp--insert (delim &rest things)
+  (let ((start (if (markerp delim)
+                   (prog1
+                       delim
+                     (setq delim nil))
+                 (point-marker))))
+    (when delim
+      (insert delim))
+    (dolist (thing things)
+      (pp--insert-lisp thing))
+    ;; We need to indent what we have so far to see if we have to fold.
+    (pp--indent-buffer)
+    (when (> (current-column) (window-width))
+      (save-excursion
+        (goto-char start)
+        (unless (looking-at "[ \t]+$")
+          (insert "\n"))
+        (pp--indent-buffer)
+        (goto-char (point-max))
+        ;; If we're still too wide, then go up one step and try to
+        ;; insert a newline there.
+        (when (> (current-column) (window-width))
+          (condition-case ()
+              (backward-up-list 1)
+            (:success (when (looking-back " " 2)
+                        (insert "\n")))
+            (error nil)))))))
+
+(defun pp--indent-buffer ()
+  (goto-char (point-min))
+  (while (not (eobp))
+    (lisp-indent-line)
+    (forward-line 1)))
 
 (provide 'pp)				; so (require 'pp) works
 
