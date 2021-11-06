@@ -3547,10 +3547,8 @@ convert_mono_to_color_image (struct frame *f, struct image *img,
   release_frame_dc (f, hdc);
   old_prev = SelectObject (old_img_dc, img->pixmap);
   new_prev = SelectObject (new_img_dc, new_pixmap);
-  /* Windows convention for mono bitmaps is black = background,
-     white = foreground.  */
-  SetTextColor (new_img_dc, background);
-  SetBkColor (new_img_dc, foreground);
+  SetTextColor (new_img_dc, foreground);
+  SetBkColor (new_img_dc, background);
 
   BitBlt (new_img_dc, 0, 0, img->width, img->height, old_img_dc,
 	  0, 0, SRCCOPY);
@@ -9974,14 +9972,15 @@ DEF_DLL_FN (void, rsvg_handle_get_intrinsic_dimensions,
 DEF_DLL_FN (gboolean, rsvg_handle_get_geometry_for_layer,
 	    (RsvgHandle *, const char *, const RsvgRectangle *,
 	     RsvgRectangle *, RsvgRectangle *, GError **));
+#  else
+DEF_DLL_FN (void, rsvg_handle_get_dimensions,
+	    (RsvgHandle *, RsvgDimensionData *));
 #  endif
 
 #  if LIBRSVG_CHECK_VERSION (2, 48, 0)
 DEF_DLL_FN (gboolean, rsvg_handle_set_stylesheet,
 	    (RsvgHandle *, const guint8 *, gsize, GError **));
 #  endif
-DEF_DLL_FN (void, rsvg_handle_get_dimensions,
-	    (RsvgHandle *, RsvgDimensionData *));
 DEF_DLL_FN (GdkPixbuf *, rsvg_handle_get_pixbuf, (RsvgHandle *));
 DEF_DLL_FN (int, gdk_pixbuf_get_width, (const GdkPixbuf *));
 DEF_DLL_FN (int, gdk_pixbuf_get_height, (const GdkPixbuf *));
@@ -10032,11 +10031,12 @@ init_svg_functions (void)
 #if LIBRSVG_CHECK_VERSION (2, 46, 0)
   LOAD_DLL_FN (library, rsvg_handle_get_intrinsic_dimensions);
   LOAD_DLL_FN (library, rsvg_handle_get_geometry_for_layer);
+#else
+  LOAD_DLL_FN (library, rsvg_handle_get_dimensions);
 #endif
 #if LIBRSVG_CHECK_VERSION (2, 48, 0)
   LOAD_DLL_FN (library, rsvg_handle_set_stylesheet);
 #endif
-  LOAD_DLL_FN (library, rsvg_handle_get_dimensions);
   LOAD_DLL_FN (library, rsvg_handle_get_pixbuf);
 
   LOAD_DLL_FN (gdklib, gdk_pixbuf_get_width);
@@ -10074,8 +10074,9 @@ init_svg_functions (void)
 #  if LIBRSVG_CHECK_VERSION (2, 46, 0)
 #   undef rsvg_handle_get_intrinsic_dimensions
 #   undef rsvg_handle_get_geometry_for_layer
+#  else
+#   undef rsvg_handle_get_dimensions
 #  endif
-#  undef rsvg_handle_get_dimensions
 #  if LIBRSVG_CHECK_VERSION (2, 48, 0)
 #   undef rsvg_handle_set_stylesheet
 #  endif
@@ -10110,8 +10111,9 @@ init_svg_functions (void)
 	fn_rsvg_handle_get_intrinsic_dimensions
 #   define rsvg_handle_get_geometry_for_layer	\
 	fn_rsvg_handle_get_geometry_for_layer
+#  else
+#   define rsvg_handle_get_dimensions fn_rsvg_handle_get_dimensions
 #  endif
-#  define rsvg_handle_get_dimensions fn_rsvg_handle_get_dimensions
 #  if LIBRSVG_CHECK_VERSION (2, 48, 0)
 #   define rsvg_handle_set_stylesheet fn_rsvg_handle_set_stylesheet
 #  endif
@@ -10386,21 +10388,13 @@ svg_load_image (struct frame *f, struct image *img, char *contents,
       viewbox_width = viewbox.x + viewbox.width;
       viewbox_height = viewbox.y + viewbox.height;
     }
-
-  if (viewbox_width == 0 || viewbox_height == 0)
+#else
+  /* In librsvg before 2.46.0, guess the viewbox from the image dimensions.  */
+  RsvgDimensionData dimension_data;
+  rsvg_handle_get_dimensions (rsvg_handle, &dimension_data);
+  viewbox_width = dimension_data.width;
+  viewbox_height = dimension_data.height;
 #endif
-  {
-    /* The functions used above to get the geometry of the visible
-       area of the SVG are only available in librsvg 2.46 and above,
-       so in certain circumstances this code path can result in some
-       parts of the SVG being cropped.  */
-    RsvgDimensionData dimension_data;
-
-    rsvg_handle_get_dimensions (rsvg_handle, &dimension_data);
-
-    viewbox_width = dimension_data.width;
-    viewbox_height = dimension_data.height;
-  }
 
   compute_image_size (viewbox_width, viewbox_height, img,
                       &width, &height);
