@@ -174,8 +174,7 @@ fails.  */)
 
 	      /* webkitgtk uses GSubprocess which sets sigaction causing
 		 Emacs to not catch SIGCHLD with its usual handle setup in
-		 catch_child_signal().  This resets the SIGCHLD
-		 sigaction.  */
+		 'catch_child_signal'.  This resets the SIGCHLD sigaction.  */
 	      struct sigaction old_action;
 	      sigaction (SIGCHLD, NULL, &old_action);
 	      webkit_web_view_load_uri (WEBKIT_WEB_VIEW (xw->widget_osr),
@@ -188,7 +187,7 @@ fails.  */)
 	      xw->widget_osr = webkit_web_view_new_with_related_view (related_view);
 	    }
 
-	  /* Enable the developer extras */
+	  /* Enable the developer extras.  */
 	  settings = webkit_web_view_get_settings (WEBKIT_WEB_VIEW (xw->widget_osr));
 	  g_object_set (G_OBJECT (settings), "enable-developer-extras", TRUE, NULL);
 	}
@@ -262,9 +261,7 @@ set_widget_if_text_view (GtkWidget *widget, void *data)
   GtkWidget **pointer = data;
 
   if (GTK_IS_TEXT_VIEW (widget))
-    {
-      *pointer = widget;
-    }
+    *pointer = widget;
 }
 #endif
 
@@ -272,9 +269,9 @@ DEFUN ("xwidget-perform-lispy-event",
        Fxwidget_perform_lispy_event, Sxwidget_perform_lispy_event,
        2, 3, 0, doc: /* Send a lispy event to XWIDGET.
 EVENT should be the event that will be sent.  FRAME should be the
-frame which generated the event, or nil.  On X11, modifier keys will
-not be processed if FRAME is nil and the selected frame is not an
-X-Windows frame.  */)
+frame which generated the event, and defaults to the selected frame.
+On X11, modifier keys will not be processed if FRAME is nil and the
+selected frame is not an X-Windows frame.  */)
   (Lisp_Object xwidget, Lisp_Object event, Lisp_Object frame)
 {
   struct xwidget *xw;
@@ -503,39 +500,39 @@ find_widget (GtkWidget *widget,
     {
       window = gtk_widget_get_window (widget);
       while (window != gtk_widget_get_window (gtk_widget_get_parent (widget)))
-        {
-          gint tx, ty, twidth, theight;
+	{
+	  gint tx, ty, twidth, theight;
 
 	  if (!window)
 	    return;
 
-          twidth = gdk_window_get_width (window);
-          theight = gdk_window_get_height (window);
+	  twidth = gdk_window_get_width (window);
+	  theight = gdk_window_get_height (window);
 
-          if (new_allocation.x < 0)
-            {
-              new_allocation.width += new_allocation.x;
-              new_allocation.x = 0;
-            }
+	  if (new_allocation.x < 0)
+	    {
+	      new_allocation.width += new_allocation.x;
+	      new_allocation.x = 0;
+	    }
 
-          if (new_allocation.y < 0)
-            {
-              new_allocation.height += new_allocation.y;
-              new_allocation.y = 0;
-            }
+	  if (new_allocation.y < 0)
+	    {
+	      new_allocation.height += new_allocation.y;
+	      new_allocation.y = 0;
+	    }
 
-          if (new_allocation.x + new_allocation.width > twidth)
-            new_allocation.width = twidth - new_allocation.x;
-          if (new_allocation.y + new_allocation.height > theight)
-            new_allocation.height = theight - new_allocation.y;
+	  if (new_allocation.x + new_allocation.width > twidth)
+	    new_allocation.width = twidth - new_allocation.x;
+	  if (new_allocation.y + new_allocation.height > theight)
+	    new_allocation.height = theight - new_allocation.y;
 
-          gdk_window_get_position (window, &tx, &ty);
-          new_allocation.x += tx;
-          x_offset += tx;
-          new_allocation.y += ty;
-          y_offset += ty;
+	  gdk_window_get_position (window, &tx, &ty);
+	  new_allocation.x += tx;
+	  x_offset += tx;
+	  new_allocation.y += ty;
+	  y_offset += ty;
 
-          window = gdk_window_get_parent (window);
+	  window = gdk_window_get_parent (window);
 	}
     }
 
@@ -543,35 +540,33 @@ find_widget (GtkWidget *widget,
       (data->x < new_allocation.x + new_allocation.width) &&
       (data->y < new_allocation.y + new_allocation.height))
     {
-      /* First, check if the drag is in a valid drop site in
-       * one of our children
-       */
+      /* First, check if the drag is in a valid drop site in one of
+	 our children.	*/
       if (GTK_IS_CONTAINER (widget))
-        {
-          struct widget_search_data new_data = *data;
+	{
+	  struct widget_search_data new_data = *data;
 
-          new_data.x -= x_offset;
-          new_data.y -= y_offset;
-          new_data.foundp = false;
-          new_data.first = false;
+	  new_data.x -= x_offset;
+	  new_data.y -= y_offset;
+	  new_data.foundp = false;
+	  new_data.first = false;
 
-          gtk_container_forall (GTK_CONTAINER (widget),
-                                find_widget_cb, &new_data);
+	  gtk_container_forall (GTK_CONTAINER (widget),
+				find_widget_cb, &new_data);
 
-          data->foundp = new_data.foundp;
-          if (data->foundp)
-            data->data = new_data.data;
-        }
+	  data->foundp = new_data.foundp;
+	  if (data->foundp)
+	    data->data = new_data.data;
+	}
 
-      /* If not, and this widget is registered as a drop site, check to
-       * emit "drag_motion" to check if we are actually in
-       * a drop site.
-       */
+      /* If not, and this widget is registered as a drop site, check
+	 to emit "drag_motion" to check if we are actually in a drop
+	 site.	*/
       if (!data->foundp)
-        {
-          data->foundp = true;
-          data->data = widget;
-        }
+	{
+	  data->foundp = true;
+	  data->data = widget;
+	}
     }
 }
 
@@ -673,7 +668,7 @@ xwidget_button_1 (struct xwidget_view *view,
 
   xg_event->any.window = gtk_widget_get_window (target);
   g_object_ref (xg_event->any.window); /* The window will be unrefed
-					  later by gdk_event_free. */
+					  later by gdk_event_free.  */
 
   xg_event->button.x = x;
   xg_event->button.x_root = x;
@@ -711,7 +706,7 @@ xwidget_button (struct xwidget_view *view,
 
       xg_event->any.window = gtk_widget_get_window (target);
       g_object_ref (xg_event->any.window); /* The window will be unrefed
-					      later by gdk_event_free. */
+					      later by gdk_event_free.  */
       if (button == 4)
 	xg_event->scroll.direction = GDK_SCROLL_UP;
       else if (button == 5)
@@ -741,9 +736,11 @@ xwidget_button (struct xwidget_view *view,
 void
 xwidget_motion_or_crossing (struct xwidget_view *view, const XEvent *event)
 {
-  GdkEvent *xg_event = gdk_event_new (event->type == MotionNotify ? GDK_MOTION_NOTIFY :
-				      (event->type == LeaveNotify ? GDK_LEAVE_NOTIFY :
-				       GDK_ENTER_NOTIFY));
+  GdkEvent *xg_event = gdk_event_new (event->type == MotionNotify
+				      ? GDK_MOTION_NOTIFY
+				      : (event->type == LeaveNotify
+					 ? GDK_LEAVE_NOTIFY
+					 : GDK_ENTER_NOTIFY));
   struct xwidget *model = XXWIDGET (view->model);
   int x;
   int y;
@@ -761,7 +758,7 @@ xwidget_motion_or_crossing (struct xwidget_view *view, const XEvent *event)
 
   xg_event->any.window = gtk_widget_get_window (target);
   g_object_ref (xg_event->any.window); /* The window will be unrefed
-					  later by gdk_event_free. */
+					  later by gdk_event_free.  */
 
   if (event->type == MotionNotify)
     {
@@ -1199,6 +1196,33 @@ webkit_decide_policy_cb (WebKitWebView *webView,
       break;
     }
   case WEBKIT_POLICY_DECISION_TYPE_NEW_WINDOW_ACTION:
+    {
+      WebKitNavigationPolicyDecision *navigation_decision =
+        WEBKIT_NAVIGATION_POLICY_DECISION (decision);
+      WebKitNavigationAction *navigation_action =
+        webkit_navigation_policy_decision_get_navigation_action (navigation_decision);
+      WebKitURIRequest *request =
+        webkit_navigation_action_get_request (navigation_action);
+      WebKitWebView *newview;
+      struct xwidget *xw = g_object_get_data (G_OBJECT (webView), XG_XWIDGET);
+      Lisp_Object val, new_xwidget;
+
+      XSETXWIDGET (val, xw);
+
+      new_xwidget = Fmake_xwidget (Qwebkit, Qnil, make_fixnum (0),
+				   make_fixnum (0), Qnil,
+				   build_string (" *detached xwidget buffer*"),
+				   val);
+
+      if (NILP (new_xwidget))
+	return FALSE;
+
+      newview = WEBKIT_WEB_VIEW (XXWIDGET (new_xwidget)->widget_osr);
+      webkit_web_view_load_request (newview, request);
+
+      store_xwidget_display_event (XXWIDGET (new_xwidget));
+      return TRUE;
+    }
   case WEBKIT_POLICY_DECISION_TYPE_NAVIGATION_ACTION:
     {
       WebKitNavigationPolicyDecision *navigation_decision =
@@ -1516,7 +1540,11 @@ DEFUN ("xwidget-webkit-goto-uri",
 DEFUN ("xwidget-webkit-goto-history",
        Fxwidget_webkit_goto_history, Sxwidget_webkit_goto_history,
        2, 2, 0,
-       doc: /* Make the XWIDGET webkit load REL-POS (-1, 0, 1) page in browse history.  */)
+       doc: /* Make the XWIDGET webkit the REL-POSth element in load history.
+
+If REL-POS is 0, the widget will be just reload the current element in
+history.  If REL-POS is more or less than 0, the widget will load the
+REL-POSth element around the current spot in the load history. */)
   (Lisp_Object xwidget, Lisp_Object rel_pos)
 {
   WEBKIT_FN_INIT ();
@@ -1526,11 +1554,20 @@ DEFUN ("xwidget-webkit-goto-history",
 
 #ifdef USE_GTK
   WebKitWebView *wkwv = WEBKIT_WEB_VIEW (xw->widget_osr);
-  switch (XFIXNAT (rel_pos))
+  WebKitBackForwardList *list;
+  WebKitBackForwardListItem *it;
+
+  if (XFIXNUM (rel_pos) == 0)
+    webkit_web_view_reload (wkwv);
+  else
     {
-    case -1: webkit_web_view_go_back (wkwv); break;
-    case 0: webkit_web_view_reload (wkwv); break;
-    case 1: webkit_web_view_go_forward (wkwv); break;
+      list = webkit_web_view_get_back_forward_list (wkwv);
+      it = webkit_back_forward_list_get_nth_item (list, XFIXNUM (rel_pos));
+
+      if (!it)
+	error ("There is no item at this index");
+
+      webkit_web_view_go_to_back_forward_list_item (wkwv, it);
     }
 #elif defined NS_IMPL_COCOA
   nsxwidget_webkit_goto_history (xw, XFIXNAT (rel_pos));
@@ -1988,12 +2025,6 @@ using `xwidget-webkit-search'.  */)
   webview = WEBKIT_WEB_VIEW (xw->widget_osr);
   controller = webkit_web_view_get_find_controller (webview);
   webkit_find_controller_search_previous (controller);
-
-  if (xw->find_text)
-    {
-      xfree (xw->find_text);
-      xw->find_text = NULL;
-    }
   unblock_input ();
 #endif
 
@@ -2026,6 +2057,12 @@ using `xwidget-webkit-search'.  */)
   webview = WEBKIT_WEB_VIEW (xw->widget_osr);
   controller = webkit_web_view_get_find_controller (webview);
   webkit_find_controller_search_finish (controller);
+
+  if (xw->find_text)
+    {
+      xfree (xw->find_text);
+      xw->find_text = NULL;
+    }
   unblock_input ();
 #endif
 
@@ -2302,9 +2339,7 @@ kill_frame_xwidget_views (struct frame *f)
     }
 
   for (; CONSP (rem); rem = XCDR (rem))
-    {
-      Fdelete_xwidget_view (XCAR (rem));
-    }
+    Fdelete_xwidget_view (XCAR (rem));
 }
 #endif
 
