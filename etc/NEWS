@@ -216,6 +216,19 @@ consistent with 'vc-responsible-backend'.
 *** New user option 'mml-attach-file-at-the-end'.
 If non-nil, 'C-c C-a' will put attached files at the end of the message.
 
+---
+*** Message Mode now supports image yanking.
+
+---
+*** HTML Mode now supports text/html and image/* yanking.
+
+** eww
+
++++
+*** New user option 'eww-url-transformers'.
+These are used to alter an URL before using it.  By default it removes
+the common utm_ trackers from URLs.
+
 ** Gnus
 
 +++
@@ -482,6 +495,31 @@ the buffer will take you to that directory.
 This is a convenience function to extract the field data from
 'exif-parse-file' and 'exif-parse-buffer'.
 
+** Xwidgets
+
++++
+*** New minor mode `xwidget-webkit-edit-mode'.
+When this mode is enabled, self-inserting characters and other common
+web browser shotcut keys are redefined to send themselves to the
+WebKit widget.
+
++++
+*** New minor mode `xwidget-webkit-isearch-mode'.
+This mode acts similarly to incremental search, and allows to search
+the contents of a WebKit widget.  In xwidget-webkit mode, it is bound
+to `C-s' and `C-r'.
+
+---
+*** On X11, the WebKit inspector is now available inside xwidgets.
+To access the inspector, right click on the widget and select "Inspect
+Element".
+
+---
+*** "Open in New Window" in a WebKit widget's context menu now works.
+The newly created buffer will be displayed via display-buffer, which
+can be customized through the usual mechanism of display-buffer-alist
+and friends.
+
 
 * New Modes and Packages in Emacs 29.1
 
@@ -553,12 +591,18 @@ Use 'exif-parse-file' and 'exif-field' instead.
 
 * Lisp Changes in Emacs 29.1
 
+*** New command 'yank-media'.
+This command supports yanking non-plain-text media like images and
+HTML from other applications into Emacs.  It is only supported in
+modes that have registered support for it.
+
 +++
 *** New text property 'inhibit-isearch'.
 If set, 'isearch' will skip these areas, which can be useful (for
 instance) when covering huge amounts of data (that has no meaningful
 searchable data, like image data) with a 'display' text property.
 
++++
 *** 'insert-image' now takes an INHIBIT-ISEARCH optional parameter.
 It marks the image with the 'inhibit-isearch' text parameter, which
 inhibits 'isearch' matching the STRING parameter.
@@ -699,6 +743,39 @@ symbol containing spaces, as in '[menu-bar Foo\ Bar]', first look for
 an exact match, then the lowercased '[menu-bar foo\ bar]' and finally
 '[menu-bar foo-bar]'.  This further improves backwards-compatibility
 when converting menus to use 'easy-menu-define'.
+
++++
+** The function `make-xwidget' now accepts an optional RELATED argument.
+This argument is used as another widget for the newly created WebKit
+widget to share settings and subprocesses with.  It must be another
+WebKit widget.
+
++++
+** New function `xwidget-perform-lispy-event'.
+This function allows you to send events to xwidgets.  Usually, some
+equivalent of the event will be sent, but there is no guarantee of
+what the widget will actually receive.
+
+On GTK+, only key and function key events are implemented.
+
++++
+** New functions for performing searches on WebKit xwidgets.
+Some new functions, such as `xwidget-webkit-search', have been added
+for performing searches on WebKit xwidgets.
+
++++
+** `load-changed' xwidget events are now more detailed.
+In particular, they can now have different arguments based on the
+state of the WebKit widget.  `load-finished' is sent when a load has
+completed, `load-started' when a load first starts, `load-redirected'
+after a redirect, and `load-committed' when the WebKit widget first
+commits to the load.
+
++++
+** New event type `xwidget-display-event'.
+These events are sent whenever an xwidget requests that Emacs display
+another.  The only argument to this event is the xwidget that should
+be displayed.
 
 
 * Changes in Emacs 29.1 on Non-Free Operating Systems
