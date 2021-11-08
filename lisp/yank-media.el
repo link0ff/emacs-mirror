@@ -25,6 +25,7 @@
 ;;; Code:
 
 (require 'cl-lib)
+(require 'seq)
 
 (defvar yank-media--registered-handlers nil)
 
@@ -33,7 +34,10 @@
   "Yank media (images, HTML and the like) from the clipboard.
 This command depends on the current major mode having support for
 accepting the media type.  The mode has to register itself using
-the `register-yank-media-handler' mechanism."
+the `yank-media-handler' mechanism.
+
+Also see `yank-media-types' for a command that lets you explore
+all the different selection types."
   (interactive)
   (unless yank-media--registered-handlers
     (user-error "The `%s' mode hasn't registered any handlers" major-mode))
@@ -48,7 +52,7 @@ the `register-yank-media-handler' mechanism."
     ;; We have a handler in the current buffer; if there's just
     ;; matching type, just call the handler.
     (if (length= all-types 1)
-        (funcall (cdar all-types)
+        (funcall (cdar all-types) (caar all-types)
                  (yank-media--get-selection (caar all-types)))
       ;; More than one type the user for what type to insert.
       (let ((type
@@ -76,19 +80,14 @@ the `register-yank-media-handler' mechanism."
               (yank-media--get-selection type)))))
    (gui-get-selection 'CLIPBOARD 'TARGETS)))
 
-(defun yank-media--get-selection (type)
-  (when-let ((data (gui-get-selection 'CLIPBOARD type)))
-    (when-let ((charset (get-text-property 0 'charset data)))
-      (setq data (encode-coding-string data charset)))
-    ;; Some programs add a nul character at the end of text/*
-    ;; selections.  Remove that.
-    (when (and (string-match-p "\\`text/" (symbol-name type))
-               (zerop (elt data (1- (length data)))))
-      (setq data (substring data 0 (1- (length data)))))
-    data))
+(defun yank-media--get-selection (data-type)
+  (when-let ((data (gui-get-selection 'CLIPBOARD data-type)))
+    (if (string-match-p "\\`text/" (symbol-name data-type))
+        (yank-media-types--format data-type data)
+      data)))
 
 ;;;###autoload
-(defun register-yank-media-handler (types handler)
+(defun yank-media-handler (types handler)
   "Register HANDLER for dealing with `yank-media' actions for TYPES.
 TYPES should be a MIME media type symbol, a regexp, or a list
 that can contain both symbols and regexps.
@@ -100,6 +99,88 @@ data (a string)."
   (dolist (type (ensure-list types))
     (setf (alist-get type yank-media--registered-handlers nil nil #'equal)
           handler)))
+
+(defun yank-media-types ()
+  "Yank any element present in the primary selection or the clipboard.
+This is primarily meant as a debugging tool -- many of the
+elements (like images) will be inserted as raw data into the
+current buffer.  See `yank-media' instead for a command that
+inserts images as images."
+  (interactive)
+  (let ((elements nil))
+    ;; First gather all the data.
+    (dolist (type '(PRIMARY CLIPBOARD))
+      (when-let ((data-types (gui-get-selection type 'TARGETS)))
+        (when (vectorp data-types)
+          (seq-do (lambda (data-type)
+                    (unless (memq data-type '( TARGETS MULTIPLE
+                                               DELETE SAVE_TARGETS))
+                      (when-let ((data (gui-get-selection type data-type)))
+                        ;; Remove duplicates -- the data in PRIMARY and
+                        ;; CLIPBOARD are sometimes (mostly) identical,
+                        ;; and sometimes not.
+                        (let ((old (assq data-type elements)))
+                          (when (or (not old)
+                                    (not (equal (nth 2 old) data)))
+                            (push (list data-type type data)
+                                  elements))))))
+                  data-types))))
+    ;; Then query the user.
+    (unless elements
+      (user-error "No elements in the primary selection or the clipboard"))
+    (let ((spec
+           (completing-read
+            "Yank type: "
+            (mapcar (lambda (e)
+                      (format "%s:%s" (downcase (symbol-name (cadr e)))
+                              (car e)))
+                    elements)
+            nil t)))
+      (dolist (elem elements)
+        (when (equal (format "%s:%s" (downcase (symbol-name (cadr elem)))
+                             (car elem))
+                     spec)
+          (insert (yank-media-types--format (car elem) (nth 2 elem))))))))
+
+(defun yank-media-types--format (data-type data)
+  (cond
+   ((not (stringp data))
+    (format "%s" data))
+   ((string-match-p "\\`text/" (symbol-name data-type))
+    ;; We may have utf-16, which Emacs won't detect automatically.
+    (let ((coding-system
+           (and (zerop (mod (length data) 2))
+                (let ((stats (vector 0 0)))
+                  (dotimes (i (length data))
+                    (when (zerop (elt data i))
+                      (setf (aref stats (mod i 2))
+                            (1+ (aref stats (mod i 2))))))
+                  ;; If we have more than 90% every-other nul, then it's
+                  ;; pretty likely to be utf-16.
+                  (cond
+                   ((> (if (zerop (elt stats 1))
+                           1
+                         (/ (float (elt stats 0))
+                            (float (elt stats 1))))
+                       0.9)
+                    ;; Big endian.
+                    'utf-16-be)
+                   ((> (if (zerop (elt stats 0))
+                           1
+                         (/ (float (elt stats 1))
+                            (float (elt stats 0))))
+                       0.9)
+                    ;; Little endian.
+                    'utf-16-le))))))
+      (if coding-system
+          (decode-coding-string data coding-system)
+        ;; Some programs add a nul character at the end of text/*
+        ;; selections.  Remove that.
+        (if (zerop (elt data (1- (length data))))
+            (substring data 0 (1- (length data)))
+          data))))
+   (t
+    data)))
 
 (provide 'yank-media)
 

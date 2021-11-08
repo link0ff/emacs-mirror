@@ -864,7 +864,8 @@ In the latter case, VC mode is deactivated for this buffer."
 (defvar vc-prefix-map
   (let ((map (make-sparse-keymap)))
     (define-key map "a" #'vc-update-change-log)
-    ;; (define-key map "B" #'vc-switch-backend)
+    (with-suppressed-warnings ((obsolete vc-switch-backend))
+      (define-key map "B" #'vc-switch-backend))
     (define-key map "bc" #'vc-create-tag)
     (define-key map "bl" #'vc-print-branch-log)
     (define-key map "bs" #'vc-retrieve-tag)

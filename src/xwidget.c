@@ -50,6 +50,8 @@ static Lisp_Object x_window_to_xwv_map;
 static gboolean offscreen_damage_event (GtkWidget *, GdkEvent *, gpointer);
 static void synthesize_focus_in_event (GtkWidget *);
 static GdkDevice *find_suitable_keyboard (struct frame *);
+static gboolean webkit_script_dialog_cb (WebKitWebView *, WebKitScriptDialog *,
+					 gpointer);
 #endif
 
 static struct xwidget *
@@ -240,6 +242,10 @@ fails.  */)
 			    "create",
 			    G_CALLBACK (webkit_create_cb),
 			    xw);
+	  g_signal_connect (G_OBJECT (xw->widget_osr),
+			    "script-dialog",
+			    G_CALLBACK (webkit_script_dialog_cb),
+			    NULL);
         }
 
       g_signal_connect (G_OBJECT (xw->widgetwindow_osr), "damage-event",
@@ -1242,6 +1248,66 @@ webkit_decide_policy_cb (WebKitWebView *webView,
     return FALSE;
   }
 }
+
+static gboolean
+webkit_script_dialog_cb (WebKitWebView *webview,
+			 WebKitScriptDialog *script_dialog,
+			 gpointer user)
+{
+  struct frame *f = SELECTED_FRAME ();
+  WebKitScriptDialogType type;
+  GtkWidget *widget;
+  GtkWidget *dialog;
+  GtkWidget *entry;
+  GtkWidget *content_area;
+  const gchar *content;
+  const gchar *message;
+  gint result;
+
+  /* Return TRUE to prevent WebKit from showing the default script
+     dialog in the offscreen window, which runs a nested main loop
+     Emacs can't respond to, and as such can't pass X events to.  */
+  if (!FRAME_WINDOW_P (f))
+    return TRUE;
+
+  type = webkit_script_dialog_get_dialog_type (script_dialog);;
+  widget = FRAME_GTK_OUTER_WIDGET (f);
+  content = webkit_script_dialog_get_message (script_dialog);
+
+  if (type == WEBKIT_SCRIPT_DIALOG_ALERT)
+    dialog = gtk_dialog_new_with_buttons (content, GTK_WINDOW (widget),
+					  GTK_DIALOG_MODAL,
+					  "Dismiss", 1, NULL);
+  else
+    dialog = gtk_dialog_new_with_buttons (content, GTK_WINDOW (widget),
+					  GTK_DIALOG_MODAL,
+					  "OK", 0, "Cancel", 1, NULL);
+
+  if (type == WEBKIT_SCRIPT_DIALOG_PROMPT)
+    {
+      entry = gtk_entry_new ();
+      message = webkit_script_dialog_prompt_get_default_text (script_dialog);
+      content_area = gtk_dialog_get_content_area (GTK_DIALOG (dialog));
+
+      gtk_widget_show (entry);
+      gtk_entry_set_text (GTK_ENTRY (entry), message);
+      gtk_container_add (GTK_CONTAINER (content_area), entry);
+    }
+
+  result = gtk_dialog_run (GTK_DIALOG (dialog));
+
+  if (type == WEBKIT_SCRIPT_DIALOG_CONFIRM
+      || type == WEBKIT_SCRIPT_DIALOG_BEFORE_UNLOAD_CONFIRM)
+    webkit_script_dialog_confirm_set_confirmed (script_dialog, result == 0);
+
+  if (type == WEBKIT_SCRIPT_DIALOG_PROMPT)
+    webkit_script_dialog_prompt_set_text (script_dialog,
+					  gtk_entry_get_text (GTK_ENTRY (entry)));
+
+  gtk_widget_destroy (GTK_WIDGET (dialog));
+
+  return TRUE;
+}
 #endif /* USE_GTK */
 
 
@@ -1335,22 +1401,6 @@ x_draw_xwidget_glyph_string (struct glyph_string *s)
 
   window_box (s->w, TEXT_AREA, &text_area_x, &text_area_y,
               &text_area_width, &text_area_height);
-
-  /* On X11, this keeps generating expose events.  */
-#ifndef USE_GTK
-  /* Resize xwidget webkit if its container window size is changed in
-     some ways, for example, a buffer became hidden in small split
-     window, then it can appear front in merged whole window.  */
-  if (EQ (xww->type, Qwebkit)
-      && (xww->width != text_area_width || xww->height != text_area_height))
-    {
-      Lisp_Object xwl;
-      XSETXWIDGET (xwl, xww);
-      Fxwidget_resize (xwl,
-                       make_int (text_area_width),
-                       make_int (text_area_height));
-    }
-#endif
 
   clip_left = max (0, text_area_x - x);
   clip_right = max (clip_left,
@@ -1674,9 +1724,10 @@ DEFUN ("xwidget-resize", Fxwidget_resize, Sxwidget_resize, 3, 3, 0,
     {
       gtk_window_resize (GTK_WINDOW (xw->widgetwindow_osr), xw->width,
                          xw->height);
-      gtk_container_resize_children (GTK_CONTAINER (xw->widgetwindow_osr));
       gtk_widget_set_size_request (GTK_WIDGET (xw->widget_osr), xw->width,
                                    xw->height);
+
+      gtk_widget_queue_allocate (GTK_WIDGET (xw->widget_osr));
     }
 #elif defined NS_IMPL_COCOA
   nsxwidget_resize (xw);

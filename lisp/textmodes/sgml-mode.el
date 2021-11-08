@@ -2415,8 +2415,8 @@ To work around that, do:
     (setq-local css-id-list-function #'html-current-buffer-ids))
 
   (setq imenu-create-index-function 'html-imenu-index)
-  (register-yank-media-handler 'text/html #'html-mode--html-yank-handler)
-  (register-yank-media-handler "image/.*" #'html-mode--image-yank-handler)
+  (yank-media-handler 'text/html #'html-mode--html-yank-handler)
+  (yank-media-handler "image/.*" #'html-mode--image-yank-handler)
 
   (setq-local sgml-empty-tags
 	      ;; From HTML-4.01's loose.dtd, parsed with
@@ -2435,7 +2435,8 @@ To work around that, do:
 (defun html-mode--html-yank-handler (_type html)
   (save-restriction
     (insert html)
-    (sgml-pretty-print (point-min) (point-max))))
+    (ignore-errors
+      (sgml-pretty-print (point-min) (point-max)))))
 
 (defun html-mode--image-yank-handler (type image)
   (let ((file (read-file-name (format "Save %s image to: " type))))
