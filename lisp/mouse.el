@@ -2481,7 +2481,7 @@ a large number if you prefer a mixed multitude.  The default is 4."
     ("Text" . "Text")
     ("Outline" . "Text")
     ("\\(HT\\|SG\\|X\\|XHT\\)ML" . "SGML")
-    ("vc.*log\\|diff\\|vc\\|cvs\\|Git\\|Annotate" . "Version Control")
+    ("\\blog\\b\\|diff\\|\\bvc\\b\\|cvs\\|Git\\|Annotate" . "Version Control")
     ("Threads\\|Memory\\|Disassembly\\|Breakpoints\\|Frames\\|Locals\\|Registers\\|Inferior I/O\\|Debugger"
      . "GDB")
     ("Lisp" . "Lisp")))
