@@ -1740,6 +1740,7 @@ to override the value of `vc-diff-switches' and `diff-switches'."
 	       (insert (cdr messages) ".\n")
 	       (message "%s" (cdr messages))))
 	(diff-setup-whitespace)
+        (diff-setup-buffer-type)
 	(goto-char (point-min))
         (message "vc-diff-finish: shrink-window-if-larger-than-buffer")
 	;; (when window
@@ -1826,6 +1827,7 @@ Return t if the buffer had changes, nil otherwise."
             (setq f (unless (eq buf (current-buffer)) (cdr f)))))))
     (vc-call-backend (car vc-fileset) 'diff files rev1 rev2 buffer async)
     (set-buffer buffer)
+    (diff-mode)
     (setq-local diff-vc-backend (car vc-fileset))
     (setq-local diff-vc-revisions (list rev1 rev2))
     (setq-local revert-buffer-function
@@ -1847,9 +1849,7 @@ Return t if the buffer had changes, nil otherwise."
       ;; after `pop-to-buffer'; the former assumes the diff buffer is
       ;; shown in some window.
       (let ((buf (current-buffer)))
-        (vc-run-delayed (progn
-                          (vc-diff-finish buf (when verbose messages) loc)
-                          (diff-mode))))
+        (vc-run-delayed (vc-diff-finish buf (when verbose messages) loc)))
       ;; In the async case, we return t even if there are no differences
       ;; because we don't know that yet.
       t)))
