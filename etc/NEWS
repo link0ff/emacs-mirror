@@ -46,6 +46,11 @@ time.
 
 * Changes in Emacs 29.1
 
+** Terminal Emacs
+
+---
+*** Emacs will now use 24-bit colors on terminal that support "Tc".
+
 ** Emoji
 
 +++
@@ -138,6 +143,12 @@ suspicious and could be malicious.
 *** New command-line option '-r' for emacsclient.
 With this command-line option, Emacs reuses an existing graphical client
 frame if one exists; otherwise it creates a new frame.
+
++++
+*** 'server-stop-automatically' can be used to automatically stop the server.
+The Emacs server will be automatically stopped when certain conditions
+are met.  The conditions are given by the argument, which can be
+'empty', 'delete-frame' or 'kill-terminal'.
 
 * Editing Changes in Emacs 29.1
 
@@ -734,6 +745,13 @@ equivalent of the event will be sent, but there is no guarantee of
 what the widget will actually receive.
 
 On GTK+, only key and function key events are implemented.
+
++++
+*** New function 'xwidget-webkit-load-html'.
+This function is used to load HTML text into WebKit xwidgets
+directly, in contrast to creating a temporary file to hold the
+markup, and passing the URI of the file as an argument to
+'xwidget-webkit-goto-uri'.
 
 +++
 *** New functions for performing searches on WebKit xwidgets.
