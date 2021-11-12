@@ -3120,7 +3120,7 @@ before the command is executed globally with terminated Isearch.
 See more for options in `search-exit-option'."
   (let* ((key (this-single-command-keys))
 	 (main-event (aref key 0)))
-    (message "!1 main-event %S %S" main-event this-command)
+    ;; (message "!1 main-event %S %S" main-event this-command)
     (cond
      ;; Don't exit Isearch if we're in the middle of some
      ;; `set-transient-map' thingy like `universal-argument--mode'.
@@ -3171,14 +3171,14 @@ See more for options in `search-exit-option'."
      ;; A mouse click on the isearch message starts editing the search string.
      ((and (eq (car-safe main-event) 'down-mouse-1)
 	   (window-minibuffer-p (posn-window (event-start main-event))))
-      (message "!3 main-event %S" main-event)
+      ;; (message "!3 main-event %S" main-event)
       ;; Swallow the up-event.
       (read--potential-mouse-event)
       (setq this-command 'isearch-edit-string))
      ((and isearch-buffer-local
            (eq (car-safe main-event) 'mouse-2)
 	   (window-minibuffer-p (posn-window (event-start main-event))))
-      (message "!2 main-event %S" main-event)
+      ;; (message "!2 main-event %S" main-event)
       ;; Swallow the up-event.
       (read--potential-mouse-event)
       (setq this-command 'isearch-mouse-2))
