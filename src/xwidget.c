@@ -91,6 +91,9 @@ webkit_decide_policy_cb (WebKitWebView *,
                          WebKitPolicyDecisionType,
                          gpointer);
 static GtkWidget *find_widget_at_pos (GtkWidget *, int, int, int *, int *);
+static gboolean run_file_chooser_cb (WebKitWebView *,
+				     WebKitFileChooserRequest *,
+				     gpointer);
 
 struct widget_search_data
 {
@@ -260,6 +263,10 @@ fails.  */)
 	  g_signal_connect (G_OBJECT (xw->widget_osr),
 			    "script-dialog",
 			    G_CALLBACK (webkit_script_dialog_cb),
+			    NULL);
+	  g_signal_connect (G_OBJECT (xw->widget_osr),
+			    "run-file-chooser",
+			    G_CALLBACK (run_file_chooser_cb),
 			    NULL);
         }
 
@@ -778,6 +785,66 @@ mouse_target_changed (WebKitWebView *webview,
   define_cursors (xw, hitresult);
 }
 
+static gboolean
+run_file_chooser_cb (WebKitWebView *webview,
+		     WebKitFileChooserRequest *request,
+		     gpointer user_data)
+{
+  struct frame *f = SELECTED_FRAME ();
+  GtkFileChooserNative *chooser;
+  GtkFileFilter *filter;
+  bool select_multiple_p;
+  guint response;
+  GSList *filenames;
+  GSList *tem;
+  int i, len;
+  gchar **files;
+
+  /* Return TRUE to prevent WebKit from showing the default script
+     dialog in the offscreen window, which runs a nested main loop
+     Emacs can't respond to, and as such can't pass X events to.  */
+  if (!FRAME_WINDOW_P (f))
+    return TRUE;
+
+  chooser = gtk_file_chooser_native_new ("Select file",
+					 GTK_WINDOW (FRAME_GTK_OUTER_WIDGET (f)),
+					 GTK_FILE_CHOOSER_ACTION_OPEN, "Select",
+					 "Cancel");
+  filter = webkit_file_chooser_request_get_mime_types_filter (request);
+  select_multiple_p = webkit_file_chooser_request_get_select_multiple (request);
+
+  gtk_file_chooser_set_select_multiple (GTK_FILE_CHOOSER (chooser),
+					select_multiple_p);
+  gtk_file_chooser_add_filter (GTK_FILE_CHOOSER (chooser), filter);
+  response = gtk_native_dialog_run (GTK_NATIVE_DIALOG (chooser));
+
+  if (response != GTK_RESPONSE_ACCEPT)
+    {
+      gtk_native_dialog_destroy (GTK_NATIVE_DIALOG (chooser));
+      webkit_file_chooser_request_cancel (request);
+
+      return TRUE;
+    }
+
+  filenames = gtk_file_chooser_get_filenames (GTK_FILE_CHOOSER (chooser));
+  len = g_slist_length (filenames);
+  files = alloca (sizeof *files * (len + 1));
+
+  for (tem = filenames, i = 0; tem; tem = tem->next, ++i)
+    files[i] = tem->data;
+  files[len] = NULL;
+
+  g_slist_free (filenames);
+  webkit_file_chooser_request_select_files (request, (const gchar **) files);
+
+  for (i = 0; i < len; ++i)
+    g_free (files[i]);
+
+  gtk_native_dialog_destroy (GTK_NATIVE_DIALOG (chooser));
+
+  return TRUE;
+}
+
 
 static void
 xwidget_button_1 (struct xwidget_view *view,
@@ -1292,8 +1359,8 @@ webkit_javascript_finished_cb (GObject      *webview,
 
   if (!js_result)
     {
-      g_warning ("Error running javascript: %s", error->message);
-      g_error_free (error);
+      if (error)
+	g_error_free (error);
       return;
     }
 
