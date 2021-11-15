@@ -408,6 +408,8 @@ See `describe-repeat-maps' for a list of all repeatable commands."
 (defun repeat-map ()
   "Return a transient map for keys repeatable after the current command."
   (let ((rep-map (or repeat-map
+                     (and (symbolp this-command)
+                          (get this-command 'repeat-map))
                      (and (symbolp real-this-command)
                           (get real-this-command 'repeat-map)))))
     (when rep-map
@@ -422,13 +424,6 @@ See `describe-repeat-maps' for a list of all repeatable commands."
 Can contain more conditions."
   (and map
        ;; Avoid using repeatable keys when a minibuffer prompt pops up.
-       ;; FIXME: Instead of disallowing repeatable keys in the minibuffer,
-       ;; it would be better to detect when `minibuffer-depth' changes
-       ;; during a repeatable sequence, but this is impossible to do
-       ;; when a repeatable command that activates own minibuffer
-       ;; was called from the minibuffer, e.g. `M-x repeatable-command RET'
-       ;; where in `exit-minibuffer' (bound to RET) minibuffer-depth is 1,
-       ;; and if repeatable-command uses the minibuffer, it's also 1.
        (zerop (minibuffer-depth))
        (or
         ;; Allow prefix commands change `prefix-arg' for next repeatable
@@ -500,7 +495,9 @@ Can contain more conditions."
             (setq repeat-exit-timer nil))
 
           (let ((repeat-exit-timeout
-                 (or (and (symbolp real-this-command)
+                 (or (and (symbolp this-command)
+                          (get this-command 'repeat-exit-timeout))
+                     (and (symbolp real-this-command)
                           (get real-this-command 'repeat-exit-timeout))
                      repeat-exit-timeout)))
             (when repeat-exit-timeout
@@ -561,10 +558,13 @@ Can contain more conditions."
                                             repeat-echo-mode-line-string)))
     (force-mode-line-update t)))
 
+(declare-function help-fns--analyze-function "help-fns" (function))
+
 (defun describe-repeat-maps ()
   "Describe mappings of commands repeatable by symbol property `repeat-map'.
 Used in `repeat-mode'."
   (interactive)
+  (require 'help-fns)
   (help-setup-xref (list #'describe-repeat-maps)
                    (called-interactively-p 'interactive))
   (let ((keymaps nil))
@@ -581,8 +581,6 @@ Used in `repeat-mode'."
           (princ (format-message "`%s' keymap is repeatable by these commands:\n"
                                  (car keymap)))
           (dolist (command (sort (cdr keymap) 'string-lessp))
-            ;; TODO: repeat.el:583:27: Warning: the function `help-fns--analyze-function'
-            ;; is not known to be defined.
             (let* ((info (help-fns--analyze-function command))
                    (map (list (symbol-value (car keymap))))
                    (desc (key-description
