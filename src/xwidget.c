@@ -32,6 +32,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include "sysstdio.h"
 #include "termhooks.h"
 #include "window.h"
+#include "process.h"
 
 /* Include xwidget bottom end headers.  */
 #ifdef USE_GTK
@@ -189,14 +190,12 @@ fails.  */)
 	    {
 	      xw->widget_osr = webkit_web_view_new ();
 
+	      webkit_web_view_load_uri (WEBKIT_WEB_VIEW (xw->widget_osr),
+					"about:blank");
 	      /* webkitgtk uses GSubprocess which sets sigaction causing
 		 Emacs to not catch SIGCHLD with its usual handle setup in
 		 'catch_child_signal'.  This resets the SIGCHLD sigaction.  */
-	      struct sigaction old_action;
-	      sigaction (SIGCHLD, NULL, &old_action);
-	      webkit_web_view_load_uri (WEBKIT_WEB_VIEW (xw->widget_osr),
-					"about:blank");
-	      sigaction (SIGCHLD, &old_action, NULL);
+	      catch_child_signal ();
 	    }
 	  else
 	    {
@@ -1062,6 +1061,9 @@ xv_do_draw (struct xwidget_view *xw, struct xwidget *w)
   GtkOffscreenWindow *wnd;
   cairo_surface_t *surface;
 
+  if (xw->just_resized)
+    return;
+
   if (NILP (w->buffer))
     {
       XClearWindow (xw->dpy, xw->wdesc);
@@ -1578,6 +1580,7 @@ xwidget_init_view (struct xwidget *xww,
   xv->wdesc = None;
   xv->frame = s->f;
   xv->cursor = cursor_for_hit (xww->hit_result, s->f);
+  xv->just_resized = false;
 #elif defined NS_IMPL_COCOA
   nsxwidget_init_view (xv, xww, s, x, y);
   nsxwidget_resize_view(xv, xww->width, xww->height);
@@ -1609,6 +1612,8 @@ x_draw_xwidget_glyph_string (struct glyph_string *s)
 #ifdef USE_GTK
   if (!xv)
     xv = xwidget_init_view (xww, s, x, y);
+
+  xv->just_resized = false;
 #elif defined NS_IMPL_COCOA
   if (!xv)
     {
@@ -1835,6 +1840,7 @@ DEFUN ("xwidget-webkit-goto-uri",
   uri = ENCODE_FILE (uri);
 #ifdef USE_GTK
   webkit_web_view_load_uri (WEBKIT_WEB_VIEW (xw->widget_osr), SSDATA (uri));
+  catch_child_signal ();
 #elif defined NS_IMPL_COCOA
   nsxwidget_webkit_goto_uri (xw, SSDATA (uri));
 #endif
@@ -1970,6 +1976,28 @@ DEFUN ("xwidget-resize", Fxwidget_resize, Sxwidget_resize, 3, 3, 0,
   xw->width = w;
   xw->height = h;
 
+  block_input ();
+
+  for (Lisp_Object tail = internal_xwidget_view_list; CONSP (tail);
+       tail = XCDR (tail))
+    {
+      if (XWIDGET_VIEW_P (XCAR (tail)))
+        {
+          struct xwidget_view *xv = XXWIDGET_VIEW (XCAR (tail));
+          if (XXWIDGET (xv->model) == xw)
+            {
+#ifdef USE_GTK
+	      xv->just_resized = true;
+	      SET_FRAME_GARBAGED (xv->frame);
+#else
+	      wset_redisplay (XWINDOW (xv->w));
+#endif
+            }
+        }
+    }
+
+  redisplay ();
+
   /* If there is an offscreen widget resize it first.  */
 #ifdef USE_GTK
   if (xw->widget_osr)
@@ -1984,21 +2012,7 @@ DEFUN ("xwidget-resize", Fxwidget_resize, Sxwidget_resize, 3, 3, 0,
 #elif defined NS_IMPL_COCOA
   nsxwidget_resize (xw);
 #endif
-
-  for (Lisp_Object tail = internal_xwidget_view_list; CONSP (tail);
-       tail = XCDR (tail))
-    {
-      if (XWIDGET_VIEW_P (XCAR (tail)))
-        {
-          struct xwidget_view *xv = XXWIDGET_VIEW (XCAR (tail));
-          if (XXWIDGET (xv->model) == xw)
-            {
-	      wset_redisplay (XWINDOW (xv->w));
-            }
-        }
-    }
-
-  redisplay ();
+  unblock_input ();
 
   return Qnil;
 }
