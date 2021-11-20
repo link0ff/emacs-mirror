@@ -56,6 +56,9 @@
 (declare-function get-buffer-xwidgets "xwidget.c" (buffer))
 (declare-function xwidget-query-on-exit-flag "xwidget.c" (xwidget))
 (declare-function xwidget-webkit-back-forward-list "xwidget.c" (xwidget &optional limit))
+(declare-function xwidget-webkit-estimated-load-progress "xwidget.c" (xwidget))
+(declare-function xwidget-webkit-set-cookie-storage-file "xwidget.c" (xwidget file))
+(declare-function xwidget-live-p "xwidget.c" (xwidget))
 
 (defgroup xwidget nil
   "Displaying native widgets in Emacs buffers."
@@ -75,12 +78,9 @@ This returns the result of `make-xwidget'."
 
 (defun xwidget-at (pos)
   "Return xwidget at POS."
-  ;; TODO this function is a bit tedious because the C layer isn't well
-  ;; protected yet and xwidgetp apparently doesn't work yet.
   (let* ((disp (get-text-property pos 'display))
-         (xw (car (cdr (cdr  disp)))))
-    ;;(if (xwidgetp  xw) xw nil)
-    (if (equal 'xwidget (car disp)) xw)))
+         (xw (car (cdr (cdr disp)))))
+    (when (xwidget-live-p xw) xw)))
 
 
 
@@ -106,8 +106,13 @@ It can use the following special constructs:
   :type 'string
   :version "29.1")
 
-(defvar-local xwidget-webkit--title ""
-  "The title of the WebKit widget, used for the header line.")
+(defcustom xwidget-webkit-cookie-file nil
+  "The name of the file where `xwidget-webkit-browse-url' will store cookies.
+They will be stored as plain text in Mozilla \"cookies.txt\"
+format.  If nil, do not store cookies.  You must kill all xwidget-webkit
+buffers for this setting to take effect after setting it to nil."
+  :type '(choice (const :tag "Do not store cookies" nil) file)
+  :version "29.1")
 
 ;;;###autoload
 (defun xwidget-webkit-browse-url (url &optional new-session)
@@ -150,6 +155,12 @@ in `split-window-right' with a new xwidget webkit session."
 (defvar xwidget-webkit--input-method-events nil
   "Internal variable used to store input method events.")
 
+(defvar-local xwidget-webkit--loading-p nil
+  "Whether or not a page is being loaded.")
+
+(defvar-local xwidget-webkit--progress-update-timer nil
+  "Timer that updates the display of page load progress in the header line.")
+
 (defun xwidget-webkit-pass-command-event-with-input-method ()
   "Handle a `with-input-method' event."
   (interactive)
@@ -187,7 +198,6 @@ for the actual events that will be sent."
     (define-key map "b" 'xwidget-webkit-back)
     (define-key map "f" 'xwidget-webkit-forward)
     (define-key map "r" 'xwidget-webkit-reload)
-    (define-key map "t" (lambda () (interactive) (message "o"))) ;FIXME: ?!?
     (define-key map "\C-m" 'xwidget-webkit-insert-string)
     (define-key map "w" 'xwidget-webkit-current-url)
     (define-key map "+" 'xwidget-webkit-zoom-in)
@@ -362,10 +372,13 @@ If N is omitted or nil, scroll backwards by one char."
    (xwidget-webkit-current-session)
    "window.scrollTo(pageXOffset, window.document.body.scrollHeight);"))
 
-;; The xwidget event needs to go into a higher level handler
-;; since the xwidget can generate an event even if it's offscreen.
-;; TODO this needs to use callbacks and consider different xwidget event types.
-(define-key (current-global-map) [xwidget-event] #'xwidget-event-handler)
+;; The xwidget event needs to go in the special map.  To receive
+;; xwidget events, you should place a callback in the property list of
+;; the xwidget, instead of handling these events manually.
+;;
+;; See `xwidget-webkit-new-session' for an example of how to do this.
+(define-key special-event-map [xwidget-event] #'xwidget-event-handler)
+
 (defun xwidget-log (&rest msg)
   "Log MSG to a buffer."
   (let ((buf (get-buffer-create " *xwidget-log*")))
@@ -384,6 +397,11 @@ If N is omitted or nil, scroll backwards by one char."
     (when xwidget-callback
       (funcall xwidget-callback xwidget xwidget-event-type))))
 
+(defun xwidget-webkit--update-progress-timer-function (xwidget)
+  "Force an update of the header line of XWIDGET's buffer."
+  (with-current-buffer (xwidget-buffer xwidget)
+    (force-mode-line-update)))
+
 (defun xwidget-webkit-callback (xwidget xwidget-event-type)
   "Callback for xwidgets.
 XWIDGET instance, XWIDGET-EVENT-TYPE depends on the originating xwidget."
@@ -396,6 +414,17 @@ XWIDGET instance, XWIDGET-EVENT-TYPE depends on the originating xwidget."
              (when-let ((buffer (get-buffer "*Xwidget WebKit History*")))
                (with-current-buffer buffer
                  (revert-buffer)))
+             (with-current-buffer (xwidget-buffer xwidget)
+               (if (string-equal (nth 3 last-input-event)
+                                 "load-finished")
+                   (progn
+                     (setq xwidget-webkit--loading-p nil)
+                     (cancel-timer xwidget-webkit--progress-update-timer))
+                 (unless xwidget-webkit--loading-p
+                   (setq xwidget-webkit--loading-p t
+                         xwidget-webkit--progress-update-timer
+                         (run-at-time 0.5 0.5 #'xwidget-webkit--update-progress-timer-function
+                                      xwidget)))))
              ;; This funciton will be called multi times, so only
              ;; change buffer name when the load actually completes
              ;; this can limit buffer-name flicker in mode-line.
@@ -403,7 +432,6 @@ XWIDGET instance, XWIDGET-EVENT-TYPE depends on the originating xwidget."
                                      "load-finished")
                        (> (length title) 0))
                (with-current-buffer (xwidget-buffer xwidget)
-                 (setq xwidget-webkit--title title)
                  (force-mode-line-update)
                  (xwidget-log "webkit finished loading: %s" title)
                  ;; Do not adjust webkit size to window here, the
@@ -447,7 +475,17 @@ If non-nil, plugins are enabled.  Otherwise, disabled."
   (setq-local tool-bar-map xwidget-webkit-tool-bar-map)
   (setq-local bookmark-make-record-function
               #'xwidget-webkit-bookmark-make-record)
-  (setq-local header-line-format 'xwidget-webkit--title)
+  (setq-local header-line-format
+              (list "WebKit: "
+                    '(:eval
+                      (xwidget-webkit-title (xwidget-webkit-current-session)))
+                    '(:eval
+                      (when xwidget-webkit--loading-p
+                        (let ((session (xwidget-webkit-current-session)))
+                          (format " [%d%%%%]"
+                                  (* 100
+                                     (xwidget-webkit-estimated-load-progress
+                                      session))))))))
   ;; Keep track of [vh]scroll when switching buffers
   (image-mode-setup-winprops))
 
@@ -765,6 +803,9 @@ For example, use this to display an anchor."
                 (xwidget-window-inside-pixel-width (selected-window))
                 (xwidget-window-inside-pixel-height (selected-window))
                 nil current-session)))
+    (when xwidget-webkit-cookie-file
+      (xwidget-webkit-set-cookie-storage-file
+       xw (expand-file-name xwidget-webkit-cookie-file)))
     (xwidget-put xw 'callback callback)
     (xwidget-webkit-mode)
     (xwidget-webkit-goto-uri (xwidget-webkit-last-session) url)))

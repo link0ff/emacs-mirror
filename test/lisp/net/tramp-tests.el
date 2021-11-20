@@ -57,7 +57,6 @@
 (declare-function tramp-check-remote-uname "tramp-sh")
 (declare-function tramp-find-executable "tramp-sh")
 (declare-function tramp-get-remote-chmod-h "tramp-sh")
-(declare-function tramp-get-remote-gid "tramp-sh")
 (declare-function tramp-get-remote-path "tramp-sh")
 (declare-function tramp-get-remote-perl "tramp-sh")
 (declare-function tramp-get-remote-stat "tramp-sh")
@@ -2293,6 +2292,7 @@ This checks also `file-name-as-directory', `file-name-directory',
   "Check that Tramp abbreviates file names correctly."
   (skip-unless (tramp--test-enabled))
   (skip-unless (tramp--test-emacs29-p))
+  (skip-unless (tramp--test-ange-ftp-p))
 
   (let* ((remote-host (file-remote-p tramp-test-temporary-file-directory))
 	 ;; Not all methods can expand "~".
@@ -6609,7 +6609,7 @@ Use the \"ls\" command."
 	  ;; Use all available language specific snippets.
 	  (lambda (x)
 	    (and
-	     (stringp (setq x (eval (get-language-info (car x) 'sample-text))))
+             (stringp (setq x (eval (get-language-info (car x) 'sample-text) t)))
 	     ;; Filter out strings which use unencodable characters.
 	     (not (and (or (tramp--test-gvfs-p) (tramp--test-smb-p))
 		       (unencodable-char-position

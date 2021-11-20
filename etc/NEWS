@@ -24,11 +24,40 @@ applies, and please also update docstrings as needed.
 
 * Installation Changes in Emacs 29.1
 
+** Emacs has been ported to the Haiku operating system.
+The configuration process should automatically detect and build for
+Haiku.  There is also an optional window-system port to Haiku, which
+can be enabled by configuring Emacs with the option '--with-be-app',
+which will require the Haiku Application Kit development headers and a
+C++ compiler to be present on your system.  If Emacs is not built with
+the option '--with-be-app', the resulting Emacs will only run in
+text-mode terminals.
+
++++
+*** Cairo drawing support has been enabled for Haiku builds.
+To enable Cairo support, ensure that the Cairo and FreeType
+development files are present on your system, and configure Emacs with
+'--with-be-cairo'.
+
+---
+*** Double buffering is now enabled on the Haiku operating system.
+Unlike X, there is no compile-time option to enable or disable
+double-buffering.  If you wish to disable double-buffering, change the
+frame parameter `inhibit-double-buffering' instead.
+
 ** Emacs now installs the ".pdmp" file using a unique fingerprint in the name.
 The file is typically installed using a file name akin to
 "...dir/libexec/emacs/29.1/x86_64-pc-linux-gnu/emacs-<fingerprint>.pdmp".
 If a constant file name is required, the file can be renamed to
 "emacs.pdmp", and Emacs will find it during startup anyway.
+
+** Emacs now supports use of XInput 2 for input events.
+If your X server has support and you have the XInput 2 development headers
+installed, you can configure Emacs with the option '--with-xinput2' to enable
+this support.
+
+The named feature `xinput2' can be used to test for the presence of
+XInput 2 support from Lisp programs.
 
 
 * Startup Changes in Emacs 29.1
@@ -223,6 +252,15 @@ delimiter in the echo area.  Default nil.
 The user option 'comint-terminfo-terminal' and variable
 'system-uses-terminfo' can now be set as connection-local variables to
 change the terminal used on a remote host.
+
+** Mwheel
+
+---
+*** New user options for alternate wheel events.
+The options 'mouse-wheel-down-alternate-event', 'mouse-wheel-up-alternate-event',
+'mouse-wheel-left-alternate-event', and 'mouse-wheel-right-alternate-event' have
+been added to better support systems where two kinds of wheel events can be
+received.
 
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
@@ -492,6 +530,11 @@ This is a convenience function to extract the field data from
 *** New user option 'xwidget-webkit-buffer-name-format'.
 Using this option you can control how the xwidget-webkit buffers are
 named.
+
+---
+*** New user option 'xwidget-webkit-cookie-file'.
+Using this option you can control whether the xwidget-webkit buffers
+save cookies set by web pages, and if so, in which file to save them.
 
 +++
 *** New minor mode 'xwidget-webkit-edit-mode'.
@@ -864,6 +907,16 @@ This function is used to obtain the history of page-loads in a given
 WebKit xwidget.
 
 +++
+*** New function 'xwidget-webkit-estimated-load-progress'.
+This function is used to obtain the estimated progress of page loading
+in a given WebKit xwidget.
+
++++
+*** New function 'xwidget-webkit-stop-loading'.
+This function is used to terminate all data transfer during page loads
+in a given WebKit xwidget.
+
++++
 *** 'load-changed' xwidget events are now more detailed.
 In particular, they can now have different arguments based on the
 state of the WebKit widget.  'load-finished' is sent when a load has
@@ -876,6 +929,11 @@ commits to the load.
 These events are sent whenever an xwidget requests that Emacs display
 another xwidget.  The only argument to this event is the xwidget that
 should be displayed.
+
++++
+*** New function 'xwidget-webkit-set-cookie-storage-file'.
+This function is used to control where and if an xwidget stores
+cookies set by web pages on disk.
 
 
 * Changes in Emacs 29.1 on Non-Free Operating Systems

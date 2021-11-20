@@ -188,7 +188,9 @@ fails.  */)
 	      || !XWIDGETP (related)
 	      || !EQ (XXWIDGET (related)->type, Qwebkit))
 	    {
-	      xw->widget_osr = webkit_web_view_new ();
+	      WebKitWebContext *ctx = webkit_web_context_new ();
+	      xw->widget_osr = webkit_web_view_new_with_context (ctx);
+	      g_object_unref (ctx);
 
 	      webkit_web_view_load_uri (WEBKIT_WEB_VIEW (xw->widget_osr),
 					"about:blank");
@@ -224,8 +226,9 @@ fails.  */)
 
       gtk_widget_show (xw->widget_osr);
       gtk_widget_show (xw->widgetwindow_osr);
+#ifndef HAVE_XINPUT2
       synthesize_focus_in_event (xw->widgetwindow_osr);
-
+#endif
 
       g_signal_connect (G_OBJECT (gtk_widget_get_window (xw->widgetwindow_osr)),
 			"from-embedder", G_CALLBACK (from_embedder), NULL);
@@ -324,6 +327,10 @@ selected frame is not an X-Windows frame.  */)
   GtkContainerClass *klass;
   GtkWidget *widget;
   GtkWidget *temp = NULL;
+#ifdef HAVE_XINPUT2
+  GdkWindow *embedder;
+  GdkWindow *osw;
+#endif
 #endif
 
   CHECK_LIVE_XWIDGET (xwidget);
@@ -335,6 +342,16 @@ selected frame is not an X-Windows frame.  */)
     f = SELECTED_FRAME ();
 
 #ifdef USE_GTK
+#ifdef HAVE_XINPUT2
+  /* XI2 GDK devices crash if we try this without an embedder set.  */
+  if (!f)
+    return Qnil;
+
+  osw = gtk_widget_get_window (xw->widgetwindow_osr);
+  embedder = gtk_widget_get_window (FRAME_GTK_OUTER_WIDGET (f));
+
+  gdk_offscreen_window_set_embedder (osw, embedder);
+#endif
   widget = gtk_window_get_focus (GTK_WINDOW (xw->widgetwindow_osr));
 
   if (!widget)
@@ -1010,7 +1027,7 @@ synthesize_focus_in_event (GtkWidget *offscreen_window)
   wnd = gtk_widget_get_window (offscreen_window);
 
   focus_event = gdk_event_new (GDK_FOCUS_CHANGE);
-  focus_event->any.window = wnd;
+  focus_event->focus_change.window = wnd;
   focus_event->focus_change.in = TRUE;
 
   if (FRAME_WINDOW_P (SELECTED_FRAME ()))
@@ -1777,6 +1794,11 @@ x_draw_xwidget_glyph_string (struct glyph_string *s)
       XSetWindowBackground (xv->dpy, xv->wdesc,
 			    FRAME_BACKGROUND_PIXEL (s->f));
     }
+#endif
+
+#ifdef HAVE_XINPUT2
+  record_osr_embedder (xv);
+  synthesize_focus_in_event (xww->widget_osr);
 #endif
 
 #ifdef USE_GTK
@@ -2555,7 +2577,87 @@ LIMIT is not specified or nil, it is treated as `50'.  */)
 
   return list3 (back, here, forward);
 }
+
+DEFUN ("xwidget-webkit-estimated-load-progress",
+       Fxwidget_webkit_estimated_load_progress, Sxwidget_webkit_estimated_load_progress,
+       1, 1, 0, doc: /* Get the estimated load progress of XWIDGET, a WebKit widget.
+Return a value ranging from 0.0 to 1.0, based on how close XWIDGET
+is to completely loading its page.  */)
+  (Lisp_Object xwidget)
+{
+  struct xwidget *xw;
+  WebKitWebView *webview;
+  double value;
+
+  CHECK_LIVE_XWIDGET (xwidget);
+  xw = XXWIDGET (xwidget);
+  CHECK_WEBKIT_WIDGET (xw);
+
+  block_input ();
+  webview = WEBKIT_WEB_VIEW (xw->widget_osr);
+  value = webkit_web_view_get_estimated_load_progress (webview);
+  unblock_input ();
+
+  return make_float (value);
+}
 #endif
+
+DEFUN ("xwidget-webkit-set-cookie-storage-file",
+       Fxwidget_webkit_set_cookie_storage_file, Sxwidget_webkit_set_cookie_storage_file,
+       2, 2, 0, doc: /* Make the WebKit widget XWIDGET load and store cookies in FILE.
+
+Cookies will be stored as plain text in FILE, which must be an
+absolute file name.  All xwidgets related to XWIDGET will also
+store cookies in FILE and load them from there.  */)
+  (Lisp_Object xwidget, Lisp_Object file)
+{
+#ifdef USE_GTK
+  struct xwidget *xw;
+  WebKitWebView *webview;
+  WebKitWebContext *context;
+  WebKitCookieManager *manager;
+
+  CHECK_LIVE_XWIDGET (xwidget);
+  xw = XXWIDGET (xwidget);
+  CHECK_WEBKIT_WIDGET (xw);
+  CHECK_STRING (file);
+
+  block_input ();
+  webview = WEBKIT_WEB_VIEW (xw->widget_osr);
+  context = webkit_web_view_get_context (webview);
+  manager = webkit_web_context_get_cookie_manager (context);
+  webkit_cookie_manager_set_persistent_storage (manager,
+						SSDATA (ENCODE_UTF_8 (file)),
+						WEBKIT_COOKIE_PERSISTENT_STORAGE_TEXT);
+  unblock_input ();
+#endif
+
+  return Qnil;
+}
+
+DEFUN ("xwidget-webkit-stop-loading", Fxwidget_webkit_stop_loading,
+       Sxwidget_webkit_stop_loading,
+       1, 1, 0, doc: /* Stop loading data in the WebKit widget XWIDGET.
+This will stop any data transfer that may still be in progress inside
+XWIDGET as part of loading a page.  */)
+  (Lisp_Object xwidget)
+{
+#ifdef USE_GTK
+  struct xwidget *xw;
+  WebKitWebView *webview;
+
+  CHECK_LIVE_XWIDGET (xwidget);
+  xw = XXWIDGET (xwidget);
+  CHECK_WEBKIT_WIDGET (xw);
+
+  block_input ();
+  webview = WEBKIT_WEB_VIEW (xw->widget_osr);
+  webkit_web_view_stop_loading (webview);
+  unblock_input ();
+#endif
+
+  return Qnil;
+}
 
 void
 syms_of_xwidget (void)
@@ -2597,9 +2699,12 @@ syms_of_xwidget (void)
   defsubr (&Sxwidget_webkit_next_result);
   defsubr (&Sxwidget_webkit_previous_result);
   defsubr (&Sset_xwidget_buffer);
+  defsubr (&Sxwidget_webkit_set_cookie_storage_file);
+  defsubr (&Sxwidget_webkit_stop_loading);
 #ifdef USE_GTK
   defsubr (&Sxwidget_webkit_load_html);
   defsubr (&Sxwidget_webkit_back_forward_list);
+  defsubr (&Sxwidget_webkit_estimated_load_progress);
 #endif
   defsubr (&Skill_xwidget);
 
