@@ -3005,34 +3005,31 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	    if (signbit (py) != signbit (b->delta_y))
 	      py = 0;
 
-	    px += b->delta_x;
-	    py += b->delta_y;
+	    px += (b->delta_x
+		   * powf (FRAME_PIXEL_HEIGHT (f), 2.0f / 3.0f));
+	    py += (b->delta_y
+		   * powf (FRAME_PIXEL_HEIGHT (f), 2.0f / 3.0f));
 
-	    if (fabsf (py) >= FRAME_LINE_HEIGHT (f))
+	    if (fabsf (py) >= FRAME_LINE_HEIGHT (f)
+		|| fabsf (px) >= FRAME_COLUMN_WIDTH (f)
+		|| !x_coalesce_scroll_events)
 	      {
-		inev.kind = WHEEL_EVENT;
+		inev.kind = (fabsf (px) > fabsf (py)
+			     ? HORIZ_WHEEL_EVENT
+			     : WHEEL_EVENT);
 		inev.code = 0;
 
 		XSETINT (inev.x, x);
 		XSETINT (inev.y, y);
-		XSETINT (inev.arg, lrint (fabsf (py) / FRAME_LINE_HEIGHT (f)));
+		inev.arg = list3 (Qnil, make_float (px),
+				  make_float (py));
 		XSETFRAME (inev.frame_or_window, f);
 
-		inev.modifiers |= signbit (py) ? up_modifier : down_modifier;
+		inev.modifiers |= (signbit (inev.kind == HORIZ_WHEEL_EVENT
+					    ? px : py)
+				   ? up_modifier
+				   : down_modifier);
 		py = 0.0f;
-	      }
-
-	    if (fabsf (px) >= FRAME_COLUMN_WIDTH (f))
-	      {
-		inev2.kind = HORIZ_WHEEL_EVENT;
-		inev2.code = 0;
-
-		XSETINT (inev2.x, x);
-		XSETINT (inev2.y, y);
-		XSETINT (inev2.arg, lrint (fabsf (px) / FRAME_COLUMN_WIDTH (f)));
-		XSETFRAME (inev2.frame_or_window, f);
-
-		inev2.modifiers |= signbit (px) ? up_modifier : down_modifier;
 		px = 0.0f;
 	      }
 
@@ -3188,12 +3185,16 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 
       if (inev.kind != NO_EVENT)
 	{
+	  if (inev.kind != HELP_EVENT)
+	    inev.timestamp = time (NULL);
 	  kbd_buffer_store_event_hold (&inev, hold_quit);
 	  ++message_count;
 	}
 
       if (inev2.kind != NO_EVENT)
 	{
+	  if (inev.kind != HELP_EVENT)
+	    inev.timestamp = time (NULL);
 	  kbd_buffer_store_event_hold (&inev2, hold_quit);
 	  ++message_count;
 	}
@@ -3547,6 +3548,10 @@ syms_of_haikuterm (void)
   DEFVAR_LISP ("x-toolkit-scroll-bars", Vx_toolkit_scroll_bars,
      doc: /* SKIP: real doc in xterm.c.  */);
   Vx_toolkit_scroll_bars = Qt;
+
+  DEFVAR_BOOL ("x-coalesce-scroll-events", x_coalesce_scroll_events,
+	       doc: /* SKIP: real doc in xterm.c.  */);
+  x_coalesce_scroll_events = true;
 
   DEFVAR_BOOL ("haiku-debug-on-fatal-error", haiku_debug_on_fatal_error,
      doc: /* If non-nil, Emacs will launch the system debugger upon a fatal error.  */);

@@ -9927,6 +9927,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	    x_display_set_last_user_time (dpyinfo, xi_event->time);
 
+#ifdef HAVE_XWIDGETS
+	    struct xwidget_view *xv = xwidget_view_from_window (xev->event);
+	    double xv_total_x = 0.0;
+	    double xv_total_y = 0.0;
+#endif
+
 	    for (int i = 0; i < states->mask_len * 8; i++)
 	      {
 		if (XIMaskIsSet (states->mask, i))
@@ -9939,6 +9945,18 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 		    if (delta != DBL_MAX)
 		      {
+#ifdef HAVE_XWIDGETS
+			if (xv)
+			  {
+			    if (val->horizontal)
+			      xv_total_x += delta;
+			    else
+			      xv_total_y += -delta;
+
+			    found_valuator = true;
+			    continue;
+			  }
+#endif
 			if (!f)
 			  {
 			    f = x_any_window_to_frame (dpyinfo, xev->event);
@@ -9999,6 +10017,20 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		inev.ie.kind = NO_EVENT;
 	      }
 
+#ifdef HAVE_XWIDGETS
+	    if (xv)
+	      {
+		if (found_valuator)
+		  xwidget_scroll (xv, xev->event_x, xev->event_y,
+				  xv_total_x, xv_total_y, xev->mods.effective,
+				  xev->time);
+		else
+		  xwidget_motion_notify (xv, xev->event_x, xev->event_y,
+					 xev->mods.effective, xev->time);
+
+		goto XI_OTHER;
+	      }
+#endif
 	    if (found_valuator)
 	      goto XI_OTHER;
 
@@ -10113,6 +10145,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		| xev->mods.effective
 		| xev->mods.latched
 		| xev->mods.locked;
+	      bv.time = xev->time;
 
 	      memset (&compose_status, 0, sizeof (compose_status));
 	      dpyinfo->last_mouse_glyph_frame = NULL;
@@ -10350,6 +10383,104 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    = x_x_to_emacs_modifiers (FRAME_DISPLAY_INFO (f), state);
 		  inev.ie.timestamp = xev->time;
 
+#ifdef HAVE_X_I18N
+		  XKeyPressedEvent xkey;
+
+		  memset (&xkey, 0, sizeof xkey);
+
+		  xkey.type = KeyPress;
+		  xkey.serial = 0;
+		  xkey.send_event = xev->send_event;
+		  xkey.display = xev->display;
+		  xkey.window = xev->event;
+		  xkey.root = xev->root;
+		  xkey.subwindow = xev->child;
+		  xkey.time = xev->time;
+		  xkey.state = state;
+		  xkey.keycode = keycode;
+		  xkey.same_screen = True;
+
+		  if (x_filter_event (dpyinfo, (XEvent *) &xkey))
+		    goto xi_done_keysym;
+
+		  if (FRAME_XIC (f))
+		    {
+		      Status status_return;
+		      nbytes = XmbLookupString (FRAME_XIC (f),
+						&xkey, (char *) copy_bufptr,
+						copy_bufsiz, &keysym,
+						&status_return);
+
+		      if (status_return == XBufferOverflow)
+			{
+			  copy_bufsiz = nbytes + 1;
+			  copy_bufptr = alloca (copy_bufsiz);
+			  nbytes = XmbLookupString (FRAME_XIC (f),
+						    &xkey, (char *) copy_bufptr,
+						    copy_bufsiz, &keysym,
+						    &status_return);
+			}
+
+		      if (status_return == XLookupNone)
+			goto xi_done_keysym;
+		      else if (status_return == XLookupChars)
+			{
+			  keysym = NoSymbol;
+			  state = 0;
+			}
+		      else if (status_return != XLookupKeySym
+			       && status_return != XLookupBoth)
+			emacs_abort ();
+		    }
+		  else
+		    {
+#endif
+#ifdef HAVE_XKB
+		      int overflow = 0;
+		      KeySym sym = keysym;
+
+		      if (dpyinfo->xkb_desc)
+			{
+			  if (!(nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
+							     state & ~mods_rtrn, copy_bufptr,
+							     copy_bufsiz, &overflow)))
+			    goto XI_OTHER;
+			}
+		      else
+#else
+			{
+			  block_input ();
+			  char *str = XKeysymToString (keysym);
+			  if (!str)
+			    {
+			      unblock_input ();
+			      goto XI_OTHER;
+			    }
+			  nbytes = strlen (str) + 1;
+			  copy_bufptr = alloca (nbytes);
+			  strcpy (copy_bufptr, str);
+			  unblock_input ();
+			}
+#endif
+#ifdef HAVE_XKB
+		      if (overflow)
+			{
+			  overflow = 0;
+			  copy_bufptr = alloca (copy_bufsiz + overflow);
+			  keysym = sym;
+			  if (!(nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
+							     state & ~mods_rtrn, copy_bufptr,
+							     copy_bufsiz + overflow, &overflow)))
+			    goto XI_OTHER;
+
+			  if (overflow)
+			    goto XI_OTHER;
+			}
+#endif
+#ifdef HAVE_X_I18N
+		    }
+#endif
+
 		  /* First deal with keysyms which have defined
 		     translations to characters.  */
 		  if (keysym >= 32 && keysym < 128)
@@ -10466,49 +10597,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      goto xi_done_keysym;
 		    }
 
-#ifdef HAVE_XKB
-		  int overflow = 0;
-		  KeySym sym = keysym;
-
-		  if (dpyinfo->xkb_desc)
-		    {
-		      if (!(nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
-							 state & ~mods_rtrn, copy_bufptr,
-							 copy_bufsiz, &overflow)))
-			goto XI_OTHER;
-		    }
-		  else
-#else
-		    {
-		      block_input ();
-		      char *str = XKeysymToString (keysym);
-		      if (!str)
-			{
-			  unblock_input ();
-			  goto XI_OTHER;
-			}
-		      nbytes = strlen (str) + 1;
-		      copy_bufptr = alloca (nbytes);
-		      strcpy (copy_bufptr, str);
-		      unblock_input ();
-		    }
-#endif
-#ifdef HAVE_XKB
-		  if (overflow)
-		    {
-		      overflow = 0;
-		      copy_bufptr = alloca (copy_bufsiz + overflow);
-		      keysym = sym;
-		      if (!(nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
-							 state & ~mods_rtrn, copy_bufptr,
-							 copy_bufsiz + overflow, &overflow)))
-			goto XI_OTHER;
-
-		      if (overflow)
-			goto XI_OTHER;
-		    }
-#endif
-
 		  for (i = 0, nchars = 0; i < nbytes; i++)
 		    {
 		      if (ASCII_CHAR_P (copy_bufptr[i]))
@@ -10574,6 +10662,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    goto XI_OTHER;
 	  }
       xi_done_keysym:
+#ifdef HAVE_X_I18N
+	if (FRAME_XIC (f) && (FRAME_XIC_STYLE (f) & XIMStatusArea))
+	  xic_set_statusarea (f);
+#endif
 	if (must_free_data)
 	  XFreeEventData (dpyinfo->display, &event->xcookie);
 	goto done_keysym;
@@ -15064,6 +15156,6 @@ always uses gtk_window_move and ignores the value of this variable.  */);
 	       doc: /* Non-nil means send a wheel event only for scrolling at least one screen line.
 Otherwise, a wheel event will be sent every time the mouse wheel is
 moved.  This option is only effective when Emacs is built with XInput
-2.  */);
+2 or with Haiku windowing support.  */);
   x_coalesce_scroll_events = true;
 }

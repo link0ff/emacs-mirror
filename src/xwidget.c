@@ -40,9 +40,14 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <JavaScriptCore/JavaScript.h>
 #include <cairo.h>
 #include <X11/Xlib.h>
+#ifdef HAVE_XINPUT2
+#include <X11/extensions/XInput2.h>
+#endif
 #elif defined NS_IMPL_COCOA
 #include "nsxwidget.h"
 #endif
+
+#include <math.h>
 
 static Lisp_Object id_to_xwidget_map;
 static Lisp_Object internal_xwidget_view_list;
@@ -59,6 +64,7 @@ static gboolean webkit_script_dialog_cb (WebKitWebView *, WebKitScriptDialog *,
 static void record_osr_embedder (struct xwidget_view *);
 static void from_embedder (GdkWindow *, double, double, gpointer, gpointer, gpointer);
 static void to_embedder (GdkWindow *, double, double, gpointer, gpointer, gpointer);
+static GdkWindow *pick_embedded_child (GdkWindow *, double, double, gpointer);
 #endif
 
 static struct xwidget *
@@ -192,6 +198,10 @@ fails.  */)
 	      xw->widget_osr = webkit_web_view_new_with_context (ctx);
 	      g_object_unref (ctx);
 
+	      g_signal_connect (G_OBJECT (ctx),
+				"download-started",
+				G_CALLBACK (webkit_download_cb), xw);
+
 	      webkit_web_view_load_uri (WEBKIT_WEB_VIEW (xw->widget_osr),
 					"about:blank");
 	      /* webkitgtk uses GSubprocess which sets sigaction causing
@@ -234,6 +244,8 @@ fails.  */)
 			"from-embedder", G_CALLBACK (from_embedder), NULL);
       g_signal_connect (G_OBJECT (gtk_widget_get_window (xw->widgetwindow_osr)),
 			"to-embedder", G_CALLBACK (to_embedder), NULL);
+      g_signal_connect (G_OBJECT (gtk_widget_get_window (xw->widgetwindow_osr)),
+			"pick-embedded-child", G_CALLBACK (pick_embedded_child), NULL);
 
       /* Store some xwidget data in the gtk widgets for convenient
          retrieval in the event handlers.  */
@@ -246,10 +258,6 @@ fails.  */)
           g_signal_connect (G_OBJECT (xw->widget_osr),
                             "load-changed",
                             G_CALLBACK (webkit_view_load_changed_cb), xw);
-
-          g_signal_connect (G_OBJECT (webkit_context),
-                            "download-started",
-                            G_CALLBACK (webkit_download_cb), xw);
 
           g_signal_connect (G_OBJECT (xw->widget_osr),
                             "decide-policy",
@@ -505,6 +513,32 @@ xwidget_from_id (uint32_t id)
 }
 
 #ifdef USE_GTK
+static GdkWindow *
+pick_embedded_child (GdkWindow *window, double x, double y,
+		     gpointer user_data)
+{
+  GtkWidget *widget;
+  GtkWidget *child;
+  GdkEvent event;
+  int xout, yout;
+
+  event.any.window = window;
+  event.any.type = GDK_NOTHING;
+
+  widget = gtk_get_event_widget (&event);
+
+  if (!widget)
+    return NULL;
+
+  child = find_widget_at_pos (widget, lrint (x), lrint (y),
+			      &xout, &yout);
+
+  if (!child)
+    return NULL;
+
+  return gtk_widget_get_window (child);
+}
+
 static void
 record_osr_embedder (struct xwidget_view *view)
 {
@@ -912,7 +946,12 @@ xwidget_button (struct xwidget_view *view,
 
   if (button < 4 || button > 8)
     xwidget_button_1 (view, down_p, x, y, button, modifier_state, time);
+#ifndef HAVE_XINPUT2
   else
+#else
+  else if (!FRAME_DISPLAY_INFO (view->frame)->supports_xi2
+	   || FRAME_DISPLAY_INFO (view->frame)->xi2_version < 1)
+#endif
     {
       GdkEvent *xg_event = gdk_event_new (GDK_SCROLL);
       struct xwidget *model = XXWIDGET (view->model);
@@ -954,6 +993,93 @@ xwidget_button (struct xwidget_view *view,
       gdk_event_free (xg_event);
     }
 }
+
+#ifdef HAVE_XINPUT2
+void
+xwidget_motion_notify (struct xwidget_view *view,
+		       double x, double y, uint state, Time time)
+{
+  GdkEvent *xg_event;
+  GtkWidget *target;
+  struct xwidget *model = XXWIDGET (view->model);
+  int target_x, target_y;
+
+  if (NILP (model->buffer))
+    return;
+
+  record_osr_embedder (view);
+
+  target = find_widget_at_pos (model->widgetwindow_osr,
+			       lrint (x), lrint (y),
+			       &target_x, &target_y);
+
+  if (!target)
+    {
+      target_x = lrint (x);
+      target_y = lrint (y);
+      target = model->widget_osr;
+    }
+
+  xg_event = gdk_event_new (GDK_MOTION_NOTIFY);
+  xg_event->any.window = gtk_widget_get_window (target);
+  xg_event->motion.x = target_x;
+  xg_event->motion.y = target_y;
+  xg_event->motion.x_root = lrint (x);
+  xg_event->motion.y_root = lrint (y);
+  xg_event->motion.time = time;
+  xg_event->motion.state = state;
+  xg_event->motion.device = find_suitable_pointer (view->frame);
+
+  g_object_ref (xg_event->any.window);
+
+  gtk_main_do_event (xg_event);
+  gdk_event_free (xg_event);
+}
+
+void
+xwidget_scroll (struct xwidget_view *view, double x, double y,
+		double dx, double dy, uint state, Time time)
+{
+  GdkEvent *xg_event;
+  GtkWidget *target;
+  struct xwidget *model = XXWIDGET (view->model);
+  int target_x, target_y;
+
+  if (NILP (model->buffer))
+    return;
+
+  record_osr_embedder (view);
+
+  target = find_widget_at_pos (model->widgetwindow_osr,
+			       lrint (x), lrint (y),
+			       &target_x, &target_y);
+
+  if (!target)
+    {
+      target_x = lrint (x);
+      target_y = lrint (y);
+      target = model->widget_osr;
+    }
+
+  xg_event = gdk_event_new (GDK_SCROLL);
+  xg_event->any.window = gtk_widget_get_window (target);
+  xg_event->scroll.direction = GDK_SCROLL_SMOOTH;
+  xg_event->scroll.x = target_x;
+  xg_event->scroll.y = target_y;
+  xg_event->scroll.x_root = lrint (x);
+  xg_event->scroll.y_root = lrint (y);
+  xg_event->scroll.time = time;
+  xg_event->scroll.state = state;
+  xg_event->scroll.delta_x = dx;
+  xg_event->scroll.delta_y = dy;
+  xg_event->scroll.device = find_suitable_pointer (view->frame);
+
+  g_object_ref (xg_event->any.window);
+
+  gtk_main_do_event (xg_event);
+  gdk_event_free (xg_event);
+}
+#endif
 
 void
 xwidget_motion_or_crossing (struct xwidget_view *view, const XEvent *event)
@@ -1705,6 +1831,22 @@ x_draw_xwidget_glyph_string (struct glyph_string *s)
 				 clip_bottom - clip_top, 0,
 				 CopyFromParent, CopyFromParent,
 				 CopyFromParent, CWEventMask, &a);
+#ifdef HAVE_XINPUT2
+      XIEventMask mask;
+      ptrdiff_t l = XIMaskLen (XI_LASTEVENT);
+      unsigned char *m;
+
+      if (FRAME_DISPLAY_INFO (s->f)->supports_xi2)
+	{
+	  mask.mask = m = alloca (l);
+	  memset (m, 0, l);
+	  mask.mask_len = l;
+	  mask.deviceid = XIAllMasterDevices;
+
+	  XISetMask (m, XI_Motion);
+	  XISelectEvents (xv->dpy, xv->wdesc, &mask, 1);
+	}
+#endif
       XLowerWindow (xv->dpy, xv->wdesc);
       XDefineCursor (xv->dpy, xv->wdesc, xv->cursor);
       xv->cr_surface = cairo_xlib_surface_create (xv->dpy,

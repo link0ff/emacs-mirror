@@ -371,7 +371,7 @@ Defaults to the value of `browse-url-epiphany-arguments' at the time
 (defcustom browse-url-webpositive-program "WebPositive"
   "The name by which to invoke WebPositive."
   :type 'string
-  :version "28.1")
+  :version "29.1")
 
 ;; GNOME means of invoking either Mozilla or Netscape.
 (defvar browse-url-gnome-moz-program "gnome-moz-remote")
@@ -737,7 +737,8 @@ position clicked before acting.
 This function returns a list (URL NEW-WINDOW-FLAG)
 for use in `interactive'."
   (let ((event (elt (this-command-keys) 0)))
-    (and (listp event) (mouse-set-point event)))
+    (when (mouse-event-p event)
+      (mouse-set-point event)))
   (list (read-string prompt (or (and transient-mark-mode mark-active
 				     ;; rfc2396 Appendix E.
 				     (replace-regexp-in-string
