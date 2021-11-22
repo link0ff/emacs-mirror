@@ -76,6 +76,11 @@ time.
 * Changes in Emacs 29.1
 
 +++
+** New function 'buffer-text-pixel-size'.
+This is similar to 'window-text-pixel-size', but can be used when the
+buffer isn't displayed.
+
++++
 ** New X resource: "borderThickness".
 This controls the thickness of the external borders of the menu bars
 and pop-up menus.
@@ -99,8 +104,6 @@ Executing 'ert-deftest' with the same name as an existing test causes
 the previous definition to be discarded, which was probably not
 intended when this occurs in batch mode.  To remedy the error, rename
 tests so that they all have unique names.
-
-** Emacs now supports Unicode Standard version 14.0.
 
 ** Emoji
 
@@ -431,7 +434,7 @@ This works like 'image-transform-fit-to-window'.
 
 *** New user option 'image-auto-resize-max-scale-percent'.
 The new 'fit-window' option will never scale an image more than this
-much (in percent).  It is nil by default.
+much (in percent).  It is nil by default, which means no limit.
 
 ** Image-Dired
 
@@ -544,7 +547,7 @@ WebKit widget.
 
 +++
 *** New minor mode 'xwidget-webkit-isearch-mode'.
-This mode acts similarly to incremental search, and allows to search
+This mode acts similarly to incremental search, and allows searching
 the contents of a WebKit widget.  In xwidget-webkit mode, it is bound
 to 'C-s' and 'C-r'.
 
@@ -715,6 +718,15 @@ syntax.
 *** New function 'key-parse'.
 This is like 'kbd', but only returns vectors instead of a mix of
 vectors and strings.
+
++++
+** New substitution in docstrings and 'substitute-command-keys'.
+Use \\`KEYSEQ' to insert a literal key sequence "KEYSEQ" (for example
+\\`C-k') in a docstring or when calling 'substitute-command-keys',
+which will use the same face as a command substitution.  This should
+be used only when a key sequence has no corresponding command, for
+example when it is read directly with 'read-key-sequence'.  It must be
+a valid key sequence according to 'key-valid-p'.
 
 +++
 ** New function 'file-name-split'.
@@ -927,8 +939,8 @@ commits to the load.
 +++
 *** New event type 'xwidget-display-event'.
 These events are sent whenever an xwidget requests that Emacs display
-another xwidget.  The only argument to this event is the xwidget that
-should be displayed.
+another xwidget.  The only arguments to this event are the xwidget
+that should be displayed, and the xwidget that asked to display it.
 
 +++
 *** New function 'xwidget-webkit-set-cookie-storage-file'.

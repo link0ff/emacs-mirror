@@ -10128,11 +10128,15 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      bool tool_bar_p = false;
 	      struct xi_device_t *device;
 
+#ifdef XIPointerEmulated
 	      /* Ignore emulated scroll events when XI2 native
 		 scroll events are present.  */
-	      if (dpyinfo->xi2_version >= 1 && xev->detail >= 4
-		  && xev->detail <= 8)
+	      if (dpyinfo->xi2_version >= 1
+		  && xev->detail >= 4
+		  && xev->detail <= 8
+		  && xev->flags & XIPointerEmulated)
 		goto XI_OTHER;
+#endif
 
 	      device = xi_device_from_id (dpyinfo, xev->deviceid);
 
@@ -10292,10 +10296,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    }
 	  case XI_KeyPress:
 	    {
-	      int state = xev->mods.base
-		| xev->mods.effective
-		| xev->mods.latched
-		| xev->mods.locked;
+	      int state = xev->mods.effective;
 	      Lisp_Object c;
 #ifdef HAVE_XKB
 	      unsigned int mods_rtrn;
@@ -10310,6 +10311,36 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 	      ptrdiff_t i;
 	      int nchars, len;
+
+#if defined (USE_X_TOOLKIT) || defined (USE_GTK)
+	      /* Dispatch XI_KeyPress events when in menu.  */
+	      if (popup_activated ())
+		goto XI_OTHER;
+#endif
+
+#ifdef HAVE_X_I18N
+	      XKeyPressedEvent xkey;
+
+	      memset (&xkey, 0, sizeof xkey);
+
+	      xkey.type = KeyPress;
+	      xkey.serial = 0;
+	      xkey.send_event = xev->send_event;
+	      xkey.display = xev->display;
+	      xkey.window = xev->event;
+	      xkey.root = xev->root;
+	      xkey.subwindow = xev->child;
+	      xkey.time = xev->time;
+	      xkey.state = xev->mods.effective;
+	      xkey.keycode = xev->detail;
+	      xkey.same_screen = True;
+
+	      if (x_filter_event (dpyinfo, (XEvent *) &xkey))
+		{
+		  *finish = X_EVENT_DROP;
+		  goto XI_OTHER;
+		}
+#endif
 
 #ifdef HAVE_XKB
 	      if (dpyinfo->xkb_desc)
@@ -10339,12 +10370,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      x_display_set_last_user_time (dpyinfo, xev->time);
 	      ignore_next_mouse_click_timeout = 0;
-
-#if defined (USE_X_TOOLKIT) || defined (USE_GTK)
-	      /* Dispatch XI_KeyPress events when in menu.  */
-	      if (popup_activated ())
-		goto XI_OTHER;
-#endif
 
 	      f = x_any_window_to_frame (dpyinfo, xev->event);
 
@@ -10384,25 +10409,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  inev.ie.timestamp = xev->time;
 
 #ifdef HAVE_X_I18N
-		  XKeyPressedEvent xkey;
-
-		  memset (&xkey, 0, sizeof xkey);
-
-		  xkey.type = KeyPress;
-		  xkey.serial = 0;
-		  xkey.send_event = xev->send_event;
-		  xkey.display = xev->display;
-		  xkey.window = xev->event;
-		  xkey.root = xev->root;
-		  xkey.subwindow = xev->child;
-		  xkey.time = xev->time;
-		  xkey.state = state;
-		  xkey.keycode = keycode;
-		  xkey.same_screen = True;
-
-		  if (x_filter_event (dpyinfo, (XEvent *) &xkey))
-		    goto xi_done_keysym;
-
 		  if (FRAME_XIC (f))
 		    {
 		      Status status_return;
@@ -10652,6 +10658,25 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    }
 	  case XI_KeyRelease:
 	    x_display_set_last_user_time (dpyinfo, xev->time);
+#ifdef HAVE_X_I18N
+	    XKeyPressedEvent xkey;
+
+	    memset (&xkey, 0, sizeof xkey);
+
+	    xkey.type = KeyRelease;
+	    xkey.serial = 0;
+	    xkey.send_event = xev->send_event;
+	    xkey.display = xev->display;
+	    xkey.window = xev->event;
+	    xkey.root = xev->root;
+	    xkey.subwindow = xev->child;
+	    xkey.time = xev->time;
+	    xkey.state = xev->mods.effective;
+	    xkey.keycode = xev->detail;
+	    xkey.same_screen = True;
+
+	    x_filter_event (dpyinfo, (XEvent *) &xkey);
+#endif
 	    goto XI_OTHER;
 	  case XI_PropertyEvent:
 	  case XI_HierarchyChanged:
