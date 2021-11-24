@@ -9870,7 +9870,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	    x_display_set_last_user_time (dpyinfo, xi_event->time);
 	    x_detect_focus_change (dpyinfo, any, event, &inev.ie);
-	    xi_reset_scroll_valuators_for_device_id (dpyinfo, enter->deviceid);
+
+	    if (enter->detail != XINotifyInferior
+		&& enter->mode != XINotifyPassiveUngrab
+		&& enter->mode != XINotifyUngrab && any)
+	      xi_reset_scroll_valuators_for_device_id (dpyinfo, enter->deviceid);
+
 	    f = any;
 
 	    if (f && x_mouse_click_focus_ignore_position)
@@ -9895,7 +9900,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	    x_display_set_last_user_time (dpyinfo, xi_event->time);
 	    x_detect_focus_change (dpyinfo, any, event, &inev.ie);
-	    xi_reset_scroll_valuators_for_device_id (dpyinfo, leave->deviceid);
 
 	    f = x_top_window_to_frame (dpyinfo, leave->event);
 	    if (f)
@@ -10145,10 +10149,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      bv.x = lrint (xev->event_x);
 	      bv.y = lrint (xev->event_y);
 	      bv.window = xev->event;
-	      bv.state = xev->mods.base
-		| xev->mods.effective
-		| xev->mods.latched
-		| xev->mods.locked;
+	      bv.state = xev->mods.effective;
 	      bv.time = xev->time;
 
 	      memset (&compose_status, 0, sizeof (compose_status));
@@ -10306,9 +10307,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      char copy_buffer[81];
 	      char *copy_bufptr = copy_buffer;
 	      unsigned char *copy_ubufptr;
-#ifdef HAVE_XKB
 	      int copy_bufsiz = sizeof (copy_buffer);
-#endif
 	      ptrdiff_t i;
 	      int nchars, len;
 
@@ -10324,7 +10323,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      memset (&xkey, 0, sizeof xkey);
 
 	      xkey.type = KeyPress;
-	      xkey.serial = 0;
+	      xkey.serial = xev->serial;
 	      xkey.send_event = xev->send_event;
 	      xkey.display = xev->display;
 	      xkey.window = xev->event;
@@ -10439,53 +10438,38 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			emacs_abort ();
 		    }
 		  else
-		    {
 #endif
+		    {
 #ifdef HAVE_XKB
 		      int overflow = 0;
 		      KeySym sym = keysym;
 
 		      if (dpyinfo->xkb_desc)
 			{
-			  if (!(nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
-							     state & ~mods_rtrn, copy_bufptr,
-							     copy_bufsiz, &overflow)))
-			    goto XI_OTHER;
+			  nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
+						       state & ~mods_rtrn, copy_bufptr,
+						       copy_bufsiz, &overflow);
+			  if (overflow)
+			    {
+			      copy_bufptr = alloca ((copy_bufsiz += overflow)
+						    * sizeof *copy_bufptr);
+			      overflow = 0;
+			      nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
+							   state & ~mods_rtrn, copy_bufptr,
+							   copy_bufsiz, &overflow);
+
+			      if (overflow)
+				nbytes = 0;
+			    }
 			}
 		      else
-#else
-			{
-			  block_input ();
-			  char *str = XKeysymToString (keysym);
-			  if (!str)
-			    {
-			      unblock_input ();
-			      goto XI_OTHER;
-			    }
-			  nbytes = strlen (str) + 1;
-			  copy_bufptr = alloca (nbytes);
-			  strcpy (copy_bufptr, str);
-			  unblock_input ();
-			}
 #endif
-#ifdef HAVE_XKB
-		      if (overflow)
 			{
-			  overflow = 0;
-			  copy_bufptr = alloca (copy_bufsiz + overflow);
-			  keysym = sym;
-			  if (!(nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
-							     state & ~mods_rtrn, copy_bufptr,
-							     copy_bufsiz + overflow, &overflow)))
-			    goto XI_OTHER;
-
-			  if (overflow)
-			    goto XI_OTHER;
+			  nbytes = XLookupString (&xkey, copy_bufptr,
+						  copy_bufsiz, &keysym,
+						  &compose_status);
 			}
-#endif
-#ifdef HAVE_X_I18N
 		    }
-#endif
 
 		  /* First deal with keysyms which have defined
 		     translations to characters.  */
