@@ -12325,7 +12325,8 @@ clear_message (bool current_p, bool last_displayed_p)
       echo_area_buffer[0] = Qnil;
       message_cleared_p = true;
 
-      /* Before release obsolete ignoring return value in NEWS for some bug# */
+      /* Before release obsolete ignoring return value in NEWS
+	 bug#40774: Error messages shouldn't be hidden when the user is idle */
       /* ../../patch/clear-message.patch */
       if (FUNCTIONP (Vclear_message_function))
         {
@@ -36010,7 +36011,9 @@ message displayed by this function), and `command-error-function'
   DEFVAR_LISP ("clear-message-function", Vclear_message_function,
 	       doc: /* If non-nil, function to clear echo-area messages.
 Usually this function is called when the next input event arrives.
-The function is called without arguments.  It is expected to clear the
+The function is called without arguments.
+(copy from above) If this function returns nil
+It is expected to clear the
 message displayed by its counterpart function specified by
 `set-message-function'.  */);
   Vclear_message_function = Qnil;
