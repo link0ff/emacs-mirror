@@ -4904,6 +4904,28 @@ with @code{get-char-property}, for instance (@pxref{Examining
 Properties}).
 @end defun
 
+@defun add-display-text-property start end prop value &optional object
+Add @code{display} property @var{prop} of @var{value} to the text from
+@var{start} to @var{end}.
+
+If any text in the region has a non-@code{nil} @code{display}
+property, those properties are retained.  For instance:
+
+@lisp
+(add-display-text-property 4 8 'height 2.0)
+(add-display-text-property 2 12 'raise 0.5)
+@end lisp
+
+After doing this, the region from 2 to 4 will have the @code{raise}
+@code{display} property, the region from 4 to 8 will have both the
+@code{raise} and @code{height} @code{display} properties, and finally
+the region from 8 to 12 will only have the @code{raise} @code{display}
+property.
+
+If @var{object} is non-@code{nil}, it should be a string or a buffer.
+If @code{nil}, this defaults to the current buffer.
+@end defun
+
 @cindex display property, unsafe evaluation
 @cindex security, and display specifications
   Some of the display specifications allow inclusion of Lisp forms,
@@ -5180,19 +5202,21 @@ be an integer or float.  Characters other than spaces are not affected
 at all; in particular, this has no effect on tab characters.
 
 @item (min-width (@var{width}))
-This display specification adds padding to the end of the text if the
-text is shorter than @var{width}.  The text is partitioned using the
-identity of the parameter, which is why the parameter is a list with
-one element.  For instance:
+This display specification ensures the text that has it takes at least
+@var{width} space on display, by adding a stretch of white space to
+the end of the text if the text is shorter than @var{width}.  The text
+is partitioned using the identity of the parameter, which is why the
+parameter is a list with one element.  For instance:
 
 @lisp
 (insert (propertize "foo" '(display (min-width (6.0)))))
 @end lisp
 
 This will add padding after @samp{foo} bringing the total width up to
-the width of six normal characters.  Note that the ``range'' is
-identified by the @code{(6.0)} list, compared with @code{eq}.  The
-width can be either a character width or a pixel specification
+the width of six normal characters.  Note that the affected characters
+are identified by the @code{(6.0)} list in the display property,
+compared with @code{eq}.  The element @var{width} can be either an
+integer or a float specifying the required minimum width of the text
 (@pxref{Pixel Specification}).
 
 @item (height @var{height})
