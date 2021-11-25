@@ -10648,7 +10648,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    memset (&xkey, 0, sizeof xkey);
 
 	    xkey.type = KeyRelease;
-	    xkey.serial = 0;
+	    xkey.serial = xev->serial;
 	    xkey.send_event = xev->send_event;
 	    xkey.display = xev->display;
 	    xkey.window = xev->event;
@@ -15165,6 +15165,6 @@ always uses gtk_window_move and ignores the value of this variable.  */);
 	       doc: /* Non-nil means send a wheel event only for scrolling at least one screen line.
 Otherwise, a wheel event will be sent every time the mouse wheel is
 moved.  This option is only effective when Emacs is built with XInput
-2 or with Haiku windowing support.  */);
+2, with Haiku windowing support, or with NS.  */);
   x_coalesce_scroll_events = true;
 }
