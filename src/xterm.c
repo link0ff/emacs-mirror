@@ -345,6 +345,7 @@ x_extension_initialize (struct x_display_info *dpyinfo)
   dpyinfo->ext_codes = ext_codes;
 }
 
+#endif /* HAVE_CAIRO */
 
 #ifdef HAVE_XINPUT2
 
@@ -370,6 +371,29 @@ x_free_xi_devices (struct x_display_info *dpyinfo)
 
   unblock_input ();
 }
+
+/* The code below handles the tracking of scroll valuators on XInput
+   2, in order to support scroll wheels that report information more
+   granular than a screen line.
+
+   On X, when the XInput 2 extension is being utilized, the states of
+   the mouse wheels in each axis are stored as absolute values inside
+   "valuators" attached to each mouse device.  To obtain the delta of
+   the scroll wheel from a motion event (which is used to report that
+   some valuator has changed), it is necessary to iterate over every
+   valuator that changed, and compare its previous value to the
+   current value of the valuator.
+
+   Each individual valuator also has an "interval", which is the
+   amount you must divide that delta by in order to obtain a delta in
+   the terms of scroll units.
+
+   This delta however is still intermediate, to make driver
+   implementations easier.  The XInput developers recommend (and most
+   programs use) the following algorithm to convert from scroll unit
+   deltas to pixel deltas:
+
+     pixels_scrolled = pow (window_height, 2.0 / 3.0) * delta;  */
 
 /* Setup valuator tracking for XI2 master devices on
    DPYINFO->display.  */
@@ -563,6 +587,8 @@ xi_reset_scroll_valuators_for_device_id (struct x_display_info *dpyinfo, int id)
 }
 
 #endif
+
+#ifdef USE_CAIRO
 
 void
 x_cr_destroy_frame_context (struct frame *f)
@@ -9871,6 +9897,19 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    x_display_set_last_user_time (dpyinfo, xi_event->time);
 	    x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 
+	    /* One problem behind the design of XInput 2 scrolling is
+	       that valuators are not unique to each window, but only
+	       the window that has grabbed the valuator's device or
+	       the window that the device's pointer is on top of can
+	       receive motion events.  There is also no way to
+	       retrieve the value of a valuator outside of each motion
+	       event.
+
+	       As such, to prevent wildly inaccurate results when the
+	       valuators have changed outside Emacs, we reset our
+	       records of each valuator's value whenever the pointer
+	       re-enters a frame after its valuators have potentially
+	       been changed elsewhere.  */
 	    if (enter->detail != XINotifyInferior
 		&& enter->mode != XINotifyPassiveUngrab
 		&& enter->mode != XINotifyUngrab && any)
@@ -9944,6 +9983,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    struct xi_scroll_valuator_t *val;
 		    double delta, scroll_unit;
 
+
+		    /* See the comment on top of
+		       x_init_master_valuators for more details on how
+		       scroll wheel movement is reported on XInput 2.  */
 		    delta = x_get_scroll_valuator_delta (dpyinfo, xev->deviceid,
 							 i, *values, &val);
 
@@ -9969,7 +10012,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			      goto XI_OTHER;
 			  }
 
-			scroll_unit = pow (FRAME_PIXEL_HEIGHT (f), 2.0 / 3.0);
 			found_valuator = true;
 
 			if (signbit (delta) != signbit (val->emacs_value))
@@ -9995,6 +10037,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			inev.ie.modifiers
 			  |= x_x_to_emacs_modifiers (dpyinfo,
 						     xev->mods.effective);
+
+			scroll_unit = pow (FRAME_PIXEL_HEIGHT (f), 2.0 / 3.0);
 
 			if (val->horizontal)
 			  {
@@ -10041,6 +10085,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    ev.x = lrint (xev->event_x);
 	    ev.y = lrint (xev->event_y);
 	    ev.window = xev->event;
+	    ev.time = xev->time;
 
 	    previous_help_echo_string = help_echo_string;
 	    help_echo_string = Qnil;
