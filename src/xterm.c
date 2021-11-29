@@ -9813,6 +9813,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
           x_find_modifier_meanings (dpyinfo);
 	  FALLTHROUGH;
         case MappingKeyboard:
+#ifdef HAVE_XKB
+	  if (dpyinfo->xkb_desc)
+	    XkbGetUpdatedMap (dpyinfo->display, XkbAllComponentsMask,
+			      dpyinfo->xkb_desc);
+#endif
           XRefreshKeyboardMapping ((XMappingEvent *) &event->xmapping);
         }
       goto OTHER;
@@ -10039,6 +10044,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 						     xev->mods.effective);
 
 			scroll_unit = pow (FRAME_PIXEL_HEIGHT (f), 2.0 / 3.0);
+
+			if (FLOATP (Vx_scroll_event_delta_factor))
+			  scroll_unit *= XFLOAT_DATA (Vx_scroll_event_delta_factor);
 
 			if (val->horizontal)
 			  {
@@ -15212,4 +15220,10 @@ Otherwise, a wheel event will be sent every time the mouse wheel is
 moved.  This option is only effective when Emacs is built with XInput
 2, with Haiku windowing support, or with NS.  */);
   x_coalesce_scroll_events = true;
+
+  DEFVAR_LISP ("x-scroll-event-delta-factor", Vx_scroll_event_delta_factor,
+	       doc: /* A scale to apply to pixel deltas reported in scroll events.
+This option is only effective when Emacs is built with XInput 2
+support. */);
+  Vx_scroll_event_delta_factor = make_float (1.0);
 }
