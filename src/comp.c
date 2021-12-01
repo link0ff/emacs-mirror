@@ -5311,12 +5311,12 @@ syms_of_comp (void)
 {
 #ifdef HAVE_NATIVE_COMP
   DEFVAR_LISP ("comp--delayed-sources", Vcomp__delayed_sources,
-	       doc: /* List of sources to be native compiled when
-		       startup is finished.  For internal use.  */);
+	       doc: /* List of sources to be native-compiled when startup is finished.
+For internal use.  */);
   DEFVAR_BOOL ("comp--loadable",
 	       comp__loadable,
-	       doc: /* Non-nil when comp.el can be loaded.  For
-		       internal use. */);
+	       doc: /* Non-nil when comp.el can be loaded.
+For internal use. */);
   /* Compiler control customizes.  */
   DEFVAR_BOOL ("native-comp-deferred-compilation",
 	       native_comp_deferred_compilation,
@@ -5513,9 +5513,9 @@ protect the trampolines against GC.  */);
   Vcomp_installed_trampolines_h = CALLN (Fmake_hash_table);
 
   DEFVAR_LISP ("comp-no-native-file-h", V_comp_no_native_file_h,
-	       doc: /* Files for which no deferred compilation has to
-be performed because the bytecode version was explicitly requested by
-the user during load.
+	       doc: /* Files for which no deferred compilation has to be performed.
+These files' compilation should not be deferred because the bytecode
+version was explicitly requested by the user during load.
 For internal use.  */);
   V_comp_no_native_file_h = CALLN (Fmake_hash_table, QCtest, Qequal);
 
