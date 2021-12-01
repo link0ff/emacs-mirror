@@ -76,6 +76,13 @@ time.
 * Changes in Emacs 29.1
 
 +++
+** New face 'variable-pitch-text'.
+This face is like 'variable-pitch' (from which it inherits), but is
+slightly larger, which should help with the visual size differences
+between the default, non-proportional font and proportional fonts when
+mixed.
+
++++
 ** New face 'mode-line-active'.
 This inherits from the 'mode-line' face, but is the face actually used
 on the mode lines (along with 'mode-line-inactive').
@@ -295,6 +302,10 @@ received.
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
 
+** New minor mode 'glyphless-display-mode'.
+This allows an easy way to toggle seeing all glyphless characters in
+the current buffer.
+
 ** Registers
 
 +++
@@ -365,6 +376,16 @@ These are used to alter an URL before using it.  By default it removes
 the common "utm_" trackers from URLs.
 
 ** Gnus
+
+---
+*** Gnus now uses a variable-pitch font in the headers by default.
+To get the monospace font back, you can put something like the
+following in your .gnus file:
+
+  (set-face-attribute 'gnus-header nil :inherit 'unspecified)
+
+---
+*** The default value of 'gnus-treat-fold-headers' is now 'head'.
 
 ---
 *** New face 'gnus-header'.

@@ -77,20 +77,35 @@ prefix on subsequent lines."
     (goto-char start)
     (let ((indentation
            (car (window-text-pixel-size nil (line-beginning-position)
-                                        (point)))))
+                                        (point))))
+          (newline-end nil))
       (when (> indentation pixel-width)
         (error "The indentation (%s) is wider than the fill width (%s)"
                indentation pixel-width))
       (save-restriction
         (narrow-to-region start end)
-        (goto-char start)
+        (goto-char (point-max))
+        (when (looking-back "\n[ \t]*" (point-min))
+          (setq newline-end t))
+        (goto-char (point-min))
         ;; First replace all whitespace with space.
         (while (re-search-forward "[ \t\n]+" nil t)
-          (if (= (match-beginning 0) start)
-              (delete-region (match-beginning 0) (match-end 0))
-            (replace-match " ")))
+          (cond
+           ((or (= (match-beginning 0) start)
+                (= (match-end 0) end))
+            (delete-region (match-beginning 0) (match-end 0)))
+           ;; If there's just a single space here, don't replace.
+           ((not (and (= (- (match-end 0) (match-beginning 0)) 1)
+                      (= (char-after (match-beginning 0)) ?\s)))
+            (replace-match
+             ;; We need to use a space that has an appropriate width.
+             (propertize " " 'face
+                         (get-text-property (match-beginning 0) 'face))))))
         (goto-char start)
-        (pixel-fill--fill-line pixel-width indentation)))))
+        (pixel-fill--fill-line pixel-width indentation)
+        (goto-char (point-max))
+        (when newline-end
+          (insert "\n"))))))
 
 (defun pixel-fill--goto-pixel (width)
   (vertical-motion (cons (/ width (frame-char-width)) 0)))
@@ -112,10 +127,11 @@ prefix on subsequent lines."
       ;; Success; continue.
       (when (= (preceding-char) ?\s)
 	(delete-char -1))
-      (insert ?\n)
-      (when (> indentation 0)
-        (insert (propertize " " 'display
-                            (list 'space :align-to (list indentation)))))
+      (unless (eobp)
+        (insert ?\n)
+        (when (> indentation 0)
+          (insert (propertize " " 'display
+                              (list 'space :align-to (list indentation))))))
       (setq start (point))
       (pixel-fill--goto-pixel width))))
 
