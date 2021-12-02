@@ -332,6 +332,8 @@ will be displayed before the first character having that property.
 If this variable is non-@code{nil}, @code{message} and related
 functions call it with no arguments when their argument message is
 @code{nil} or the empty string.
+(copy from above) If the function returns @code{nil}, the message is displayed in the echo
+area as usual.
 
 Usually this function is called when the next input event arrives
 after displaying an echo-area message.  The function is expected to
