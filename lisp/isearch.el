@@ -1593,7 +1593,11 @@ REGEXP if non-nil says use the regexp search ring."
 
 (defun isearch-pop-state ()
   (setq isearch-cmds (cdr isearch-cmds))
-  (isearch--set-state (car isearch-cmds)))
+  (isearch--set-state (car isearch-cmds))
+  ;; When going back to the hidden match, unhide it.
+  (when (and (eq search-invisible 'open) isearch-hide-immediately isearch-other-end)
+    (isearch-range-invisible (min (point) isearch-other-end)
+                             (max (point) isearch-other-end))))
 
 (defun isearch-push-state ()
   (push (isearch--get-state) isearch-cmds))
