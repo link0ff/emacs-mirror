@@ -9084,6 +9084,7 @@ and quit the completion window without exiting the minibuffer."
                 ((and (not (bobp))
                       (get-text-property (1- (point)) 'mouse-face))
                  (setq beg (point)))
+                ;; FIX
                 (t (error "No completion here")))
                (setq beg (previous-single-property-change beg 'mouse-face))
                (substring-no-properties
