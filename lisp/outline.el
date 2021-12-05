@@ -275,6 +275,7 @@ in the file it applies to.")
   [outline-1 outline-2 outline-3 outline-4
    outline-5 outline-6 outline-7 outline-8])
 
+;; TODO: move down before defcustom outline-minor-mode-cycle
 (defcustom outline-minor-mode-use-buttons nil
   "If non-nil, use clickable buttons on the headings.
 Note that this feature is not meant to be used in editing
@@ -284,6 +285,7 @@ The `outline-minor-mode-buttons' variable specifies how the
 buttons should look."
   :type 'boolean
   :version "29.1")
+;;;###autoload(put 'outline-minor-mode-use-buttons 'safe-local-variable 'booleanp)
 
 (defcustom outline-minor-mode-buttons
   '(("▶️" "🔽" outline--valid-emoji-p)
