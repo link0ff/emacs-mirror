@@ -899,6 +899,43 @@ This function is intended to be added to `set-message-functions'."
            (string-match-p inhibit-message-regexp message))
       message))
 
+(defcustom multi-message-timeout 2
+  "Number of seconds between messages before clearing the accumulated list."
+  :type 'number
+  :version "29.1")
+
+(defcustom multi-message-max 8
+  "Max size of the list of accumulated messages."
+  :type 'number
+  :version "29.1")
+
+(defvar multi-message-separator "\n")
+
+(defvar multi-message-list nil)
+
+(defun set-multi-message (message)
+  "Return recent messages as one string to display in the echo area.
+Note that this feature works best only when `resize-mini-windows'
+is at its default value `grow-only'."
+  (let ((last-message (car multi-message-list)))
+    (unless (and last-message (equal message (aref last-message 1)))
+      (when last-message
+        (cond
+         ((> (float-time) (+ (aref last-message 0) multi-message-timeout))
+          (setq multi-message-list nil))
+         ((or
+           ;; `message-log-max' was nil, potential clutter.
+           (aref last-message 2)
+           ;; Remove old message that is substring of the new message
+           (string-prefix-p (aref last-message 1) message))
+          (setq multi-message-list (cdr multi-message-list)))))
+      (push (vector (float-time) message (not message-log-max)) multi-message-list)
+      (when (> (length multi-message-list) multi-message-max)
+        (setf (nthcdr multi-message-max multi-message-list) nil)))
+    (mapconcat (lambda (m) (aref m 1))
+               (reverse multi-message-list)
+               multi-message-separator)))
+
 (defun clear-minibuffer-message ()
   "Clear minibuffer message.
 Intended to be called via `clear-message-function'."
