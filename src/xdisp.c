@@ -12521,20 +12521,22 @@ set_message_1 (void *a1, Lisp_Object string)
 void
 clear_message (bool current_p, bool last_displayed_p)
 {
+  Lisp_Object preserve = Qnil;
+
   if (current_p)
     {
-      echo_area_buffer[0] = Qnil;
-      message_cleared_p = true;
-
-      /* Before release obsolete ignoring return value in NEWS
-	 bug#40774: Error messages shouldn't be hidden when the user is idle */
-      /* ../../patch/clear-message.patch */
       if (FUNCTIONP (Vclear_message_function))
         {
           ptrdiff_t count = SPECPDL_INDEX ();
           specbind (Qinhibit_quit, Qt);
-          safe_call (1, Vclear_message_function);
+          preserve = safe_call (1, Vclear_message_function);
           unbind_to (count, Qnil);
+        }
+
+      if (!EQ (preserve, Qt))
+        {
+          echo_area_buffer[0] = Qnil;
+          message_cleared_p = true;
         }
     }
 
@@ -36235,11 +36237,13 @@ message displayed by this function), and `command-error-function'
   DEFVAR_LISP ("clear-message-function", Vclear_message_function,
 	       doc: /* If non-nil, function to clear echo-area messages.
 Usually this function is called when the next input event arrives.
+It is expected to clear the message displayed by its counterpart
+function specified by `set-message-function'.
 The function is called without arguments.
-(copy from above) If this function returns nil
-It is expected to clear the
-message displayed by its counterpart function specified by
-`set-message-function'.  */);
+If this function returns a non-t value, the message is cleared
+from the echo area as usual.  If this function returns t,
+this means that the message was already handled, and the original
+message text will not be cleared from the echo area.  */);
   Vclear_message_function = Qnil;
 
   DEFVAR_LISP ("redisplay--all-windows-cause", Vredisplay__all_windows_cause,

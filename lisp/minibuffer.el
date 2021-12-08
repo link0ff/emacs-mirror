@@ -947,9 +947,9 @@ Intended to be called via `clear-message-function'."
       (delete-overlay minibuffer-message-overlay)
       (setq minibuffer-message-overlay nil)))
 
-  ;; Return t telling the caller that the message
-  ;; was handled specially by this function.
-  t)
+  ;; Return nil telling the caller that the message
+  ;; should be also handled by the caller.
+  nil)
 
 (setq clear-message-function 'clear-minibuffer-message)
 

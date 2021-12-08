@@ -3327,9 +3327,6 @@ This new 'etc-authors-mode' provides font-locking for displaying the
 
 * Incompatible Lisp Changes in Emacs 28.1
 
----
-** The return value of 'clear-message-function' will change in later releases.
-
 +++
 ** Emacs now prints a backtrace when signaling an error in batch mode.
 This makes debugging Emacs Lisp scripts run in batch mode easier.  To
