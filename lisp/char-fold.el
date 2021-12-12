@@ -250,11 +250,11 @@ Exceptionally for the space character (32), ALIST is ignored.")
 
 (defcustom char-fold-override char-fold--default-override
   "Non-nil means to override all default folding characters.
-When nil, the equivalence table is populated with the default set
-of equivalent chars, and you can remove unneeded characters using
-`char-fold-exclude', and add own characters using `char-fold-include'.
-But when this variable is customized to non-nil, you start with
-an empty table where you can add only own characters
+When nil (the default value), the equivalence table is populated
+with the default set of equivalent chars, and you can remove unneeded
+characters using `char-fold-exclude', and add own characters using
+`char-fold-include'.  But when this variable is customized to non-nil,
+you start with an empty table where you can add only own characters
 using `char-fold-include'."
   :type 'boolean
   :initialize #'custom-initialize-default
