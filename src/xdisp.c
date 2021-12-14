@@ -12533,7 +12533,7 @@ clear_message (bool current_p, bool last_displayed_p)
           unbind_to (count, Qnil);
         }
 
-      if (!EQ (preserve, Qt))
+      if (!EQ (preserve, Qdont_clear_message))
         {
           echo_area_buffer[0] = Qnil;
           message_cleared_p = true;
@@ -36235,6 +36235,7 @@ message displayed by this function), and `command-error-function'
 (which controls how error messages are displayed).  */);
   Vset_message_function = Qnil;
 
+  DEFSYM (Qdont_clear_message, "dont-clear-message");
   DEFVAR_LISP ("clear-message-function", Vclear_message_function,
 	       doc: /* If non-nil, function to clear echo-area messages.
 Usually this function is called when the next input event arrives.
