@@ -886,17 +886,17 @@ called from the list, and no message will be displayed in the echo area."
                       nil))
   message)
 
-(defcustom inhibit-message-regexp nil
-  "Regexp to inhibit messages by the function `inhibit-message'."
-  :type '(choice (const :tag "Don't inhibit messages" nil)
-                 (regexp :tag "Inhibit messages that match regexp"))
+(defcustom inhibit-message-regexps nil
+  "List of regexps that inhibit messages by the function `inhibit-message'."
+  :type '(repeat regexp)
   :version "29.1")
 
 (defun inhibit-message (message)
-  "Don't display MESSAGE when it matches the regexp `inhibit-message-regexp'.
+  "Don't display MESSAGE when it matches the regexp `inhibit-message-regexps'.
 This function is intended to be added to `set-message-functions'."
-  (or (and (stringp inhibit-message-regexp)
-           (string-match-p inhibit-message-regexp message))
+  (or (and (consp inhibit-message-regexps)
+           (string-match-p (mapconcat #'identity inhibit-message-regexps "\\|")
+                           message))
       message))
 
 (defcustom multi-message-timeout 2
