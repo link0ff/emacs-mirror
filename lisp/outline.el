@@ -275,7 +275,6 @@ in the file it applies to.")
   [outline-1 outline-2 outline-3 outline-4
    outline-5 outline-6 outline-7 outline-8])
 
-;; TODO: move down before defcustom outline-minor-mode-cycle
 (defcustom outline-minor-mode-use-buttons nil
   "If non-nil, use clickable buttons on the headings.
 Note that this feature is not meant to be used in editing
@@ -284,8 +283,8 @@ buffers (yet) -- that will be amended in a future version.
 The `outline-minor-mode-buttons' variable specifies how the
 buttons should look."
   :type 'boolean
+  :safe #'booleanp
   :version "29.1")
-;;;###autoload(put 'outline-minor-mode-use-buttons 'safe-local-variable 'booleanp)
 
 (defcustom outline-minor-mode-buttons
   '(("▶️" "🔽" outline--valid-emoji-p)
@@ -378,8 +377,8 @@ When point is on a heading line, then typing `TAB' cycles between `hide all',
 a heading line cycles the whole buffer (`outline-cycle-buffer').
 Typing these keys anywhere outside heading lines uses their default bindings."
   :type 'boolean
+  :safe #'booleanp
   :version "28.1")
-;;;###autoload(put 'outline-minor-mode-cycle 'safe-local-variable 'booleanp)
 
 (defcustom outline-minor-mode-highlight nil
   "Highlight headings in `outline-minor-mode' using font-lock keywords.
@@ -393,8 +392,8 @@ faces to major mode's faces."
                  (const :tag "Overwrite major mode faces" override)
                  (const :tag "Append outline faces to major mode faces" append)
                  (const :tag "Highlight separately from major mode faces" t))
+  :safe #'symbolp
   :version "28.1")
-;;;###autoload(put 'outline-minor-mode-highlight 'safe-local-variable 'symbolp)
 
 (defun outline-minor-mode-highlight-buffer ()
   ;; Fallback to overlays when font-lock is unsupported.
