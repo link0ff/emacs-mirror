@@ -26,7 +26,6 @@
 (require 'cl-lib)
 (require 'eieio)
 (require 'sqlite)
-(require 'url)
 (require 'tabulated-list)
 
 (defcustom multisession-storage 'files
@@ -158,7 +157,7 @@ DOC should be a doc string, and ARGS are keywords as applicable to
          multisession--db
          "create unique index multisession_idx on multisession (package, key)")))))
 
-(cl-defmethod multisession-backend-value ((_type (eql sqlite)) object)
+(cl-defmethod multisession-backend-value ((_type (eql 'sqlite)) object)
   (multisession--ensure-db)
   (let ((id (list (multisession--package object)
                   (multisession--key object))))
@@ -198,7 +197,7 @@ DOC should be a doc string, and ARGS are keywords as applicable to
      (t
       (multisession--cached-value object)))))
 
-(cl-defmethod multisession--backend-set-value ((_type (eql sqlite))
+(cl-defmethod multisession--backend-set-value ((_type (eql 'sqlite))
                                                object value)
   (catch 'done
     (let ((i 0))
@@ -234,13 +233,13 @@ DOC should be a doc string, and ARGS are keywords as applicable to
                    id)))
       (setf (multisession--cached-value object) value))))
 
-(cl-defmethod multisession--backend-values ((_type (eql sqlite)))
+(cl-defmethod multisession--backend-values ((_type (eql 'sqlite)))
   (multisession--ensure-db)
   (sqlite-select
    multisession--db
    "select package, key, value from multisession order by package, key"))
 
-(cl-defmethod multisession--backend-delete ((_type (eql sqlite)) object)
+(cl-defmethod multisession--backend-delete ((_type (eql 'sqlite)) object)
   (sqlite-execute multisession--db
                   "delete from multisession where package = ? and key = ?"
                   (list (multisession--package object)
@@ -251,23 +250,30 @@ DOC should be a doc string, and ARGS are keywords as applicable to
 (defun multisession--encode-file-name (name)
   (url-hexify-string name))
 
-(defun multisession--update-file-value (file object)
-  (condition-case nil
-      (with-temp-buffer
-        (let* ((time (file-attribute-modification-time
-                      (file-attributes file)))
-               (coding-system-for-read 'utf-8))
-          (insert-file-contents file)
-          (let ((stored (read (current-buffer))))
-            (setf (multisession--cached-value object) stored
-                  (multisession--cached-sequence object) time)
-            stored)))
-    ;; If the file is contended (could happen with file locking in
-    ;; Windws) or unreadable, just return the current value.
-    (error
-     (if (eq (multisession--cached-value object) multisession--unbound)
-         (multisession--initial-value object)
-       (multisession--cached-value object)))))
+(defun multisession--read-file-value (file object)
+  (catch 'done
+    (let ((i 0)
+          last-error)
+      (while (< i 10)
+        (condition-case err
+            (throw 'done
+                   (with-temp-buffer
+                     (let* ((time (file-attribute-modification-time
+                                   (file-attributes file)))
+                            (coding-system-for-read 'utf-8))
+                       (insert-file-contents file)
+                       (let ((stored (read (current-buffer))))
+                         (setf (multisession--cached-value object) stored
+                               (multisession--cached-sequence object) time)
+                         stored))))
+          ;; Windows uses OS-level file locking that may preclude
+          ;; reading the file in some circumstances.  So when that
+          ;; happens, wait a bit and try again.
+          (file-error
+           (setq i (1+ i)
+                 last-error err)
+           (sleep-for (+ 0.1 (/ (float (random 10)) 10))))))
+      (signal (car last-error) (cdr last-error)))))
 
 (defun multisession--object-file-name (object)
   (expand-file-name
@@ -278,13 +284,13 @@ DOC should be a doc string, and ARGS are keywords as applicable to
            ".value")
    multisession-directory))
 
-(cl-defmethod multisession-backend-value ((_type (eql files)) object)
+(cl-defmethod multisession-backend-value ((_type (eql 'files)) object)
   (let ((file (multisession--object-file-name object)))
     (cond
      ;; We have no value yet; see whether it's stored.
      ((eq (multisession--cached-value object) multisession--unbound)
       (if (file-exists-p file)
-          (multisession--update-file-value file object)
+          (multisession--read-file-value file object)
         ;; Nope; return the initial value.
         (multisession--initial-value object)))
      ;; We have a value, but we want to update in case some other
@@ -294,14 +300,14 @@ DOC should be a doc string, and ARGS are keywords as applicable to
                (time-less-p (multisession--cached-sequence object)
                             (file-attribute-modification-time
                              (file-attributes file))))
-          (multisession--update-file-value file object)
+          (multisession--read-file-value file object)
         ;; Nothing, return the cached value.
         (multisession--cached-value object)))
      ;; Just return the cached value.
      (t
       (multisession--cached-value object)))))
 
-(cl-defmethod multisession--backend-set-value ((_type (eql files))
+(cl-defmethod multisession--backend-set-value ((_type (eql 'files))
                                                object value)
   (let ((file (multisession--object-file-name object))
         (time (current-time)))
@@ -322,14 +328,15 @@ DOC should be a doc string, and ARGS are keywords as applicable to
       ;; file for somewhat better atomicity.
       (let ((coding-system-for-write 'utf-8)
             (create-lockfiles nil)
-            (temp (make-temp-name file)))
+            (temp (make-temp-name file))
+            (write-region-inhibit-fsync nil))
         (write-region (point-min) (point-max) temp nil 'silent)
         (set-file-times temp time)
         (rename-file temp file t)))
     (setf (multisession--cached-sequence object) time
           (multisession--cached-value object) value)))
 
-(cl-defmethod multisession--backend-values ((_type (eql files)))
+(cl-defmethod multisession--backend-values ((_type (eql 'files)))
   (mapcar (lambda (file)
             (let ((bits (file-name-split file)))
               (list (url-unhex-string (car (last bits 2)))
@@ -343,7 +350,7 @@ DOC should be a doc string, and ARGS are keywords as applicable to
            (expand-file-name "files" multisession-directory)
            "\\.value\\'")))
 
-(cl-defmethod multisession--backend-delete ((_type (eql files)) object)
+(cl-defmethod multisession--backend-delete ((_type (eql 'files)) object)
   (let ((file (multisession--object-file-name object)))
     (when (file-exists-p file)
       (delete-file file))))

@@ -989,6 +989,12 @@ when they have changed.
 This can be used to check whether a specific font has a glyph for a
 character.
 
++++
+** 'window-text-pixel-size' now accepts a new argument 'ignore-line-at-end'.
+This controls whether or not the last screen line of the text being
+measured will be counted for the purpose of calculating the text
+dimensions.
+
 ** XDG support
 
 *** New function 'xdg-state-home' returns 'XDG_STATE_HOME' environment variable.
@@ -1169,7 +1175,7 @@ assumes a time of 00:00 instead of signaling an error.
 
 +++
 ** New events for taking advantage of touchscreen devices.
-The events 'touchscreen-down', 'touchscreen-update' and
+The events 'touchscreen-begin, 'touchscreen-update', and
 'touchscreen-end' have been added to take better advantage of
 touch-capable display panels.
 
