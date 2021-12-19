@@ -410,6 +410,11 @@ It narrows to the current node.
 ** eww/shr
 
 +++
+*** New user option 'shr-allowed-images'.
+This complements 'shr-blocked-images', but allows specifying just the
+allowed images.
+
++++
 *** New user option 'shr-use-xwidgets-for-media'.
 If non-nil (and Emacs has been built with support for xwidgets),
 display <video> elements with an xwidget.  Note that this is
@@ -1185,6 +1190,12 @@ assumes a time of 00:00 instead of signaling an error.
 The events 'touchscreen-begin, 'touchscreen-update', and
 'touchscreen-end' have been added to take better advantage of
 touch-capable display panels.
+
++++
+** New error symbol 'permission-denied'.
+This is a subcategory of 'file-error', and is signaled when some file
+operation fails because the OS doesn't allow Emacs to access a file or
+a directory.
 
 
 * Changes in Emacs 29.1 on Non-Free Operating Systems
