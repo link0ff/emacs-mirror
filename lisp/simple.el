@@ -8979,6 +8979,7 @@ makes it easier to edit it."
     (define-key map [follow-link] 'mouse-face)
     (define-key map [down-mouse-2] nil)
     (define-key map "\C-m" 'choose-completion)
+    (define-key map [C-return] 'choose-completion-no-auto-exit)
     (define-key map "\e\e\e" 'delete-completion-window)
     (define-key map [left] 'previous-completion)
     (define-key map [right] 'next-completion)
@@ -9063,7 +9064,7 @@ With prefix argument N, move N items (negative N means move backward)."
 (defun choose-completion (&optional event arg)
   "Choose the completion at point.
 If EVENT, use EVENT's position to determine the starting position.
-When the prefix ARG is 0, insert the completion at point to the minibuffer
+With the prefix ARG, insert the completion at point to the minibuffer
 and quit the completion window without exiting the minibuffer."
   (interactive (list last-nonmenu-event current-prefix-arg))
   ;; In case this is run via the mouse, give temporary modes such as
@@ -9073,7 +9074,7 @@ and quit the completion window without exiting the minibuffer."
     (let ((buffer completion-reference-buffer)
           (base-position completion-base-position)
           (insert-function completion-list-insert-choice-function)
-          (completion-no-auto-exit (if (eq arg 0) t completion-no-auto-exit))
+          (completion-no-auto-exit (if arg t completion-no-auto-exit))
           (choice
            (save-excursion
              (goto-char (posn-point (event-start event)))
@@ -9101,6 +9102,14 @@ and quit the completion window without exiting the minibuffer."
              ;; If all else fails, just guess.
              (list (choose-completion-guess-base-position choice)))
          insert-function)))))
+
+(defun choose-completion-no-auto-exit (&optional event)
+  "Insert the completion at point to the minibuffer without exiting it.
+Like `choose-completion', it chooses the completion at point,
+inserts it to the minibuffer, but doesn't exit the minibuffer."
+  (interactive (list last-nonmenu-event))
+  (let ((completion-no-auto-exit t))
+    (choose-completion event)))
 
 ;; Delete the longest partial match for STRING
 ;; that can be found before POINT.
@@ -9256,6 +9265,7 @@ Called from `temp-buffer-show-hook'."
         (setq-local completion-base-position base-position)
         (setq-local completion-list-insert-choice-function insert-fun))
       (setq-local completion-reference-buffer mainbuf)
+      ;; (setq-local delete-window-choose-selected 'mru)
       (if base-dir (setq default-directory base-dir))
       (when completion-tab-width
         (setq tab-width completion-tab-width))
