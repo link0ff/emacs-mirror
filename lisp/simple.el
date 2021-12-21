@@ -9265,7 +9265,6 @@ Called from `temp-buffer-show-hook'."
         (setq-local completion-base-position base-position)
         (setq-local completion-list-insert-choice-function insert-fun))
       (setq-local completion-reference-buffer mainbuf)
-      ;; (setq-local delete-window-choose-selected 'mru)
       (if base-dir (setq default-directory base-dir))
       (when completion-tab-width
         (setq tab-width completion-tab-width))
