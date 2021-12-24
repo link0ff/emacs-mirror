@@ -637,7 +637,11 @@ xi_grab_or_ungrab_device (struct xi_device_t *device,
   XISetMask (m, XI_Enter);
   XISetMask (m, XI_Leave);
 
-  if (device->grab)
+  if (device->grab
+#ifdef USE_MOTIF
+      && !popup_activated ()
+#endif
+      )
     {
       XIGrabDevice (dpyinfo->display, device->device_id, window,
 		    CurrentTime, None, GrabModeAsync,
@@ -10015,7 +10019,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	       been changed elsewhere.  */
 	    if (enter->detail != XINotifyInferior
 		&& enter->mode != XINotifyPassiveUngrab
-		&& enter->mode != XINotifyUngrab && any)
+		/* See the comment under FocusIn in
+		   `x_detect_focus_change'.  The main relevant culprit
+		   these days seems to be XFCE.  */
+		&& enter->mode != XINotifyUngrab
+		&& any && enter->event == FRAME_X_WINDOW (any))
 	      xi_reset_scroll_valuators_for_device_id (dpyinfo, enter->deviceid);
 
 	    f = any;
@@ -10230,7 +10238,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		}
 #endif
 	      if (found_valuator)
-		goto XI_OTHER;
+		{
+#ifdef USE_GTK
+		  if (f && xg_event_is_for_scrollbar (f, event))
+		    *finish = X_EVENT_DROP;
+#endif
+		  goto XI_OTHER;
+		}
 
 	      ev.x = lrint (xev->event_x);
 	      ev.y = lrint (xev->event_y);
@@ -13228,6 +13242,7 @@ frame_set_mouse_pixel_position (struct frame *f, int pix_x, int pix_y)
 
   if (FRAME_DISPLAY_INFO (f)->supports_xi2)
     {
+      XGrabServer (FRAME_X_DISPLAY (f));
       if (XIGetClientPointer (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
 			      &deviceid))
 	{
@@ -13236,6 +13251,7 @@ frame_set_mouse_pixel_position (struct frame *f, int pix_x, int pix_y)
 			 FRAME_X_WINDOW (f),
 			 0, 0, 0, 0, pix_x, pix_y);
 	}
+      XUngrabServer (FRAME_X_DISPLAY (f));
     }
   else
 #endif
