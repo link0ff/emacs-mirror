@@ -9273,7 +9273,7 @@ Called from `temp-buffer-show-hook'."
   :group 'completion)
 
 (defcustom completion-auto-select nil
-  "Non-nil means to automatically select the completions buffer."
+  "Non-nil means to automatically select the *Completions* buffer."
   :type 'boolean
   :version "29.1"
   :group 'completion)
