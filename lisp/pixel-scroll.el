@@ -96,30 +96,32 @@ is always with pixel resolution.")
 
 (defvar pixel-scroll-precision-mode-map
   (let ((map (make-sparse-keymap)))
-    (define-key map [wheel-down] #'pixel-scroll-precision)
-    (define-key map [wheel-up] #'pixel-scroll-precision)
-    (define-key map [touch-end] #'pixel-scroll-start-momentum)
-    (define-key map [mode-line wheel-down] #'pixel-scroll-precision)
-    (define-key map [mode-line wheel-up] #'pixel-scroll-precision)
-    (define-key map [mode-line touch-end] #'pixel-scroll-start-momentum)
-    (define-key map [header-line wheel-down] #'pixel-scroll-precision)
-    (define-key map [header-line wheel-up] #'pixel-scroll-precision)
-    (define-key map [header-line touch-end] #'pixel-scroll-start-momentum)
-    (define-key map [vertical-scroll-bar wheel-down] #'pixel-scroll-precision)
-    (define-key map [vertical-scroll-bar wheel-up] #'pixel-scroll-precision)
-    (define-key map [vertical-scroll-bar touch-end] #'pixel-scroll-start-momentum)
-    (define-key map [left-margin wheel-down] #'pixel-scroll-precision)
-    (define-key map [left-margin wheel-up] #'pixel-scroll-precision)
-    (define-key map [left-margin touch-end] #'pixel-scroll-start-momentum)
-    (define-key map [right-margin wheel-down] #'pixel-scroll-precision)
-    (define-key map [right-margin wheel-up] #'pixel-scroll-precision)
-    (define-key map [right-margin touch-end] #'pixel-scroll-start-momentum)
-    (define-key map [left-fringe wheel-down] #'pixel-scroll-precision)
-    (define-key map [left-fringe wheel-up] #'pixel-scroll-precision)
-    (define-key map [left-fringe touch-end] #'pixel-scroll-start-momentum)
-    (define-key map [right-fringe wheel-down] #'pixel-scroll-precision)
-    (define-key map [right-fringe wheel-up] #'pixel-scroll-precision)
-    (define-key map [right-fringe touch-end] #'pixel-scroll-start-momentum)
+    (define-key map [wheel-down] 'pixel-scroll-precision)
+    (define-key map [wheel-up] 'pixel-scroll-precision)
+    (define-key map [touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [mode-line wheel-down] 'pixel-scroll-precision)
+    (define-key map [mode-line wheel-up] 'pixel-scroll-precision)
+    (define-key map [mode-line touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [header-line wheel-down] 'pixel-scroll-precision)
+    (define-key map [header-line wheel-up] 'pixel-scroll-precision)
+    (define-key map [header-line touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [vertical-scroll-bar wheel-down] 'pixel-scroll-precision)
+    (define-key map [vertical-scroll-bar wheel-up] 'pixel-scroll-precision)
+    (define-key map [vertical-scroll-bar touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [left-margin wheel-down] 'pixel-scroll-precision)
+    (define-key map [left-margin wheel-up] 'pixel-scroll-precision)
+    (define-key map [left-margin touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [right-margin wheel-down] 'pixel-scroll-precision)
+    (define-key map [right-margin wheel-up] 'pixel-scroll-precision)
+    (define-key map [right-margin touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [left-fringe wheel-down] 'pixel-scroll-precision)
+    (define-key map [left-fringe wheel-up] 'pixel-scroll-precision)
+    (define-key map [left-fringe touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [right-fringe wheel-down] 'pixel-scroll-precision)
+    (define-key map [right-fringe wheel-up] 'pixel-scroll-precision)
+    (define-key map [right-fringe touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [next] 'pixel-scroll-interpolate-down)
+    (define-key map [prior] 'pixel-scroll-interpolate-up)
     map)
   "The key map used by `pixel-scroll-precision-mode'.")
 
@@ -178,6 +180,13 @@ Nil means to not interpolate such scrolls."
   "The number of seconds between each step of an interpolated scroll."
   :group 'mouse
   :type 'float
+  :version "29.1")
+
+(defcustom pixel-scroll-precision-interpolate-page nil
+  "Whether or not to interpolate scrolling via the Page Down and Page Up keys.
+This is only effective when `pixel-scroll-precision-mode' is enabled."
+  :group 'scrolling
+  :type 'boolean
   :version "29.1")
 
 (defun pixel-scroll-in-rush-p ()
@@ -671,10 +680,10 @@ wheel."
 
 (defun pixel-scroll-kinetic-state ()
   "Return the kinetic scroll state of the current window.
-It is a vector of the form [ VELOCITY TIME ]."
+It is a vector of the form [ VELOCITY TIME SIGN ]."
   (or (window-parameter nil 'kinetic-state)
       (set-window-parameter nil 'kinetic-state
-                            (vector (make-ring 10) nil))))
+                            (vector (make-ring 10) nil nil))))
 
 (defun pixel-scroll-accumulate-velocity (delta)
   "Accumulate DELTA into the current window's kinetic scroll state."
@@ -684,9 +693,9 @@ It is a vector of the form [ VELOCITY TIME ]."
     (when (or (and time (> (- (float-time) time) 0.5))
               (and (not (ring-empty-p ring))
                    (not (eq (< delta 0)
-                            (< (cdr (ring-ref ring 0))
-                               0)))))
+                            (aref state 2)))))
       (aset state 0 (make-ring 10)))
+    (aset state 2 (< delta 0))
     (ring-insert (aref state 0)
                  (cons (aset state 1 (float-time))
                        delta))))
@@ -750,6 +759,20 @@ It is a vector of the form [ VELOCITY TIME ]."
                                                         pixel-scroll-precision-momentum-tick))))))
               (aset state 0 (make-ring 10))
               (aset state 1 nil))))))))
+
+(defun pixel-scroll-interpolate-down ()
+  "Interpolate a scroll downwards by one page."
+  (interactive)
+  (if pixel-scroll-precision-interpolate-page
+      (pixel-scroll-precision-interpolate (- (window-text-height nil t)))
+    (scroll-up)))
+
+(defun pixel-scroll-interpolate-up ()
+  "Interpolate a scroll upwards by one page."
+  (interactive)
+  (if pixel-scroll-precision-interpolate-page
+      (pixel-scroll-precision-interpolate (window-text-height nil t))
+    (scroll-down)))
 
 ;;;###autoload
 (define-minor-mode pixel-scroll-precision-mode

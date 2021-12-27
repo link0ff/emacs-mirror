@@ -2961,6 +2961,14 @@ setup_xi_event_mask (struct frame *f)
       XISetMask (m, XI_TouchBegin);
       XISetMask (m, XI_TouchUpdate);
       XISetMask (m, XI_TouchEnd);
+#ifdef XI_GesturePinchBegin
+      if (FRAME_DISPLAY_INFO (f)->xi2_version >= 4)
+	{
+	  XISetMask (m, XI_GesturePinchBegin);
+	  XISetMask (m, XI_GesturePinchUpdate);
+	  XISetMask (m, XI_GesturePinchEnd);
+	}
+#endif
     }
 #endif
   XISelectEvents (FRAME_X_DISPLAY (f),
@@ -4506,8 +4514,8 @@ If omitted or nil, that stands for the selected frame's display.  */)
 		 VendorRelease (dpy));
 }
 
-DEFUN ("x-server-input-version", Fx_server_input_version,
-       Sx_server_input_version, 0, 1, 0,
+DEFUN ("x-server-input-extension-version", Fx_server_input_extension_version,
+       Sx_server_input_extension_version, 0, 1, 0,
        doc: /* Return the version of the X Input Extension supported by TERMINAL.
 The value is nil if TERMINAL's X server doesn't support the X Input
 Extension extension, or if Emacs doesn't support the version present
@@ -8214,7 +8222,7 @@ eliminated in future versions of Emacs.  */);
   defsubr (&Sx_server_max_request_size);
   defsubr (&Sx_server_vendor);
   defsubr (&Sx_server_version);
-  defsubr (&Sx_server_input_version);
+  defsubr (&Sx_server_input_extension_version);
   defsubr (&Sx_display_pixel_width);
   defsubr (&Sx_display_pixel_height);
   defsubr (&Sx_display_mm_width);

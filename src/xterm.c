@@ -638,7 +638,7 @@ xi_grab_or_ungrab_device (struct xi_device_t *device,
   XISetMask (m, XI_Leave);
 
   if (device->grab
-#ifdef USE_MOTIF
+#if defined USE_MOTIF || defined USE_LUCID
       && !popup_activated ()
 #endif
       )
@@ -5246,6 +5246,7 @@ x_detect_focus_change (struct x_display_info *dpyinfo, struct frame *frame,
 	       || xi_event->evtype == XI_Leave)
 	      && (((XIEnterEvent *) xi_event)->detail
 		  != XINotifyInferior)
+	      && ((XIEnterEvent *) xi_event)->focus
 	      && !(focus_state & FOCUS_EXPLICIT))
 	  x_focus_changed ((xi_event->evtype == XI_Enter
 			    ? FocusIn : FocusOut),
@@ -9387,6 +9388,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 
       f = x_top_window_to_frame (dpyinfo, event->xcrossing.window);
+#if defined HAVE_X_TOOLKIT && defined HAVE_XINPUT2
+      /* The XI2 event mask is set on the frame widget, so this event
+	 likely originates from the shell widget, which we aren't
+	 interested in.  */
+      if (dpyinfo->supports_xi2)
+	f = NULL;
+#endif
       if (f)
         {
           if (f == hlinfo->mouse_face_mouse_frame)
@@ -10051,7 +10059,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    x_display_set_last_user_time (dpyinfo, xi_event->time);
 	    x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 
+#ifndef USE_X_TOOLKIT
 	    f = x_top_window_to_frame (dpyinfo, leave->event);
+#else
+	    /* On Xt builds that have XI2, the enter and leave event
+	       masks are set on the frame widget's window.  */
+	    f = x_window_to_frame (dpyinfo, leave->event);
+#endif
 	    if (f)
 	      {
 		if (f == hlinfo->mouse_face_mouse_frame)
@@ -11044,6 +11058,41 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      goto XI_OTHER;
 	    }
+#endif
+#ifdef XI_GesturePinchBegin
+	  case XI_GesturePinchBegin:
+	  case XI_GesturePinchUpdate:
+	    {
+#ifdef HAVE_USABLE_XI_GESTURE_PINCH_EVENT
+	      XIGesturePinchEvent *pev = (XIGesturePinchEvent *) xi_event;
+	      struct xi_device_t *device = xi_device_from_id (dpyinfo, pev->deviceid);
+
+	      if (!device || !device->master_p)
+		goto XI_OTHER;
+
+	      any = x_any_window_to_frame (dpyinfo, pev->event);
+	      if (any)
+		{
+		  inev.ie.kind = PINCH_EVENT;
+		  inev.ie.modifiers = x_x_to_emacs_modifiers (FRAME_DISPLAY_INFO (any),
+							      pev->mods.effective);
+		  XSETINT (inev.ie.x, lrint (pev->event_x));
+		  XSETINT (inev.ie.y, lrint (pev->event_y));
+		  XSETFRAME (inev.ie.frame_or_window, any);
+		  inev.ie.arg = list4 (make_float (pev->delta_x),
+				       make_float (pev->delta_y),
+				       make_float (pev->scale),
+				       make_float (pev->delta_angle));
+		}
+#endif
+	      /* Once again GTK seems to crash when confronted by
+		 events it doesn't understand.  */
+	      *finish = X_EVENT_DROP;
+	      goto XI_OTHER;
+	    }
+	  case XI_GesturePinchEnd:
+	    *finish = X_EVENT_DROP;
+	    goto XI_OTHER;
 #endif
 	  default:
 	    goto XI_OTHER;

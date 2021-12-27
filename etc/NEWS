@@ -312,6 +312,8 @@ effectively dragged.
 Customize this option to limit the number of entries in the menu
 "Edit->Paste from Kill Menu".  The default is 60.
 
+** Performing a pinch gesture on a touchpad now increases the text scale.
+
 ** show-paren-mode
 
 +++
@@ -890,6 +892,12 @@ This allows setting a minimum display width for a region of text.
 This event is sent whenever the user's finger moves off the mouse
 wheel on some mice, or when the user's finger moves off the touchpad.
 
++++
+** New event type 'pinch'.
+This event is sent when a user peforms a pinch gesture on a touchpad,
+which is comprised of placing two fingers on the touchpad and moving
+them towards or away from each other.
+
 ** Keymaps and key definitions
 
 +++
@@ -933,6 +941,10 @@ in the documentation.
 If non-nil, remove the definition from the keymap.  This is subtly
 different from setting a definition to nil (when the keymap has a
 parent).
+
++++
+*** 'read-multiple-choice' now takes an optional SHOW-HELP argument.
+If non-nil, show the help buffer immediately, before any user input.
 
 +++
 *** New function 'key-valid-p'.
