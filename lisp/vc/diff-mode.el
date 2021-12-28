@@ -716,45 +716,6 @@ next hunk if TRY-HARDER is non-nil; otherwise signal an error."
 (easy-mmode-define-navigation
  diff-file diff-file-header-re "file" diff-end-of-file)
 
-(defun diff-goto-line (file line column)
-  "Go to the place in this diff producing LINE in FILE.
-If LINE (in the new version of FILE) is included, move to it and then
-COLUMN characters forward.  If it is absent, go to the first hunk
-starting after LINE, or to the end if none does.
-If FILE isn't mentioned, go to the beginning of the buffer."
-  (goto-char (point-min))
-  (while (and (re-search-forward diff-file-header-re nil 'move)
-              (not (string-equal (diff-find-file-name) file))))
-  (if (eobp) (goto-char (point-min))
-    (forward-line -1)
-    (while
-        (progn
-          (condition-case nil (diff-hunk-next)
-            (error (goto-char (point-max))))
-          (cond ((eobp) nil)            ; end of the line
-                ((looking-at diff-hunk-header-re-unified)
-                 (let ((start (string-to-number (match-string 3)))
-                       ;; FIXME: assuming that we have the length
-                       (len (string-to-number (match-string 4))))
-                   (cond ((< line start) nil)    ; nothing found
-                         ((< line (+ start len)) ; this is our stop
-                          (dotimes (i (- line start -1))
-                            (while (progn (forward-line 1)
-                                          (eq (char-after) ?-))))
-                          (forward-char (1+ column)))
-                         (t))))         ; keep looking
-                ((looking-at diff-hunk-header-re-context)
-                 (re-search-forward diff-context-mid-hunk-header-re)
-                 (let ((start (string-to-number (match-string 2)))
-                       ;; FIXME: assuming that we have the length
-                       (end (string-to-number (match-string 3))))
-                   (cond ((< line start) nil) ; nothing found
-                         ((<= line end)       ; this is our stop
-                          (forward-line (- line start -1))
-                          (forward-char (+ column 2)))
-                         (t))))         ; keep looking
-                (t (error "Unified or context diffs only")))))))
-
 (defun diff-bounds-of-hunk ()
   "Return the bounds of the diff hunk at point.
 The return value is a list (BEG END), which are the hunk's start

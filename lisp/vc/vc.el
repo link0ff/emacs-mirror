@@ -740,7 +740,6 @@
 
 (declare-function diff-setup-whitespace "diff-mode" ())
 (declare-function diff-setup-buffer-type "diff-mode" ())
-(declare-function diff-goto-line "diff-mode")
 
 (eval-when-compile
   (require 'dired))
@@ -1731,11 +1730,11 @@ to override the value of `vc-diff-switches' and `diff-switches'."
       ;; any switches in diff-switches.
       (when (listp switches) switches))))
 
-(defun vc-diff-finish (buffer messages loc)
+(defun vc-diff-finish (buffer messages)
   ;; The empty sync output case has already been handled, so the only
   ;; possibility of an empty output is for an async process.
   (when (buffer-live-p buffer)
-    (let (;;(window (get-buffer-window buffer t))
+    (let ((window (get-buffer-window buffer t))
 	  (emptyp (zerop (buffer-size buffer))))
       (with-current-buffer buffer
 	(and messages emptyp
@@ -1745,10 +1744,8 @@ to override the value of `vc-diff-switches' and `diff-switches'."
 	(diff-setup-whitespace)
 	(diff-setup-buffer-type)
 	(goto-char (point-min))
-        (message "vc-diff-finish: shrink-window-if-larger-than-buffer")
-	;; (when window
-	;;   (shrink-window-if-larger-than-buffer window))
-        (when loc (apply #'diff-goto-line loc)))
+	(when window
+	  (shrink-window-if-larger-than-buffer window)))
       (when (and messages (not emptyp))
 	(message "%sdone" (car messages))))))
 
@@ -1772,8 +1769,7 @@ Return t if the buffer had changes, nil otherwise."
 	 ;; but the only way to set it for each file included would
 	 ;; be to call the back end separately for each file.
 	 (coding-system-for-read
-	  (if files (vc-coding-system-for-diff (car files)) 'undecided))
-         loc)
+	  (if files (vc-coding-system-for-diff (car files)) 'undecided)))
     ;; On MS-Windows and MS-DOS, Diff is likely to produce DOS-style
     ;; EOLs, which will look ugly if (car files) happens to have Unix
     ;; EOLs.
@@ -1810,24 +1806,6 @@ Return t if the buffer had changes, nil otherwise."
                      (if async 'async 1) "diff" file
                      (append (vc-switches nil 'diff) `(,(null-device)))))))
         (setq files (nreverse filtered))))
-    ;; [2021-02-11] I think it should either try to get visible window's buffer position
-    ;; or maybe also search in non-visible buffers?
-    ;; [2021-03-30] BETTER TO ADD THIS TO A NEW HOOK
-    ;; (together with `shrink-window-if-larger-than-buffer'
-    ;; and "Type 'd' here to show diffs with working version")
-    (unless rev2    ; remember the position in the or a current buffer
-      (let ((f files))
-        (while f
-          (let ((buf (find-buffer-visiting (car f))))
-            (when buf
-              (setq loc
-                    (with-current-buffer buf
-                      (save-restriction
-                        (widen)
-                        (list (file-relative-name (car f))
-                              (line-number-at-pos)
-                              (- (point) (line-beginning-position)))))))
-            (setq f (unless (eq buf (current-buffer)) (cdr f)))))))
     (vc-call-backend (car vc-fileset) 'diff files rev1 rev2 buffer async)
     (set-buffer buffer)
     (diff-mode)
@@ -1852,7 +1830,7 @@ Return t if the buffer had changes, nil otherwise."
       ;; after `pop-to-buffer'; the former assumes the diff buffer is
       ;; shown in some window.
       (let ((buf (current-buffer)))
-        (vc-run-delayed (vc-diff-finish buf (when verbose messages) loc)))
+        (vc-run-delayed (vc-diff-finish buf (when verbose messages))))
       ;; In the async case, we return t even if there are no differences
       ;; because we don't know that yet.
       t)))
@@ -2548,21 +2526,13 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
     ;; Display after setting up major-mode, so display-buffer-alist can know
     ;; the major-mode.
     (pop-to-buffer buffer)
-    ;; Scroll out of possible header inserted by backend function.
-    ;; TODO: this also hides vc-svn.el "Working file: "
-    (when (get-buffer-window buffer)
-      (set-window-start (get-buffer-window buffer) (point)))
     (vc-run-delayed
      (let ((inhibit-read-only t))
        (funcall setup-buttons-func backend files retval)
-       (message "vc-log-internal-common: shrink-window-if-larger-than-buffer")
-       ;; (shrink-window-if-larger-than-buffer)
-       ;; TODO: maybe all these should be added to `vc-log-finish-functions'
-       ;; e.g. '(shrink-window-if-larger-than-buffer goto-location ...)
+       (shrink-window-if-larger-than-buffer)
        (when goto-location-func
          (funcall goto-location-func backend)
-         (setq vc-sentinel-movepoint (point)) ; cf with annotate
-         )
+         (setq vc-sentinel-movepoint (point)))
        (set-buffer-modified-p nil)))))
 
 (defun vc-incoming-outgoing-internal (backend remote-location buffer-name type)
