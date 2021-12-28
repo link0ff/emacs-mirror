@@ -46,6 +46,10 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <X11/extensions/XInput2.h>
 #endif
 
+#ifdef HAVE_XRANDR
+#include <X11/extensions/Xrandr.h>
+#endif
+
 /* Load sys/types.h if not already loaded.
    In some systems loading it twice is suicidal.  */
 #ifndef makedev
@@ -618,40 +622,6 @@ xi_find_touch_point (struct xi_device_t *device, int detail)
 }
 
 #endif /* XI_TouchBegin */
-
-static void
-xi_grab_or_ungrab_device (struct xi_device_t *device,
-			  struct x_display_info *dpyinfo,
-			  Window window)
-{
-  XIEventMask mask;
-  ptrdiff_t l = XIMaskLen (XI_LASTEVENT);
-  unsigned char *m;
-  mask.mask = m = alloca (l);
-  memset (m, 0, l);
-  mask.mask_len = l;
-
-  XISetMask (m, XI_ButtonPress);
-  XISetMask (m, XI_ButtonRelease);
-  XISetMask (m, XI_Motion);
-  XISetMask (m, XI_Enter);
-  XISetMask (m, XI_Leave);
-
-  if (device->grab
-#if defined USE_MOTIF || defined USE_LUCID
-      && !popup_activated ()
-#endif
-      )
-    {
-      XIGrabDevice (dpyinfo->display, device->device_id, window,
-		    CurrentTime, None, GrabModeAsync,
-		    GrabModeAsync, True, &mask);
-    }
-  else
-    {
-      XIUngrabDevice (dpyinfo->display, device->device_id, CurrentTime);
-    }
-}
 
 static void
 xi_reset_scroll_valuators_for_device_id (struct x_display_info *dpyinfo, int id)
@@ -10500,8 +10470,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  device->grab &= ~(1 << xev->detail);
 		}
 
-	      xi_grab_or_ungrab_device (device, dpyinfo, xev->event);
-
 	      if (f)
 		f->mouse_moved = false;
 
@@ -14837,6 +14805,17 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 	}
     }
   dpyinfo->xi2_version = minor;
+#endif
+
+#ifdef HAVE_XRANDR
+  int xrr_event_base, xrr_error_base;
+  bool xrr_ok = false;
+  xrr_ok = XRRQueryExtension (dpy, &xrr_event_base, &xrr_error_base);
+  if (xrr_ok)
+    {
+      XRRQueryVersion (dpy, &dpyinfo->xrandr_major_version,
+		       &dpyinfo->xrandr_minor_version);
+    }
 #endif
 
 #ifdef HAVE_XKB
