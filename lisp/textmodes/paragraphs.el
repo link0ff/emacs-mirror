@@ -479,6 +479,11 @@ sentences.  Also, every paragraph boundary terminates sentences as well."
       (setq arg (1- arg)))
     (constrain-to-field nil opoint t)))
 
+(defun repunctuate-sentences-filter (_start _end)
+  ;; (message "! %S %S" (point) (buffer-substring-no-properties (- (point) 4) (point)))
+  (not (or (length= (match-string 4) 2)
+           (looking-back (rx (or "e.g." "i.e.") " ") 5))))
+
 (defun repunctuate-sentences (&optional no-query start end)
   "Put two spaces at the end of sentences from point to the end of buffer.
 It works using `query-replace-regexp'.  In Transient Mark mode,
@@ -489,14 +494,21 @@ asking for confirmation."
   (interactive (list nil
                      (if (use-region-p) (region-beginning))
                      (if (use-region-p) (region-end))))
-  (let ((regexp "\\([]\"')]?\\)\\([.?!]\\)\\([]\"')]?\\) +")
-        (to-string "\\1\\2\\3  "))
-    (if no-query
-        (progn
-          (when start (goto-char start))
-          (while (re-search-forward regexp end t)
-            (replace-match to-string)))
-      (query-replace-regexp regexp to-string nil start end))))
+  (if no-query
+      (let ((regexp "\\([]\"')]?\\)\\([.?!]\\)\\([]\"')]?\\) +")
+            (to-string "\\1\\2\\3  "))
+        (when start (goto-char start))
+        (while (re-search-forward regexp end t)
+          (replace-match to-string)))
+    (let ((regexp "\\([]\"')]?\\)\\([.?!]\\)\\([]\"')]?\\)\\( +\\)")
+          (to-string "\\1\\2\\3  "))
+      (unwind-protect
+          (progn
+            (add-function :after-while isearch-filter-predicate
+                          #'repunctuate-sentences-filter)
+            (query-replace-regexp regexp to-string nil start end))
+        (remove-function isearch-filter-predicate
+                         #'repunctuate-sentences-filter)))))
 
 
 (defun backward-sentence (&optional arg)
