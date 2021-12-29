@@ -675,7 +675,7 @@ since it could result in memory overflow and make Emacs crash."
 						     :format "%v")
 					    (other :tag "Unlimited" t))
 			      "24.3")
-             (unibyte-display-via-language-environment mule boolean)
+	     (unibyte-display-via-language-environment mule boolean)
 	     (blink-cursor-alist cursor alist "22.1")
 	     (overline-margin display integer "22.1")
 	     (underline-minimum-offset display integer "23.1")
