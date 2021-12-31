@@ -452,7 +452,7 @@ selected frame is not an X-Windows frame.  */)
 
   if (!NILP (frame))
     f = decode_window_system_frame (frame);
-  else if (FRAME_X_P (SELECTED_FRAME ()))
+  else if (FRAME_WINDOW_P (SELECTED_FRAME ()))
     f = SELECTED_FRAME ();
 
 #ifdef USE_GTK
@@ -461,10 +461,12 @@ selected frame is not an X-Windows frame.  */)
   if (!f)
     return Qnil;
 
+  block_input ();
   osw = gtk_widget_get_window (xw->widgetwindow_osr);
   embedder = gtk_widget_get_window (FRAME_GTK_OUTER_WIDGET (f));
 
   gdk_offscreen_window_set_embedder (osw, embedder);
+  unblock_input ();
 #endif
   widget = gtk_window_get_focus (GTK_WINDOW (xw->widgetwindow_osr));
 
@@ -540,7 +542,17 @@ selected frame is not an X-Windows frame.  */)
     }
 
   if (character == -1 && keycode == -1)
-    return Qnil;
+    {
+#ifdef HAVE_XINPUT2
+      block_input ();
+      if (xw->embedder_view)
+	record_osr_embedder (xw->embedder_view);
+      else
+	gdk_offscreen_window_set_embedder (osw, NULL);
+      unblock_input ();
+#endif
+      return Qnil;
+    }
 
   block_input ();
   xg_event = gdk_event_new (GDK_KEY_PRESS);
@@ -584,6 +596,13 @@ selected frame is not an X-Windows frame.  */)
   xg_event->type = GDK_KEY_RELEASE;
   gtk_main_do_event (xg_event);
   gdk_event_free (xg_event);
+
+#ifdef HAVE_XINPUT2
+  if (xw->embedder_view)
+    record_osr_embedder (xw->embedder_view);
+  else
+    gdk_offscreen_window_set_embedder (osw, NULL);
+#endif
   unblock_input ();
 #endif
 
@@ -1143,7 +1162,9 @@ xwidget_button (struct xwidget_view *view,
 #ifdef HAVE_XINPUT2
 void
 xwidget_motion_notify (struct xwidget_view *view,
-		       double x, double y, uint state, Time time)
+		       double x, double y,
+		       double root_x, double root_y,
+		       uint state, Time time)
 {
   GdkEvent *xg_event;
   GtkWidget *target;
@@ -1171,8 +1192,8 @@ xwidget_motion_notify (struct xwidget_view *view,
   xg_event->any.window = gtk_widget_get_window (target);
   xg_event->motion.x = target_x;
   xg_event->motion.y = target_y;
-  xg_event->motion.x_root = lrint (x);
-  xg_event->motion.y_root = lrint (y);
+  xg_event->motion.x_root = root_x;
+  xg_event->motion.y_root = root_y;
   xg_event->motion.time = time;
   xg_event->motion.state = state;
   xg_event->motion.device = find_suitable_pointer (view->frame);
@@ -1229,6 +1250,70 @@ xwidget_scroll (struct xwidget_view *view, double x, double y,
   gtk_main_do_event (xg_event);
   gdk_event_free (xg_event);
 }
+
+#ifdef HAVE_USABLE_XI_GESTURE_PINCH_EVENT
+void
+xwidget_pinch (struct xwidget_view *view, XIGesturePinchEvent *xev)
+{
+#if GTK_CHECK_VERSION (3, 18, 0)
+  GdkEvent *xg_event;
+  GtkWidget *target;
+  struct xwidget *model = XXWIDGET (view->model);
+  int target_x, target_y;
+  double x = xev->event_x;
+  double y = xev->event_y;
+
+  if (NILP (model->buffer))
+    return;
+
+  record_osr_embedder (view);
+
+  target = find_widget_at_pos (model->widgetwindow_osr,
+			       lrint (x + view->clip_left),
+			       lrint (y + view->clip_top),
+			       &target_x, &target_y);
+
+  if (!target)
+    {
+      target_x = lrint (x);
+      target_y = lrint (y);
+      target = model->widget_osr;
+    }
+
+  xg_event = gdk_event_new (GDK_TOUCHPAD_PINCH);
+  xg_event->any.window = gtk_widget_get_window (target);
+  xg_event->touchpad_pinch.x = target_x;
+  xg_event->touchpad_pinch.y = target_y;
+  xg_event->touchpad_pinch.dx = xev->delta_x;
+  xg_event->touchpad_pinch.dy = xev->delta_y;
+  xg_event->touchpad_pinch.angle_delta = xev->delta_angle;
+  xg_event->touchpad_pinch.scale = xev->scale;
+  xg_event->touchpad_pinch.x_root = xev->root_x;
+  xg_event->touchpad_pinch.y_root = xev->root_y;
+  xg_event->touchpad_pinch.state = xev->mods.effective;
+  xg_event->touchpad_pinch.n_fingers = 2;
+
+  switch (xev->evtype)
+    {
+    case XI_GesturePinchBegin:
+      xg_event->touchpad_pinch.phase = GDK_TOUCHPAD_GESTURE_PHASE_BEGIN;
+      break;
+    case XI_GesturePinchUpdate:
+      xg_event->touchpad_pinch.phase = GDK_TOUCHPAD_GESTURE_PHASE_UPDATE;
+      break;
+    case XI_GesturePinchEnd:
+      xg_event->touchpad_pinch.phase = GDK_TOUCHPAD_GESTURE_PHASE_END;
+      break;
+    }
+
+  gdk_event_set_device (xg_event, find_suitable_pointer (view->frame));
+
+  g_object_ref (xg_event->any.window);
+  gtk_main_do_event (xg_event);
+  gdk_event_free (xg_event);
+#endif
+}
+#endif
 #endif
 
 #ifdef HAVE_XINPUT2
@@ -2161,6 +2246,14 @@ x_draw_xwidget_glyph_string (struct glyph_string *s)
 	  XISetMask (m, XI_ButtonRelease);
 	  XISetMask (m, XI_Enter);
 	  XISetMask (m, XI_Leave);
+#ifdef XI_GesturePinchBegin
+	  if (FRAME_DISPLAY_INFO (s->f)->xi2_version >= 4)
+	    {
+	      XISetMask (m, XI_GesturePinchBegin);
+	      XISetMask (m, XI_GesturePinchUpdate);
+	      XISetMask (m, XI_GesturePinchEnd);
+	    }
+#endif
 	  XISelectEvents (xv->dpy, xv->wdesc, &mask, 1);
 	}
 #endif
@@ -2612,18 +2705,18 @@ DEFUN ("delete-xwidget-view",
 {
   CHECK_XWIDGET_VIEW (xwidget_view);
   struct xwidget_view *xv = XXWIDGET_VIEW (xwidget_view);
+
+  block_input ();
 #ifdef USE_GTK
   struct xwidget *xw = XXWIDGET (xv->model);
   GdkWindow *w;
 #ifdef HAVE_X_WINDOWS
   if (xv->wdesc != None)
     {
-      block_input ();
       cairo_destroy (xv->cr_context);
       cairo_surface_destroy (xv->cr_surface);
       XDestroyWindow (xv->dpy, xv->wdesc);
       Fremhash (make_fixnum (xv->wdesc), x_window_to_xwv_map);
-      unblock_input ();
     }
 #else
   gtk_widget_destroy (xv->widget);
@@ -2644,6 +2737,7 @@ DEFUN ("delete-xwidget-view",
 
   internal_xwidget_view_list = Fdelq (xwidget_view, internal_xwidget_view_list);
   Vxwidget_view_list = Fcopy_sequence (internal_xwidget_view_list);
+  unblock_input ();
   return Qnil;
 }
 
