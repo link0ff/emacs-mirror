@@ -1,6 +1,6 @@
 GNU Emacs NEWS -- history of user-visible changes.
 
-Copyright (C) 2021 Free Software Foundation, Inc.
+Copyright (C) 2021-2022 Free Software Foundation, Inc.
 See the end of the file for license conditions.
 
 Please send Emacs bug reports to 'bug-gnu-emacs@gnu.org'.
@@ -72,9 +72,9 @@ work on any underlying window system supported by GDK, such as
 Wayland and Broadway.
 
 ---
-** The docstrings of preloaded files are not in etc/DOC any more.
-Instead, they're fetched from the corresponding '.elc' file, as was already
-the case for all the non-preloaded files.
+** The docstrings of preloaded files are not in 'etc/DOC' any more.
+Instead, they're fetched as needed from the corresponding '.elc' file,
+as was already the case for all the non-preloaded files.
 
 
 * Startup Changes in Emacs 29.1

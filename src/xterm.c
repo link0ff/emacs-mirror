@@ -1,6 +1,6 @@
 /* X Communication module for terminals which understand the X protocol.
 
-Copyright (C) 1989, 1993-2021 Free Software Foundation, Inc.
+Copyright (C) 1989, 1993-2022 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -10173,12 +10173,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  val->emacs_value += delta;
 
 			  if (mwheel_coalesce_scroll_events
-			      && (fabs (val->emacs_value) < 1)
-			      && (fabs (delta) > 0))
+			      && (fabs (val->emacs_value) < 1))
 			    continue;
 
 			  bool s = signbit (val->emacs_value);
-			  inev.ie.kind = (fabs (delta) > 0
+			  inev.ie.kind = ((mwheel_coalesce_scroll_events
+					   || fabs (delta) > 0)
 					  ? (val->horizontal
 					     ? HORIZ_WHEEL_EVENT
 					     : WHEEL_EVENT)
@@ -11106,6 +11106,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  case XI_GesturePinchBegin:
 	  case XI_GesturePinchUpdate:
 	    {
+	      x_display_set_last_user_time (dpyinfo, xi_event->time);
+
 #ifdef HAVE_USABLE_XI_GESTURE_PINCH_EVENT
 	      XIGesturePinchEvent *pev = (XIGesturePinchEvent *) xi_event;
 	      struct xi_device_t *device = xi_device_from_id (dpyinfo, pev->deviceid);
@@ -11146,6 +11148,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    }
 	  case XI_GesturePinchEnd:
 	    {
+	      x_display_set_last_user_time (dpyinfo, xi_event->time);
+
 #if defined HAVE_XWIDGETS && HAVE_USABLE_XI_GESTURE_PINCH_EVENT
 	      XIGesturePinchEvent *pev = (XIGesturePinchEvent *) xi_event;
 	      struct xwidget_view *xvw = xwidget_view_from_window (pev->event);

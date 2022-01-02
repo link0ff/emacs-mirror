@@ -1,6 +1,6 @@
 ;;; startup.el --- process Emacs shell arguments  -*- lexical-binding: t -*-
 
-;; Copyright (C) 1985-1986, 1992, 1994-2021 Free Software Foundation,
+;; Copyright (C) 1985-1986, 1992, 1994-2022 Free Software Foundation,
 ;; Inc.
 
 ;; Maintainer: emacs-devel@gnu.org
@@ -1057,7 +1057,7 @@ the `--debug-init' option to view a complete error backtrace."
       (setq debug-on-error debug-on-error-from-init-file))))
 
 (defvar lisp-directory nil
-  "Directory containing the Lisp files that come with GNU Emacs.")
+  "Directory where Emacs's own *.el and *.elc Lisp files are installed.")
 
 (defun command-line ()
   "A subroutine of `normal-top-level'.

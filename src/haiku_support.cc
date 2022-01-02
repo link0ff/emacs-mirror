@@ -1,5 +1,5 @@
 /* Haiku window system support.  Hey, Emacs, this is -*- C++ -*-
-   Copyright (C) 2021 Free Software Foundation, Inc.
+   Copyright (C) 2021-2022 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -84,6 +84,33 @@ static color_space dpy_color_space = B_NO_COLOR_SPACE;
 static key_map *key_map = NULL;
 static char *key_chars = NULL;
 static BLocker key_map_lock;
+
+/* The locking semantics of BWindows running in multiple threads are
+   so complex that child frame state (which is the only state that is
+   shared between different BWindows at runtime) does best with a
+   single global lock.  */
+
+static BLocker child_frame_lock;
+
+/* A LeaveNotify event (well, the closest equivalent on Haiku, which
+   is a B_MOUSE_MOVED event with `transit' set to B_EXITED_VIEW) might
+   be sent out-of-order with regards to motion events from other
+   windows, such as when the mouse pointer rapidly moves from an
+   undecorated child frame to its parent.  This can cause a failure to
+   clear the mouse face on the former if an event for the latter is
+   read by Emacs first and ends up showing the mouse face there.
+
+   While this lock doesn't really ensure that the events will be
+   delivered in the correct order, it makes them arrive in the correct
+   order "most of the time" on my machine, which is good enough and
+   preferable to adding a lot of extra complexity to the event
+   handling code to sort motion events by their timestamps.
+
+   Obviously this depends on the number of execution units that are
+   available, and the scheduling priority of each thread involved in
+   the input handling, but it will be good enough for most people.  */
+
+static BLocker movement_locker;
 
 extern "C"
 {
@@ -238,6 +265,7 @@ public:
   int fullscreen_p = 0;
   int zoomed_p = 0;
   int shown_flag = 0;
+  volatile int was_shown_p = 0;
 
   EmacsWindow () : BWindow (BRect (0, 0, 0, 0), "", B_TITLED_WINDOW_LOOK,
 			    B_NORMAL_WINDOW_FEEL, B_NO_SERVER_SIDE_WINDOW_MODIFIERS)
@@ -247,16 +275,22 @@ public:
 
   ~EmacsWindow ()
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
     struct child_frame *next;
     for (struct child_frame *f = subset_windows; f; f = next)
       {
+	if (f->window->LockLooper ())
+	  gui_abort ("Failed to lock looper for unparent");
 	f->window->Unparent ();
+	f->window->UnlockLooper ();
 	next = f->next;
 	delete f;
       }
 
     if (this->parent)
       UnparentAndUnlink ();
+    child_frame_lock.Unlock ();
   }
 
   void
@@ -269,10 +303,16 @@ public:
   void
   UpwardsSubsetChildren (EmacsWindow *w)
   {
+    if (!LockLooper ())
+      gui_abort ("Failed to lock looper for subset");
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
     UpwardsSubset (w);
     for (struct child_frame *f = subset_windows; f;
 	 f = f->next)
       f->window->UpwardsSubsetChildren (w);
+    child_frame_lock.Unlock ();
+    UnlockLooper ();
   }
 
   void
@@ -285,15 +325,23 @@ public:
   void
   UpwardsUnSubsetChildren (EmacsWindow *w)
   {
+    if (!LockLooper ())
+      gui_abort ("Failed to lock looper for unsubset");
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
     UpwardsUnSubset (w);
     for (struct child_frame *f = subset_windows; f;
 	 f = f->next)
       f->window->UpwardsUnSubsetChildren (w);
+    child_frame_lock.Unlock ();
+    UnlockLooper ();
   }
 
   void
   Unparent (void)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
     this->SetFeel (B_NORMAL_WINDOW_FEEL);
     UpwardsUnSubsetChildren (parent);
     this->RemoveFromSubset (this);
@@ -303,13 +351,17 @@ public:
 	fullscreen_p = 0;
 	MakeFullscreen (1);
       }
+    child_frame_lock.Unlock ();
   }
 
   void
   UnparentAndUnlink (void)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
     this->parent->UnlinkChild (this);
     this->Unparent ();
+    child_frame_lock.Unlock ();
   }
 
   void
@@ -324,8 +376,8 @@ public:
 	  {
 	    if (last)
 	      last->next = tem->next;
-	    if (tem == subset_windows)
-	      subset_windows = NULL;
+	    else
+	      subset_windows = tem->next;
 	    delete tem;
 	    return;
 	  }
@@ -337,6 +389,9 @@ public:
   void
   ParentTo (EmacsWindow *window)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
+
     if (this->parent)
       UnparentAndUnlink ();
 
@@ -352,6 +407,8 @@ public:
       }
     this->Sync ();
     window->LinkChild (this);
+
+    child_frame_lock.Unlock ();
   }
 
   void
@@ -380,7 +437,6 @@ public:
     BRect frame = this->Frame ();
     f->window->MoveTo (frame.left + f->xoff,
 		       frame.top + f->yoff);
-    this->Sync ();
   }
 
   void
@@ -393,6 +449,9 @@ public:
   MoveChild (EmacsWindow *window, int xoff, int yoff,
 	     int weak_p)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
+
     for (struct child_frame *f = subset_windows; f;
 	 f = f->next)
       {
@@ -402,10 +461,13 @@ public:
 	    f->yoff = yoff;
 	    if (!weak_p)
 	      DoMove (f);
+
+	    child_frame_lock.Unlock ();
 	    return;
 	  }
       }
 
+    child_frame_lock.Unlock ();
     gui_abort ("Trying to move a child frame that doesn't exist");
   }
 
@@ -606,27 +668,39 @@ public:
 
     haiku_write (MOVE_EVENT, &rq);
 
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
     for (struct child_frame *f = subset_windows;
 	 f; f = f->next)
       DoMove (f);
+    child_frame_lock.Unlock ();
+
+    Sync ();
     BWindow::FrameMoved (newPosition);
   }
 
   void
   WorkspacesChanged (uint32_t old, uint32_t n)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frames for changing workspaces");
     for (struct child_frame *f = subset_windows;
 	 f; f = f->next)
       DoUpdateWorkspace (f);
+    child_frame_lock.Unlock ();
   }
 
   void
   EmacsMoveTo (int x, int y)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
+
     if (!this->parent)
       this->MoveTo (x, y);
     else
       this->parent->MoveChild (this, x, y, 0);
+    child_frame_lock.Unlock ();
   }
 
   bool
@@ -654,9 +728,14 @@ public:
   {
     if (this->IsHidden ())
       return;
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
+
     Hide ();
     if (this->parent)
       UpwardsUnSubsetChildren (this->parent);
+
+    child_frame_lock.Unlock ();
   }
 
   void
@@ -664,11 +743,29 @@ public:
   {
     if (!this->IsHidden ())
       return;
+
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
+
+    if (!was_shown_p)
+      {
+	/* This window is being shown for the first time, which means
+	   Show will unlock the looper.  In this case, it should be
+	   locked again, since the looper is unlocked when the window
+	   is first created.  */
+
+	if (!LockLooper ())
+	  gui_abort ("Failed to lock looper during first window show");
+	was_shown_p = true;
+      }
+
     if (this->parent)
       shown_flag = 1;
     Show ();
     if (this->parent)
       UpwardsSubsetChildren (this->parent);
+
+    child_frame_lock.Unlock ();
   }
 
   void
@@ -719,6 +816,9 @@ public:
   void
   GetParentWidthHeight (int *width, int *height)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
+
     if (parent)
       {
 	*width = parent->Frame ().Width ();
@@ -730,11 +830,16 @@ public:
 	*width = s.Frame ().Width ();
 	*height = s.Frame ().Height ();
       }
+
+    child_frame_lock.Unlock ();
   }
 
   void
   OffsetChildRect (BRect *r, EmacsWindow *c)
   {
+    if (!child_frame_lock.Lock ())
+      gui_abort ("Failed to lock child frame state lock");
+
     for (struct child_frame *f; f; f = f->next)
       if (f->window == c)
 	{
@@ -742,9 +847,11 @@ public:
 	  r->bottom -= f->yoff;
 	  r->left -= f->xoff;
 	  r->right -= f->xoff;
+	  child_frame_lock.Unlock ();
 	  return;
 	}
 
+    child_frame_lock.Lock ();
     gui_abort ("Trying to calculate offsets for a child frame that doesn't exist");
   }
 
@@ -753,8 +860,8 @@ public:
   {
     BScreen screen (this);
 
-      if (!screen.IsValid ())
-	gui_abort ("Trying to make a window fullscreen without a screen");
+    if (!screen.IsValid ())
+      gui_abort ("Trying to make a window fullscreen without a screen");
 
     if (make_fullscreen_p == fullscreen_p)
       return;
@@ -768,8 +875,14 @@ public:
 
 	flags |= B_NOT_MOVABLE | B_NOT_ZOOMABLE;
 	pre_fullscreen_rect = Frame ();
+
+	if (!child_frame_lock.Lock ())
+	  gui_abort ("Failed to lock child frame state lock");
+
 	if (parent)
 	  parent->OffsetChildRect (&pre_fullscreen_rect, this);
+
+	child_frame_lock.Unlock ();
 
 	int w, h;
 	EmacsMoveTo (0, 0);
@@ -867,8 +980,9 @@ public:
       gui_abort ("Trying to attach cr surface when one already exists");
     cr_surface = cairo_image_surface_create_for_data
       ((unsigned char *) offscreen_draw_bitmap_1->Bits (),
-       CAIRO_FORMAT_ARGB32, offscreen_draw_bitmap_1->Bounds ().Width (),
-       offscreen_draw_bitmap_1->Bounds ().Height (),
+       CAIRO_FORMAT_ARGB32,
+       offscreen_draw_bitmap_1->Bounds ().IntegerWidth () + 1,
+       offscreen_draw_bitmap_1->Bounds ().IntegerHeight () + 1,
        offscreen_draw_bitmap_1->BytesPerRow ());
     if (!cr_surface)
       gui_abort ("Cr surface allocation failed for double-buffered view");
@@ -962,7 +1076,7 @@ public:
 	return;
       }
 
-    if (w->shown_flag)
+    if (w->shown_flag && offscreen_draw_view)
       {
 	PushState ();
 	SetDrawingMode (B_OP_ERASE);
@@ -1065,7 +1179,7 @@ public:
     if (looper_locked_count)
       {
 	if (!offscreen_draw_bitmap_1->Lock ())
-	  gui_abort ("Failed to lock bitmap after double buffering was set up.");
+	  gui_abort ("Failed to lock bitmap after double buffering was set up");
       }
 
     UnlockLooper ();
@@ -1087,7 +1201,11 @@ public:
       ToolTip ()->SetMouseRelativeLocation (BPoint (-(point.x - tt_absl_pos.x),
 						    -(point.y - tt_absl_pos.y)));
 
-    haiku_write (MOUSE_MOTION, &rq);
+    if (movement_locker.Lock ())
+      {
+	haiku_write (MOUSE_MOTION, &rq);
+	movement_locker.Unlock ();
+      }
   }
 
   void
@@ -1476,10 +1594,18 @@ BWindow_new (void *_view)
   if (!vw)
     {
       *v = NULL;
-      window->Lock ();
+      window->LockLooper ();
       window->Quit ();
       return NULL;
     }
+
+  /* Windows are created locked by the current thread, but calling
+     Show for the first time causes them to be unlocked.  To avoid a
+     deadlock when a frame is created invisible in one thread, and
+     another thread later tries to lock it, the window is unlocked
+     here, and EmacsShow will lock it manually if it's being shown for
+     the first time.  */
+  window->UnlockLooper ();
   window->AddChild (vw);
   *v = vw;
   return window;
@@ -1488,7 +1614,7 @@ BWindow_new (void *_view)
 void
 BWindow_quit (void *window)
 {
-  ((BWindow *) window)->Lock ();
+  ((BWindow *) window)->LockLooper ();
   ((BWindow *) window)->Quit ();
 }
 
@@ -2522,7 +2648,8 @@ char *
 be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int dir_only_p,
 		      void *window, const char *save_text, const char *prompt,
 		      void (*block_input_function) (void),
-		      void (*unblock_input_function) (void))
+		      void (*unblock_input_function) (void),
+		      void (*maybe_quit_function) (void))
 {
   ptrdiff_t idx = c_specpdl_idx_from_cxx ();
   /* setjmp/longjmp is UB with automatic objects. */
@@ -2533,7 +2660,6 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
   BMessage *msg = new BMessage ('FPSE');
   BFilePanel *panel = new BFilePanel (open_p ? B_OPEN_PANEL : B_SAVE_PANEL,
 				      NULL, NULL, mode);
-  unblock_input_function ();
 
   struct popup_file_dialog_data dat;
   dat.entry = path;
@@ -2558,6 +2684,7 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
 
   panel->Show ();
   panel->Window ()->Show ();
+  unblock_input_function ();
 
   void *buf = alloca (200);
   while (1)
@@ -2567,19 +2694,26 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
 
       if (!haiku_read_with_timeout (&type, buf, 200, 100000))
 	{
+	  block_input_function ();
 	  if (type != FILE_PANEL_EVENT)
 	    haiku_write (type, buf);
 	  else if (!ptr)
 	    ptr = (char *) ((struct haiku_file_panel_event *) buf)->ptr;
+	  unblock_input_function ();
+
+	  maybe_quit_function ();
 	}
 
       ssize_t b_s;
+      block_input_function ();
       haiku_read_size (&b_s);
-      if (!b_s || b_s == -1 || ptr || panel->Window ()->IsHidden ())
+      if (!b_s || ptr || panel->Window ()->IsHidden ())
 	{
 	  c_unbind_to_nil_from_cxx (idx);
+	  unblock_input_function ();
 	  return ptr;
 	}
+      unblock_input_function ();
     }
 }
 
@@ -2827,6 +2961,18 @@ BWindow_set_min_size (void *window, int width, int height)
   if (!w->LockLooper ())
     gui_abort ("Failed to lock window looper setting min size");
   w->SetSizeLimits (width, -1, height, -1);
+  w->UnlockLooper ();
+}
+
+/* Synchronize WINDOW's connection to the App Server.  */
+void
+BWindow_sync (void *window)
+{
+  BWindow *w = (BWindow *) window;
+
+  if (!w->LockLooper ())
+    gui_abort ("Failed to lock window looper for sync");
+  w->Sync ();
   w->UnlockLooper ();
 }
 
