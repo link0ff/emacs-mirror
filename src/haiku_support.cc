@@ -266,6 +266,7 @@ public:
   int zoomed_p = 0;
   int shown_flag = 0;
   volatile int was_shown_p = 0;
+  bool menu_bar_active_p = false;
 
   EmacsWindow () : BWindow (BRect (0, 0, 0, 0), "", B_TITLED_WINDOW_LOOK,
 			    B_NORMAL_WINDOW_FEEL, B_NO_SERVER_SIDE_WINDOW_MODIFIERS)
@@ -563,6 +564,15 @@ public:
     if (msg->what == B_KEY_DOWN || msg->what == B_KEY_UP)
       {
 	struct haiku_key_event rq;
+
+	/* Pass through key events to the regular dispatch mechanism
+	   if the menu bar active, so that key navigation can work.  */
+	if (menu_bar_active_p)
+	  {
+	    BWindow::DispatchMessage (msg, handler);
+	    return;
+	  }
+
 	rq.window = this;
 
 	int32_t code = msg->GetInt32 ("raw_char", 0);
@@ -635,6 +645,7 @@ public:
     rq.window = this;
 
     haiku_write (MENU_BAR_OPEN, &rq);
+    menu_bar_active_p = true;
   }
 
   void
@@ -644,6 +655,7 @@ public:
     rq.window = this;
 
     haiku_write (MENU_BAR_CLOSE, &rq);
+    menu_bar_active_p = false;
   }
 
   void
@@ -906,6 +918,14 @@ class EmacsMenuBar : public BMenuBar
 public:
   EmacsMenuBar () : BMenuBar (BRect (0, 0, 0, 0), NULL)
   {
+  }
+
+  void
+  AttachedToWindow (void)
+  {
+    BWindow *window = Window ();
+
+    window->SetKeyMenuBar (this);
   }
 
   void
@@ -1661,7 +1681,6 @@ BWindow_set_visible (void *window, int visible_p)
 	win->Minimize (false);
       win->EmacsHide ();
     }
-  win->Sync ();
 }
 
 /* Change the title of WINDOW to the multibyte string TITLE.  */
@@ -2275,8 +2294,14 @@ BMenuBar_delete (void *menubar)
 {
   BView *vw = (BView *) menubar;
   BView *p = vw->Parent ();
+  EmacsWindow *window = (EmacsWindow *) p->Window ();
+
   if (!p->LockLooper ())
     gui_abort ("Failed to lock menu bar parent while removing menubar");
+  window->SetKeyMenuBar (NULL);
+  /* MenusEnded isn't called if the menu bar is destroyed
+     before it closes.  */
+  window->menu_bar_active_p = false;
   vw->RemoveSelf ();
   p->UnlockLooper ();
   delete vw;
@@ -2683,7 +2708,6 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
   be_popup_file_dialog_safe_set_target (panel, w);
 
   panel->Show ();
-  panel->Window ()->Show ();
   unblock_input_function ();
 
   void *buf = alloca (200);
@@ -2991,4 +3015,23 @@ BWindow_set_size_alignment (void *window, int align_width, int align_height)
     gui_abort ("Invalid pixel alignment");
 #endif
   w->UnlockLooper ();
+}
+
+void
+BWindow_send_behind (void *window, void *other_window)
+{
+  BWindow *w = (BWindow *) window;
+  BWindow *other = (BWindow *) other_window;
+
+  if (!w->LockLooper ())
+    gui_abort ("Failed to lock window in order to send it behind another");
+  w->SendBehind (other);
+  w->UnlockLooper ();
+}
+
+bool
+BWindow_is_active (void *window)
+{
+  BWindow *w = (BWindow *) window;
+  return w->IsActive ();
 }
