@@ -13750,6 +13750,7 @@ display_tab_bar_line (struct it *it, int height)
      so there's no need to check the face here.  */
   it->start_of_box_run_p = true;
 
+  bool enough = false;
   while (it->current_x < max_x)
     {
       int x, n_glyphs_before, i, nglyphs;
@@ -13796,11 +13797,12 @@ display_tab_bar_line (struct it *it, int height)
 	  ++i;
 	}
 
-      /* Stop at line end.  */
-      if (ITERATOR_AT_END_OF_LINE_P (it))
-	break;
-
+      enough = ITERATOR_AT_END_OF_LINE_P (it);
       set_iterator_to_next (it, true);
+
+      /* Stop at line end.  */
+      if (enough)
+	break;
     }
 
  out:;
@@ -13883,10 +13885,6 @@ tab_bar_height (struct frame *f, int *n_rows, bool pixelwise)
     {
       it.glyph_row = temp_row;
       display_tab_bar_line (&it, -1);
-      /* If the tab-bar string includes newlines, get past it, because
-	 display_tab_bar_line doesn't.  */
-      if (ITERATOR_AT_END_OF_LINE_P (&it))
-	set_iterator_to_next (&it, true);
     }
   clear_glyph_row (temp_row);
 
@@ -14012,10 +14010,6 @@ redisplay_tab_bar (struct frame *f)
 	      extra -= h;
 	    }
 	  display_tab_bar_line (&it, height + h);
-	  /* If the tab-bar string includes newlines, get past it,
-	     because display_tab_bar_line doesn't.  */
-	  if (ITERATOR_AT_END_OF_LINE_P (&it))
-	    set_iterator_to_next (&it, true);
 	}
     }
   else
@@ -28560,7 +28554,10 @@ fill_composite_glyph_string (struct glyph_string *s, struct face *base_face,
     }
 
   if (s->hl == DRAW_MOUSE_FACE
-      || (s->hl == DRAW_CURSOR && cursor_in_mouse_face_p (s->w)))
+      || (s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
+	  && cursor_in_mouse_face_p (s->w)))
     {
       int c = COMPOSITION_GLYPH (s->cmp, 0);
       Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (s->f);
@@ -28609,7 +28606,10 @@ fill_gstring_glyph_string (struct glyph_string *s, int face_id,
   s->cmp_from = glyph->slice.cmp.from;
   s->cmp_to = glyph->slice.cmp.to + 1;
   if (s->hl == DRAW_MOUSE_FACE
-      || (s->hl == DRAW_CURSOR && cursor_in_mouse_face_p (s->w)))
+      || (s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
+	  && cursor_in_mouse_face_p (s->w)))
     {
       Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (s->f);
       s->face = FACE_FROM_ID_OR_NULL (s->f, hlinfo->mouse_face_face_id);
@@ -28675,7 +28675,10 @@ fill_glyphless_glyph_string (struct glyph_string *s, int face_id,
   s->face = FACE_FROM_ID (s->f, face_id);
   s->font = s->face->font ? s->face->font : FRAME_FONT (s->f);
   if (s->hl == DRAW_MOUSE_FACE
-      || (s->hl == DRAW_CURSOR && cursor_in_mouse_face_p (s->w)))
+      || (s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
+	  && cursor_in_mouse_face_p (s->w)))
     {
       Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (s->f);
       s->face = FACE_FROM_ID_OR_NULL (s->f, hlinfo->mouse_face_face_id);
@@ -28747,7 +28750,10 @@ fill_glyph_string (struct glyph_string *s, int face_id,
   s->font = s->face->font;
 
   if (s->hl == DRAW_MOUSE_FACE
-      || (s->hl == DRAW_CURSOR && cursor_in_mouse_face_p (s->w)))
+      || (s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
+	  && cursor_in_mouse_face_p (s->w)))
     {
       Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (s->f);
       s->face = FACE_FROM_ID_OR_NULL (s->f, hlinfo->mouse_face_face_id);
@@ -28789,7 +28795,10 @@ fill_image_glyph_string (struct glyph_string *s)
   s->face = FACE_FROM_ID (s->f, s->first_glyph->face_id);
   s->font = s->face->font;
   if (s->hl == DRAW_MOUSE_FACE
-      || (s->hl == DRAW_CURSOR && cursor_in_mouse_face_p (s->w)))
+      || (s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
+	  && cursor_in_mouse_face_p (s->w)))
     {
       Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (s->f);
       s->face = FACE_FROM_ID_OR_NULL (s->f, hlinfo->mouse_face_face_id);
@@ -28812,7 +28821,10 @@ fill_xwidget_glyph_string (struct glyph_string *s)
   s->face = FACE_FROM_ID (s->f, s->first_glyph->face_id);
   s->font = s->face->font;
   if (s->hl == DRAW_MOUSE_FACE
-      || (s->hl == DRAW_CURSOR && cursor_in_mouse_face_p (s->w)))
+      || (s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
+	  && cursor_in_mouse_face_p (s->w)))
     {
       Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (s->f);
       s->face = FACE_FROM_ID_OR_NULL (s->f, hlinfo->mouse_face_face_id);
@@ -28846,7 +28858,10 @@ fill_stretch_glyph_string (struct glyph_string *s, int start, int end)
   s->face = FACE_FROM_ID (s->f, face_id);
   s->font = s->face->font;
   if (s->hl == DRAW_MOUSE_FACE
-      || (s->hl == DRAW_CURSOR && cursor_in_mouse_face_p (s->w)))
+      || (s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
+	  && cursor_in_mouse_face_p (s->w)))
     {
       Mouse_HLInfo *hlinfo = MOUSE_HL_INFO (s->f);
       s->face = FACE_FROM_ID_OR_NULL (s->f, hlinfo->mouse_face_face_id);
@@ -29133,6 +29148,8 @@ set_glyph_string_background_width (struct glyph_string *s, int start, int last_x
 #ifdef HAVE_WINDOW_SYSTEM
       if (FRAME_WINDOW_P (s->f)
 	  && s->hl == DRAW_CURSOR
+	  && MATRIX_ROW (s->w->current_matrix,
+			 s->w->phys_cursor.vpos)->mouse_face_p
 	  && cursor_in_mouse_face_p (s->w))
 	{
 	  /* Adjust the background width of the glyph string, because
