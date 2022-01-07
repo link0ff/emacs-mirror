@@ -5198,7 +5198,7 @@ x_detect_focus_change (struct x_display_info *dpyinfo, struct frame *frame,
 #ifdef HAVE_XINPUT2
     case GenericEvent:
       {
-	XIEvent *xi_event = (XIEvent *) event;
+	XIEvent *xi_event = (XIEvent *) event->xcookie.data;
 
         struct frame *focus_frame = dpyinfo->x_focus_event_frame;
         int focus_state
@@ -10156,6 +10156,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  case XI_Motion:
 	    {
 	      struct xi_device_t *device;
+	      bool touch_end_event_seen = false;
 
 	      states = &xev->valuators;
 	      values = states->values;
@@ -10294,7 +10295,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			      inev.ie.arg = Qnil;
 			    }
 
-			  kbd_buffer_store_event_hold (&inev.ie, hold_quit);
+			  if (inev.ie.kind != TOUCH_END_EVENT
+			      || !touch_end_event_seen)
+			    {
+			      kbd_buffer_store_event_hold (&inev.ie, hold_quit);
+			      touch_end_event_seen = inev.ie.kind == TOUCH_END_EVENT;
+			    }
 
 			  val->emacs_value = 0;
 			}
@@ -10998,7 +11004,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    xkey.root = xev->root;
 	    xkey.subwindow = xev->child;
 	    xkey.time = xev->time;
-	    xkey.state = xev->mods.effective;
+	    xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
+			  | (xev->group.effective << 13));
 	    xkey.keycode = xev->detail;
 	    xkey.same_screen = True;
 
@@ -11253,15 +11260,22 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    {
 	      if (dpyinfo->xkb_desc)
 		{
-		  XkbGetUpdatedMap (dpyinfo->display,
-				    (XkbKeySymsMask
-				     | XkbKeyTypesMask
-				     | XkbModifierMapMask
-				     | XkbVirtualModsMask),
-				    dpyinfo->xkb_desc);
-		  XkbGetNames (dpyinfo->display,
-			       XkbGroupNamesMask | XkbVirtualModNamesMask,
-			       dpyinfo->xkb_desc);
+		  if (XkbGetUpdatedMap (dpyinfo->display,
+					(XkbKeySymsMask
+					 | XkbKeyTypesMask
+					 | XkbModifierMapMask
+					 | XkbVirtualModsMask),
+					dpyinfo->xkb_desc) == Success)
+		    {
+		      XkbGetNames (dpyinfo->display,
+				   XkbGroupNamesMask | XkbVirtualModNamesMask,
+				   dpyinfo->xkb_desc);
+		    }
+		  else
+		    {
+		      XkbFreeKeyboard (dpyinfo->xkb_desc, XkbAllComponentsMask, True);
+		      dpyinfo->xkb_desc = NULL;
+		    }
 
 		  x_find_modifier_meanings (dpyinfo);
 		}
@@ -14032,6 +14046,9 @@ x_free_frame_resources (struct frame *f)
 #ifdef HAVE_X_I18N
       if (FRAME_XIC (f))
 	free_frame_xic (f);
+
+      if (f->output_data.x->preedit_chars)
+	xfree (f->output_data.x->preedit_chars);
 #endif
 
 #ifdef USE_CAIRO
@@ -15260,6 +15277,29 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 	&& (!strcmp (SSDATA (value), "true")
 	    || !strcmp (SSDATA (value), "on")))
       use_xim = true;
+#endif
+  }
+
+  {
+    AUTO_STRING (inputStyle, "inputStyle");
+    AUTO_STRING (InputStyle, "InputStyle");
+    Lisp_Object value = gui_display_get_resource (dpyinfo, inputStyle, InputStyle,
+						  Qnil, Qnil);
+
+#ifdef HAVE_X_I18N
+    if (STRINGP (value))
+      {
+	if (!strcmp (SSDATA (value), "callback"))
+	  dpyinfo->preferred_xim_style = STYLE_CALLBACK;
+	else if (!strcmp (SSDATA (value), "none"))
+	  dpyinfo->preferred_xim_style = STYLE_NONE;
+	else if (!strcmp (SSDATA (value), "overthespot"))
+	  dpyinfo->preferred_xim_style = STYLE_OVERTHESPOT;
+	else if (!strcmp (SSDATA (value), "offthespot"))
+	  dpyinfo->preferred_xim_style = STYLE_OFFTHESPOT;
+	else if (!strcmp (SSDATA (value), "root"))
+	  dpyinfo->preferred_xim_style = STYLE_ROOT;
+      }
 #endif
   }
 
