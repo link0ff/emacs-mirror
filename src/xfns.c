@@ -2624,8 +2624,8 @@ xic_free_xfontset (struct frame *f)
 
 static const XIMStyle supported_xim_styles[] =
   {
-    STYLE_CALLBACK,
     STYLE_NONE,
+    STYLE_CALLBACK,
     STYLE_OVERTHESPOT,
     STYLE_OFFTHESPOT,
     STYLE_ROOT
@@ -2820,16 +2820,33 @@ xic_set_preeditarea (struct window *w, int x, int y)
   XVaNestedList attr;
   XPoint spot;
 
-  spot.x = WINDOW_TO_FRAME_PIXEL_X (w, x) + WINDOW_LEFT_FRINGE_WIDTH (w) + WINDOW_LEFT_MARGIN_WIDTH(w);
-  spot.y = WINDOW_TO_FRAME_PIXEL_Y (w, y) + FONT_BASE (FRAME_FONT (f));
-  attr = XVaCreateNestedList (0, XNSpotLocation, &spot,
-			      XNPreeditStartCallback, &Xxic_preedit_start_callback,
-			      XNPreeditDoneCallback, &Xxic_preedit_done_callback,
-			      XNPreeditDrawCallback, &Xxic_preedit_draw_callback,
-			      XNPreeditCaretCallback, &Xxic_preedit_caret_callback,
-			      NULL);
-  XSetICValues (FRAME_XIC (f), XNPreeditAttributes, attr, NULL);
-  XFree (attr);
+  if (FRAME_XIC (WINDOW_XFRAME (w)))
+    {
+      spot.x = WINDOW_TO_FRAME_PIXEL_X (w, x) + WINDOW_LEFT_FRINGE_WIDTH (w) + WINDOW_LEFT_MARGIN_WIDTH(w);
+      spot.y = WINDOW_TO_FRAME_PIXEL_Y (w, y) + FONT_BASE (FRAME_FONT (f));
+      attr = XVaCreateNestedList (0, XNSpotLocation, &spot,
+				  XNPreeditStartCallback, &Xxic_preedit_start_callback,
+				  XNPreeditDoneCallback, &Xxic_preedit_done_callback,
+				  XNPreeditDrawCallback, &Xxic_preedit_draw_callback,
+				  XNPreeditCaretCallback, &Xxic_preedit_caret_callback,
+				  NULL);
+      XSetICValues (FRAME_XIC (f), XNPreeditAttributes, attr, NULL);
+      XFree (attr);
+    }
+#ifdef USE_GTK
+  GdkRectangle rect;
+  rect.x = (WINDOW_TO_FRAME_PIXEL_X (w, x)
+	    + WINDOW_LEFT_FRINGE_WIDTH (w)
+	    + WINDOW_LEFT_MARGIN_WIDTH (w));
+  rect.y = (WINDOW_TO_FRAME_PIXEL_Y (w, y)
+	    + FRAME_TOOLBAR_HEIGHT (f)
+	    + FRAME_MENUBAR_HEIGHT (f));
+  rect.width = w->phys_cursor_width;
+  rect.height = w->phys_cursor_height;
+
+  gtk_im_context_set_cursor_location (FRAME_X_OUTPUT (f)->im_context,
+				      &rect);
+#endif
 }
 
 
@@ -2930,6 +2947,7 @@ xic_preedit_done_callback (XIC xic, XPointer client_data,
   struct frame *f = x_xic_to_frame (xic);
   struct x_output *output;
   struct input_event ie;
+  EVENT_INIT (ie);
 
   if (f)
     {
@@ -3001,6 +3019,7 @@ xic_preedit_draw_callback (XIC xic, XPointer client_data,
   char *text;
   char *chg_start, *chg_end;
   struct input_event ie;
+  EVENT_INIT (ie);
 
   if (f)
     {
