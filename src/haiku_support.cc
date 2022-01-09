@@ -62,6 +62,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <kernel/scheduler.h>
 
 #include <private/interface/ToolTip.h>
+#include <private/interface/WindowPrivate.h>
 
 #include <cmath>
 #include <cstring>
@@ -178,6 +179,40 @@ map_shift (uint32_t kc, uint32_t *ch)
 }
 
 static void
+map_caps (uint32_t kc, uint32_t *ch)
+{
+  if (!key_map_lock.Lock ())
+    gui_abort ("Failed to lock keymap");
+  if (!key_map)
+    get_key_map (&key_map, &key_chars);
+  if (!key_map)
+    return;
+  if (kc >= 128)
+    return;
+
+  int32_t m = key_map->caps_map[kc];
+  map_key (key_chars, m, ch);
+  key_map_lock.Unlock ();
+}
+
+static void
+map_caps_shift (uint32_t kc, uint32_t *ch)
+{
+  if (!key_map_lock.Lock ())
+    gui_abort ("Failed to lock keymap");
+  if (!key_map)
+    get_key_map (&key_map, &key_chars);
+  if (!key_map)
+    return;
+  if (kc >= 128)
+    return;
+
+  int32_t m = key_map->caps_shift_map[kc];
+  map_key (key_chars, m, ch);
+  key_map_lock.Unlock ();
+}
+
+static void
 map_normal (uint32_t kc, uint32_t *ch)
 {
   if (!key_map_lock.Lock ())
@@ -271,6 +306,8 @@ public:
   int shown_flag = 0;
   volatile int was_shown_p = 0;
   bool menu_bar_active_p = false;
+  window_look pre_override_redirect_style;
+  window_feel pre_override_redirect_feel;
 
   EmacsWindow () : BWindow (BRect (0, 0, 0, 0), "", B_TITLED_WINDOW_LOOK,
 			    B_NORMAL_WINDOW_FEEL, B_NO_SERVER_SIDE_WINDOW_MODIFIERS)
@@ -602,9 +639,19 @@ public:
 	  BUnicodeChar::FromUTF8 (msg->GetString ("bytes"));
 
 	if ((mods & B_SHIFT_KEY) && rq.kc >= 0)
-	  map_shift (rq.kc, &rq.unraw_mb_char);
+	  {
+	    if (mods & B_CAPS_LOCK)
+	      map_caps_shift (rq.kc, &rq.unraw_mb_char);
+	    else
+	      map_shift (rq.kc, &rq.unraw_mb_char);
+	  }
 	else if (rq.kc >= 0)
-	  map_normal (rq.kc, &rq.unraw_mb_char);
+	  {
+	    if (mods & B_CAPS_LOCK)
+	      map_caps (rq.kc, &rq.unraw_mb_char);
+	    else
+	      map_normal (rq.kc, &rq.unraw_mb_char);
+	  }
 
 	haiku_write (msg->what == B_KEY_DOWN ? KEY_DOWN : KEY_UP, &rq);
       }
@@ -3057,4 +3104,31 @@ be_use_subpixel_antialiasing (void)
     return false;
 
   return current_subpixel_antialiasing;
+}
+
+/* This isn't implemented very properly (for example: what if
+   decorations are changed while the window is under override
+   redirect?) but it works well enough for most use cases.  */
+void
+BWindow_set_override_redirect (void *window, bool override_redirect_p)
+{
+  EmacsWindow *w = (EmacsWindow *) window;
+
+  if (w->LockLooper ())
+    {
+      if (override_redirect_p)
+	{
+	  w->pre_override_redirect_feel = w->Feel ();
+	  w->pre_override_redirect_style = w->Look ();
+	  w->SetFeel (kMenuWindowFeel);
+	  w->SetLook (B_NO_BORDER_WINDOW_LOOK);
+	}
+      else
+	{
+	  w->SetFeel (w->pre_override_redirect_feel);
+	  w->SetLook (w->pre_override_redirect_style);
+	}
+
+      w->UnlockLooper ();
+    }
 }
