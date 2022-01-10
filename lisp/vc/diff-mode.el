@@ -1479,8 +1479,10 @@ See `after-change-functions' for the meaning of BEG, END and LEN."
 (defvar whitespace-style)
 (defvar whitespace-trailing-regexp)
 
-(defvar-local diff-mode-read-only nil)
+(defvar-local diff-mode-read-only nil
+  "Non-nil when read-only diff buffer uses short keys.")
 
+;; It should be lower than `outline-minor-mode' and `view-mode'.
 (or (assq 'diff-mode-read-only minor-mode-map-alist)
     (nconc minor-mode-map-alist
            (list (cons 'diff-mode-read-only diff-mode-shared-map))))
@@ -1522,19 +1524,23 @@ a diff with \\[diff-reverse-direction].
 
   (diff-setup-whitespace)
 
+  ;; read-only setup
+  (when diff-default-read-only
+    (setq buffer-read-only t))
+  (when buffer-read-only
+    (setq diff-mode-read-only t))
   (add-hook 'read-only-mode-hook
             (lambda ()
               (setq diff-mode-read-only buffer-read-only))
             nil t)
 
-  (if diff-default-read-only
-      (let ((view-read-only nil)) (read-only-mode 1)))
   ;; setup change hooks
   (if (not diff-update-on-the-fly)
       (add-hook 'write-contents-functions #'diff-write-contents-hooks nil t)
     (make-local-variable 'diff-unhandled-changes)
     (add-hook 'after-change-functions #'diff-after-change-function nil t)
     (add-hook 'post-command-hook #'diff-post-command-hook nil t))
+
   ;; add-log support
   (setq-local add-log-current-defun-function #'diff-current-defun)
   (setq-local add-log-buffer-file-name-function
