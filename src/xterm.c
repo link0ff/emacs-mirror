@@ -3945,7 +3945,7 @@ x_get_scale_factor(Display *disp, int *scale_x, int *scale_y)
 
 */
 static void
-x_draw_underwave (struct glyph_string *s)
+x_draw_underwave (struct glyph_string *s, int decoration_width)
 {
   Display *display = FRAME_X_DISPLAY (s->f);
 
@@ -3958,7 +3958,7 @@ x_draw_underwave (struct glyph_string *s)
 
 #ifdef USE_CAIRO
   x_draw_horizontal_wave (s->f, s->gc, s->x, s->ybase - wave_height + 3,
-			  s->width, wave_height, wave_length);
+			  decoration_width, wave_height, wave_length);
 #else  /* not USE_CAIRO */
   int dx, dy, x0, y0, width, x1, y1, x2, y2, xmax, thickness = scale_y;;
   bool odd;
@@ -3968,7 +3968,7 @@ x_draw_underwave (struct glyph_string *s)
   dy = wave_height - 1;
   x0 = s->x;
   y0 = s->ybase + wave_height / 2 - scale_y;
-  width = s->width;
+  width = decoration_width;
   xmax = x0 + width;
 
   /* Find and set clipping rectangle */
@@ -4118,6 +4118,19 @@ x_draw_glyph_string (struct glyph_string *s)
 
   if (!s->for_overlaps)
     {
+      int area_x, area_y, area_width, area_height;
+      int area_max_x, decoration_width;
+
+      /* Prevent the underline from overwriting surrounding areas
+	 and the fringe.  */
+      window_box (s->w, s->area, &area_x, &area_y,
+		  &area_width, &area_height);
+      area_max_x = area_x + area_width - 1;
+
+      decoration_width = s->width;
+      if (area_max_x < (s->x + decoration_width - 1))
+	decoration_width -= (s->x + decoration_width - 1) - area_max_x;
+
       /* Draw relief if not yet drawn.  */
       if (!relief_drawn_p && s->face->box != FACE_NO_BOX)
 	x_draw_glyph_string_box (s);
@@ -4128,14 +4141,14 @@ x_draw_glyph_string (struct glyph_string *s)
           if (s->face->underline == FACE_UNDER_WAVE)
             {
               if (s->face->underline_defaulted_p)
-                x_draw_underwave (s);
+                x_draw_underwave (s, decoration_width);
               else
                 {
                   Display *display = FRAME_X_DISPLAY (s->f);
                   XGCValues xgcv;
                   XGetGCValues (display, s->gc, GCForeground, &xgcv);
                   XSetForeground (display, s->gc, s->face->underline_color);
-                  x_draw_underwave (s);
+                  x_draw_underwave (s, decoration_width);
                   XSetForeground (display, s->gc, xgcv.foreground);
                 }
             }
@@ -4144,8 +4157,12 @@ x_draw_glyph_string (struct glyph_string *s)
               unsigned long thickness, position;
               int y;
 
-              if (s->prev &&
-	          s->prev->face->underline == FACE_UNDER_LINE)
+              if (s->prev
+		  && s->prev->face->underline == FACE_UNDER_LINE
+		  && (s->prev->face->underline_at_descent_line_p
+		      == s->face->underline_at_descent_line_p)
+		  && (s->prev->face->underline_pixels_above_descent_line
+		      == s->face->underline_pixels_above_descent_line))
                 {
                   /* We use the same underline style as the previous one.  */
                   thickness = s->prev->underline_thickness;
@@ -4168,7 +4185,8 @@ x_draw_glyph_string (struct glyph_string *s)
 		  val = (WINDOW_BUFFER_LOCAL_VALUE
 			 (Qx_underline_at_descent_line, s->w));
 		  underline_at_descent_line
-		    = !(NILP (val) || EQ (val, Qunbound));
+		    = (!(NILP (val) || EQ (val, Qunbound))
+		       || s->face->underline_at_descent_line_p);
 
 		  val = (WINDOW_BUFFER_LOCAL_VALUE
 			 (Qx_use_underline_position_properties, s->w));
@@ -4181,7 +4199,9 @@ x_draw_glyph_string (struct glyph_string *s)
                   else
                     thickness = 1;
                   if (underline_at_descent_line)
-                    position = (s->height - thickness) - (s->ybase - s->y);
+		    position = ((s->height - thickness)
+				- (s->ybase - s->y)
+				- s->face->underline_pixels_above_descent_line);
                   else
                     {
                       /* Get the underline position.  This is the
@@ -4201,12 +4221,16 @@ x_draw_glyph_string (struct glyph_string *s)
                       else
                         position = minimum_offset;
                     }
-                  position = max (position, minimum_offset);
+
+		  /* Ignore minimum_offset if the amount of pixels was
+		     explictly specified.  */
+		  if (!s->face->underline_pixels_above_descent_line)
+		    position = max (position, minimum_offset);
                 }
               /* Check the sanity of thickness and position.  We should
                  avoid drawing underline out of the current line area.  */
-              if (s->y + s->height <= s->ybase + position)
-                position = (s->height - 1) - (s->ybase - s->y);
+	      if (s->y + s->height <= s->ybase + position)
+		position = (s->height - 1) - (s->ybase - s->y);
               if (s->y + s->height < s->ybase + position + thickness)
                 thickness = (s->y + s->height) - (s->ybase + position);
               s->underline_thickness = thickness;
@@ -4214,7 +4238,7 @@ x_draw_glyph_string (struct glyph_string *s)
               y = s->ybase + position;
               if (s->face->underline_defaulted_p)
                 x_fill_rectangle (s->f, s->gc,
-                                s->x, y, s->width, thickness);
+				  s->x, y, decoration_width, thickness);
               else
                 {
                   Display *display = FRAME_X_DISPLAY (s->f);
@@ -4222,7 +4246,7 @@ x_draw_glyph_string (struct glyph_string *s)
                   XGetGCValues (display, s->gc, GCForeground, &xgcv);
                   XSetForeground (display, s->gc, s->face->underline_color);
                   x_fill_rectangle (s->f, s->gc,
-                                  s->x, y, s->width, thickness);
+				    s->x, y, decoration_width, thickness);
                   XSetForeground (display, s->gc, xgcv.foreground);
                 }
             }
@@ -4234,7 +4258,7 @@ x_draw_glyph_string (struct glyph_string *s)
 
 	  if (s->face->overline_color_defaulted_p)
 	    x_fill_rectangle (s->f, s->gc, s->x, s->y + dy,
-			    s->width, h);
+			      decoration_width, h);
 	  else
 	    {
               Display *display = FRAME_X_DISPLAY (s->f);
@@ -4242,7 +4266,7 @@ x_draw_glyph_string (struct glyph_string *s)
 	      XGetGCValues (display, s->gc, GCForeground, &xgcv);
 	      XSetForeground (display, s->gc, s->face->overline_color);
 	      x_fill_rectangle (s->f, s->gc, s->x, s->y + dy,
-			      s->width, h);
+				decoration_width, h);
 	      XSetForeground (display, s->gc, xgcv.foreground);
 	    }
 	}
@@ -4272,7 +4296,7 @@ x_draw_glyph_string (struct glyph_string *s)
 	      XGetGCValues (display, s->gc, GCForeground, &xgcv);
 	      XSetForeground (display, s->gc, s->face->strike_through_color);
 	      x_fill_rectangle (s->f, s->gc, s->x, glyph_y + dy,
-			      s->width, h);
+				decoration_width, h);
 	      XSetForeground (display, s->gc, xgcv.foreground);
 	    }
 	}

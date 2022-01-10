@@ -107,6 +107,8 @@ haiku_delete_terminal (struct terminal *terminal)
 static const char *
 get_string_resource (void *ignored, const char *name, const char *class)
 {
+  const char *native;
+
   if (!name)
     return NULL;
 
@@ -114,6 +116,9 @@ get_string_resource (void *ignored, const char *name, const char *class)
 
   if (!NILP (lval))
     return SSDATA (XCDR (lval));
+
+  if ((native = be_find_setting (name)))
+    return native;
 
   return NULL;
 }
@@ -608,7 +613,12 @@ haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
 	  unsigned long thickness, position;
 	  int y;
 
-	  if (s->prev && s->prev && s->prev->hl == DRAW_MOUSE_FACE)
+	  if (s->prev
+	      && s->prev->face->underline == FACE_UNDER_LINE
+	      && (s->prev->face->underline_at_descent_line_p
+		  == s->face->underline_at_descent_line_p)
+	      && (s->prev->face->underline_pixels_above_descent_line
+		  == s->face->underline_pixels_above_descent_line))
 	    {
 	      struct face *prev_face = s->prev->face;
 
@@ -639,7 +649,8 @@ haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
 	      val = (WINDOW_BUFFER_LOCAL_VALUE
 		     (Qx_underline_at_descent_line, s->w));
 	      underline_at_descent_line
-		= !(NILP (val) || EQ (val, Qunbound));
+		= (!(NILP (val) || EQ (val, Qunbound))
+		   || s->face->underline_at_descent_line_p);
 
 	      val = (WINDOW_BUFFER_LOCAL_VALUE
 		     (Qx_use_underline_position_properties, s->w));
@@ -652,7 +663,9 @@ haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
 	      else
 		thickness = 1;
 	      if (underline_at_descent_line)
-		position = (s->height - thickness) - (s->ybase - s->y);
+		position = ((s->height - thickness)
+			    - (s->ybase - s->y)
+			    - s->face->underline_pixels_above_descent_line);
 	      else
 		{
 		  /* Get the underline position.  This is the
