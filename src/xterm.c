@@ -194,8 +194,10 @@ static int x_noop_count;
 static Lisp_Object xg_default_icon_file;
 #endif
 
+#ifdef HAVE_X_I18N
 /* Some functions take this as char *, not const char *.  */
 static char emacs_class[] = EMACS_CLASS;
+#endif
 
 enum xembed_info
   {
@@ -8333,6 +8335,38 @@ event_handler_gdk (GdkXEvent *gxev, GdkEvent *ev, gpointer data)
 	  unblock_input ();
 	  return GDK_FILTER_REMOVE;
 	}
+#elif USE_GTK
+      if (dpyinfo && (dpyinfo->prefer_native_input
+		      || x_gtk_use_native_input)
+	  && (xev->type == KeyPress
+#ifdef HAVE_XINPUT2
+	      /* GTK claims cookies for us, so we don't have to claim
+		 them here.  */
+	      || (dpyinfo->supports_xi2
+		  && xev->type == GenericEvent
+		  && (xev->xgeneric.extension
+		      == dpyinfo->xi2_opcode)
+		  && (xev->xgeneric.evtype
+		      == XI_KeyPress))
+#endif
+	      ))
+	{
+	  struct frame *f;
+
+#ifdef HAVE_XINPUT2
+	  if (xev->type == GenericEvent)
+	    f = x_any_window_to_frame (dpyinfo,
+				       ((XIDeviceEvent *) xev->xcookie.data)->event);
+	  else
+#endif
+	    f = x_any_window_to_frame (dpyinfo, xev->xany.window);
+
+	  if (f && xg_filter_key (f, xev))
+	    {
+	      unblock_input ();
+	      return GDK_FILTER_REMOVE;
+	    }
+	}
 #endif
 
       if (! dpyinfo)
@@ -10727,7 +10761,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		goto XI_OTHER;
 #endif
 
-#ifdef HAVE_X_I18N
+	      x_display_set_last_user_time (dpyinfo, xev->time);
+	      ignore_next_mouse_click_timeout = 0;
+
+	      f = x_any_window_to_frame (dpyinfo, xev->event);
+
 	      XKeyPressedEvent xkey;
 
 	      memset (&xkey, 0, sizeof xkey);
@@ -10745,6 +10783,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      xkey.keycode = xev->detail;
 	      xkey.same_screen = True;
 
+#ifdef HAVE_X_I18N
 #ifdef USE_GTK
 	      if ((!x_gtk_use_native_input
 		   && x_filter_event (dpyinfo, (XEvent *) &xkey))
@@ -10761,6 +10800,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  goto XI_OTHER;
 		}
 #endif
+#elif USE_GTK
+	      if ((x_gtk_use_native_input
+		   || dpyinfo->prefer_native_input)
+		  && xg_filter_key (any, event))
+		{
+		  *finish = X_EVENT_DROP;
+		  goto XI_OTHER;
+		}
 #endif
 
 #ifdef HAVE_XKB
@@ -10792,11 +10839,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      if (keysym == NoSymbol)
 		goto XI_OTHER;
-
-	      x_display_set_last_user_time (dpyinfo, xev->time);
-	      ignore_next_mouse_click_timeout = 0;
-
-	      f = x_any_window_to_frame (dpyinfo, xev->event);
 
 	      /* If mouse-highlight is an integer, input clears out
 		 mouse highlighting.  */
@@ -11068,27 +11110,38 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    }
 	  case XI_KeyRelease:
 	    x_display_set_last_user_time (dpyinfo, xev->time);
+
+#if defined HAVE_X_I18N || defined USE_GTK
+	      XKeyPressedEvent xkey;
+
+	      memset (&xkey, 0, sizeof xkey);
+
+	      xkey.type = KeyRelease;
+	      xkey.serial = xev->serial;
+	      xkey.send_event = xev->send_event;
+	      xkey.display = xev->display;
+	      xkey.window = xev->event;
+	      xkey.root = xev->root;
+	      xkey.subwindow = xev->child;
+	      xkey.time = xev->time;
+	      xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
+			    | (xev->group.effective << 13));
+	      xkey.keycode = xev->detail;
+	      xkey.same_screen = True;
+
 #ifdef HAVE_X_I18N
-	    XKeyPressedEvent xkey;
+	      if (x_filter_event (dpyinfo, (XEvent *) &xkey))
+		*finish = X_EVENT_DROP;
+#else
+	      f = x_any_window_to_frame (xkey->event);
 
-	    memset (&xkey, 0, sizeof xkey);
-
-	    xkey.type = KeyRelease;
-	    xkey.serial = xev->serial;
-	    xkey.send_event = xev->send_event;
-	    xkey.display = xev->display;
-	    xkey.window = xev->event;
-	    xkey.root = xev->root;
-	    xkey.subwindow = xev->child;
-	    xkey.time = xev->time;
-	    xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
-			  | (xev->group.effective << 13));
-	    xkey.keycode = xev->detail;
-	    xkey.same_screen = True;
-
-	    x_filter_event (dpyinfo, (XEvent *) &xkey);
+	      if (f && xg_filter_key (f, event))
+		*finish = X_EVENT_DROP;
 #endif
+#endif
+
 	    goto XI_OTHER;
+
 	  case XI_PropertyEvent:
 	  case XI_HierarchyChanged:
 	  case XI_DeviceChanged:
@@ -11773,7 +11826,9 @@ x_draw_window_cursor (struct window *w, struct glyph_row *glyph_row, int x,
 		      int y, enum text_cursor_kinds cursor_type,
 		      int cursor_width, bool on_p, bool active_p)
 {
+#ifdef HAVE_X_I18N
   struct frame *f = XFRAME (WINDOW_FRAME (w));
+#endif
 
   if (on_p)
     {
@@ -15372,13 +15427,13 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 #endif
   }
 
+#ifdef HAVE_X_I18N
   {
     AUTO_STRING (inputStyle, "inputStyle");
     AUTO_STRING (InputStyle, "InputStyle");
     Lisp_Object value = gui_display_get_resource (dpyinfo, inputStyle, InputStyle,
 						  Qnil, Qnil);
 
-#ifdef HAVE_X_I18N
     if (STRINGP (value))
       {
 	if (!strcmp (SSDATA (value), "callback"))
@@ -15396,8 +15451,8 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 	  dpyinfo->prefer_native_input = true;
 #endif
       }
-#endif
   }
+#endif
 
 #ifdef HAVE_X_SM
   /* Only do this for the very first display in the Emacs session.
