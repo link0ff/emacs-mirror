@@ -182,12 +182,12 @@ returns the buffer used."
 		     " "))
 	 (thisdir default-directory))
     (with-current-buffer buf
-      (setq buffer-read-only t)
       (buffer-disable-undo (current-buffer))
       (let ((inhibit-read-only t))
 	(erase-buffer))
       (buffer-enable-undo (current-buffer))
       (diff-mode)
+      (let ((view-read-only nil)) (read-only-mode 1))
       (setq-local revert-buffer-function
                   (lambda (_ignore-auto _noconfirm)
                     (diff-no-select old new switches no-async (current-buffer))))
