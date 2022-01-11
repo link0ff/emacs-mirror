@@ -352,6 +352,7 @@ Turning on outline mode calls the value of `text-mode-hook' and then of
   (setq-local imenu-generic-expression
 	      (list (list nil (concat "^\\(?:" outline-regexp "\\).*$") 0)))
   (add-hook 'change-major-mode-hook #'outline-show-all nil t)
+  ;; (outline-apply-default-state)
   (add-hook 'hack-local-variables-hook #'outline-apply-default-state nil t))
 
 (defvar outline-minor-mode-map)
@@ -436,7 +437,8 @@ See the command `outline-mode' for more information on this mode."
         (setq-local line-move-ignore-invisible t)
 	;; Cause use of ellipses for invisible text.
 	(add-to-invisibility-spec '(outline . t))
-	(outline-apply-default-state))
+	;; (outline-apply-default-state)
+	(add-hook 'hack-local-variables-hook #'outline-apply-default-state nil t))
     (when outline-minor-mode-highlight
       (if font-lock-fontified
           (font-lock-remove-keywords nil outline-font-lock-keywords))
@@ -1566,19 +1568,18 @@ Return either 'hide-all, 'headings-only, or 'show-all."
       (message "Show all")))
     (outline--fix-up-all-buttons)))
 
-(defvar outline-navigation-repeat-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-b") #'outline-backward-same-level)
-    (define-key map (kbd "b") #'outline-backward-same-level)
-    (define-key map (kbd "C-f") #'outline-forward-same-level)
-    (define-key map (kbd "f") #'outline-forward-same-level)
-    (define-key map (kbd "C-n") #'outline-next-visible-heading)
-    (define-key map (kbd "n") #'outline-next-visible-heading)
-    (define-key map (kbd "C-p") #'outline-previous-visible-heading)
-    (define-key map (kbd "p") #'outline-previous-visible-heading)
-    (define-key map (kbd "C-u") #'outline-up-heading)
-    (define-key map (kbd "u") #'outline-up-heading)
-    map))
+
+(defvar-keymap outline-navigation-repeat-map
+  "C-b" #'outline-backward-same-level
+  "b"   #'outline-backward-same-level
+  "C-f" #'outline-forward-same-level
+  "f"   #'outline-forward-same-level
+  "C-n" #'outline-next-visible-heading
+  "n"   #'outline-next-visible-heading
+  "C-p" #'outline-previous-visible-heading
+  "p"   #'outline-previous-visible-heading
+  "C-u" #'outline-up-heading
+  "u"   #'outline-up-heading)
 
 (dolist (command '(outline-backward-same-level
                    outline-forward-same-level
@@ -1587,17 +1588,15 @@ Return either 'hide-all, 'headings-only, or 'show-all."
                    outline-up-heading))
   (put command 'repeat-map 'outline-navigation-repeat-map))
 
-(defvar outline-editing-repeat-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map (kbd "C-v") #'outline-move-subtree-down)
-    (define-key map (kbd "v") #'outline-move-subtree-down)
-    (define-key map (kbd "C-^") #'outline-move-subtree-up)
-    (define-key map (kbd "^") #'outline-move-subtree-up)
-    (define-key map (kbd "C->") #'outline-demote)
-    (define-key map (kbd ">") #'outline-demote)
-    (define-key map (kbd "C-<") #'outline-promote)
-    (define-key map (kbd "<") #'outline-promote)
-    map))
+(defvar-keymap outline-editing-repeat-map
+  "C-v" #'outline-move-subtree-down
+  "v"   #'outline-move-subtree-down
+  "C-^" #'outline-move-subtree-up
+  "^"   #'outline-move-subtree-up
+  "C->" #'outline-demote
+  ">"   #'outline-demote
+  "C-<" #'outline-promote
+  "<"   #'outline-promote)
 
 (dolist (command '(outline-move-subtree-down
                    outline-move-subtree-up
@@ -1605,6 +1604,7 @@ Return either 'hide-all, 'headings-only, or 'show-all."
                    outline-promote))
   (put command 'repeat-map 'outline-editing-repeat-map))
 
+
 (provide 'outline)
 (provide 'noutline)
 
