@@ -7474,9 +7474,9 @@ ALIST.  See `display-buffer' for details."
   :version "24.1"
   :group 'windows)
 
-(defcustom display-comint-buffer-action 'display-buffer-same-window
-  "The action to display a comint buffer."
-  :type display-buffer--action-function-custom-type
+(defcustom display-comint-buffer-action display-buffer--same-window-action
+  "`display-buffer' action for displaying comint buffers."
+  :type display-buffer--action-custom-type
   :risky t
   :version "29.1"
   :group 'windows
@@ -10107,7 +10107,8 @@ With arg N, put point N/10 of the way from the true beginning."
     (with-no-warnings
       (beginning-of-buffer arg))
     ;; Set point accordingly.
-    (recenter '(t))))
+    ;; (recenter '(t))
+    ))
 
 (defun end-of-buffer-other-window (arg)
   "Move point to the end of the buffer in the other window.
@@ -10118,7 +10119,8 @@ With arg N, put point N/10 of the way from the true end."
   (with-selected-window (other-window-for-scrolling)
     (with-no-warnings
       (end-of-buffer arg))
-    (recenter '(t))))
+    ;; (recenter '(t))
+    ))
 
 (defvar mouse-autoselect-window-timer nil
   "Timer used by delayed window autoselection.")
