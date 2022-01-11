@@ -1730,14 +1730,14 @@ to override the value of `vc-diff-switches' and `diff-switches'."
       ;; any switches in diff-switches.
       (when (listp switches) switches))))
 
-(defun vc-shrink-buffer (&optional buffer)
+(defun vc-shrink-buffer-window (&optional buffer)
   "Call `shrink-window-if-larger-than-buffer' only when BUFFER is visible.
 BUFFER defaults to the current buffer."
   (let ((window (get-buffer-window buffer t)))
     (when window
       (shrink-window-if-larger-than-buffer window))))
 
-(defvar vc-diff-finish-functions '(vc-shrink-buffer)
+(defvar vc-diff-finish-functions '(vc-shrink-buffer-window)
   "Functions run at the end of the diff command.
 Each function runs in the diff output buffer without args.")
 
@@ -2507,7 +2507,7 @@ earlier revisions.  Show up to LIMIT entries (non-nil means unlimited)."
 (put 'vc-log-view-type 'permanent-local t)
 (defvar vc-sentinel-movepoint)
 
-(defvar vc-log-finish-functions '(vc-shrink-buffer)
+(defvar vc-log-finish-functions '(vc-shrink-buffer-window)
   "Functions run at the end of the log command.
 Each function runs in the log output buffer without args.")
 
