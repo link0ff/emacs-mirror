@@ -4126,7 +4126,9 @@ x_draw_glyph_string (struct glyph_string *s)
       area_max_x = area_x + area_width - 1;
 
       decoration_width = s->width;
-      if (area_max_x < (s->x + decoration_width - 1))
+      if (!s->row->mode_line_p
+	  && !s->row->tab_line_p
+	  && area_max_x < (s->x + decoration_width - 1))
 	decoration_width -= (s->x + decoration_width - 1) - area_max_x;
 
       /* Draw relief if not yet drawn.  */
@@ -5386,8 +5388,6 @@ x_find_modifier_meanings (struct x_display_info *dpyinfo)
   dpyinfo->super_mod_mask = 0;
   dpyinfo->hyper_mod_mask = 0;
 
-  XDisplayKeycodes (dpyinfo->display, &min_code, &max_code);
-
 #ifdef HAVE_XKB
   if (dpyinfo->xkb_desc)
     {
@@ -5431,6 +5431,8 @@ x_find_modifier_meanings (struct x_display_info *dpyinfo)
       return;
     }
 #endif
+
+  XDisplayKeycodes (dpyinfo->display, &min_code, &max_code);
 
   syms = XGetKeyboardMapping (dpyinfo->display,
 			      min_code, max_code - min_code + 1,
@@ -11167,6 +11169,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  case XI_PropertyEvent:
 	  case XI_HierarchyChanged:
 	  case XI_DeviceChanged:
+
+#ifdef XISlaveSwitch
+	    if (xi_event->evtype == XI_DeviceChanged
+		&& (((XIDeviceChangedEvent *) xi_event)->reason
+		    == XISlaveSwitch))
+	      goto XI_OTHER;
+#endif
 	    x_init_master_valuators (dpyinfo);
 	    goto XI_OTHER;
 #ifdef XI_TouchBegin
