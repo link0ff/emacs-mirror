@@ -4294,11 +4294,13 @@ in which case `save-window-excursion' cannot help."
 (defmacro with-output-to-temp-buffer (bufname &rest body)
   "Bind `standard-output' to buffer BUFNAME, eval BODY, then show that buffer.
 
-This construct makes buffer BUFNAME empty before running BODY.
-It does not make the buffer current for BODY.
-Instead it binds `standard-output' to that buffer, so that output
-generated with `prin1' and similar functions in BODY goes into
-the buffer.
+This is a convenience macro meant for displaying help buffers and
+the like.  It empties the BUFNAME buffer before evaluating BODY
+and disables undo in that buffer.
+
+It does not make the buffer current for BODY.  Instead it binds
+`standard-output' to that buffer, so that output generated with
+`prin1' and similar functions in BODY goes into the buffer.
 
 At the end of BODY, this marks buffer BUFNAME unmodified and displays
 it in a window, but does not select it.  The normal way to do this is
@@ -6555,7 +6557,7 @@ signalled.  If NOERROR, the non-loop parts of the chain is returned."
                    (eq func orig-func))
            (if noerror
                (throw 'loop chain)
-             (error "Alias loop for `%s'" orig-func)))
+             (signal 'cyclic-function-indirection (list orig-func))))
          (push func chain))
        chain))))
 

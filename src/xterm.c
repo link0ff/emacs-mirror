@@ -20,6 +20,72 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 /* New display code by Gerd Moellmann <gerd@gnu.org>.  */
 /* Xt features made by Fred Pierresteguy.  */
 
+/* X window system support for GNU Emacs
+
+   This file is part of the X window system support for GNU Emacs.  It
+   contains subroutines comprising the redisplay interface, setting up
+   scroll bars and widgets, and handling input.
+
+   INPUT
+
+   Emacs handles input by running pselect in a loop, which returns
+   whenever there is input available on the connection to the X
+   server.  On some systems, Emacs also arranges for any new input on
+   that connection to send an asynchronous signal.  Whenever pselect
+   returns, or such a signal is received and input is not blocked,
+   XTread_socket is called and translates X11 events read by Xlib into
+   struct input_events, which are then stored in the keyboard buffer,
+   to be processed and acted upon at some later time.  The function
+   handle_one_xevent is responsible for handling core events after
+   they are filtered, and filtering X Input Extension events.  It also
+   performs actions on some special events, such as updating the
+   dimensions of a frame after a ConfigureNotify is sent by the X
+   server to inform us that it changed.
+
+   Before such events are translated, an Emacs build with
+   internationalization enabled (the default since X11R6) will filter
+   events through an X Input Method (XIM) or GTK, which might decide
+   to intercept the event and send a different one in its place, for
+   reasons such as enabling the user to insert international
+   characters that aren't on his keyboard by typing a sequence of
+   characters which are.  See the function x_filter_event and its
+   callers for more details.
+
+   Events that cause Emacs to quit are treated specially by the code
+   that stores them in the keyboard buffer and generally cause an
+   immediate interrupt.  Such an interrupt can lead to a longjmp from
+   the code that stored the keyboard event, which isn't safe inside
+   XTread_socket.  To avoid this problem, XTread_socket is provided a
+   special event buffer named hold_quit.  When a quit event is
+   encountered, it is stored inside this special buffer, which will
+   cause the keyboard code that called XTread_socket to store it at a
+   later time when it is safe to do so.
+
+   handle_one_xevent will generally have to determine which frame an
+   event should be attributed to.  This is not easy, because events
+   can come from multiple X windows, and a frame can also have
+   multiple windows.  handle_one_xevent usually calls the function
+   x_any_window_to_frame, which searches for a frame by toplevel
+   window and widget windows.  There are also some other functions for
+   searching by specific types of window, such as
+   x_top_window_to_frame (which only searches for frames by toplevel
+   window), and x_menubar_window_to_frame (which will only search
+   through frame menu bars).
+
+   INPUT FOCUS
+
+   Under X, the window where keyboard input is sent is not always
+   explictly defined.  When there is a focus window, it receives what
+   is referred to as "explicit focus", but when there is none, it
+   receives "implicit focus" whenever the pointer enters it, and loses
+   that focus when the pointer leaves.  When the toplevel window of a
+   frame receives an explicit focus event (FocusIn or FocusOut), we
+   treat that frame as having the current input focus, but when there
+   is no focus window, we treat each frame as having the input focus
+   whenever the pointer enters it, and undo that treatment when the
+   pointer leaves it.  See the callers of x_detect_focus_change for
+   more details.  */
+
 #include <config.h>
 #include <stdlib.h>
 #include <math.h>
@@ -5923,7 +5989,7 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 	if (!f1 && insist > 0)
 	  f1 = SELECTED_FRAME ();
 
-	if (f1)
+	if (f1 && FRAME_X_P (f1))
 	  {
 	    /* Ok, we found a frame.  Store all the values.
 	       last_mouse_glyph is a rectangle used to reduce the
@@ -5933,7 +5999,6 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 	       on it, i.e. into the same rectangles that matrices on
 	       the frame are divided into.  */
 
-	    /* FIXME: what if F1 is not an X frame?  */
 	    dpyinfo = FRAME_DISPLAY_INFO (f1);
 	    remember_mouse_glyph (f1, win_x, win_y, &dpyinfo->last_mouse_glyph);
 	    dpyinfo->last_mouse_glyph_frame = f1;
@@ -8308,6 +8373,7 @@ x_filter_event (struct x_display_info *dpyinfo, XEvent *event)
 #ifdef USE_GTK
     }
   else if (f1 && (event->type == KeyPress
+		  || event->type == KeyRelease
 #ifdef HAVE_XINPUT2
 		  || xinput_event
 #endif
@@ -8369,8 +8435,10 @@ event_handler_gdk (GdkXEvent *gxev, GdkEvent *ev, gpointer data)
 		  && xev->type == GenericEvent
 		  && (xev->xgeneric.extension
 		      == dpyinfo->xi2_opcode)
-		  && (xev->xgeneric.evtype
-		      == XI_KeyPress))
+		  && ((xev->xgeneric.evtype
+		       == XI_KeyPress)
+		      || (xev->xgeneric.evtype
+			  == XI_KeyRelease)))
 #endif
 	      ))
 	{
@@ -12633,9 +12701,11 @@ xim_initialize (struct x_display_info *dpyinfo, char *resource_name)
       ret = XRegisterIMInstantiateCallback
 	(dpyinfo->display, dpyinfo->rdb, xim_inst->resource_name,
 	 emacs_class, xim_instantiate_callback,
-	 /* This is XPointer in XFree86 but (XPointer *)
-	    on Tru64, at least, hence the configure test.  */
-	 (XRegisterIMInstantiateCallback_arg6) xim_inst);
+	 /* This is XPointer in XFree86 but (XPointer *) on Tru64, at
+	    least, but the configure test doesn't work because
+	    xim_instantiate_callback can either be XIMProc or
+	    XIDProc, so just cast to void *.  */
+	 (void *) xim_inst);
       eassert (ret == True);
 #else /* not HAVE_X11R6_XIM */
       xim_open_dpy (dpyinfo, resource_name);
@@ -12660,8 +12730,7 @@ xim_close_dpy (struct x_display_info *dpyinfo)
 	{
 	  Bool ret = XUnregisterIMInstantiateCallback
 	    (dpyinfo->display, dpyinfo->rdb, xim_inst->resource_name,
-	     emacs_class, xim_instantiate_callback,
-	     (XRegisterIMInstantiateCallback_arg6) xim_inst);
+	     emacs_class, xim_instantiate_callback, (void *) xim_inst);
 	  eassert (ret == True);
 	}
       xfree (xim_inst->resource_name);
