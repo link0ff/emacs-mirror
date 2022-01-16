@@ -1344,8 +1344,8 @@ When equal to a list, each element should be one of the following:
   regexp.
 
 - `subtree-has-long-lines' to only show the heading branches when
-   long lines are detected in its subtree (see
-   `outline-default-long-line' for the definition of long lines).
+  long lines are detected in its subtree (see
+  `outline-default-long-line' for the definition of long lines).
 
 - `subtree-is-long' to only show the heading branches when its
   subtree contains more than `outline-default-line-count' lines.
@@ -1382,8 +1382,8 @@ When equal to a list, each element should be one of the following:
   (cond
    ((integerp outline-default-state)
     (outline--show-headings-up-to-level outline-default-state))
-   ((when (functionp outline-default-state)
-      (funcall outline-default-state)))))
+   ((functionp outline-default-state)
+    (funcall outline-default-state))))
 
 (defun outline-show-only-headings ()
   "Show only headings."
@@ -1435,45 +1435,45 @@ LEVEL, decides of subtree visibility according to
         ;; Then unhide the top level headers.
         (outline-map-region
          (lambda ()
-             (let ((current-level (funcall outline-level)))
-	       (when (< current-level level)
-                 (outline-show-heading)
-                 (outline-show-entry))
-               (when (= current-level level)
-                 (cond
-                  ((and heading-regexp
+           (let ((current-level (funcall outline-level)))
+	     (when (< current-level level)
+               (outline-show-heading)
+               (outline-show-entry))
+             (when (= current-level level)
+               (cond
+                ((and heading-regexp
+                      (let ((beg (point))
+                            (end (progn (outline-end-of-heading) (point))))
+                        (string-match-p heading-regexp (buffer-substring beg end))))
+                 ;; hide entry when heading match regexp
+                 (outline-hide-entry))
+                ((and check-line-count
+                      (save-excursion
                         (let ((beg (point))
-                              (end (progn (outline-end-of-heading) (point))))
-                          (string-match-p heading-regexp (buffer-substring beg end))))
-                   ;; hide entry when heading match regexp
-                   (outline-hide-entry))
-                  ((and check-line-count
-                        (save-excursion
-                          (let ((beg (point))
-                                (end (progn (outline-end-of-subtree) (point))))
-                            (<= outline-default-line-count (count-lines beg end)))))
-                   ;; show only branches when line count of subtree >
-                   ;; threshold
-                   (outline-show-branches))
-                  ((and check-long-lines
-                        (save-excursion
-                          (let ((beg (point))
-                                (end (progn (outline-end-of-subtree) (point))))
-                            (save-restriction
-                              (narrow-to-region beg end)
-                              (let ((so-long-skip-leading-comments nil)
-                                    (so-long-threshold outline-default-long-line)
-                                    (so-long-max-lines nil))
-                                (so-long-detected-long-line-p))))))
-                   ;; show only branches when long lines are detected
-                   ;; in subtree
-                   (outline-show-branches))
-                  (custom-function
-                   ;; call custom function if defined
-                   (funcall custom-function))
-                  (t
-                   ;; if no previous clause succeeds, show subtree
-                   (outline-show-subtree))))))
+                              (end (progn (outline-end-of-subtree) (point))))
+                          (<= outline-default-line-count (count-lines beg end)))))
+                 ;; show only branches when line count of subtree >
+                 ;; threshold
+                 (outline-show-branches))
+                ((and check-long-lines
+                      (save-excursion
+                        (let ((beg (point))
+                              (end (progn (outline-end-of-subtree) (point))))
+                          (save-restriction
+                            (narrow-to-region beg end)
+                            (let ((so-long-skip-leading-comments nil)
+                                  (so-long-threshold outline-default-long-line)
+                                  (so-long-max-lines nil))
+                              (so-long-detected-long-line-p))))))
+                 ;; show only branches when long lines are detected
+                 ;; in subtree
+                 (outline-show-branches))
+                (custom-function
+                 ;; call custom function if defined
+                 (funcall custom-function))
+                (t
+                 ;; if no previous clause succeeds, show subtree
+                 (outline-show-subtree))))))
          beg end)))
     (run-hooks 'outline-view-change-hook)))
 
