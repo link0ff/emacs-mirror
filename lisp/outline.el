@@ -352,7 +352,6 @@ Turning on outline mode calls the value of `text-mode-hook' and then of
   (setq-local imenu-generic-expression
 	      (list (list nil (concat "^\\(?:" outline-regexp "\\).*$") 0)))
   (add-hook 'change-major-mode-hook #'outline-show-all nil t)
-  ;; (outline-apply-default-state)
   (add-hook 'hack-local-variables-hook #'outline-apply-default-state nil t))
 
 (defvar outline-minor-mode-map)
@@ -437,8 +436,7 @@ See the command `outline-mode' for more information on this mode."
         (setq-local line-move-ignore-invisible t)
 	;; Cause use of ellipses for invisible text.
 	(add-to-invisibility-spec '(outline . t))
-	;; (outline-apply-default-state)
-	(add-hook 'hack-local-variables-hook #'outline-apply-default-state nil t))
+	(outline-apply-default-state))
     (when outline-minor-mode-highlight
       (if font-lock-fontified
           (font-lock-remove-keywords nil outline-font-lock-keywords))
