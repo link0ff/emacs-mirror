@@ -1861,7 +1861,7 @@ BWindow_retitle (void *window, const char *title)
 void
 BWindow_resize (void *window, int width, int height)
 {
-  ((BWindow *) window)->ResizeTo (width, height);
+  ((BWindow *) window)->ResizeTo (width - 1, height - 1);
 }
 
 /* Activate WINDOW, making it the subject of keyboard focus and
@@ -2224,7 +2224,11 @@ BWindow_set_tooltip_decoration (void *window)
   if (!w->LockLooper ())
     gui_abort ("Failed to lock window while setting ttip decoration");
   w->SetLook (B_BORDERED_WINDOW_LOOK);
-  w->SetFeel (B_FLOATING_APP_WINDOW_FEEL);
+  w->SetFeel (kMenuWindowFeel);
+  w->SetFlags (B_NOT_ZOOMABLE
+	       | B_NOT_MINIMIZABLE
+	       | B_AVOID_FRONT
+	       | B_AVOID_FOCUS);
   w->UnlockLooper ();
 }
 
@@ -2818,7 +2822,7 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
       enum haiku_event_type type;
       char *ptr = NULL;
 
-      if (!haiku_read_with_timeout (&type, buf, 200, 100000))
+      if (!haiku_read_with_timeout (&type, buf, 200, 1000000))
 	{
 	  block_input_function ();
 	  if (type != FILE_PANEL_EVENT)
