@@ -36,6 +36,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <interface/MenuBar.h>
 #include <interface/Alert.h>
 #include <interface/Button.h>
+#include <interface/ControlLook.h>
 
 #include <locale/UnicodeChar.h>
 
@@ -406,6 +407,7 @@ public:
   bool menu_bar_active_p = false;
   window_look pre_override_redirect_style;
   window_feel pre_override_redirect_feel;
+  uint32 pre_override_redirect_workspaces;
 
   EmacsWindow () : BWindow (BRect (0, 0, 0, 0), "", B_TITLED_WINDOW_LOOK,
 			    B_NORMAL_WINDOW_FEEL, B_NO_SERVER_SIDE_WINDOW_MODIFIERS)
@@ -2018,7 +2020,9 @@ BView_scroll_bar_update (void *sb, int portion, int whole, int position)
 int
 BScrollBar_default_size (int horizontal_p)
 {
-  return horizontal_p ? B_H_SCROLL_BAR_HEIGHT : B_V_SCROLL_BAR_WIDTH;
+  return be_control_look->GetScrollBarWidth (horizontal_p
+					     ? B_HORIZONTAL
+					     : B_VERTICAL);
 }
 
 /* Invalidate VIEW, causing it to be drawn again.  */
@@ -3170,11 +3174,14 @@ BWindow_set_override_redirect (void *window, bool override_redirect_p)
 	  w->pre_override_redirect_style = w->Look ();
 	  w->SetFeel (kMenuWindowFeel);
 	  w->SetLook (B_NO_BORDER_WINDOW_LOOK);
+	  w->pre_override_redirect_workspaces = w->Workspaces ();
+	  w->SetWorkspaces (B_ALL_WORKSPACES);
 	}
       else
 	{
 	  w->SetFeel (w->pre_override_redirect_feel);
 	  w->SetLook (w->pre_override_redirect_style);
+	  w->SetWorkspaces (w->pre_override_redirect_workspaces);
 	}
 
       w->UnlockLooper ();
