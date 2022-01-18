@@ -86,4 +86,72 @@
   (should-not (textsec-mixed-numbers-p "8foo8"))
   (should (textsec-mixed-numbers-p "8foo৪")))
 
+(ert-deftest test-resolved ()
+  (should (equal (textsec-resolved-script-set "ǉeto")
+                 '(latin)))
+  (should-not (textsec-resolved-script-set "Сirсlе")))
+
+(ert-deftest test-confusable ()
+  (should (equal (textsec-unconfuse-string "ǉeto") "ljeto"))
+  (should (textsec-ascii-confusable-p "ǉeto"))
+  (should-not (textsec-ascii-confusable-p "ljeto"))
+  (should (equal (textsec-unconfuse-string "～") "〜"))
+  (should-not (textsec-ascii-confusable-p "～"))
+
+  (should (textsec-single-script-confusable-p "ǉeto" "ljeto"))
+  (should-not (textsec-single-script-confusable-p "paypal" "pаypаl"))
+  (should-not (textsec-single-script-confusable-p "scope""ѕсоре"))
+
+  (should-not (textsec-mixed-script-confusable-p "ǉeto" "ljeto"))
+  (should (textsec-mixed-script-confusable-p "paypal" "pаypаl"))
+  (should (textsec-mixed-script-confusable-p "scope""ѕсоре"))
+
+  (should-not (textsec-whole-script-confusable-p "ǉeto" "ljeto"))
+  (should-not (textsec-whole-script-confusable-p "paypal" "pаypаl"))
+  (should (textsec-whole-script-confusable-p "scope""ѕсоре")))
+
+(ert-deftest test-suspiction-domain ()
+  (should (textsec-domain-suspicious-p "foo/bar.org"))
+  (should-not (textsec-domain-suspicious-p "foo.org"))
+  (should (textsec-domain-suspicious-p "f\N{LEFT-TO-RIGHT ISOLATE}oo.org")))
+
+(ert-deftest test-suspicious-local ()
+  (should-not (textsec-local-address-suspicious-p "larsi"))
+  (should (textsec-local-address-suspicious-p ".larsi"))
+  (should (textsec-local-address-suspicious-p "larsi."))
+  (should-not (textsec-local-address-suspicious-p "la.rsi"))
+  (should (textsec-local-address-suspicious-p "lar..si"))
+
+  (should-not (textsec-local-address-suspicious-p "LÅRSI"))
+  (should (textsec-local-address-suspicious-p "LÅRSI"))
+
+  (should (textsec-local-address-suspicious-p "larsi8৪")))
+
+(ert-deftest test-suspicious-name ()
+  (should-not (textsec-name-suspicious-p "Lars Ingebrigtsen"))
+  (should (textsec-name-suspicious-p "LÅRS INGEBRIGTSEN"))
+  (should-not (textsec-name-suspicious-p "LÅRS INGEBRIGTSEN"))
+
+  (should (textsec-name-suspicious-p
+           "Lars Ingebrigtsen\N{LEFT-TO-RIGHT ISOLATE}"))
+  (should-not (textsec-name-suspicious-p
+               "Lars Ingebrigtsen\N{LEFT-TO-RIGHT MARK}"))
+
+  (should (textsec-name-suspicious-p
+           "\N{LEFT-TO-RIGHT MARK}\N{LEFT-TO-RIGHT MARK}Lars Ingebrigtsen"))
+  (should-not (textsec-name-suspicious-p
+               "\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}Lars Ingebrigtsen"))
+  (should (textsec-name-suspicious-p
+               "\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}\N{LEFT-TO-RIGHT MARK}Lars Ingebrigtsen")))
+
+(ert-deftest test-suspicious-email ()
+  (should-not
+   (textsec-email-suspicious-p "Lars Ingebrigtsen <larsi@gnus.org>"))
+  (should
+   (textsec-email-suspicious-p "LÅrs Ingebrigtsen <larsi@gnus.org>"))
+  (should
+   (textsec-email-suspicious-p "Lars Ingebrigtsen <.larsi@gnus.org>"))
+  (should
+   (textsec-email-suspicious-p "Lars Ingebrigtsen <larsi@gn\N{LEFT-TO-RIGHT ISOLATE}us.org>")))
+
 ;;; textsec-tests.el ends here

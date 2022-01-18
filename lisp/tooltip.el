@@ -339,6 +339,8 @@ This is used by `tooltip-show-help' and
 (defvar tooltip-previous-message nil
   "The previous content of the echo area.")
 
+(defvar haiku-use-system-tooltips)
+
 (defun tooltip-show-help-non-mode (help)
   "Function installed as `show-help-function' when Tooltip mode is off.
 It is also called if Tooltip mode is on, for text-only displays."
@@ -374,8 +376,10 @@ It is also called if Tooltip mode is on, for text-only displays."
   "Function installed as `show-help-function'.
 MSG is either a help string to display, or nil to cancel the display."
   (if (and (display-graphic-p)
-           (or (not (eq window-system 'haiku)) ;; On Haiku, there isn't a reliable way to show tooltips
-                                               ;; above menus.
+           ;; On Haiku, system tooltips can't be displayed above
+           ;; menus.
+           (or (not (and (eq window-system 'haiku)
+                         haiku-use-system-tooltips))
                (not (menu-or-popup-active-p))))
       (let ((previous-help tooltip-help-message))
 	(setq tooltip-help-message msg)
