@@ -1735,7 +1735,10 @@ the form (METHOD USER DOMAIN HOST PORT LOCALNAME &optional HOP)."
       (when hop
 	(setq hop nil)
 	;; Assure that the hops are in `tramp-default-proxies-alist'.
-	(tramp-add-hops (car args))))
+	;; In tramp-archive.el, the slot `hop' is used for the archive
+	;; file name.
+	(unless (string-equal method "archive")
+	  (tramp-add-hops (car args)))))
 
      (t (setq method (nth 0 args)
 	      user (nth 1 args)
@@ -1927,7 +1930,7 @@ The outline level is equal to the verbosity of the Tramp message."
   "A predicate for Tramp interactive commands.
 They are completed by \"M-x TAB\" only in Tramp debug buffers."
   (with-current-buffer buffer
-    (string-equal (buffer-substring 1 10) ";; Emacs:")))
+    (string-equal (buffer-substring 1 (min 10 (point-max))) ";; Emacs:")))
 
 (put #'tramp-debug-buffer-command-completion-p 'tramp-suppress-trace t)
 

@@ -29,6 +29,7 @@
 (require 'idna-mapping)
 (require 'puny)
 (require 'mail-parse)
+(require 'url)
 
 (defvar textsec--char-scripts nil)
 
@@ -125,7 +126,7 @@ Levels are (in decreasing order of restrictiveness) `ascii-only',
          (memq 'latin scripts)
          ;; This list comes from
          ;; https://www.unicode.org/reports/tr31/#Table_Recommended_Scripts
-         ;; (but is without latin, cyrillic and greek).
+         ;; (but without latin, cyrillic and greek).
          (seq-intersection scripts
                            '(arabic
                              armenian
@@ -162,7 +163,7 @@ Levels are (in decreasing order of restrictiveness) `ascii-only',
     'unrestricted))))
 
 (defun textsec-mixed-numbers-p (string)
-  "Return non-nil if there are numbers from different decimal systems in STRING."
+  "Return non-nil if STRING includes numbers from different decimal systems."
   (>
    (length
     (seq-uniq
@@ -178,7 +179,7 @@ Levels are (in decreasing order of restrictiveness) `ascii-only',
    1))
 
 (defun textsec-ascii-confusable-p (string)
-  "Return non-nil if STRING isn't ASCII, but is confusable with ASCII."
+  "Return non-nil if non-ASCII STRING can be confused with ASCII on display."
   (and (not (eq (textsec-restriction-level string) 'ascii-only))
        (eq (textsec-restriction-level (textsec-unconfuse-string string))
            'ascii-only)))
@@ -198,12 +199,14 @@ This algorithm is described in:
 (defun textsec-resolved-script-set (string)
   "Return the resolved script set for STRING.
 This is the minimal covering script set for STRING, but is nil is
-STRING isn't a single script string."
+STRING isn't a single script string.
+The scripts are as defined by the Unicode Standard Annex 24 (UAX#24)."
   (and (textsec-single-script-p string)
        (textsec-covering-scripts string)))
 
 (defun textsec-single-script-confusable-p (string1 string2)
-  "Say whether STRING1 and STRING2 are single script confusables."
+  "Say whether STRING1 and STRING2 are single-script confusables.
+The scripts are as defined by the Unicode Standard Annex 24 (UAX#24)."
   (and (equal (textsec-unconfuse-string string1)
               (textsec-unconfuse-string string2))
        ;; And they have to have at least one resolved script in
@@ -212,7 +215,8 @@ STRING isn't a single script string."
                          (textsec-resolved-script-set string2))))
 
 (defun textsec-mixed-script-confusable-p (string1 string2)
-  "Say whether STRING1 and STRING2 are mixed script confusables."
+  "Say whether STRING1 and STRING2 are mixed-script confusables.
+The scripts are as defined by the Unicode Standard Annex 24 (UAX#24)."
   (and (equal (textsec-unconfuse-string string1)
               (textsec-unconfuse-string string2))
        ;; And they have no resolved scripts in common.
@@ -220,15 +224,21 @@ STRING isn't a single script string."
                                (textsec-resolved-script-set string2)))))
 
 (defun textsec-whole-script-confusable-p (string1 string2)
-  "Say whether STRING1 and STRING2 are whole script confusables."
+  "Say whether STRING1 and STRING2 are whole-script confusables.
+The scripts are as defined by the Unicode Standard Annex 24 (UAX#24)."
   (and (textsec-mixed-script-confusable-p string1 string2)
        (textsec-single-script-p string1)
        (textsec-single-script-p string2)))
 
 (defun textsec-domain-suspicious-p (domain)
-  "Say whether DOMAIN looks suspicious.
-If it isn't, nil is returned.  If it is, a string explaining the
-problem is returned."
+  "Say whether DOMAIN's name looks suspicious.
+Return nil if it isn't suspicious.  If it is, return a string explaining
+the potential problem.
+
+Domain names are considered suspicious if they use characters
+that can look similar to other characters when displayed, or
+use characters that are not allowed by Unicode's IDNA mapping,
+or use certain other unusual mixtures of characters."
   (catch 'found
     (seq-do
      (lambda (char)
@@ -236,16 +246,26 @@ problem is returned."
          (throw 'found (format "Disallowed character: `%s' (#x%x)"
                                (string char) char))))
      domain)
+    ;; Does IDNA allow it?
     (unless (puny-highly-restrictive-domain-p domain)
-      (throw 'found "%s is not highly restrictive"))
+      (throw 'found (format "`%s' is not highly-restrictive" domain)))
+    ;; Check whether any segment of the domain name is confusable with
+    ;; an ASCII-only segment.
+    (dolist (elem (split-string domain "\\."))
+      (when (textsec-ascii-confusable-p elem)
+        (throw 'found (format "`%s' is confusable with ASCII" elem))))
     nil))
 
 (defun textsec-local-address-suspicious-p (local)
-  "Say whether LOCAL looks suspicious.
+  "Say whether LOCAL part of an email address looks suspicious.
 LOCAL is the bit before \"@\" in an email address.
 
-If it suspicious, nil is returned.  If it is, a string explaining
-the problem is returned."
+If it isn't suspicious, return nil.  If it is, return a string explaining
+the potential problem.
+
+Email addresses are considered suspicious if they use characters
+that can look similar to other characters when displayed, or use
+certain other unusual mixtures of characters."
   (cond
    ((not (equal local (ucs-normalize-NFKC-string local)))
     (format "`%s' is not in normalized format `%s'"
@@ -259,10 +279,15 @@ the problem is returned."
 
 (defun textsec-name-suspicious-p (name)
   "Say whether NAME looks suspicious.
-NAME is (for instance) the free-text name from an email address.
+NAME is (for instance) the free-text display name part of an
+email address.
 
-If it suspicious, nil is returned.  If it is, a string explaining
-the problem is returned."
+If it isn't suspicious, return nil.  If it is, return a string
+explaining the potential problem.
+
+Names are considered suspicious if they use characters that can
+look similar to other characters when displayed, or use certain
+other unusual mixtures of characters."
   (cond
    ((not (equal name (ucs-normalize-NFC-string name)))
     (format "`%s' is not in normalized format `%s'"
@@ -278,9 +303,13 @@ the problem is returned."
    ((textsec-suspicious-nonspacing-p name))))
 
 (defun textsec-suspicious-nonspacing-p (string)
-  "Say whether STRING has a suspicious use of nonspacing characters.
-If it suspicious, nil is returned.  If it is, a string explaining
-the problem is returned."
+  "Say whether STRING uses nonspacing characters in suspicious ways.
+If it doesn't, return nil.  If it does, return a string explaining
+the potential problem.
+
+Use of nonspacing characters is considered suspicious if there are
+two or more consecutive identical nonspacing characters, or too many
+consecutive nonspacing characters."
   (let ((prev nil)
         (nonspace-count 0))
     (catch 'found
@@ -288,30 +317,90 @@ the problem is returned."
        (lambda (char)
          (let ((nonspacing
                 (memq (get-char-code-property char 'general-category)
-                      '(Cf Cc Mn))))
+                      '(Mn Me))))
            (when (and nonspacing
                       (equal char prev))
-             (throw 'found "Two identical nonspacing characters in a row"))
+             (throw 'found "Two identical consecutive nonspacing characters"))
            (setq nonspace-count (if nonspacing
                                     (1+ nonspace-count)
                                   0))
            (when (> nonspace-count 4)
              (throw 'found
-                    "Excessive number of nonspacing characters in a row"))
+                    "Too many consecutive nonspacing characters"))
            (setq prev char)))
        string)
       nil)))
 
-(defun textsec-email-suspicious-p (email)
-  "Say whether EMAIL looks suspicious.
-If it isn't, nil is returned.  If it is, a string explaining the
-problem is returned."
-  (pcase-let* ((`(,address . ,name) (mail-header-parse-address email t))
-               (`(,local ,domain) (split-string address "@")))
+(defun textsec-email-address-suspicious-p (address)
+  "Say whether EMAIL address looks suspicious.
+If it isn't, return nil.  If it is, return a string explaining the
+potential problem.
+
+An email address is considered suspicious if either of its two
+parts -- the local address name or the domain -- are found to be
+suspicious by, respectively, `textsec-local-address-suspicious-p'
+and `textsec-domain-suspicious-p'."
+  (pcase-let ((`(,local ,domain) (split-string address "@")))
     (or
      (textsec-domain-suspicious-p domain)
-     (textsec-local-address-suspicious-p local)
-     (and name (textsec-name-suspicious-p name)))))
+     (textsec-local-address-suspicious-p local))))
+
+(defun textsec-email-address-header-suspicious-p (email)
+  "Say whether EMAIL looks suspicious.
+If it isn't, return nil.  If it is, return a string explaining the
+potential problem.
+
+Note that EMAIL has to be a valid email specification according
+to RFC2047bis -- strings that can't be parsed will be flagged as
+suspicious.
+
+An email specification is considered suspicious if either of its
+two parts -- the address or the name -- are found to be
+suspicious by, respectively, `textsec-email-address-suspicious-p'
+and `textsec-name-suspicious-p'."
+  (catch 'end
+    (pcase-let ((`(,address . ,name)
+                 (condition-case nil
+                     (mail-header-parse-address email t)
+                   (error (throw 'end "Email address can't be parsed.")))))
+      (or
+       (textsec-email-address-suspicious-p  address)
+       (and name (textsec-name-suspicious-p name))))))
+
+(defun textsec-url-suspicious-p (url)
+  "Say whether URL looks suspicious.
+If it isn't, return nil.  If it is, return a string explaining the
+potential problem."
+  (let ((parsed (url-generic-parse-url url)))
+    ;; The URL may not have a domain.
+    (and (url-host parsed)
+         (textsec-domain-suspicious-p (url-host parsed)))))
+
+(defun textsec-link-suspicious-p (link)
+  "Say whether LINK is suspicious.
+LINK should be a cons cell where the first element is the URL,
+and the second element is the link text.
+
+This function will return non-nil if it seems like the link text
+is misleading about where the URL takes you.  This is typical
+when the link text looks like an URL itself, but doesn't lead to
+the same domain as the URL."
+  (let ((url (car link))
+        (text (string-trim (cdr link))))
+    (when (string-match-p "\\`[a-z]+\\.[.a-z]+\\'" text)
+      (setq text (concat "http://" text)))
+    (let ((udomain (url-host (url-generic-parse-url url)))
+          (tdomain (url-host (url-generic-parse-url text))))
+      (and udomain
+           tdomain
+           (not (equal udomain tdomain))
+           ;; One may be a sub-domain of the other, but don't allow too
+           ;; short domains.
+           (not (or (and (string-suffix-p udomain tdomain)
+                         (url-domsuf-cookie-allowed-p udomain))
+                    (and (string-suffix-p tdomain udomain)
+                         (url-domsuf-cookie-allowed-p tdomain))))
+           (format "Text `%s' doesn't point to link URL `%s'" text url)))))
 
 (provide 'textsec)
 

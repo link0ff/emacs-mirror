@@ -113,7 +113,10 @@
 (ert-deftest test-suspiction-domain ()
   (should (textsec-domain-suspicious-p "foo/bar.org"))
   (should-not (textsec-domain-suspicious-p "foo.org"))
-  (should (textsec-domain-suspicious-p "f\N{LEFT-TO-RIGHT ISOLATE}oo.org")))
+  (should (textsec-domain-suspicious-p "f\N{LEFT-TO-RIGHT ISOLATE}oo.org"))
+
+  (should (textsec-domain-suspicious-p "Сгсе.ru"))
+  (should-not (textsec-domain-suspicious-p "фСгсе.ru")))
 
 (ert-deftest test-suspicious-local ()
   (should-not (textsec-local-address-suspicious-p "larsi"))
@@ -138,20 +141,49 @@
                "Lars Ingebrigtsen\N{LEFT-TO-RIGHT MARK}"))
 
   (should (textsec-name-suspicious-p
-           "\N{LEFT-TO-RIGHT MARK}\N{LEFT-TO-RIGHT MARK}Lars Ingebrigtsen"))
+           "\N{COMBINING GRAVE ACCENT}\N{COMBINING GRAVE ACCENT}Lars Ingebrigtsen"))
   (should-not (textsec-name-suspicious-p
-               "\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}Lars Ingebrigtsen"))
+               "\N{COMBINING GRAVE ACCENT}\N{COMBINING ENCLOSING CIRCLE}Lars Ingebrigtsen"))
   (should (textsec-name-suspicious-p
-               "\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}\N{LEFT-TO-RIGHT MARK}\N{RIGHT-TO-LEFT MARK}\N{LEFT-TO-RIGHT MARK}Lars Ingebrigtsen")))
+               "\N{COMBINING GRAVE ACCENT}\N{COMBINING ENCLOSING CIRCLE}\N{COMBINING GRAVE ACCENT}\N{COMBINING ENCLOSING CIRCLE}\N{COMBINING GRAVE ACCENT}Lars Ingebrigtsen")))
 
 (ert-deftest test-suspicious-email ()
   (should-not
-   (textsec-email-suspicious-p "Lars Ingebrigtsen <larsi@gnus.org>"))
+   (textsec-email-address-header-suspicious-p
+    "Lars Ingebrigtsen <larsi@gnus.org>"))
   (should
-   (textsec-email-suspicious-p "LÅrs Ingebrigtsen <larsi@gnus.org>"))
+   (textsec-email-address-header-suspicious-p
+    "LÅrs Ingebrigtsen <larsi@gnus.org>"))
   (should
-   (textsec-email-suspicious-p "Lars Ingebrigtsen <.larsi@gnus.org>"))
+   (textsec-email-address-header-suspicious-p
+    "Lars Ingebrigtsen <.larsi@gnus.org>"))
   (should
-   (textsec-email-suspicious-p "Lars Ingebrigtsen <larsi@gn\N{LEFT-TO-RIGHT ISOLATE}us.org>")))
+   (textsec-email-address-header-suspicious-p
+    "Lars Ingebrigtsen <larsi@gn\N{LEFT-TO-RIGHT ISOLATE}us.org>"))
+
+  (should (textsec-email-address-header-suspicious-p
+           "דגבא <foo@bar.com>")))
+
+(ert-deftest test-suspicious-url ()
+  (should-not (textsec-url-suspicious-p "http://example.ru/bar"))
+  (should (textsec-url-suspicious-p "http://Сгсе.ru/bar")))
+
+(ert-deftest test-suspicious-link ()
+  (should-not (textsec-link-suspicious-p
+               (cons "https://gnu.org/" "Hello")))
+  (should-not (textsec-link-suspicious-p
+               (cons "https://gnu.org/" "https://gnu.org/")))
+  (should-not (textsec-link-suspicious-p
+               (cons "https://gnu.org/" "https://www.gnu.org/")))
+  (should-not (textsec-link-suspicious-p
+               (cons "https://www.gnu.org/" "https://gnu.org/")))
+  (should (textsec-link-suspicious-p
+           (cons "https://www.gnu.org/" "https://org/")))
+  (should (textsec-link-suspicious-p
+           (cons "https://www.gnu.org/" "https://fsf.org/")))
+  (should (textsec-link-suspicious-p
+           (cons "https://www.gnu.org/" "http://fsf.org/")))
+  (should (textsec-link-suspicious-p
+           (cons "https://www.gnu.org/" "fsf.org"))))
 
 ;;; textsec-tests.el ends here
