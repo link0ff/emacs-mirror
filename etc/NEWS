@@ -962,8 +962,20 @@ characters in the range U+0080..U+00FF as substitutes for single bytes
 in the range 128..255, but signal an error for all multibyte characters.
 The input must be encoded text.
 
++++
+** The 'clone-indirect-buffer-hook' is now run by 'make-indirect-buffer'.
+It was previously only run by 'clone-indirect-buffer' and
+'clone-indirect-buffer-other-window'.  Since 'make-indirect-buffer' is
+called by both of these, the hook is now run by all 3 of these
+functions.
+
 
 * Lisp Changes in Emacs 29.1
+
+--
+** New function 'bidi-string-strip-control-characters'.
+This utility function is meant for displaying strings when it's
+essential that there's no bidirectional context.
 
 ---
 ** The Gnus range functions have been moved to a new library, range.el.
@@ -1007,6 +1019,32 @@ wheel on some mice, or when the user's finger moves off the touchpad.
 This event is sent when a user peforms a pinch gesture on a touchpad,
 which is comprised of placing two fingers on the touchpad and moving
 them towards or away from each other.
+
+** Text security and suspiciousness
+
++++
+*** New library textsec.el.
+This library contains a number of checks for whether a string is
+"suspicious".  This usually means that the string contains characters
+that have glyphs that can be confused with other, more commonly used
+glyphs, or contain bidirectional (or other) formatting characters that
+may be used to confuse a user.
+
++++
+*** New user option 'textsec-check'.
+If non-nil (which is the default), Emacs packages that are vulnerable
+to attackers trying to confuse the users will use the textsec library
+to mark suspicious text.  For instance shr/eww will mark suspicious
+URLs and links, Gnus will mark suspicious From addresses, and
+Message mode will query the user if the user is sending mail to a
+suspicious address.  If this variable is nil, these checks aren't
+performed.
+
++++
+*** New function 'textsec-suspicious-p'.
+This is the main function Emacs applications should be using to check
+whether a string is suspicious.  It heeds the 'textsec-check' user
+option.
 
 ** Keymaps and key definitions
 

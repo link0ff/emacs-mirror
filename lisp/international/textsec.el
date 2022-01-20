@@ -169,7 +169,8 @@ Levels are (in decreasing order of restrictiveness) `ascii-only',
     (seq-uniq
      (mapcar
       (lambda (char)
-        (get-char-code-property char 'numeric-value))
+        ;; Compare zeros in the respective decimal systems.
+        (- char (get-char-code-property char 'numeric-value)))
       (seq-filter (lambda (char)
                     ;; We're selecting the characters that
                     ;; have a numeric property.
@@ -243,12 +244,21 @@ or use certain other unusual mixtures of characters."
     (seq-do
      (lambda (char)
        (when (eq (elt idna-mapping-table char) t)
-         (throw 'found (format "Disallowed character: `%s' (#x%x)"
-                               (string char) char))))
+         (throw 'found
+                (format "Disallowed character%s (#x%x, %s)"
+                        (if (eq (get-char-code-property char 'general-category)
+                                'Cf)
+                            ""
+                          (concat ": " (string char)))
+                        char
+                        (get-char-code-property char 'name)))))
      domain)
     ;; Does IDNA allow it?
     (unless (puny-highly-restrictive-domain-p domain)
-      (throw 'found (format "`%s' is not highly-restrictive" domain)))
+      (throw
+       'found
+       (format "`%s' mixes characters from different scripts in suspicious ways"
+               domain)))
     ;; Check whether any segment of the domain name is confusable with
     ;; an ASCII-only segment.
     (dolist (elem (split-string domain "\\."))
@@ -292,13 +302,17 @@ other unusual mixtures of characters."
    ((not (equal name (ucs-normalize-NFC-string name)))
     (format "`%s' is not in normalized format `%s'"
             name (ucs-normalize-NFC-string name)))
-   ((seq-find (lambda (char)
-                (and (member char bidi-control-characters)
-                     (not (member char
-                                  '( ?\N{left-to-right mark}
-                                     ?\N{right-to-left mark}
-                                     ?\N{arabic letter mark})))))
-              name)
+   ((and (seq-find (lambda (char)
+                     (and (member char bidi-control-characters)
+                          (not (member char
+                                       '( ?\N{left-to-right mark}
+                                          ?\N{right-to-left mark}
+                                          ?\N{arabic letter mark})))))
+                   name)
+         ;; We have bidirectional formatting characters, but check
+         ;; whether they affect LTR characters.  If not, it's not
+         ;; suspicious.
+         (bidi-find-overridden-directionality 0 (length name) name))
     (format "The string contains bidirectional control characters"))
    ((textsec-suspicious-nonspacing-p name))))
 
@@ -385,22 +399,30 @@ This function will return non-nil if it seems like the link text
 is misleading about where the URL takes you.  This is typical
 when the link text looks like an URL itself, but doesn't lead to
 the same domain as the URL."
-  (let ((url (car link))
-        (text (string-trim (cdr link))))
-    (when (string-match-p "\\`[a-z]+\\.[.a-z]+\\'" text)
-      (setq text (concat "http://" text)))
-    (let ((udomain (url-host (url-generic-parse-url url)))
-          (tdomain (url-host (url-generic-parse-url text))))
-      (and udomain
-           tdomain
-           (not (equal udomain tdomain))
-           ;; One may be a sub-domain of the other, but don't allow too
-           ;; short domains.
-           (not (or (and (string-suffix-p udomain tdomain)
-                         (url-domsuf-cookie-allowed-p udomain))
-                    (and (string-suffix-p tdomain udomain)
-                         (url-domsuf-cookie-allowed-p tdomain))))
-           (format "Text `%s' doesn't point to link URL `%s'" text url)))))
+  (let* ((url (car link))
+         (text (string-trim (cdr link))))
+    (catch 'found
+      (let ((udomain (url-host (url-generic-parse-url url)))
+            (tdomain (url-host (url-generic-parse-url text))))
+        (cond
+         ((and udomain
+               tdomain
+               (not (equal udomain tdomain))
+               ;; One may be a sub-domain of the other, but don't allow too
+               ;; short domains.
+               (not (or (and (string-suffix-p udomain tdomain)
+                             (url-domsuf-cookie-allowed-p udomain))
+                        (and (string-suffix-p tdomain udomain)
+                             (url-domsuf-cookie-allowed-p tdomain)))))
+          (throw 'found
+                 (format "Text `%s' doesn't point to link URL `%s'"
+                         text url)))
+         ((and tdomain
+               (textsec-domain-suspicious-p tdomain))
+          (throw 'found
+                 (format "Domain `%s' in the link text is suspicious"
+                         (bidi-string-strip-control-characters
+                          tdomain)))))))))
 
 (provide 'textsec)
 

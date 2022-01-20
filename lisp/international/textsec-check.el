@@ -29,7 +29,7 @@
   :version "29.1")
 
 (defcustom textsec-check t
-  "If non-nil, perform some checks on certain texts.
+  "If non-nil, perform some security-related checks on text objects.
 If nil, these checks are disabled."
   :type 'boolean
   :version "29.1")
@@ -39,15 +39,31 @@ If nil, these checks are disabled."
   "Face used to highlight suspicious strings.")
 
 ;;;###autoload
-(defun textsec-check (string type)
-  "Test whether STRING is suspicious when considered as TYPE.
-If STRING is suspicious, a string explaining the possible problem
-is returned.
+(defun textsec-suspicious-p (object type)
+  "Say whether OBJECT is suspicious for use as TYPE.
+If OBJECT is suspicious, return a string explaining the reason
+for considering it suspicious, otherwise return nil.
 
-Available types include `url', `link', `domain', `local-address',
-`name', `email-address', and `email-address-headers'.
+Available values of TYPE and corresponding OBJECTs are:
 
-If the `textsec-check' user option is nil, these checks are
+ `url'                   -- a URL; OBJECT should be a URL string.
+
+ `link'                 -- an HTML link; OBJECT should be a cons cell
+                           of the form (URL . LINK-TEXT).
+
+ `domain'               -- a Web domain; OBJECT should be a string.
+
+ `local-address'        -- the local part of an email address; OBJECT
+                           should be a string.
+ `name'                 -- the \"display name\" part of an email address;
+                           OBJECT should be a string.
+
+`email-address'         -- a full email address; OBJECT should be a string.
+
+ `email-address-header' -- a raw email address header in RFC 2822 format;
+                           OBJECT should be a string.
+
+If the user option `textsec-check' is nil, these checks are
 disabled, and this function always returns nil."
   (if (not textsec-check)
       nil
@@ -55,23 +71,7 @@ disabled, and this function always returns nil."
     (let ((func (intern (format "textsec-%s-suspicious-p" type))))
       (unless (fboundp func)
         (error "%s is not a valid function" func))
-      (funcall func string))))
-
-;;;###autoload
-(defun textsec-propertize (string type)
-  "Test whether STRING is suspicious when considered as TYPE.
-If STRING is suspicious, text properties will be added to the
-string to mark it as suspicious, and with tooltip texts that says
-what's suspicious about it.  Otherwise STRING is returned
-verbatim.
-
-See `texsec-check' for further information about TYPE."
-  (let ((warning (textsec-check string type)))
-    (if (not warning)
-        string
-      (propertize string
-                  'face 'textsec-suspicious
-                  'help-echo warning))))
+      (funcall func object))))
 
 (provide 'textsec-check)
 
