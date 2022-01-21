@@ -1283,10 +1283,14 @@ x_clear_window (struct frame *f)
   cairo_paint (cr);
   x_end_cr_clip (f);
 #else
+#ifndef USE_GTK
   if (FRAME_X_DOUBLE_BUFFERED_P (f))
+#endif
     x_clear_area (f, 0, 0, FRAME_PIXEL_WIDTH (f), FRAME_PIXEL_HEIGHT (f));
+#ifndef USE_GTK
   else
     XClearWindow (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f));
+#endif
 #endif
 }
 
@@ -2789,8 +2793,9 @@ x_query_frame_background_color (struct frame *f, XColor *bgcolor)
    and names we've actually looked up; list-colors-display is probably
    the most color-intensive case we're likely to hit.  */
 
-Status x_parse_color (struct frame *f, const char *color_name,
-		      XColor *color)
+Status
+x_parse_color (struct frame *f, const char *color_name,
+	       XColor *color)
 {
   /* Don't pass #RGB strings directly to XParseColor, because that
      follows the X convention of zero-extending each channel
@@ -2818,6 +2823,10 @@ Status x_parse_color (struct frame *f, const char *color_name,
 	  return 1;
 	}
     }
+
+  /* Some X servers send BadValue on empty color names.  */
+  if (!strlen (color_name))
+    return 0;
 
   if (XParseColor (dpy, cmap, color_name, color) == 0)
     /* No caching of negative results, currently.  */
@@ -4494,14 +4503,18 @@ x_clear_area (struct frame *f, int x, int y, int width, int height)
   cairo_fill (cr);
   x_end_cr_clip (f);
 #else
+#ifndef USE_GTK
   if (FRAME_X_DOUBLE_BUFFERED_P (f))
+#endif
     XFillRectangle (FRAME_X_DISPLAY (f),
 		    FRAME_X_DRAWABLE (f),
 		    f->output_data.x->reverse_gc,
 		    x, y, width, height);
+#ifndef USE_GTK
   else
     x_clear_area1 (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
                    x, y, width, height, False);
+#endif
 #endif
 }
 
@@ -9013,12 +9026,17 @@ handle_one_xevent (struct x_display_info *dpyinfo,
           if (!FRAME_VISIBLE_P (f))
             {
               block_input ();
-	      /* The following two are commented out to avoid that a
-		 plain invisible frame gets reported as iconified.  That
-		 problem occurred first for Emacs 26 and is described in
-		 https://lists.gnu.org/archive/html/emacs-devel/2017-02/msg00133.html.  */
-/** 	      SET_FRAME_VISIBLE (f, 1); **/
-/** 	      SET_FRAME_ICONIFIED (f, false); **/
+	      /* By default, do not set the frame's visibility here, see
+		 https://lists.gnu.org/archive/html/emacs-devel/2017-02/msg00133.html.
+		 The default behavior can be overridden by setting
+		 'x-set-frame-visibility-more-laxly' (Bug#49955,
+		 Bug#53298).  */
+	      if (EQ (x_set_frame_visibility_more_laxly, Qexpose)
+		  || EQ (x_set_frame_visibility_more_laxly, Qt))
+		{
+		  SET_FRAME_VISIBLE (f, 1);
+		  SET_FRAME_ICONIFIED (f, false);
+		}
 
 	      if (FRAME_X_DOUBLE_BUFFERED_P (f))
                 font_drop_xrender_surfaces (f);
@@ -9637,26 +9655,33 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       goto OTHER;
 
     case FocusIn:
-#ifndef USE_GTK
+#ifdef USE_GTK
       /* Some WMs (e.g. Mutter in Gnome Shell), don't unmap
          minimized/iconified windows; thus, for those WMs we won't get
-         a MapNotify when unminimizing/deconifying.  Check here if we
+         a MapNotify when unminimizing/deiconifying.  Check here if we
          are deiconizing a window (Bug42655).
 
-	 But don't do that on GTK since it may cause a plain invisible
-	 frame get reported as iconified, compare
+	 But don't do that by default on GTK since it may cause a plain
+	 invisible frame get reported as iconified, compare
 	 https://lists.gnu.org/archive/html/emacs-devel/2017-02/msg00133.html.
-	 That is fixed above but bites us here again.  */
-      f = any;
-      if (f && FRAME_ICONIFIED_P (f))
-	{
-          SET_FRAME_VISIBLE (f, 1);
-          SET_FRAME_ICONIFIED (f, false);
-          f->output_data.x->has_been_visible = true;
-          inev.ie.kind = DEICONIFY_EVENT;
-          XSETFRAME (inev.ie.frame_or_window, f);
-        }
+	 That is fixed above but bites us here again.
+
+	 The option x_set_frame_visibility_more_laxly allows to override
+	 the default behavior (Bug#49955, Bug#53298).  */
+      if (EQ (x_set_frame_visibility_more_laxly, Qfocus_in)
+	  || EQ (x_set_frame_visibility_more_laxly, Qt))
 #endif /* USE_GTK */
+	{
+	  f = any;
+	  if (f && FRAME_ICONIFIED_P (f))
+	    {
+	      SET_FRAME_VISIBLE (f, 1);
+	      SET_FRAME_ICONIFIED (f, false);
+	      f->output_data.x->has_been_visible = true;
+	      inev.ie.kind = DEICONIFY_EVENT;
+	      XSETFRAME (inev.ie.frame_or_window, f);
+	    }
+	}
 
       x_detect_focus_change (dpyinfo, any, event, &inev.ie);
       goto OTHER;
@@ -10260,26 +10285,33 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  {
 	  case XI_FocusIn:
 	    any = x_any_window_to_frame (dpyinfo, focusin->event);
-#ifndef USE_GTK
+#ifdef USE_GTK
 	    /* Some WMs (e.g. Mutter in Gnome Shell), don't unmap
 	       minimized/iconified windows; thus, for those WMs we won't get
-	       a MapNotify when unminimizing/deconifying.  Check here if we
+	       a MapNotify when unminimizing/deiconifying.  Check here if we
 	       are deiconizing a window (Bug42655).
 
-	       But don't do that on GTK since it may cause a plain invisible
-	       frame get reported as iconified, compare
+	       But don't do that by default on GTK since it may cause a plain
+	       invisible frame get reported as iconified, compare
 	       https://lists.gnu.org/archive/html/emacs-devel/2017-02/msg00133.html.
-	       That is fixed above but bites us here again.  */
-	    f = any;
-	    if (f && FRAME_ICONIFIED_P (f))
-	      {
-		SET_FRAME_VISIBLE (f, 1);
-		SET_FRAME_ICONIFIED (f, false);
-		f->output_data.x->has_been_visible = true;
-		inev.ie.kind = DEICONIFY_EVENT;
-		XSETFRAME (inev.ie.frame_or_window, f);
-	      }
+	       That is fixed above but bites us here again.
+
+	       The option x_set_frame_visibility_more_laxly allows to override
+	       the default behavior (Bug#49955, Bug#53298).  */
+	    if (EQ (x_set_frame_visibility_more_laxly, Qfocus_in)
+		|| EQ (x_set_frame_visibility_more_laxly, Qt))
 #endif /* USE_GTK */
+	      {
+		f = any;
+		if (f && FRAME_ICONIFIED_P (f))
+		  {
+		    SET_FRAME_VISIBLE (f, 1);
+		    SET_FRAME_ICONIFIED (f, false);
+		    f->output_data.x->has_been_visible = true;
+		    inev.ie.kind = DEICONIFY_EVENT;
+		    XSETFRAME (inev.ie.frame_or_window, f);
+		  }
+	      }
 	    x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 	    goto XI_OTHER;
 	  case XI_FocusOut:
@@ -16245,12 +16277,28 @@ always uses gtk_window_move and ignores the value of this variable.  */);
 This option is only effective when Emacs is built with XInput 2
 support. */);
   Vx_scroll_event_delta_factor = make_float (1.0);
+  DEFSYM (Qexpose, "expose");
 
   DEFVAR_BOOL ("x-gtk-use-native-input", x_gtk_use_native_input,
 	       doc: /* Non-nil means to use GTK for input method support.
 This provides better support for some modern input methods, and is
 only effective when Emacs is built with GTK.  */);
   x_gtk_use_native_input = false;
+
+  DEFVAR_LISP ("x-set-frame-visibility-more-laxly",
+	       x_set_frame_visibility_more_laxly,
+    doc: /* Non-nil means set frame visibility more laxly.
+If this is nil, Emacs is more strict when marking a frame as visible.
+Since this may cause problems on some window managers, this variable can
+be also set as follows: The value `focus-in' means to mark a frame as
+visible also when a FocusIn event is received for it on GTK builds.  The
+value `expose' means to mark a frame as visible also when an Expose
+event is received for it on any X build.  The value `t' means to mark a
+frame as visible in either of these two cases.
+
+Note that any non-nil setting may cause invisible frames get erroneously
+reported as iconified.  */);
+  x_set_frame_visibility_more_laxly = Qnil;
 
   DEFVAR_BOOL ("x-input-grab-touch-events", x_input_grab_touch_events,
 	       doc: /* Non-nil means to actively grab touch events.
