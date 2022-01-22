@@ -40,6 +40,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <JavaScriptCore/JavaScript.h>
 #include <cairo.h>
 #ifndef HAVE_PGTK
+#include <cairo-xlib.h>
 #include <X11/Xlib.h>
 #else
 #include <gtk/gtk.h>

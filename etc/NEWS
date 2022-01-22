@@ -104,6 +104,11 @@ files that were compiled with an old EIEIO (Emacs<25).
 ** 'C-x 8 .' has been moved to 'C-x 8 . .'.
 This is to open up the 'C-x 8 .' map to bind further characters there.
 
+---
+** 'source' and '.' in Eshell no longer accept the '--help' option.
+This is for compatibility with the shell versions of these commands,
+which don't handle options like '--help' in any special way.
+
 
 * Changes in Emacs 29.1
 
@@ -254,13 +259,14 @@ These will take you (respectively) to the next and previous "page".
 
 ** Outline Mode
 
-*** Support for a default visibility state.
+*** Support for customizing the default visibility state of headings.
 Customize the option 'outline-default-state' to define what headings
-are visible when the mode is set.  When equal to a number, the option
-'outline-default-rules' determines the visibility of the subtree
-starting at the corresponding level.  Values are provided to show
-a heading subtree unless the heading match a regexp, or its subtree
-has long lines or is long.
+will be visible after Outline mode is turned on.  When equal to a
+number, the option 'outline-default-rules' determines the visibility
+of the subtree starting at the corresponding level.  Values are
+provided to control showing a heading subtree depending on whether the
+heading matches a regexp, or on whether its subtree has long lines or
+is itself too long.
 
 ** Outline Minor Mode
 
@@ -345,7 +351,7 @@ are met.  The conditions are given by the argument, which can be
 These forms now indent like this:
 
     (cl-flet ((bla (x)
-		(* x x)))
+                (* x x)))
       (bla 42))
 
 This change also affects 'cl-macrolet', 'cl-flet*' and
@@ -871,6 +877,10 @@ Emacs buffers, like indentation and the like.  The new ert function
 If the function returns t, then the message is not cleared,
 with an assumption that the function cleared it itself.
 
+---
+** 'byte-compile-from-buffer' now uses 'load-read-function'.
+It previously called 'read' directly.
+
 ** User option 'mail-source-ignore-errors' is now obsolete.
 The whole mechanism for prompting users to continue in case of
 mail-source errors has been removed, so this option is no longer
@@ -976,12 +986,21 @@ functions.
 
 * Lisp Changes in Emacs 29.1
 
---
-** The variable 'polling-period' now accepts floating point values.
-Setting it to a floating-point value means that Emacs will poll for
-input every so many fractions of a second.
++++
+** New function 'readablep'.
+This function says whether an object can be written out and then
+read back by the Emacs Lisp reader.
 
---
++++
+** New variable 'print-unreadable-function'.
+This variable allows changing how Emacs prints unreadable objects.
+
+---
+** The variable 'polling-period' now accepts floating point values.
+This means Emacs can now poll for input during Lisp execution more
+frequently than once in a second.
+
+---
 ** New function 'bidi-string-strip-control-characters'.
 This utility function is meant for displaying strings when it's
 essential that there's no bidirectional context.

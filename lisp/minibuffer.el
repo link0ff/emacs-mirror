@@ -1089,7 +1089,9 @@ an association list that can specify properties such as:
 - `styles': the list of `completion-styles' to use for that category.
 - `cycle': the `completion-cycle-threshold' to use for that category.
 Categories are symbols such as `buffer' and `file', used when
-completing buffer and file names, respectively.")
+completing buffer and file names, respectively.
+
+Also see `completion-category-overrides'.")
 
 (defcustom completion-category-overrides nil
   "List of category-specific user overrides for completion styles.
@@ -1099,7 +1101,9 @@ an association list that can specify properties such as:
 - `cycle': the `completion-cycle-threshold' to use for that category.
 Categories are symbols such as `buffer' and `file', used when
 completing buffer and file names, respectively.
-This overrides the defaults specified in `completion-category-defaults'."
+
+If a property in a category is specified by this variable, it
+overrides the default specified in `completion-category-defaults'."
   :version "25.1"
   :type `(alist :key-type (choice :tag "Category"
 				  (const buffer)
