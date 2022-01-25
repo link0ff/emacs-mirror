@@ -2639,6 +2639,7 @@ fail;
     AC_DEFINE(HAVE_X11R6, 1,
 	      [Define to 1 if you have the X11R6 or newer version of Xlib.])
     AC_DEFINE(HAVE_X_I18N, 1, [Define if you have usable i18n support.])
+    AC_CHECK_MEMBERS([XICCallback.callback], [], [], [#include <X11/Xlib.h>])
     ## inoue@ainet.or.jp says Solaris has a bug related to X11R6-style
     ## XIM support.
     case "$opsys" in
@@ -4650,7 +4651,7 @@ AC_CHECK_HEADERS(
     ]])])
 AC_SUBST([HAVE_SECCOMP])
 
-EMACS_CHECK_MODULES([LIBSECCOMP], [libseccomp >= 2.4.0])
+EMACS_CHECK_MODULES([LIBSECCOMP], [libseccomp >= 2.5.2])
 AC_SUBST([HAVE_LIBSECCOMP])
 AC_SUBST([LIBSECCOMP_LIBS])
 AC_SUBST([LIBSECCOMP_CFLAGS])
