@@ -5694,6 +5694,12 @@ x_find_modifier_meanings (struct x_display_info *dpyinfo)
       dpyinfo->alt_mod_mask &= ~dpyinfo->meta_mod_mask;
     }
 
+  /* If some keys are both super and hyper, make them just super.
+     Many X servers are misconfigured so that super and hyper are both
+     Mod4, but most users have no hyper key.  */
+  if (dpyinfo->hyper_mod_mask & dpyinfo->super_mod_mask)
+    dpyinfo->hyper_mod_mask &= ~dpyinfo->super_mod_mask;
+
   XFree (syms);
   XFreeModifiermap (mods);
 }
@@ -10357,10 +10363,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      }
 	    x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 	    goto XI_OTHER;
+
 	  case XI_FocusOut:
 	    any = x_any_window_to_frame (dpyinfo, focusout->event);
 	    x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 	    goto XI_OTHER;
+
 	  case XI_Enter:
 
 	    any = x_top_window_to_frame (dpyinfo, enter->event);
@@ -10382,32 +10390,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    {
 #ifdef HAVE_XWIDGETS
 	      struct xwidget_view *xwidget_view = xwidget_view_from_window (enter->event);
-#else
-	      bool xwidget_view = false;
 #endif
-
-	      /* One problem behind the design of XInput 2 scrolling is
-		 that valuators are not unique to each window, but only
-		 the window that has grabbed the valuator's device or
-		 the window that the device's pointer is on top of can
-		 receive motion events.  There is also no way to
-		 retrieve the value of a valuator outside of each motion
-		 event.
-
-		 As such, to prevent wildly inaccurate results when the
-		 valuators have changed outside Emacs, we reset our
-		 records of each valuator's value whenever the pointer
-		 re-enters a frame after its valuators have potentially
-		 been changed elsewhere.  */
-	      if (enter->detail != XINotifyInferior
-		  && enter->mode != XINotifyPassiveUngrab
-		  /* See the comment under FocusIn in
-		     `x_detect_focus_change'.  The main relevant culprit
-		     these days seems to be XFCE.  */
-		  && enter->mode != XINotifyUngrab
-		  && (xwidget_view
-		      || (any && enter->event == FRAME_X_WINDOW (any))))
-		xi_reset_scroll_valuators_for_device_id (dpyinfo, enter->deviceid);
 
 #ifdef HAVE_XWIDGETS
 	      if (xwidget_view)
@@ -10448,6 +10431,22 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    ev.y = lrint (leave->event_y);
 	    ev.window = leave->event;
 	    any = x_top_window_to_frame (dpyinfo, leave->event);
+
+	    /* One problem behind the design of XInput 2 scrolling is
+	       that valuators are not unique to each window, but only
+	       the window that has grabbed the valuator's device or
+	       the window that the device's pointer is on top of can
+	       receive motion events.  There is also no way to
+	       retrieve the value of a valuator outside of each motion
+	       event.
+
+	       As such, to prevent wildly inaccurate results when the
+	       valuators have changed outside Emacs, we reset our
+	       records of each valuator's value whenever the pointer
+	       moves out of a frame (and not into one of its
+	       children, which we know about).  */
+	    if (leave->detail != XINotifyInferior && any)
+	      xi_reset_scroll_valuators_for_device_id (dpyinfo, enter->deviceid);
 
 #ifdef HAVE_XWIDGETS
 	    {
@@ -10502,6 +10501,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      x_note_mouse_movement (dpyinfo->last_mouse_glyph_frame, &ev);
 #endif
 	    goto XI_OTHER;
+
 	  case XI_Motion:
 	    {
 	      struct xi_device_t *device;
@@ -10782,6 +10782,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		do_help = 1;
 	      goto XI_OTHER;
 	    }
+
 	  case XI_ButtonRelease:
 	  case XI_ButtonPress:
 	    {
@@ -10981,6 +10982,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 	      goto XI_OTHER;
 	    }
+
 	  case XI_KeyPress:
 	    {
 	      int state = xev->mods.effective;
@@ -11350,6 +11352,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		}
 	      goto XI_OTHER;
 	    }
+
 	  case XI_KeyRelease:
 	    x_display_set_last_user_time (dpyinfo, xev->time);
 
@@ -11387,7 +11390,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  case XI_PropertyEvent:
 	  case XI_HierarchyChanged:
 	  case XI_DeviceChanged:
-
 #ifdef XISlaveSwitch
 	    if (xi_event->evtype == XI_DeviceChanged
 		&& (((XIDeviceChangedEvent *) xi_event)->reason
@@ -11396,6 +11398,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 	    x_init_master_valuators (dpyinfo);
 	    goto XI_OTHER;
+
 #ifdef XI_TouchBegin
 	  case XI_TouchBegin:
 	    {
@@ -11482,6 +11485,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      goto XI_OTHER;
 	    }
+
 	  case XI_TouchUpdate:
 	    {
 	      struct xi_device_t *device;
@@ -11524,6 +11528,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      goto XI_OTHER;
 	    }
+
 	  case XI_TouchEnd:
 	    {
 	      struct xi_device_t *device;
@@ -11554,6 +11559,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      goto XI_OTHER;
 	    }
+
 #endif
 #ifdef XI_GesturePinchBegin
 	  case XI_GesturePinchBegin:
@@ -11599,6 +11605,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      *finish = X_EVENT_DROP;
 	      goto XI_OTHER;
 	    }
+
 	  case XI_GesturePinchEnd:
 	    {
 	      x_display_set_last_user_time (dpyinfo, xi_event->time);
@@ -11617,6 +11624,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  default:
 	    goto XI_OTHER;
 	  }
+
       xi_done_keysym:
 #ifdef HAVE_X_I18N
 	if (FRAME_XIC (f) && (FRAME_XIC_STYLE (f) & XIMStatusArea))
@@ -11625,6 +11633,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	if (must_free_data)
 	  XFreeEventData (dpyinfo->display, &event->xcookie);
 	goto done_keysym;
+
       XI_OTHER:
 	if (must_free_data)
 	  XFreeEventData (dpyinfo->display, &event->xcookie);
@@ -14008,7 +14017,7 @@ x_focus_frame (struct frame *f, bool noactivate)
     }
   else
     {
-      XSetInputFocus (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
+      XSetInputFocus (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
 		      RevertToParent, CurrentTime);
       if (!noactivate)
 	x_ewmh_activate_frame (f);

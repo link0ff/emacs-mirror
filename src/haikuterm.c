@@ -632,20 +632,12 @@ haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
 	      && (s->prev->face->underline_pixels_above_descent_line
 		  == s->face->underline_pixels_above_descent_line))
 	    {
-	      struct face *prev_face = s->prev->face;
-
-	      if (prev_face && prev_face->underline == FACE_UNDER_LINE)
-		{
-		  /* We use the same underline style as the previous one.  */
-		  thickness = s->prev->underline_thickness;
-		  position = s->prev->underline_position;
-		}
-	      else
-		goto calculate_underline_metrics;
+	      /* We use the same underline style as the previous one.  */
+	      thickness = s->prev->underline_thickness;
+	      position = s->prev->underline_position;
 	    }
 	  else
 	    {
-	    calculate_underline_metrics:;
 	      struct font *font = font_for_underline_metrics (s);
 	      unsigned long minimum_offset;
 	      bool underline_at_descent_line;
@@ -2333,50 +2325,14 @@ haiku_scroll_run (struct window *w, struct run *run)
 	height = run->height;
     }
 
-  if (!height)
-    return;
-
   block_input ();
   gui_clear_cursor (w);
-  BView_draw_lock (view);
-#ifdef USE_BE_CAIRO
-  if (EmacsView_double_buffered_p (view))
-    {
-#endif
-      BView_StartClip (view);
-      BView_CopyBits (view, x, from_y, width, height,
-		      x, to_y, width, height);
-      BView_EndClip (view);
-#ifdef USE_BE_CAIRO
-    }
-  else
-    {
-      EmacsWindow_begin_cr_critical_section (FRAME_HAIKU_WINDOW (f));
-      cairo_surface_t *surface = FRAME_CR_SURFACE (f);
-      cairo_surface_t *s
-	= cairo_surface_create_similar (surface,
-					cairo_surface_get_content (surface),
-					width, height);
-      cairo_t *cr = cairo_create (s);
-      if (surface)
-	{
-	  cairo_set_source_surface (cr, surface, -x, -from_y);
-	  cairo_paint (cr);
-	  cairo_destroy (cr);
 
-	  cr = haiku_begin_cr_clip (f, NULL);
-	  cairo_save (cr);
-	  cairo_set_source_surface (cr, s, x, to_y);
-	  cairo_set_operator (cr, CAIRO_OPERATOR_SOURCE);
-	  cairo_rectangle (cr, x, to_y, width, height);
-	  cairo_fill (cr);
-	  cairo_restore (cr);
-	  cairo_surface_destroy (s);
-	  haiku_end_cr_clip (cr);
-	}
-      EmacsWindow_end_cr_critical_section (FRAME_HAIKU_WINDOW (f));
-    }
-#endif
+  BView_draw_lock (view);
+  BView_StartClip (view);
+  BView_CopyBits (view, x, from_y, width, height,
+		  x, to_y, width, height);
+  BView_EndClip (view);
   BView_draw_unlock (view);
 
   unblock_input ();
@@ -3178,15 +3134,25 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 
 	    if (type == MENU_BAR_OPEN)
 	      {
-		BView_draw_lock (FRAME_HAIKU_VIEW (f));
-		/* This shouldn't be here, but nsmenu does it, so
-		   it should probably be safe.  */
-		int was_waiting_for_input_p = waiting_for_input;
-		if (waiting_for_input)
-		  waiting_for_input = 0;
-		set_frame_menubar (f, 1);
-		waiting_for_input = was_waiting_for_input_p;
-		BView_draw_unlock (FRAME_HAIKU_VIEW (f));
+		/* b->no_lock means that MenusBeginning was called
+		   from the main thread, which means tracking was
+		   started manually, and we have already updated the
+		   menu bar.  */
+		if (!b->no_lock)
+		  {
+		    BView_draw_lock (FRAME_HAIKU_VIEW (f));
+		    /* This shouldn't be here, but nsmenu does it, so
+		       it should probably be safe.  */
+		    int was_waiting_for_input_p = waiting_for_input;
+		    if (waiting_for_input)
+		      waiting_for_input = 0;
+		    set_frame_menubar (f, 1);
+		    waiting_for_input = was_waiting_for_input_p;
+		    BView_draw_unlock (FRAME_HAIKU_VIEW (f));
+		  }
+
+		/* But set the flag anyway, because the menu will end
+		   from the window thread.  */
 		FRAME_OUTPUT_DATA (f)->menu_bar_open_p = 1;
 		popup_activated_p += 1;
 

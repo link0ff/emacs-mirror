@@ -644,16 +644,17 @@ the position of the last non-menu event instead.  */)
   struct frame *f = decode_window_system_frame (frame);
 
   if (FRAME_EXTERNAL_MENU_BAR (f))
-    set_frame_menubar (f, 1);
+    {
+      block_input ();
+      set_frame_menubar (f, 1);
+      BMenuBar_start_tracking (FRAME_HAIKU_MENU_BAR (f));
+      unblock_input ();
+    }
   else
     {
       return call2 (Qpopup_menu, call0 (Qmouse_menu_bar_map),
 		    last_nonmenu_event);
     }
-
-  block_input ();
-  BMenuBar_start_tracking (FRAME_HAIKU_MENU_BAR (f));
-  unblock_input ();
 
   return Qnil;
 }
