@@ -1510,7 +1510,7 @@ NOPUSH is t and EDIT is t."
 Mouse commands are allowed in Isearch if they have a non-nil
 `isearch-scroll' property or if they are listed in
 `isearch-mouse-commands'."
-  (message "! isearch-mouse-leave-buffer")
+  (message "! isearch-mouse-leave-buffer: %S" this-command)
   (unless (or (memq this-command isearch-mouse-commands)
               (eq (get this-command 'isearch-scroll) t))
     (isearch-done)))
@@ -2986,6 +2986,7 @@ to the barrier."
 (put 'scroll-other-window-down 'isearch-scroll t)
 (put 'beginning-of-buffer-other-window 'isearch-scroll t)
 (put 'end-of-buffer-other-window 'isearch-scroll t)
+(put 'recenter-other-window 'isearch-scroll t)
 
 ;; Commands which change the window layout
 (put 'delete-other-windows 'isearch-scroll t)
@@ -2999,6 +3000,9 @@ to the barrier."
 ;; The next two commands don't exit Isearch in isearch-mouse-leave-buffer
 (put 'mouse-drag-mode-line 'isearch-scroll t)
 (put 'mouse-drag-vertical-line 'isearch-scroll t)
+
+;; For context menu with isearch submenu
+(put 'context-menu-open 'isearch-scroll t)
 
 ;; Aliases for split-window-*
 (put 'split-window-vertically 'isearch-scroll t)
