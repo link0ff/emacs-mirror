@@ -119,6 +119,16 @@ This is to open up the 'C-x 8 .' map to bind further characters there.
 This is for compatibility with the shell versions of these commands,
 which don't handle options like '--help' in any special way.
 
+---
+** The 'delete-forward-char' command now deletes by grapheme clusters.
+This command is by default bound to the <Delete> function key
+(a.k.a. <deletechar>).  When invoked without a prefix argument or with
+a positive prefix numeric argument, the command will now delete
+complete grapheme clusters produced by character composition.  For
+example, if point is before an Emoji sequence, pressing <Delete> will
+delete the entire sequence, not just a single character at its
+beginning.
+
 
 * Changes in Emacs 29.1
 
@@ -1079,6 +1089,11 @@ wheel on some mice, or when the user's finger moves off the touchpad.
 This event is sent when a user performs a pinch gesture on a touchpad,
 which is comprised of placing two fingers on the touchpad and moving
 them towards or away from each other.
+
++++
+** New hook 'x-pre-popup-menu-hook'.
+This hook is run before 'x-popup-menu' is about to display a
+deck-of-cards menu on screen.
 
 ** Text security and suspiciousness
 
