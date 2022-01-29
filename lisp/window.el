@@ -10107,8 +10107,7 @@ With arg N, put point N/10 of the way from the true beginning."
     (with-no-warnings
       (beginning-of-buffer arg))
     ;; Set point accordingly.
-    ;; (recenter '(t))
-    ))
+    (recenter '(t))))
 
 (defun end-of-buffer-other-window (arg)
   "Move point to the end of the buffer in the other window.
@@ -10119,8 +10118,7 @@ With arg N, put point N/10 of the way from the true end."
   (with-selected-window (other-window-for-scrolling)
     (with-no-warnings
       (end-of-buffer arg))
-    ;; (recenter '(t))
-    ))
+    (recenter '(t))))
 
 (defvar mouse-autoselect-window-timer nil
   "Timer used by delayed window autoselection.")
