@@ -2541,9 +2541,17 @@ Only the 16 most recently deleted frames are saved."
           (cons
            (list
             (display-graphic-p)
-            (seq-remove (lambda (elem)
-                          (memq (car elem) frame-internal-parameters))
-                       (frame-parameters frame))
+            (seq-remove
+             (lambda (elem)
+               (or (memq (car elem) frame-internal-parameters)
+                   ;; When the daemon is started from a graphical
+                   ;; environment, TTY frames have a 'display' parameter set
+                   ;; to the value of $DISPLAY (see the note in
+                   ;; `server--on-display-p').  Do not store that parameter
+                   ;; in the frame data, otherwise `undelete-frame' attempts
+                   ;; to restore a graphical frame.
+                   (and (eq (car elem) 'display) (not (display-graphic-p)))))
+             (frame-parameters frame))
             (window-state-get (frame-root-window frame)))
            undelete-frame--deleted-frames))
     (if (> (length undelete-frame--deleted-frames) 16)
