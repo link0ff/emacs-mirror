@@ -1916,11 +1916,11 @@ haiku_draw_window_divider (struct window *w, int x0, int x1, int y0, int y1)
        last pixels differently.  */
     {
       BView_SetHighColor (view, color_first);
-      BView_StrokeLine (f, x0, y0, x1 - 1, y0);
+      BView_StrokeLine (view, x0, y0, x1 - 1, y0);
       BView_SetHighColor (view, color);
       BView_FillRectangle (view, x0, y0 + 1, x1 - x0, y1 - y0 - 2);
       BView_SetHighColor (view, color_last);
-      BView_StrokeLine (view, x0, y1, x1 - 1, y1);
+      BView_FillRectangle (view, x0, y1 - 1, x1 - x0, 1);
     }
   else
     {
@@ -2816,9 +2816,10 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 		    if (WINDOWP (window)
 			&& !EQ (window, last_mouse_window)
 			&& !EQ (window, selected_window)
+			&& !popup_activated_p
+			&& !MINI_WINDOW_P (XWINDOW (selected_window))
 			&& (!NILP (focus_follows_mouse)
-				|| (EQ (XWINDOW (window)->frame,
-					XWINDOW (selected_window)->frame))))
+			    || f == SELECTED_FRAME ()))
 		      {
 			inev.kind = SELECT_WINDOW_EVENT;
 			inev.frame_or_window = window;
