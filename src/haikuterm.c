@@ -461,9 +461,8 @@ haiku_draw_box_rect (struct glyph_string *s,
 }
 
 static void
-haiku_calculate_relief_colors (struct glyph_string *s,
-			       uint32_t *rgbout_w, uint32_t *rgbout_b,
-			       uint32_t *rgbout_c)
+haiku_calculate_relief_colors (struct glyph_string *s, uint32_t *rgbout_w,
+			       uint32_t *rgbout_b)
 {
   struct face *face = s->face;
 
@@ -480,7 +479,6 @@ haiku_calculate_relief_colors (struct glyph_string *s,
 
   hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 0.6), rgbout_b);
   hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 1.2), rgbout_w);
-  hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 1.8), rgbout_c);
 }
 
 static void
@@ -492,16 +490,18 @@ haiku_draw_relief_rect (struct glyph_string *s,
 {
   uint32_t color_white;
   uint32_t color_black;
-  uint32_t color_corner;
 
-  haiku_calculate_relief_colors (s, &color_white, &color_black,
-				 &color_corner);
+  haiku_calculate_relief_colors (s, &color_white, &color_black);
 
   void *view = FRAME_HAIKU_VIEW (s->f);
   BView_SetHighColor (view, raised_p ? color_white : color_black);
   if (clip_rect)
-    BView_ClipToRect (view, clip_rect->x, clip_rect->y, clip_rect->width,
-		      clip_rect->height);
+    {
+      BView_StartClip (view);
+      haiku_clip_to_string (s);
+      BView_ClipToRect (view, clip_rect->x, clip_rect->y, clip_rect->width,
+			clip_rect->height);
+    }
   if (top_p)
     BView_FillRectangle (view, left_x, top_y, right_x - left_x + 1, hwidth);
   if (left_p)
@@ -546,7 +546,7 @@ haiku_draw_relief_rect (struct glyph_string *s,
   if (vwidth > 1 && right_p)
     BView_StrokeLine (view, right_x, top_y, right_x, bottom_y);
 
-  BView_SetHighColor (view, color_corner);
+  BView_SetHighColor (view, s->face->background);
 
   /* Omit corner pixels.  */
   if (hwidth > 1 || vwidth > 1)
@@ -560,6 +560,9 @@ haiku_draw_relief_rect (struct glyph_string *s,
       if (right_p && bot_p)
 	BView_FillRectangle (view, right_x, bottom_y, 1, 1);
     }
+
+  if (clip_rect)
+    BView_EndClip (view);
 }
 
 static void
@@ -601,13 +604,12 @@ haiku_draw_underwave (struct glyph_string *s, int width, int x)
 
 static void
 haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
-			    uint8_t dcol, int width, int x)
+			    int width, int x)
 {
   if (s->for_overlaps)
     return;
 
   void *view = FRAME_HAIKU_VIEW (s->f);
-  BView_draw_lock (view);
 
   if (face->underline)
     {
@@ -616,7 +618,7 @@ haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
       else if (!face->underline_defaulted_p)
 	BView_SetHighColor (view, face->underline_color);
       else
-	BView_SetHighColor (view, dcol);
+	BView_SetHighColor (view, face->foreground);
 
       if (face->underline == FACE_UNDER_WAVE)
 	haiku_draw_underwave (s, width, x);
@@ -713,7 +715,7 @@ haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
       else if (!face->overline_color_defaulted_p)
 	BView_SetHighColor (view, face->overline_color);
       else
-	BView_SetHighColor (view, dcol);
+	BView_SetHighColor (view, face->foreground);
 
       BView_FillRectangle (view, s->x, s->y + dy, s->width, h);
     }
@@ -737,22 +739,18 @@ haiku_draw_text_decoration (struct glyph_string *s, struct face *face,
       else if (!face->strike_through_color_defaulted_p)
 	BView_SetHighColor (view, face->strike_through_color);
       else
-	BView_SetHighColor (view, dcol);
+	BView_SetHighColor (view, face->foreground);
 
       BView_FillRectangle (view, s->x, glyph_y + dy, s->width, h);
     }
-
-  BView_draw_unlock (view);
 }
 
 static void
-haiku_draw_string_box (struct glyph_string *s, int clip_p)
+haiku_draw_string_box (struct glyph_string *s)
 {
   int hwidth, vwidth, left_x, right_x, top_y, bottom_y, last_x;
   bool raised_p, left_p, right_p;
   struct glyph *last_glyph;
-  struct haiku_rect clip_rect;
-
   struct face *face = s->face;
 
   last_x = ((s->row->full_width_p && !s->w->pseudo_window_p)
@@ -800,30 +798,13 @@ haiku_draw_string_box (struct glyph_string *s, int clip_p)
 		 && (s->next == NULL
 		     || s->next->hl != s->hl)));
 
-  get_glyph_string_clip_rect (s, &clip_rect);
-
   if (face->box == FACE_SIMPLE_BOX)
     haiku_draw_box_rect (s, left_x, top_y, right_x, bottom_y, hwidth,
-			 vwidth, left_p, right_p, &clip_rect);
+			 vwidth, left_p, right_p, NULL);
   else
     haiku_draw_relief_rect (s, left_x, top_y, right_x, bottom_y, hwidth,
 			    vwidth, raised_p, true, true, left_p, right_p,
-			    &clip_rect, 1);
-
-  if (clip_p)
-    {
-      void *view = FRAME_HAIKU_VIEW (s->f);
-
-      haiku_draw_text_decoration (s, face, face->foreground, s->width, s->x);
-      BView_ClipToInverseRect (view, left_x, top_y, right_x - left_x + 1, hwidth);
-      if (left_p)
-	BView_ClipToInverseRect (view, left_x, top_y, vwidth, bottom_y - top_y + 1);
-      BView_ClipToInverseRect (view, left_x, bottom_y - hwidth + 1,
-			       right_x - left_x + 1, hwidth);
-      if (right_p)
-	BView_ClipToInverseRect (view, right_x - vwidth + 1,
-				 top_y, vwidth, bottom_y - top_y + 1);
-    }
+			    NULL, 1);
 }
 
 static void
@@ -1124,7 +1105,6 @@ static void
 haiku_start_clip (struct glyph_string *s)
 {
   void *view = FRAME_HAIKU_VIEW (s->f);
-  BView_draw_lock (view);
   BView_StartClip (view);
 }
 
@@ -1133,7 +1113,6 @@ haiku_end_clip (struct glyph_string *s)
 {
   void *view = FRAME_HAIKU_VIEW (s->f);
   BView_EndClip (view);
-  BView_draw_unlock (view);
 }
 
 static void
@@ -1467,7 +1446,11 @@ haiku_draw_image_glyph_string (struct glyph_string *s)
 static void
 haiku_draw_glyph_string (struct glyph_string *s)
 {
+  void *view;
+
   block_input ();
+  view = FRAME_HAIKU_VIEW (s->f);
+  BView_draw_lock (view);
   prepare_face_for_display (s->f, s->face);
 
   struct face *face = s->face;
@@ -1506,7 +1489,7 @@ haiku_draw_glyph_string (struct glyph_string *s)
       haiku_clip_to_string (s);
       haiku_maybe_draw_background (s, 1);
       box_filled_p = 1;
-      haiku_draw_string_box (s, 0);
+      haiku_draw_string_box (s);
     }
   else if (!s->clip_head /* draw_glyphs didn't specify a clip mask. */
 	   && !s->clip_tail
@@ -1559,10 +1542,9 @@ haiku_draw_glyph_string (struct glyph_string *s)
   if (!s->for_overlaps)
     {
       if (!box_filled_p && face->box != FACE_NO_BOX)
-	haiku_draw_string_box (s, 1);
+	haiku_draw_string_box (s);
       else
-	haiku_draw_text_decoration (s, face, face->foreground,
-				    s->width, s->x);
+	haiku_draw_text_decoration (s, face, s->width, s->x);
 
       if (s->prev)
 	{
@@ -1617,6 +1599,7 @@ haiku_draw_glyph_string (struct glyph_string *s)
 	}
     }
   haiku_end_clip (s);
+  BView_draw_unlock (view);
   unblock_input ();
 }
 
