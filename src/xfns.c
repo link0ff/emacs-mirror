@@ -6413,7 +6413,7 @@ select_visual (struct x_display_info *dpyinfo)
 				    | VisualClassMask),
 			      &vinfo_template, &n_visuals);
 
-      if (n_visuals > 0)
+      if (n_visuals > 0 && vinfo)
 	{
 	  dpyinfo->n_planes = vinfo->depth;
 	  dpyinfo->visual = vinfo->visual;
@@ -8565,6 +8565,34 @@ DEFUN ("x-gtk-debug", Fx_gtk_debug, Sx_gtk_debug, 1, 1, 0,
 #endif /* GTK_CHECK_VERSION (3, 14, 0) */
 #endif /* HAVE_GTK3 */
 #endif	/* USE_GTK */
+
+DEFUN ("x-internal-focus-input-context", Fx_internal_focus_input_context,
+       Sx_internal_focus_input_context, 2, 2, 0,
+       doc: /* Focus and set the client window of FRAME's GTK input context.
+If FOCUS is nil, focus out and remove the client window instead.
+This should be called from a variable watcher for `x-gtk-use-native-input'.  */)
+  (Lisp_Object focus, Lisp_Object frame)
+{
+#ifdef USE_GTK
+  struct frame *f = decode_window_system_frame (frame);
+  GtkWidget *widget = FRAME_GTK_OUTER_WIDGET (f);
+
+  if (!NILP (focus))
+    {
+      gtk_im_context_focus_in (FRAME_X_OUTPUT (f)->im_context);
+      gtk_im_context_set_client_window (FRAME_X_OUTPUT (f)->im_context,
+					gtk_widget_get_window (widget));
+    }
+  else
+    {
+      gtk_im_context_focus_out (FRAME_X_OUTPUT (f)->im_context);
+      gtk_im_context_set_client_window (FRAME_X_OUTPUT (f)->im_context,
+					NULL);
+    }
+#endif
+
+  return Qnil;
+}
 
 /***********************************************************************
 			    Initialization
@@ -8625,6 +8653,54 @@ frame_parm_handler x_frame_parm_handlers[] =
   gui_set_no_special_glyphs,
   x_set_alpha_background,
 };
+
+/* Some versions of libX11 don't have symbols for a few functions we
+   need, so define replacements here.  */
+
+#ifdef HAVE_XKB
+#ifndef HAVE_XKBREFRESHKEYBOARDMAPPING
+Status
+XkbRefreshKeyboardMapping (XkbMapNotifyEvent *event)
+{
+  return Success;
+}
+#endif
+
+#ifndef HAVE_XKBFREENAMES
+void
+XkbFreeNames (XkbDescPtr xkb, unsigned int which, Bool free_map)
+{
+  return;
+}
+#endif
+#endif
+
+#ifndef HAVE_XDISPLAYCELLS
+int
+XDisplayCells (Display *dpy, int screen_number)
+{
+  return 1677216;
+}
+#endif
+
+#ifndef HAVE_XDESTROYSUBWINDOWS
+int
+XDestroySubwindows (Display *dpy, Window w)
+{
+  Window root, parent, *children;
+  unsigned int nchildren, i;
+
+  if (XQueryTree (dpy, w, &root, &parent, &children,
+		  &nchildren))
+    {
+      for (i = 0; i < nchildren; ++i)
+	XDestroyWindow (dpy, children[i]);
+      XFree (children);
+    }
+
+  return 0;
+}
+#endif
 
 void
 syms_of_xfns (void)
@@ -8941,6 +9017,8 @@ eliminated in future versions of Emacs.  */);
 #if defined (USE_GTK) && defined (HAVE_FREETYPE)
   defsubr (&Sx_select_font);
 #endif
+
+  defsubr (&Sx_internal_focus_input_context);
 
 #ifdef USE_CAIRO
   defsubr (&Sx_export_frames);

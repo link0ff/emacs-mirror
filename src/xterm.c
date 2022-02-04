@@ -3083,34 +3083,55 @@ x_alloc_nearest_color_1 (Display *dpy, Colormap cmap, XColor *color)
   if (rc == 0)
     {
       /* If we got to this point, the colormap is full, so we're going
-	 to try to get the next closest color.  The algorithm used is
+	 to try and get the next closest color.  The algorithm used is
 	 a least-squares matching, which is what X uses for closest
 	 color matching with StaticColor visuals.  */
-      int nearest, i;
-      int max_color_delta = 255;
-      int max_delta = 3 * max_color_delta;
-      int nearest_delta = max_delta + 1;
-      int ncells;
-      const XColor *cells = x_color_cells (dpy, &ncells);
 
-      for (nearest = i = 0; i < ncells; ++i)
+      const XColor *cells;
+      int no_cells;
+      int nearest;
+      long nearest_delta, trial_delta;
+      int x;
+      Status status;
+
+      cells = x_color_cells (dpy, &no_cells);
+
+      nearest = 0;
+      /* I'm assuming CSE so I'm not going to condense this. */
+      nearest_delta = ((((color->red >> 8) - (cells[0].red >> 8))
+			* ((color->red >> 8) - (cells[0].red >> 8)))
+		       + (((color->green >> 8) - (cells[0].green >> 8))
+			  * ((color->green >> 8) - (cells[0].green >> 8)))
+		       + (((color->blue >> 8) - (cells[0].blue >> 8))
+			  * ((color->blue >> 8) - (cells[0].blue >> 8))));
+      for (x = 1; x < no_cells; x++)
 	{
-	  int dred   = (color->red   >> 8) - (cells[i].red   >> 8);
-	  int dgreen = (color->green >> 8) - (cells[i].green >> 8);
-	  int dblue  = (color->blue  >> 8) - (cells[i].blue  >> 8);
-	  int delta = dred * dred + dgreen * dgreen + dblue * dblue;
-
-	  if (delta < nearest_delta)
+	  trial_delta = ((((color->red >> 8) - (cells[x].red >> 8))
+			  * ((color->red >> 8) - (cells[x].red >> 8)))
+			 + (((color->green >> 8) - (cells[x].green >> 8))
+			    * ((color->green >> 8) - (cells[x].green >> 8)))
+			 + (((color->blue >> 8) - (cells[x].blue >> 8))
+			    * ((color->blue >> 8) - (cells[x].blue >> 8))));
+	  if (trial_delta < nearest_delta)
 	    {
-	      nearest = i;
-	      nearest_delta = delta;
+	      XColor temp;
+	      temp.red = cells[x].red;
+	      temp.green = cells[x].green;
+	      temp.blue = cells[x].blue;
+	      status = XAllocColor (dpy, cmap, &temp);
+	      if (status)
+		{
+		  nearest = x;
+		  nearest_delta = trial_delta;
+		}
 	    }
 	}
-
-      color->red   = cells[nearest].red;
+      color->red = cells[nearest].red;
       color->green = cells[nearest].green;
-      color->blue  = cells[nearest].blue;
-      rc = XAllocColor (dpy, cmap, color) != 0;
+      color->blue = cells[nearest].blue;
+      status = XAllocColor (dpy, cmap, color);
+
+      rc = status != 0;
     }
   else
     {
@@ -5370,10 +5391,13 @@ x_focus_changed (int type, int state, struct x_display_info *dpyinfo, struct fra
 #ifdef USE_GTK
       GtkWidget *widget;
 
-      gtk_im_context_focus_in (FRAME_X_OUTPUT (frame)->im_context);
-      widget = FRAME_GTK_OUTER_WIDGET (frame);
-      gtk_im_context_set_client_window (FRAME_X_OUTPUT (frame)->im_context,
-					gtk_widget_get_window (widget));
+      if (x_gtk_use_native_input)
+	{
+	  gtk_im_context_focus_in (FRAME_X_OUTPUT (frame)->im_context);
+	  widget = FRAME_GTK_OUTER_WIDGET (frame);
+	  gtk_im_context_set_client_window (FRAME_X_OUTPUT (frame)->im_context,
+					    gtk_widget_get_window (widget));
+	}
 #endif
 #endif
     }
@@ -5394,8 +5418,11 @@ x_focus_changed (int type, int state, struct x_display_info *dpyinfo, struct fra
       if (FRAME_XIC (frame))
         XUnsetICFocus (FRAME_XIC (frame));
 #ifdef USE_GTK
-      gtk_im_context_focus_out (FRAME_X_OUTPUT (frame)->im_context);
-      gtk_im_context_set_client_window (FRAME_X_OUTPUT (frame)->im_context, NULL);
+      if (x_gtk_use_native_input)
+	{
+	  gtk_im_context_focus_out (FRAME_X_OUTPUT (frame)->im_context);
+	  gtk_im_context_set_client_window (FRAME_X_OUTPUT (frame)->im_context, NULL);
+	}
 #endif
 #endif
       if (frame->pointer_invisible)
@@ -5762,7 +5789,8 @@ x_find_modifier_meanings (struct x_display_info *dpyinfo)
   dpyinfo->hyper_mod_mask = 0;
 
 #ifdef HAVE_XKB
-  if (dpyinfo->xkb_desc)
+  if (dpyinfo->xkb_desc
+      && dpyinfo->xkb_desc->server)
     {
       for (i = 0; i < XkbNumVirtualMods; i++)
 	{
@@ -5804,6 +5832,14 @@ x_find_modifier_meanings (struct x_display_info *dpyinfo)
   syms = XGetKeyboardMapping (dpyinfo->display,
 			      min_code, max_code - min_code + 1,
 			      &syms_per_code);
+
+  if (!syms)
+    {
+      dpyinfo->meta_mod_mask = Mod1Mask;
+      dpyinfo->super_mod_mask = Mod2Mask;
+      return;
+    }
+
   mods = XGetModifierMapping (dpyinfo->display);
 
   /* Scan the modifier table to see which modifier bits the Meta and
