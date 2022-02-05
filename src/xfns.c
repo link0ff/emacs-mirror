@@ -2355,6 +2355,67 @@ hack_wm_protocols (struct frame *f, Widget widget)
 }
 #endif
 
+static void
+append_wm_protocols (struct x_display_info *dpyinfo,
+		     struct frame *f)
+{
+  unsigned char *existing = NULL;
+  int format = 0;
+  unsigned long nitems = 0;
+  Atom type;
+  Atom *existing_protocols;
+  Atom protos[10];
+  int num_protos = 0;
+  bool found_wm_ping = false;
+#if !defined HAVE_GTK3 && defined HAVE_XSYNC
+  bool found_wm_sync_request = false;
+#endif
+  unsigned long bytes_after;
+
+  block_input ();
+  if ((XGetWindowProperty (dpyinfo->display, FRAME_OUTER_WINDOW (f),
+			   dpyinfo->Xatom_wm_protocols,
+			   0, 100, False, XA_ATOM, &type, &format, &nitems,
+			   &bytes_after, &existing) == Success)
+      && format == 32 && type == XA_ATOM)
+    {
+      existing_protocols = (Atom *) existing;
+
+      while (nitems)
+	{
+	  nitems--;
+
+	  if (existing_protocols[nitems]
+	      == dpyinfo->Xatom_net_wm_ping)
+	    found_wm_ping = true;
+#if !defined HAVE_GTK3 && defined HAVE_XSYNC
+	  else if (existing_protocols[nitems]
+		   == dpyinfo->Xatom_net_wm_sync_request)
+	    found_wm_sync_request = true;
+#endif
+	}
+    }
+
+  if (existing)
+    XFree (existing);
+
+  if (!found_wm_ping)
+    protos[num_protos++] = dpyinfo->Xatom_net_wm_ping;
+#if !defined HAVE_GTK3 && defined HAVE_XSYNC
+  if (!found_wm_sync_request)
+    protos[num_protos++] = dpyinfo->Xatom_net_wm_sync_request;
+#endif
+
+  if (num_protos)
+    XChangeProperty (dpyinfo->display,
+		     FRAME_OUTER_WINDOW (f),
+		     dpyinfo->Xatom_wm_protocols,
+		     XA_ATOM, 32, PropModeAppend,
+		     (unsigned char *) protos,
+		     num_protos);
+  unblock_input ();
+}
+
 
 
 /* Support routines for XIC (X Input Context).  */
@@ -3630,6 +3691,7 @@ x_window (struct frame *f, long window_prompting)
 	       &f->output_data.x->wm_hints);
 
   hack_wm_protocols (f, shell_widget);
+  append_wm_protocols (FRAME_DISPLAY_INFO (f), f);
 
 #ifdef X_TOOLKIT_EDITRES
   XtAddEventHandler (shell_widget, 0, True, _XEditResCheckMessages, 0);
@@ -3750,6 +3812,8 @@ x_window (struct frame *f)
   }
 #endif
 
+  append_wm_protocols (FRAME_DISPLAY_INFO (f), f);
+
 #ifdef HAVE_XINPUT2
   if (FRAME_DISPLAY_INFO (f)->supports_xi2)
     setup_xi_event_mask (f);
@@ -3837,6 +3901,8 @@ x_window (struct frame *f)
     protocols[1] = FRAME_DISPLAY_INFO (f)->Xatom_wm_save_yourself;
     XSetWMProtocols (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), protocols, 2);
   }
+
+  append_wm_protocols (FRAME_DISPLAY_INFO (f), f);
 
   /* x_set_name normally ignores requests to set the name if the
      requested name is the same as the current name.  This is the one
@@ -4741,6 +4807,24 @@ This function is an internal primitive--use `make-frame' instead.  */)
 		       XA_WINDOW, 32, PropModeReplace,
 		       (unsigned char *) &dpyinfo->client_leader_window, 1);
     }
+
+#ifdef HAVE_XSYNC
+  if (dpyinfo->xsync_supported_p)
+    {
+#ifndef HAVE_GTK3
+      XSyncValue initial_value;
+
+      XSyncIntToValue (&initial_value, 0);
+      FRAME_X_BASIC_COUNTER (f) = XSyncCreateCounter (FRAME_X_DISPLAY (f),
+						      initial_value);
+
+      XChangeProperty (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
+		       dpyinfo->Xatom_net_wm_sync_request_counter,
+		       XA_CARDINAL, 32, PropModeReplace,
+		       (unsigned char *) &FRAME_X_BASIC_COUNTER (f), 1);
+#endif
+    }
+#endif
 
   unblock_input ();
 
@@ -7681,6 +7765,8 @@ Text larger than the specified size is clipped.  */)
   ptrdiff_t count = SPECPDL_INDEX ();
   ptrdiff_t count_1;
   Lisp_Object window, size, tip_buf;
+  Window child;
+  int dest_x_return, dest_y_return;
   AUTO_STRING (tip, " *tip*");
 
   specbind (Qinhibit_redisplay, Qt);
@@ -7905,6 +7991,27 @@ Text larger than the specified size is clipped.  */)
 
   /* Show tooltip frame.  */
   block_input ();
+  /* If the display is composited, then WM_TRANSIENT_FOR must be set
+     as well, or else the compositing manager won't display
+     decorations correctly, even though the tooltip window is override
+     redirect. See
+     https://specifications.freedesktop.org/wm-spec/1.4/ar01s08.html
+
+     Perhaps WM_TRANSIENT_FOR should be used in place of
+     override-redirect anyway.  The ICCCM only recommends
+     override-redirect if the pointer will be grabbed.  */
+
+  if (XTranslateCoordinates (FRAME_X_DISPLAY (f),
+			     FRAME_DISPLAY_INFO (f)->root_window,
+			     FRAME_DISPLAY_INFO (f)->root_window,
+			     root_x, root_y, &dest_x_return,
+			     &dest_y_return, &child))
+    XSetTransientForHint (FRAME_X_DISPLAY (tip_f),
+			  FRAME_X_WINDOW (tip_f), child);
+  else
+    XSetTransientForHint (FRAME_X_DISPLAY (tip_f),
+			  FRAME_X_WINDOW (tip_f), None);
+
 #ifndef USE_XCB
   XMoveResizeWindow (FRAME_X_DISPLAY (tip_f), FRAME_X_WINDOW (tip_f),
 		     root_x, root_y, width, height);
