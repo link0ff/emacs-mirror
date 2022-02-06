@@ -135,6 +135,11 @@ An autoload definition appears just as a (defun . NAME) and the
 
 * Changes in Emacs 29.1
 
+---
+** New user option 'find-library-include-other-files'.
+If non-nil, commands like 'M-x find-library' will only include library
+files in the completion alternatives.
+
 ** New command 'sqlite-mode-open-file' for examining an sqlite3 file.
 This uses the new 'sqlite-mode' which allows listing the tables in a
 DB file, and examining and modifying the columns and the contents of
@@ -176,6 +181,14 @@ and pop-up menus.
 ** New X resource: "inputStyle".
 This controls the style of the pre-edit and status areas of X input
 methods.
+
++++
+** On X11, Emacs now tries to synchronize window resize with the window manager.
+This leads to less flicker and empty areas of a frame being displayed
+when a frame is being resized.  Unfortunately, it does not work on
+some ancient buggy window managers, so if Emacs appears to freeze, but
+is still responive to input, you can turn it off by setting the X
+resource "synchronizeResize" to "off".
 
 +++
 ** New frame parameter 'alpha-background' and X resource "alphaBackground".
@@ -1040,6 +1053,12 @@ functions.
 
 * Lisp Changes in Emacs 29.1
 
++++
+** New utility predicate 'mode-line-window-selected-p'.
+This is meant to be used from ':eval' mode line constructs to create
+different mode line looks for selected and unselected windows.
+
++++
 ** New variable 'messages-buffer-name'.
 This variable (defaulting to "*Messages*") allows packages to override
 where messages are logged.

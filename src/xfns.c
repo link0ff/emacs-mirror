@@ -1949,7 +1949,7 @@ x_set_scroll_bar_background (struct frame *f, Lisp_Object value, Lisp_Object old
 
 
 /* Encode Lisp string STRING as a text in a format appropriate for
-   XICCC (X Inter Client Communication Conventions).
+   the ICCCM (Inter Client Communication Conventions Manual).
 
    If STRING contains only ASCII characters, do no conversion and
    return the string data of STRING.  Otherwise, encode the text by
@@ -2402,7 +2402,7 @@ append_wm_protocols (struct x_display_info *dpyinfo,
   if (!found_wm_ping)
     protos[num_protos++] = dpyinfo->Xatom_net_wm_ping;
 #if !defined HAVE_GTK3 && defined HAVE_XSYNC
-  if (!found_wm_sync_request)
+  if (!found_wm_sync_request && dpyinfo->xsync_supported_p)
     protos[num_protos++] = dpyinfo->Xatom_net_wm_sync_request;
 #endif
 
