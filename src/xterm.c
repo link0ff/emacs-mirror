@@ -1848,6 +1848,12 @@ x_update_end (struct frame *f)
 static void
 XTframe_up_to_date (struct frame *f)
 {
+#ifdef HAVE_XSYNC
+  XSyncValue add;
+  XSyncValue current;
+  Bool overflow_p;
+#endif
+
   eassert (FRAME_X_P (f));
   block_input ();
   FRAME_MOUSE_UPDATE (f);
@@ -1867,12 +1873,15 @@ XTframe_up_to_date (struct frame *f)
   if (FRAME_X_OUTPUT (f)->ext_sync_end_pending_p
       && FRAME_X_EXTENDED_COUNTER (f) != None)
     {
-      XSyncValue add;
-      Bool overflow_p;
+      current = FRAME_X_OUTPUT (f)->current_extended_counter_value;
 
-      XSyncIntToValue (&add, 1);
+      if (XSyncValueLow32 (current) % 2)
+	XSyncIntToValue (&add, 1);
+      else
+	XSyncIntToValue (&add, 2);
+
       XSyncValueAdd (&FRAME_X_OUTPUT (f)->current_extended_counter_value,
-		     add, add, &overflow_p);
+		     current, add, &overflow_p);
 
       if (overflow_p)
 	emacs_abort ();
@@ -9139,7 +9148,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			FRAME_X_OUTPUT (f)->sync_end_pending_p = true;
 		      }
 		    else if (event->xclient.data.l[4] == 1)
-		      FRAME_X_OUTPUT (f)->ext_sync_end_pending_p = true;
+		      {
+			XSyncIntsToValue (&FRAME_X_OUTPUT (f)->current_extended_counter_value,
+					  event->xclient.data.l[2], event->xclient.data.l[3]);
+			FRAME_X_OUTPUT (f)->ext_sync_end_pending_p = true;
+		      }
 
 		    *finish = X_EVENT_DROP;
 		    goto done;
