@@ -10068,8 +10068,17 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       if (x_top_window_to_frame (dpyinfo, event->xcrossing.window))
 	x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 
+#if defined USE_X_TOOLKIT
+      /* If the mouse leaves the edit widget, then any mouse highlight
+	 should be cleared.  */
+      f = x_window_to_frame (dpyinfo, event->xcrossing.window);
+
+      if (!f)
+	f = x_top_window_to_frame (dpyinfo, event->xcrossing.window);
+#else
       f = x_top_window_to_frame (dpyinfo, event->xcrossing.window);
-#if defined HAVE_X_TOOLKIT && defined HAVE_XINPUT2
+#endif
+#if defined USE_X_TOOLKIT && defined HAVE_XINPUT2
       /* The XI2 event mask is set on the frame widget, so this event
 	 likely originates from the shell widget, which we aren't
 	 interested in.  */
@@ -10783,15 +10792,15 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    if (any)
 	      x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 
-	    if (!any)
-	      any = x_any_window_to_frame (dpyinfo, leave->event);
-
 #ifndef USE_X_TOOLKIT
 	    f = x_top_window_to_frame (dpyinfo, leave->event);
 #else
 	    /* On Xt builds that have XI2, the enter and leave event
 	       masks are set on the frame widget's window.  */
 	    f = x_window_to_frame (dpyinfo, leave->event);
+
+	    if (!f)
+	      f = x_top_window_to_frame (dpyinfo, leave->event);
 #endif
 	    if (f)
 	      {
@@ -14959,7 +14968,8 @@ x_wm_set_size_hint (struct frame *f, long flags, bool user_position)
 #ifdef USE_X_TOOLKIT
   if (f->output_data.x->widget)
     {
-      widget_update_wm_size_hints (f->output_data.x->widget);
+      widget_update_wm_size_hints (f->output_data.x->widget,
+				   f->output_data.x->edit_widget);
       return;
     }
 #endif
@@ -15983,6 +15993,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       ATOM_REFS_INIT ("WM_CONFIGURE_DENIED", Xatom_wm_configure_denied)
       ATOM_REFS_INIT ("WM_MOVED", Xatom_wm_window_moved)
       ATOM_REFS_INIT ("WM_CLIENT_LEADER", Xatom_wm_client_leader)
+      ATOM_REFS_INIT ("WM_TRANSIENT_FOR", Xatom_wm_transient_for)
       ATOM_REFS_INIT ("Editres", Xatom_editres)
       ATOM_REFS_INIT ("CLIPBOARD", Xatom_CLIPBOARD)
       ATOM_REFS_INIT ("TIMESTAMP", Xatom_TIMESTAMP)
