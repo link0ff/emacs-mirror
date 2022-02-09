@@ -875,20 +875,35 @@ x_end_cr_clip (struct frame *f)
 }
 
 void
-x_set_cr_source_with_gc_foreground (struct frame *f, GC gc)
+x_set_cr_source_with_gc_foreground (struct frame *f, GC gc,
+				    bool respect_alpha_background)
 {
   XGCValues xgcv;
   XColor color;
+  unsigned int depth;
 
   XGetGCValues (FRAME_X_DISPLAY (f), gc, GCForeground, &xgcv);
   color.pixel = xgcv.foreground;
   x_query_colors (f, &color, 1);
-  cairo_set_source_rgb (FRAME_CR_CONTEXT (f), color.red / 65535.0,
-			color.green / 65535.0, color.blue / 65535.0);
+  depth = FRAME_DISPLAY_INFO (f)->n_planes;
+
+  if (f->alpha_background < 1.0 && depth == 32
+      && respect_alpha_background)
+    {
+      cairo_set_source_rgba (FRAME_CR_CONTEXT (f), color.red / 65535.0,
+			     color.green / 65535.0, color.blue / 65535.0,
+			     f->alpha_background);
+
+      cairo_set_operator (FRAME_CR_CONTEXT (f), CAIRO_OPERATOR_SOURCE);
+    }
+  else
+    cairo_set_source_rgb (FRAME_CR_CONTEXT (f), color.red / 65535.0,
+                          color.green / 65535.0, color.blue / 65535.0);
 }
 
 void
-x_set_cr_source_with_gc_background (struct frame *f, GC gc)
+x_set_cr_source_with_gc_background (struct frame *f, GC gc,
+				    bool respect_alpha_background)
 {
   XGCValues xgcv;
   XColor color;
@@ -901,7 +916,8 @@ x_set_cr_source_with_gc_background (struct frame *f, GC gc)
 
   depth = FRAME_DISPLAY_INFO (f)->n_planes;
 
-  if (f->alpha_background < 1.0 && depth == 32)
+  if (f->alpha_background < 1.0 && depth == 32
+      && respect_alpha_background)
     {
       cairo_set_source_rgba (FRAME_CR_CONTEXT (f), color.red / 65535.0,
 			     color.green / 65535.0, color.blue / 65535.0,
@@ -912,7 +928,6 @@ x_set_cr_source_with_gc_background (struct frame *f, GC gc)
   else
     cairo_set_source_rgb (FRAME_CR_CONTEXT (f), color.red / 65535.0,
                           color.green / 65535.0, color.blue / 65535.0);
-
 }
 
 static const cairo_user_data_key_t xlib_surface_key, saved_drawable_key;
@@ -1097,7 +1112,7 @@ x_cr_draw_image (struct frame *f, GC gc, cairo_pattern_t *image,
     cairo_rectangle (cr, dest_x, dest_y, width, height);
   else
     {
-      x_set_cr_source_with_gc_background (f, gc);
+      x_set_cr_source_with_gc_background (f, gc, false);
       cairo_rectangle (cr, dest_x, dest_y, width, height);
       cairo_fill_preserve (cr);
     }
@@ -1114,7 +1129,7 @@ x_cr_draw_image (struct frame *f, GC gc, cairo_pattern_t *image,
     }
   else
     {
-      x_set_cr_source_with_gc_foreground (f, gc);
+      x_set_cr_source_with_gc_foreground (f, gc, false);
       cairo_clip (cr);
       cairo_mask (cr, image);
     }
@@ -1325,7 +1340,7 @@ x_fill_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
 	 regarded as Pixmap of unspecified size filled with ones.  */
       || (xgcv.stipple & ((Pixmap) 7 << (sizeof (Pixmap) * CHAR_BIT - 3))))
     {
-      x_set_cr_source_with_gc_foreground (f, gc);
+      x_set_cr_source_with_gc_foreground (f, gc, respect_alpha_background);
       cairo_rectangle (cr, x, y, width, height);
       cairo_fill (cr);
     }
@@ -1333,14 +1348,14 @@ x_fill_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
     {
       eassert (xgcv.fill_style == FillOpaqueStippled);
       eassert (xgcv.stipple != None);
-      x_set_cr_source_with_gc_background (f, gc);
+      x_set_cr_source_with_gc_background (f, gc, respect_alpha_background);
       cairo_rectangle (cr, x, y, width, height);
       cairo_fill_preserve (cr);
 
       cairo_pattern_t *pattern = x_bitmap_stipple (f, xgcv.stipple);
       if (pattern)
 	{
-	  x_set_cr_source_with_gc_foreground (f, gc);
+	  x_set_cr_source_with_gc_foreground (f, gc, respect_alpha_background);
 	  cairo_clip (cr);
 	  cairo_mask (cr, pattern);
 	}
@@ -1384,7 +1399,7 @@ x_clear_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
   cairo_t *cr;
 
   cr = x_begin_cr_clip (f, gc);
-  x_set_cr_source_with_gc_background (f, gc);
+  x_set_cr_source_with_gc_background (f, gc, respect_alpha_background);
   cairo_rectangle (cr, x, y, width, height);
   cairo_fill (cr);
   x_end_cr_clip (f);
@@ -1430,7 +1445,7 @@ x_draw_rectangle (struct frame *f, GC gc, int x, int y, int width, int height)
   cairo_t *cr;
 
   cr = x_begin_cr_clip (f, gc);
-  x_set_cr_source_with_gc_foreground (f, gc);
+  x_set_cr_source_with_gc_foreground (f, gc, false);
   cairo_rectangle (cr, x + 0.5, y + 0.5, width, height);
   cairo_set_line_width (cr, 1);
   cairo_stroke (cr);
@@ -1448,7 +1463,7 @@ x_clear_window (struct frame *f)
   cairo_t *cr;
 
   cr = x_begin_cr_clip (f, NULL);
-  x_set_cr_source_with_gc_background (f, f->output_data.x->normal_gc);
+  x_set_cr_source_with_gc_background (f, f->output_data.x->normal_gc, true);
   cairo_paint (cr);
   x_end_cr_clip (f);
 #else
@@ -1471,7 +1486,7 @@ x_fill_trapezoid_for_relief (struct frame *f, GC gc, int x, int y,
   cairo_t *cr;
 
   cr = x_begin_cr_clip (f, gc);
-  x_set_cr_source_with_gc_foreground (f, gc);
+  x_set_cr_source_with_gc_foreground (f, gc, false);
   cairo_move_to (cr, top_p ? x : x + height, y);
   cairo_line_to (cr, x, y + height);
   cairo_line_to (cr, top_p ? x + width - height : x + width, y + height);
@@ -1498,7 +1513,7 @@ x_erase_corners_for_relief (struct frame *f, GC gc, int x, int y,
   int i;
 
   cr = x_begin_cr_clip (f, gc);
-  x_set_cr_source_with_gc_background (f, gc);
+  x_set_cr_source_with_gc_background (f, gc, false);
   for (i = 0; i < CORNER_LAST; i++)
     if (corners & (1 << i))
       {
@@ -1531,7 +1546,7 @@ x_draw_horizontal_wave (struct frame *f, GC gc, int x, int y,
   int xoffset, n;
 
   cr = x_begin_cr_clip (f, gc);
-  x_set_cr_source_with_gc_foreground (f, gc);
+  x_set_cr_source_with_gc_foreground (f, gc, false);
   cairo_rectangle (cr, x, y, width, height);
   cairo_clip (cr);
 
@@ -2201,6 +2216,29 @@ static void x_scroll_bar_clear (struct frame *);
 #ifdef GLYPH_DEBUG
 static void x_check_font (struct frame *, struct font *);
 #endif
+
+void
+x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time)
+{
+  struct frame *focus_frame = dpyinfo->x_focus_frame;
+
+#ifdef ENABLE_CHECKING
+  eassert (t <= X_ULONG_MAX);
+#endif
+  dpyinfo->last_user_time = time;
+
+  if (focus_frame)
+    {
+      while (FRAME_PARENT_FRAME (focus_frame))
+	focus_frame = FRAME_PARENT_FRAME (focus_frame);
+
+      XChangeProperty (dpyinfo->display,
+		       FRAME_OUTER_WINDOW (dpyinfo->x_focus_frame),
+		       dpyinfo->Xatom_net_wm_user_time,
+		       XA_CARDINAL, 32, PropModeReplace,
+		       (unsigned char *) &time, 1);
+    }
+}
 
 
 /* Set S->gc to a suitable GC for drawing glyph string S in cursor
@@ -4840,7 +4878,8 @@ x_clear_area (struct frame *f, int x, int y, int width, int height)
   eassert (width > 0 && height > 0);
 
   cr = x_begin_cr_clip (f, NULL);
-  x_set_cr_source_with_gc_background (f, f->output_data.x->normal_gc);
+  x_set_cr_source_with_gc_background (f, f->output_data.x->normal_gc,
+				      true);
   cairo_rectangle (cr, x, y, width, height);
   cairo_fill (cr);
   x_end_cr_clip (f);
@@ -9291,7 +9330,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       break;
 
     case SelectionNotify:
-      x_display_set_last_user_time (dpyinfo, event->xselection.time);
 #ifdef USE_X_TOOLKIT
       if (! x_window_to_frame (dpyinfo, event->xselection.requestor))
         goto OTHER;
@@ -9300,7 +9338,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       break;
 
     case SelectionClear:	/* Someone has grabbed ownership.  */
-      x_display_set_last_user_time (dpyinfo, event->xselectionclear.time);
 #ifdef USE_X_TOOLKIT
       if (! x_window_to_frame (dpyinfo, event->xselectionclear.window))
         goto OTHER;
@@ -9316,7 +9353,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       break;
 
     case SelectionRequest:	/* Someone wants our selection.  */
-      x_display_set_last_user_time (dpyinfo, event->xselectionrequest.time);
 #ifdef USE_X_TOOLKIT
       if (!x_window_to_frame (dpyinfo, event->xselectionrequest.owner))
         goto OTHER;
@@ -9335,7 +9371,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       break;
 
     case PropertyNotify:
-      x_display_set_last_user_time (dpyinfo, event->xproperty.time);
       f = x_top_window_to_frame (dpyinfo, event->xproperty.window);
       if (f && event->xproperty.atom == dpyinfo->Xatom_net_wm_state)
 	{
@@ -9666,7 +9701,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       goto OTHER;
 
     case KeyPress:
-
       x_display_set_last_user_time (dpyinfo, event->xkey.time);
       ignore_next_mouse_click_timeout = 0;
 
@@ -10002,7 +10036,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
     case KeyRelease:
-      x_display_set_last_user_time (dpyinfo, event->xkey.time);
 #ifdef HAVE_X_I18N
       /* Don't dispatch this event since XtDispatchEvent calls
          XFilterEvent, and two calls in a row may freeze the
@@ -10156,7 +10189,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
     case MotionNotify:
       {
-        x_display_set_last_user_time (dpyinfo, event->xmotion.time);
         previous_help_echo_string = help_echo_string;
         help_echo_string = Qnil;
 
@@ -10466,7 +10498,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	memset (&compose_status, 0, sizeof (compose_status));
 	dpyinfo->last_mouse_glyph_frame = NULL;
-	x_display_set_last_user_time (dpyinfo, event->xbutton.time);
+
+	if (event->xbutton.type == ButtonPress)
+	  x_display_set_last_user_time (dpyinfo, event->xbutton.time);
 
 	f = mouse_or_wdesc_frame (dpyinfo, event->xmotion.window);
 	if (f && event->xbutton.type == ButtonPress
@@ -10885,8 +10919,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		goto XI_OTHER;
 #endif
 
-	      x_display_set_last_user_time (dpyinfo, xi_event->time);
-
 #ifdef HAVE_XWIDGETS
 	      struct xwidget_view *xv = xwidget_view_from_window (xev->event);
 	      double xv_total_x = 0.0;
@@ -11208,7 +11240,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      bv.time = xev->time;
 
 	      dpyinfo->last_mouse_glyph_frame = NULL;
-	      x_display_set_last_user_time (dpyinfo, xev->time);
+
+	      if (xev->evtype == XI_ButtonPress)
+		x_display_set_last_user_time (dpyinfo, xev->time);
 
 	      f = mouse_or_wdesc_frame (dpyinfo, xev->event);
 
@@ -11719,34 +11753,32 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    }
 
 	  case XI_KeyRelease:
-	    x_display_set_last_user_time (dpyinfo, xev->time);
-
 #if defined HAVE_X_I18N || defined USE_GTK
-	      XKeyPressedEvent xkey;
+	    XKeyPressedEvent xkey;
 
-	      memset (&xkey, 0, sizeof xkey);
+	    memset (&xkey, 0, sizeof xkey);
 
-	      xkey.type = KeyRelease;
-	      xkey.serial = xev->serial;
-	      xkey.send_event = xev->send_event;
-	      xkey.display = dpyinfo->display;
-	      xkey.window = xev->event;
-	      xkey.root = xev->root;
-	      xkey.subwindow = xev->child;
-	      xkey.time = xev->time;
-	      xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
-			    | (xev->group.effective << 13));
-	      xkey.keycode = xev->detail;
-	      xkey.same_screen = True;
+	    xkey.type = KeyRelease;
+	    xkey.serial = xev->serial;
+	    xkey.send_event = xev->send_event;
+	    xkey.display = dpyinfo->display;
+	    xkey.window = xev->event;
+	    xkey.root = xev->root;
+	    xkey.subwindow = xev->child;
+	    xkey.time = xev->time;
+	    xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
+			  | (xev->group.effective << 13));
+	    xkey.keycode = xev->detail;
+	    xkey.same_screen = True;
 
 #ifdef HAVE_X_I18N
-	      if (x_filter_event (dpyinfo, (XEvent *) &xkey))
-		*finish = X_EVENT_DROP;
+	    if (x_filter_event (dpyinfo, (XEvent *) &xkey))
+	      *finish = X_EVENT_DROP;
 #else
-	      f = x_any_window_to_frame (xkey->event);
+	    f = x_any_window_to_frame (xkey->event);
 
-	      if (f && xg_filter_key (f, event))
-		*finish = X_EVENT_DROP;
+	    if (f && xg_filter_key (f, event))
+	      *finish = X_EVENT_DROP;
 #endif
 #endif
 
@@ -11973,8 +12005,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	  case XI_GesturePinchEnd:
 	    {
-	      x_display_set_last_user_time (dpyinfo, xi_event->time);
-
 #if defined HAVE_XWIDGETS && HAVE_USABLE_XI_GESTURE_PINCH_EVENT
 	      XIGesturePinchEvent *pev = (XIGesturePinchEvent *) xi_event;
 	      struct xwidget_view *xvw = xwidget_view_from_window (pev->event);
@@ -14450,6 +14480,8 @@ xembed_send_message (struct frame *f, Time t, enum xembed_message msg,
 void
 x_make_frame_visible (struct frame *f)
 {
+  struct x_display_info *dpyinfo;
+
   if (FRAME_PARENT_FRAME (f))
     {
       if (!FRAME_VISIBLE_P (f))
@@ -14473,6 +14505,7 @@ x_make_frame_visible (struct frame *f)
   block_input ();
 
   gui_set_bitmap_icon (f);
+  dpyinfo = FRAME_DISPLAY_INFO (f);
 
   if (! FRAME_VISIBLE_P (f))
     {
@@ -14484,6 +14517,17 @@ x_make_frame_visible (struct frame *f)
 	  && ! FRAME_X_EMBEDDED_P (f)
 	  && ! f->output_data.x->asked_for_visible)
 	x_set_offset (f, f->left_pos, f->top_pos, 0);
+
+      if (dpyinfo->last_user_time)
+	XChangeProperty (dpyinfo->display,
+			 FRAME_OUTER_WINDOW (f),
+			 dpyinfo->Xatom_net_wm_user_time,
+			 XA_CARDINAL, 32, PropModeReplace,
+			 (unsigned char *) &dpyinfo->last_user_time, 1);
+      else
+	XDeleteProperty (dpyinfo->display,
+			 FRAME_OUTER_WINDOW (f),
+			 dpyinfo->Xatom_net_wm_user_time);
 
       f->output_data.x->asked_for_visible = true;
 
@@ -16088,6 +16132,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       ATOM_REFS_INIT ("_NET_WM_SYNC_REQUEST", Xatom_net_wm_sync_request)
       ATOM_REFS_INIT ("_NET_WM_SYNC_REQUEST_COUNTER", Xatom_net_wm_sync_request_counter)
       ATOM_REFS_INIT ("_NET_WM_FRAME_DRAWN", Xatom_net_wm_frame_drawn)
+      ATOM_REFS_INIT ("_NET_WM_USER_TIME", Xatom_net_wm_user_time)
       /* Session management */
       ATOM_REFS_INIT ("SM_CLIENT_ID", Xatom_SM_CLIENT_ID)
       ATOM_REFS_INIT ("_XSETTINGS_SETTINGS", Xatom_xsettings_prop)

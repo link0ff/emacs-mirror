@@ -505,7 +505,8 @@ struct x_display_info
     Xatom_net_wm_state_hidden, Xatom_net_wm_state_skip_taskbar,
     Xatom_net_frame_extents, Xatom_net_current_desktop, Xatom_net_workarea,
     Xatom_net_wm_opaque_region, Xatom_net_wm_ping, Xatom_net_wm_sync_request,
-    Xatom_net_wm_sync_request_counter, Xatom_net_wm_frame_drawn;
+    Xatom_net_wm_sync_request_counter, Xatom_net_wm_frame_drawn,
+    Xatom_net_wm_user_time;
 
   /* XSettings atoms and windows.  */
   Atom Xatom_xsettings_sel, Xatom_xsettings_prop, Xatom_xsettings_mgr;
@@ -1267,8 +1268,8 @@ extern void x_cr_destroy_frame_context (struct frame *);
 extern void x_cr_update_surface_desired_size (struct frame *, int, int);
 extern cairo_t *x_begin_cr_clip (struct frame *, GC);
 extern void x_end_cr_clip (struct frame *);
-extern void x_set_cr_source_with_gc_foreground (struct frame *, GC);
-extern void x_set_cr_source_with_gc_background (struct frame *, GC);
+extern void x_set_cr_source_with_gc_foreground (struct frame *, GC, bool);
+extern void x_set_cr_source_with_gc_background (struct frame *, GC, bool);
 extern void x_cr_draw_frame (cairo_t *, struct frame *);
 extern Lisp_Object x_cr_export_frames (Lisp_Object, cairo_surface_type_t);
 #endif
@@ -1283,6 +1284,8 @@ extern void x_xr_apply_ext_clip (struct frame *f, GC gc);
 extern void x_xr_reset_ext_clip (struct frame *f);
 #endif
 
+extern void x_display_set_last_user_time (struct x_display_info *, Time);
+
 INLINE int
 x_display_pixel_height (struct x_display_info *dpyinfo)
 {
@@ -1293,15 +1296,6 @@ INLINE int
 x_display_pixel_width (struct x_display_info *dpyinfo)
 {
   return WidthOfScreen (dpyinfo->screen);
-}
-
-INLINE void
-x_display_set_last_user_time (struct x_display_info *dpyinfo, Time t)
-{
-#ifdef ENABLE_CHECKING
-  eassert (t <= X_ULONG_MAX);
-#endif
-  dpyinfo->last_user_time = t;
 }
 
 INLINE unsigned long
