@@ -5559,17 +5559,21 @@ x_focus_changed (int type, int state, struct x_display_info *dpyinfo, struct fra
           XSETFRAME (bufp->frame_or_window, frame);
         }
 
-#ifdef HAVE_X_I18N
-      if (FRAME_XIC (frame))
-        XUnsetICFocus (FRAME_XIC (frame));
-#ifdef USE_GTK
-      if (x_gtk_use_native_input)
+      if (!frame->output_data.x->focus_state)
 	{
-	  gtk_im_context_focus_out (FRAME_X_OUTPUT (frame)->im_context);
-	  gtk_im_context_set_client_window (FRAME_X_OUTPUT (frame)->im_context, NULL);
+#ifdef HAVE_X_I18N
+	  if (FRAME_XIC (frame))
+	    XUnsetICFocus (FRAME_XIC (frame));
+#ifdef USE_GTK
+	  if (x_gtk_use_native_input)
+	    {
+	      gtk_im_context_focus_out (FRAME_X_OUTPUT (frame)->im_context);
+	      gtk_im_context_set_client_window (FRAME_X_OUTPUT (frame)->im_context, NULL);
+	    }
+#endif
+#endif
 	}
-#endif
-#endif
+
       if (frame->pointer_invisible)
         XTtoggle_invisible_pointer (frame, false);
     }
@@ -10024,6 +10028,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	    if (nchars < nbytes)
 	      {
+		/* If we don't bail out here then GTK can crash
+		   from the resulting signal in `setup_coding_system'.  */
+		if (NILP (Fcoding_system_p (coding_system)))
+		  goto done_keysym;
+
 		/* Decode the input data.  */
 
 		/* The input should be decoded with `coding_system'
@@ -11763,6 +11772,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 		  if (nchars < nbytes)
 		    {
+		      /* If we don't bail out here then GTK can crash
+			 from the resulting signal in `setup_coding_system'.  */
+		      if (NILP (Fcoding_system_p (Vlocale_coding_system)))
+			goto xi_done_keysym;
+
 		      /* Decode the input data.  */
 
 		      setup_coding_system (Vlocale_coding_system, &coding);
