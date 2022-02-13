@@ -348,6 +348,24 @@ struct haiku_menu_bar_state_event
 #define BE_RECT_WIDTH(rect) (ceil (((rect).right - (rect).left) + 1))
 #endif /* __cplusplus */
 
+/* C++ code cannot include lisp.h, but file dialogs need to be able
+   to bind to the specpdl and handle quitting correctly.  */
+
+#ifdef __cplusplus
+
+#if SIZE_MAX > 0xffffffff
+#define WRAP_SPECPDL_REF 1
+#endif
+#ifdef WRAP_SPECPDL_REF
+typedef struct { ptrdiff_t bytes; } specpdl_ref;
+#else
+typedef ptrdiff_t specpdl_ref;
+#endif
+
+#else
+#include "lisp.h"
+#endif
+
 #ifdef __cplusplus
 extern "C"
 {
@@ -787,11 +805,10 @@ extern "C"
   extern void
   record_c_unwind_protect_from_cxx (void (*) (void *), void *);
 
-  extern ptrdiff_t
-  c_specpdl_idx_from_cxx (void);
+  extern specpdl_ref c_specpdl_idx_from_cxx (void);
 
   extern void
-  c_unbind_to_nil_from_cxx (ptrdiff_t idx);
+  c_unbind_to_nil_from_cxx (specpdl_ref idx);
 
   extern void
   BWindow_zoom (void *window);

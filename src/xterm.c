@@ -126,6 +126,10 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <X11/extensions/sync.h>
 #endif
 
+#ifdef HAVE_XINERAMA
+#include <X11/extensions/Xinerama.h>
+#endif
+
 /* Load sys/types.h if not already loaded.
    In some systems loading it twice is suicidal.  */
 #ifndef makedev
@@ -1202,7 +1206,7 @@ x_cr_export_frames (Lisp_Object frames, cairo_surface_type_t surface_type)
   int width, height;
   void (*surface_set_size_func) (cairo_surface_t *, double, double) = NULL;
   Lisp_Object acc = Qnil;
-  ptrdiff_t count = SPECPDL_INDEX ();
+  specpdl_ref count = SPECPDL_INDEX ();
 
   specbind (Qredisplay_dont_pause, Qt);
   redisplay_preserve_echo_area (31);
@@ -5088,16 +5092,13 @@ x_hide_hourglass (struct frame *f)
 static void
 XTflash (struct frame *f)
 {
+  GC gc;
+  XGCValues values;
+
   block_input ();
 
-  {
-    GC gc;
-
-    /* Create a GC that will use the GXxor function to flip foreground
-       pixels into background pixels.  */
+  if (FRAME_X_VISUAL (f)->class == TrueColor)
     {
-      XGCValues values;
-
       values.function = GXxor;
       values.foreground = (FRAME_FOREGROUND_PIXEL (f)
 			   ^ FRAME_BACKGROUND_PIXEL (f));
@@ -5105,85 +5106,86 @@ XTflash (struct frame *f)
       gc = XCreateGC (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
 		      GCFunction | GCForeground, &values);
     }
+  else
+    gc = FRAME_X_OUTPUT (f)->normal_gc;
+
+
+  /* Get the height not including a menu bar widget.  */
+  int height = FRAME_PIXEL_HEIGHT (f);
+  /* Height of each line to flash.  */
+  int flash_height = FRAME_LINE_HEIGHT (f);
+  /* These will be the left and right margins of the rectangles.  */
+  int flash_left = FRAME_INTERNAL_BORDER_WIDTH (f);
+  int flash_right = FRAME_PIXEL_WIDTH (f) - FRAME_INTERNAL_BORDER_WIDTH (f);
+  int width = flash_right - flash_left;
+
+  /* If window is tall, flash top and bottom line.  */
+  if (height > 3 * FRAME_LINE_HEIGHT (f))
     {
-      /* Get the height not including a menu bar widget.  */
-      int height = FRAME_PIXEL_HEIGHT (f);
-      /* Height of each line to flash.  */
-      int flash_height = FRAME_LINE_HEIGHT (f);
-      /* These will be the left and right margins of the rectangles.  */
-      int flash_left = FRAME_INTERNAL_BORDER_WIDTH (f);
-      int flash_right = FRAME_PIXEL_WIDTH (f) - FRAME_INTERNAL_BORDER_WIDTH (f);
-      int width = flash_right - flash_left;
+      XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
+		      flash_left,
+		      (FRAME_INTERNAL_BORDER_WIDTH (f)
+		       + FRAME_TOP_MARGIN_HEIGHT (f)),
+		      width, flash_height);
+      XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
+		      flash_left,
+		      (height - flash_height
+		       - FRAME_INTERNAL_BORDER_WIDTH (f)),
+		      width, flash_height);
 
-      /* If window is tall, flash top and bottom line.  */
-      if (height > 3 * FRAME_LINE_HEIGHT (f))
-	{
-	  XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
-			  flash_left,
-			  (FRAME_INTERNAL_BORDER_WIDTH (f)
-			   + FRAME_TOP_MARGIN_HEIGHT (f)),
-			  width, flash_height);
-	  XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
-			  flash_left,
-			  (height - flash_height
-			   - FRAME_INTERNAL_BORDER_WIDTH (f)),
-			  width, flash_height);
-
-	}
-      else
-	/* If it is short, flash it all.  */
-	XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
-			flash_left, FRAME_INTERNAL_BORDER_WIDTH (f),
-			width, height - 2 * FRAME_INTERNAL_BORDER_WIDTH (f));
-
-      x_flush (f);
-
-      {
-	struct timespec delay = make_timespec (0, 150 * 1000 * 1000);
-	struct timespec wakeup = timespec_add (current_timespec (), delay);
-
-	/* Keep waiting until past the time wakeup or any input gets
-	   available.  */
-	while (! detect_input_pending ())
-	  {
-	    struct timespec current = current_timespec ();
-	    struct timespec timeout;
-
-	    /* Break if result would not be positive.  */
-	    if (timespec_cmp (wakeup, current) <= 0)
-	      break;
-
-	    /* How long `select' should wait.  */
-	    timeout = make_timespec (0, 10 * 1000 * 1000);
-
-	    /* Try to wait that long--but we might wake up sooner.  */
-	    pselect (0, NULL, NULL, NULL, &timeout, NULL);
-	  }
-      }
-
-      /* If window is tall, flash top and bottom line.  */
-      if (height > 3 * FRAME_LINE_HEIGHT (f))
-	{
-	  XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
-			  flash_left,
-			  (FRAME_INTERNAL_BORDER_WIDTH (f)
-			   + FRAME_TOP_MARGIN_HEIGHT (f)),
-			  width, flash_height);
-	  XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
-			  flash_left,
-			  (height - flash_height
-			   - FRAME_INTERNAL_BORDER_WIDTH (f)),
-			  width, flash_height);
-	}
-      else
-	/* If it is short, flash it all.  */
-	XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
-			flash_left, FRAME_INTERNAL_BORDER_WIDTH (f),
-			width, height - 2 * FRAME_INTERNAL_BORDER_WIDTH (f));
-      XFreeGC (FRAME_X_DISPLAY (f), gc);
-      x_flush (f);
     }
-  }
+  else
+    /* If it is short, flash it all.  */
+    XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
+		    flash_left, FRAME_INTERNAL_BORDER_WIDTH (f),
+		    width, height - 2 * FRAME_INTERNAL_BORDER_WIDTH (f));
+
+  x_flush (f);
+
+  struct timespec delay = make_timespec (0, 150 * 1000 * 1000);
+  struct timespec wakeup = timespec_add (current_timespec (), delay);
+
+  /* Keep waiting until past the time wakeup or any input gets
+     available.  */
+  while (! detect_input_pending ())
+    {
+      struct timespec current = current_timespec ();
+      struct timespec timeout;
+
+      /* Break if result would not be positive.  */
+      if (timespec_cmp (wakeup, current) <= 0)
+	break;
+
+      /* How long `select' should wait.  */
+      timeout = make_timespec (0, 10 * 1000 * 1000);
+
+      /* Try to wait that long--but we might wake up sooner.  */
+      pselect (0, NULL, NULL, NULL, &timeout, NULL);
+    }
+
+  /* If window is tall, flash top and bottom line.  */
+  if (height > 3 * FRAME_LINE_HEIGHT (f))
+    {
+      XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
+		      flash_left,
+		      (FRAME_INTERNAL_BORDER_WIDTH (f)
+		       + FRAME_TOP_MARGIN_HEIGHT (f)),
+		      width, flash_height);
+      XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
+		      flash_left,
+		      (height - flash_height
+		       - FRAME_INTERNAL_BORDER_WIDTH (f)),
+		      width, flash_height);
+    }
+  else
+    /* If it is short, flash it all.  */
+    XFillRectangle (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), gc,
+		    flash_left, FRAME_INTERNAL_BORDER_WIDTH (f),
+		    width, height - 2 * FRAME_INTERNAL_BORDER_WIDTH (f));
+
+  if (FRAME_X_VISUAL (f)->class == TrueColor)
+    XFreeGC (FRAME_X_DISPLAY (f), gc);
+  x_flush (f);
 
   unblock_input ();
 }
@@ -10372,7 +10374,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	x_cr_update_surface_desired_size (any,
 					  configureEvent.xconfigure.width,
 					  configureEvent.xconfigure.height);
-      x_update_opaque_region (f, &configureEvent);
+      if (f || (any && configureEvent.xconfigure.window == FRAME_X_WINDOW (any)))
+	x_update_opaque_region (f ? f : any, &configureEvent);
 #endif
 #ifdef USE_GTK
       if (!f
@@ -12912,7 +12915,7 @@ x_connection_closed (Display *dpy, const char *error_message, bool ioerror)
 {
   struct x_display_info *dpyinfo = x_display_info_for_display (dpy);
   Lisp_Object frame, tail;
-  ptrdiff_t idx = SPECPDL_INDEX ();
+  specpdl_ref idx = SPECPDL_INDEX ();
 
   error_msg = alloca (strlen (error_message) + 1);
   strcpy (error_msg, error_message);
@@ -15938,6 +15941,13 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       dpyinfo->xsync_supported_p = false;
   }
 #endif
+
+#ifdef HAVE_XINERAMA
+  int xin_event_base, xin_error_base;
+  dpyinfo->xinerama_supported_p
+    = XineramaQueryExtension (dpy, &xin_event_base, &xin_error_base);
+#endif
+
   /* See if a private colormap is requested.  */
   if (dpyinfo->visual == DefaultVisualOfScreen (dpyinfo->screen))
     {
