@@ -631,16 +631,13 @@ x_init_master_valuators (struct x_display_info *dpyinfo)
 		      (XIScrollClassInfo *) device->classes[c];
 		    struct xi_scroll_valuator_t *valuator;
 
-		    if (xi_device->master_p)
-		      {
-			valuator = &xi_device->valuators[actual_valuator_count++];
-			valuator->horizontal
-			  = (info->scroll_type == XIScrollTypeHorizontal);
-			valuator->invalid_p = true;
-			valuator->emacs_value = DBL_MIN;
-			valuator->increment = info->increment;
-			valuator->number = info->number;
-		      }
+		    valuator = &xi_device->valuators[actual_valuator_count++];
+		    valuator->horizontal
+		      = (info->scroll_type == XIScrollTypeHorizontal);
+		    valuator->invalid_p = true;
+		    valuator->emacs_value = DBL_MIN;
+		    valuator->increment = info->increment;
+		    valuator->number = info->number;
 
 		    break;
 		  }
@@ -794,7 +791,8 @@ xi_find_touch_point (struct xi_device_t *device, int detail)
 #endif /* XI_TouchBegin */
 
 static void
-xi_reset_scroll_valuators_for_device_id (struct x_display_info *dpyinfo, int id)
+xi_reset_scroll_valuators_for_device_id (struct x_display_info *dpyinfo, int id,
+					 bool pending_only)
 {
   struct xi_device_t *device = xi_device_from_id (dpyinfo, id);
   struct xi_scroll_valuator_t *valuator;
@@ -808,6 +806,11 @@ xi_reset_scroll_valuators_for_device_id (struct x_display_info *dpyinfo, int id)
   for (int i = 0; i < device->scroll_valuator_count; ++i)
     {
       valuator = &device->valuators[i];
+
+      if (pending_only && !valuator->pending_enter_reset)
+	continue;
+
+      valuator->pending_enter_reset = false;
       valuator->invalid_p = true;
       valuator->emacs_value = 0.0;
     }
@@ -1390,6 +1393,7 @@ x_fill_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
 #else
 #if defined HAVE_XRENDER && (RENDER_MAJOR > 0 || (RENDER_MINOR >= 2))
   if (respect_alpha_background
+      && f->alpha_background != 1.0
       && FRAME_DISPLAY_INFO (f)->alpha_bits
       && FRAME_CHECK_XR_VERSION (f, 0, 2))
     {
@@ -1432,6 +1436,7 @@ x_clear_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
 #else
 #if defined HAVE_XRENDER && (RENDER_MAJOR > 0 || (RENDER_MINOR >= 2))
   if (respect_alpha_background
+      && f->alpha_background != 1.0
       && FRAME_DISPLAY_INFO (f)->alpha_bits
       && FRAME_CHECK_XR_VERSION (f, 0, 2))
     {
@@ -3141,13 +3146,35 @@ static void
 x_query_frame_background_color (struct frame *f, XColor *bgcolor)
 {
   unsigned long background = FRAME_BACKGROUND_PIXEL (f);
+#ifndef USE_CAIRO
+  XColor bg;
+#endif
 
   if (FRAME_DISPLAY_INFO (f)->alpha_bits)
     {
+#ifdef USE_CAIRO
       background = (background & ~FRAME_DISPLAY_INFO (f)->alpha_mask);
       background |= (((unsigned long) (f->alpha_background * 0xffff)
 		      >> (16 - FRAME_DISPLAY_INFO (f)->alpha_bits))
 		     << FRAME_DISPLAY_INFO (f)->alpha_offset);
+#else
+      if (FRAME_DISPLAY_INFO (f)->alpha_bits
+	  && f->alpha_background < 1.0)
+	{
+	  bg.pixel = background;
+	  x_query_colors (f, &bg, 1);
+	  bg.red *= f->alpha_background;
+	  bg.green *= f->alpha_background;
+	  bg.blue *= f->alpha_background;
+
+	  background = x_make_truecolor_pixel (FRAME_DISPLAY_INFO (f),
+					       bg.red, bg.green, bg.blue);
+	  background &= ~FRAME_DISPLAY_INFO (f)->alpha_mask;
+	  background |= (((unsigned long) (f->alpha_background * 0xffff)
+			  >> (16 - FRAME_DISPLAY_INFO (f)->alpha_bits))
+			 << FRAME_DISPLAY_INFO (f)->alpha_offset);
+	}
+#endif
     }
 
   bgcolor->pixel = background;
@@ -4255,6 +4282,7 @@ x_draw_image_glyph_string (struct glyph_string *s)
 	      XGCValues xgcv;
 #if defined HAVE_XRENDER && (RENDER_MAJOR > 0 || (RENDER_MINOR >= 2))
 	      if (FRAME_DISPLAY_INFO (s->f)->alpha_bits
+		  && s->f->alpha_background != 1.0
 		  && FRAME_CHECK_XR_VERSION (s->f, 0, 2)
 		  && FRAME_X_PICTURE_FORMAT (s->f))
 		{
@@ -4939,6 +4967,7 @@ x_clear_area (struct frame *f, int x, int y, int width, int height)
       x_xr_ensure_picture (f);
       if (FRAME_DISPLAY_INFO (f)->alpha_bits
 	  && FRAME_X_PICTURE (f) != None
+	  && f->alpha_background != 1.0
 	  && FRAME_CHECK_XR_VERSION (f, 0, 2))
 	{
 	  XRenderColor xc;
@@ -10779,6 +10808,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	XIEnterEvent *enter = (XIEnterEvent *) xi_event;
 	XIFocusInEvent *focusin = (XIFocusInEvent *) xi_event;
 	XIFocusOutEvent *focusout = (XIFocusOutEvent *) xi_event;
+	XIDeviceChangedEvent *device_changed = (XIDeviceChangedEvent *) xi_event;
 	XIValuatorState *states;
 	double *values;
 	bool found_valuator = false;
@@ -10851,6 +10881,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    if (!any)
 	      any = x_any_window_to_frame (dpyinfo, enter->event);
 
+	    xi_reset_scroll_valuators_for_device_id (dpyinfo, enter->deviceid,
+						     true);
+
 	    {
 #ifdef HAVE_XWIDGETS
 	      struct xwidget_view *xwidget_view = xwidget_view_from_window (enter->event);
@@ -10914,7 +10947,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	       moves out of a frame (and not into one of its
 	       children, which we know about).  */
 	    if (leave->detail != XINotifyInferior && any)
-	      xi_reset_scroll_valuators_for_device_id (dpyinfo, enter->deviceid);
+	      xi_reset_scroll_valuators_for_device_id (dpyinfo,
+						       enter->deviceid, false);
 
 #ifdef HAVE_XWIDGETS
 	    {
@@ -11857,16 +11891,118 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    goto XI_OTHER;
 
 	  case XI_PropertyEvent:
+	    goto XI_OTHER;
+
 	  case XI_HierarchyChanged:
-	  case XI_DeviceChanged:
-#ifdef XISlaveSwitch
-	    if (xi_event->evtype == XI_DeviceChanged
-		&& (((XIDeviceChangedEvent *) xi_event)->reason
-		    == XISlaveSwitch))
-	      goto XI_OTHER;
-#endif
 	    x_init_master_valuators (dpyinfo);
 	    goto XI_OTHER;
+
+	  case XI_DeviceChanged:
+	    {
+	      struct xi_device_t *device;
+	      struct xi_touch_point_t *tem, *last;
+	      int c, i;
+
+	      device = xi_device_from_id (dpyinfo, device_changed->deviceid);
+
+	      if (!device)
+		emacs_abort ();
+
+	      /* Free data that we will regenerate from new
+		 information.  */
+	      device->valuators = xrealloc (device->valuators,
+					    (device_changed->num_classes
+					     * sizeof *device->valuators));
+	      device->scroll_valuator_count = 0;
+	      device->direct_p = false;
+
+	      for (c = 0; c < device_changed->num_classes; ++c)
+		{
+		  switch (device_changed->classes[c]->type)
+		    {
+#ifdef XIScrollClass
+		    case XIScrollClass:
+		      {
+			XIScrollClassInfo *info;
+
+			info = (XIScrollClassInfo *) device_changed->classes[c];
+			struct xi_scroll_valuator_t *valuator;
+
+			valuator = &device->valuators[device->scroll_valuator_count++];
+			valuator->horizontal
+			  = (info->scroll_type == XIScrollTypeHorizontal);
+			valuator->invalid_p = true;
+			valuator->emacs_value = DBL_MIN;
+			valuator->increment = info->increment;
+			valuator->number = info->number;
+
+			break;
+		      }
+#endif
+
+#ifdef XITouchClass
+		    case XITouchClass:
+		      {
+			XITouchClassInfo *info;
+
+			info = (XITouchClassInfo *) device_changed->classes[c];
+			device->direct_p = info->mode == XIDirectTouch;
+		      }
+#endif
+		    default:
+		      break;
+		    }
+		}
+
+#ifdef XIScrollClass
+	      for (c = 0; c < device_changed->num_classes; ++c)
+		{
+		  if (device_changed->classes[c]->type == XIValuatorClass)
+		    {
+		      XIValuatorClassInfo *info;
+
+		      info = (XIValuatorClassInfo *) device_changed->classes[c];
+
+		      for (i = 0; i < device->scroll_valuator_count; ++i)
+			{
+			  if (device->valuators[i].number == info->number)
+			    {
+			      device->valuators[i].invalid_p = false;
+			      device->valuators[i].current_value = info->value;
+
+			      /* Make sure that this is reset if the
+				 pointer moves into a window of ours.
+
+				 Otherwise the valuator state could be
+				 left invalid if the DeviceChange
+				 event happened with the pointer
+				 outside any Emacs frame. */
+			      device->valuators[i].pending_enter_reset = true;
+			    }
+			}
+		    }
+		}
+#endif
+
+	      /* The device is no longer a DirectTouch device, so
+		 remove any touchpoints that we might have
+		 recorded.  */
+	      if (!device->direct_p)
+		{
+		  tem = device->touchpoints;
+
+		  while (tem)
+		    {
+		      last = tem;
+		      tem = tem->next;
+		      xfree (last);
+		    }
+
+		  device->touchpoints = NULL;
+		}
+
+	      goto XI_OTHER;
+	    }
 
 #ifdef XI_TouchBegin
 	  case XI_TouchBegin:
