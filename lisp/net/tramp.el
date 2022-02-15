@@ -3335,6 +3335,10 @@ User is always nil."
 (defvar tramp-handle-write-region-hook nil
   "Normal hook to be run at the end of `tramp-*-handle-write-region'.")
 
+(defvar tramp-tolerate-tilde nil
+  "Indicator, that not expandable tilde shall be tolerated.
+Let-bind it when necessary.")
+
 ;; `directory-abbrev-apply' and `directory-abbrev-make-regexp' exists
 ;; since Emacs 29.1.  Since this handler isn't called for older
 ;; Emacsen, it is save to invoke them via `tramp-compat-funcall'.
@@ -3342,17 +3346,26 @@ User is always nil."
   "Like `abbreviate-file-name' for Tramp files."
   (let* ((case-fold-search (file-name-case-insensitive-p filename))
 	 (vec (tramp-dissect-file-name filename))
+	 (tramp-tolerate-tilde t)
          (home-dir
-          (with-tramp-connection-property vec "home-directory"
-            (tramp-compat-funcall
-	     'directory-abbrev-apply
-	     (expand-file-name (tramp-make-tramp-file-name vec "~"))))))
+          (if (let ((non-essential t)) (tramp-connectable-p vec))
+              ;; If a connection has already been established, make
+              ;; sure the "home-directory" connection property is
+              ;; properly set.
+              (with-tramp-connection-property vec "home-directory"
+                (tramp-compat-funcall
+	         'directory-abbrev-apply
+	         (expand-file-name (tramp-make-tramp-file-name vec "~"))))
+            ;; Otherwise, just use the cached value.
+            (tramp-get-connection-property vec "home-directory" nil))))
     ;; If any elt of `directory-abbrev-alist' matches this name,
     ;; abbreviate accordingly.
     (setq filename (tramp-compat-funcall 'directory-abbrev-apply filename))
     ;; Abbreviate home directory.
-    (if (string-match
-	 (tramp-compat-funcall 'directory-abbrev-make-regexp home-dir) filename)
+    (if (and home-dir
+             (string-match
+	      (tramp-compat-funcall 'directory-abbrev-make-regexp home-dir)
+              filename))
         (tramp-make-tramp-file-name
 	 vec (concat "~" (substring filename (match-beginning 1))))
       (tramp-make-tramp-file-name (tramp-dissect-file-name filename)))))
@@ -3457,10 +3470,6 @@ User is always nil."
   (with-parsed-tramp-file-name
       (if (file-directory-p dir) dir (file-name-directory dir)) nil
     (tramp-flush-directory-properties v localname)))
-
-(defvar tramp-tolerate-tilde nil
-  "Indicator, that not expandable tilde shall be tolerated.
-Let-bind it when necessary.")
 
 (defun tramp-handle-expand-file-name (name &optional dir)
   "Like `expand-file-name' for Tramp files."
@@ -5748,7 +5757,9 @@ Consults the auth-source package."
 	  (or prompt
 	      (with-current-buffer (process-buffer proc)
 		(tramp-check-for-regexp proc tramp-password-prompt-regexp)
-		(format "%s for %s " (capitalize (match-string 1)) key))))
+		(if (string-match-p "passphrase" (match-string 1))
+		    (match-string 0)
+		  (format "%s for %s " (capitalize (match-string 1)) key)))))
 	 (auth-source-creation-prompts `((secret . ,pw-prompt)))
 	 ;; Use connection-local value.
 	 (auth-sources (buffer-local-value 'auth-sources (process-buffer proc)))
