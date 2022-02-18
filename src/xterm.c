@@ -1409,11 +1409,52 @@ x_fill_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
 	{
 	  XRenderColor xc;
 
+#if RENDER_MAJOR > 0 || (RENDER_MINOR >= 10)
+	  XGCValues xgcv;
+	  XRenderPictureAttributes attrs;
+	  XRenderColor alpha;
+	  Picture stipple, fill;
+#endif
+
 	  x_xr_apply_ext_clip (f, gc);
 	  x_xrender_color_from_gc_foreground (f, gc, &xc, true);
-	  XRenderFillRectangle (FRAME_X_DISPLAY (f),
-				PictOpSrc, FRAME_X_PICTURE (f),
-				&xc, x, y, width, height);
+
+#if RENDER_MAJOR > 0 || (RENDER_MINOR >= 10)
+	  XGetGCValues (FRAME_X_DISPLAY (f),
+			gc, GCFillStyle | GCStipple, &xgcv);
+
+	  if (xgcv.fill_style == FillOpaqueStippled
+	      && FRAME_CHECK_XR_VERSION (f, 0, 10))
+	    {
+	      alpha.red = 65535 * f->alpha_background;
+	      alpha.green = 65535 * f->alpha_background;
+	      alpha.blue = 65535 * f->alpha_background;
+	      alpha.alpha = 65535 * f->alpha_background;
+
+	      fill = XRenderCreateSolidFill (FRAME_X_DISPLAY (f),
+					     &alpha);
+	      attrs.repeat = RepeatNormal;
+	      attrs.alpha_map = fill;
+
+	      stipple = XRenderCreatePicture (FRAME_X_DISPLAY (f),
+					      xgcv.stipple,
+					      XRenderFindStandardFormat (FRAME_X_DISPLAY (f),
+									 PictStandardA1),
+					      CPRepeat, &attrs);
+
+	      XRenderComposite (FRAME_X_DISPLAY (f),
+				PictOpSrc, stipple,
+				None, FRAME_X_PICTURE (f),
+				x, y, 0, 0, x, y, width, height);
+
+	      XRenderFreePicture (FRAME_X_DISPLAY (f), stipple);
+	      XRenderFreePicture (FRAME_X_DISPLAY (f), fill);
+	    }
+	  else
+#endif
+	    XRenderFillRectangle (FRAME_X_DISPLAY (f),
+				  PictOpSrc, FRAME_X_PICTURE (f),
+				  &xc, x, y, width, height);
 	  x_xr_reset_ext_clip (f);
 	  x_mark_frame_dirty (f);
 
@@ -2508,9 +2549,7 @@ x_compute_glyph_string_overhangs (struct glyph_string *s)
 static void
 x_clear_glyph_string_rect (struct glyph_string *s, int x, int y, int w, int h)
 {
-  x_clear_rectangle (s->f, s->gc, x, y, w, h,
-		     (s->first_glyph->type != STRETCH_GLYPH
-		      || s->hl != DRAW_CURSOR));
+  x_clear_rectangle (s->f, s->gc, x, y, w, h, s->hl != DRAW_CURSOR);
 }
 
 
@@ -2539,7 +2578,7 @@ x_draw_glyph_string_background (struct glyph_string *s, bool force_p)
 			    s->y + box_line_width,
 			    s->background_width,
 			    s->height - 2 * box_line_width,
-			    false);
+			    s->hl != DRAW_CURSOR);
 	  XSetFillStyle (display, s->gc, FillSolid);
 	  s->background_filled_p = true;
 	}
@@ -4205,7 +4244,7 @@ x_draw_glyph_string_bg_rect (struct glyph_string *s, int x, int y, int w, int h)
 
       /* Fill background with a stipple pattern.  */
       XSetFillStyle (display, s->gc, FillOpaqueStippled);
-      x_fill_rectangle (s->f, s->gc, x, y, w, h, false);
+      x_fill_rectangle (s->f, s->gc, x, y, w, h, true);
       XSetFillStyle (display, s->gc, FillSolid);
     }
   else

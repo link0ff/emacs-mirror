@@ -1346,16 +1346,14 @@ This method is common to all indexed search engines.
 
 Returns a list of [group article score] vectors."
 
-  (save-excursion
-    (let* ((qstring (gnus-search-make-query-string engine query))
-	   (program (slot-value engine 'program))
-	   (buffer (slot-value engine 'proc-buffer))
-	   (cp-list (gnus-search-indexed-search-command
-		     engine qstring query groups))
-           proc exitstatus)
-      (set-buffer buffer)
+  (let* ((qstring (gnus-search-make-query-string engine query))
+	 (program (slot-value engine 'program))
+	 (buffer (slot-value engine 'proc-buffer))
+	 (cp-list (gnus-search-indexed-search-command
+		   engine qstring query groups))
+         proc exitstatus)
+    (with-current-buffer buffer
       (erase-buffer)
-
       (if groups
 	  (gnus-message 7 "Doing %s query on %s..." program groups)
 	(gnus-message 7 "Doing %s query..." program))
@@ -1374,7 +1372,7 @@ Returns a list of [group article score] vectors."
 	;; wants it.
 	(when (> gnus-verbose 6)
 	  (display-buffer buffer))
-	nil))))
+        nil))))
 
 (cl-defmethod gnus-search-indexed-parse-output ((engine gnus-search-indexed)
 						server query &optional groups)
@@ -1628,19 +1626,26 @@ Namazu provides a little more information, for instance a score."
 	       (cp-list (gnus-search-indexed-search-command
 			 engine qstring query groups))
 	       thread-ids proc)
-	  (set-buffer proc-buffer)
-	  (erase-buffer)
-	  (setq proc (apply #'start-process (format "search-%s" server)
-			    proc-buffer program cp-list))
-	  (while (process-live-p proc)
-	    (accept-process-output proc))
-	  (while (re-search-forward "^thread:\\([^ ]+\\)" (point-max) t)
-	    (push (match-string 1) thread-ids))
+	  (with-current-buffer proc-buffer
+	    (erase-buffer)
+	    (setq proc (apply #'start-process (format "search-%s" server)
+			      proc-buffer program cp-list))
+	    (while (process-live-p proc)
+	      (accept-process-output proc))
+            (goto-char (point-min))
+	    (while (re-search-forward
+                    "^thread:\\([^[:space:]\n]+\\)"
+                    (point-max) t)
+	      (cl-pushnew (match-string 1) thread-ids :test #'equal)))
 	  (cl-call-next-method
 	   engine server
-	   ;; Completely replace the query with our new thread-based one.
-	   (mapconcat (lambda (thrd) (concat "thread:" thrd))
-		      thread-ids " or ")
+	   ;; If we found threads, completely replace the query with
+	   ;; our new thread-based one.
+           (if thread-ids
+               `((query . ,(mapconcat (lambda (thrd)
+                                        (concat "thread:" thrd))
+                                      thread-ids " or ")))
+             query)
 	   nil)))
     (cl-call-next-method engine server query groups)))
 
@@ -1653,16 +1658,16 @@ Namazu provides a little more information, for instance a score."
   (let ((limit (alist-get 'limit query))
 	(thread (alist-get 'thread query)))
     (with-slots (switches config-file) engine
-      `(,(format "--config=%s" config-file)
-	"search"
-	,(if thread
-	     "--output=threads"
-	   "--output=files")
-	"--duplicate=1" ; I have found this necessary, I don't know why.
-	,@switches
-	,(if limit (format "--limit=%d" limit) "")
-	,qstring
-	))))
+      (append
+       (list (format "--config=%s" config-file)
+             "search"
+             (if thread
+                 "--output=threads"
+             "--output=files"))
+       (unless thread '("--duplicate=1"))
+       (when limit (list (format "--limit=%d" limit)))
+       switches
+       (list qstring)))))
 
 ;;; Mairix interface
 
@@ -2183,8 +2188,7 @@ article came from is also searched."
 		(read-from-minibuffer
 		 "Query: " nil gnus-search-minibuffer-map
 		 nil 'gnus-search-history)))
-	(cons 'raw
-              (or (gnus-nnselect-group-p (gnus-group-group-name)) arg))))
+	(cons 'raw arg)))
 
 (provide 'gnus-search)
 ;;; gnus-search.el ends here
