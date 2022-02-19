@@ -689,7 +689,7 @@ x_get_scroll_valuator_delta (struct x_display_info *dpyinfo, int device_id,
     {
       struct xi_device_t *device = &dpyinfo->devices[i];
 
-      if (device->device_id == device_id && device->master_p)
+      if (device->device_id == device_id)
 	{
 	  for (int j = 0; j < device->scroll_valuator_count; ++j)
 	    {
@@ -803,7 +803,7 @@ xi_reset_scroll_valuators_for_device_id (struct x_display_info *dpyinfo, int id,
   struct xi_device_t *device = xi_device_from_id (dpyinfo, id);
   struct xi_scroll_valuator_t *valuator;
 
-  if (!device || !device->master_p)
+  if (!device)
     return;
 
   if (!device->scroll_valuator_count)
@@ -1417,7 +1417,6 @@ x_fill_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
 #endif
 
 	  x_xr_apply_ext_clip (f, gc);
-	  x_xrender_color_from_gc_foreground (f, gc, &xc, true);
 
 #if RENDER_MAJOR > 0 || (RENDER_MINOR >= 10)
 	  XGetGCValues (FRAME_X_DISPLAY (f),
@@ -1426,15 +1425,9 @@ x_fill_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
 	  if (xgcv.fill_style == FillOpaqueStippled
 	      && FRAME_CHECK_XR_VERSION (f, 0, 10))
 	    {
-	      alpha.red = 65535 * f->alpha_background;
-	      alpha.green = 65535 * f->alpha_background;
-	      alpha.blue = 65535 * f->alpha_background;
-	      alpha.alpha = 65535 * f->alpha_background;
-
-	      fill = XRenderCreateSolidFill (FRAME_X_DISPLAY (f),
-					     &alpha);
+	      x_xrender_color_from_gc_background (f, gc, &alpha, true);
+	      x_xrender_color_from_gc_foreground (f, gc, &xc, true);
 	      attrs.repeat = RepeatNormal;
-	      attrs.alpha_map = fill;
 
 	      stipple = XRenderCreatePicture (FRAME_X_DISPLAY (f),
 					      xgcv.stipple,
@@ -1442,19 +1435,26 @@ x_fill_rectangle (struct frame *f, GC gc, int x, int y, int width, int height,
 									 PictStandardA1),
 					      CPRepeat, &attrs);
 
-	      XRenderComposite (FRAME_X_DISPLAY (f),
-				PictOpSrc, stipple,
-				None, FRAME_X_PICTURE (f),
-				x, y, 0, 0, x, y, width, height);
+	      XRenderFillRectangle (FRAME_X_DISPLAY (f), PictOpSrc,
+				    FRAME_X_PICTURE (f),
+				    &alpha, x, y, width, height);
+
+	      fill = XRenderCreateSolidFill (FRAME_X_DISPLAY (f), &xc);
+
+	      XRenderComposite (FRAME_X_DISPLAY (f), PictOpOver, fill, stipple,
+				FRAME_X_PICTURE (f), 0, 0, x, y, x, y, width, height);
 
 	      XRenderFreePicture (FRAME_X_DISPLAY (f), stipple);
 	      XRenderFreePicture (FRAME_X_DISPLAY (f), fill);
 	    }
 	  else
 #endif
-	    XRenderFillRectangle (FRAME_X_DISPLAY (f),
-				  PictOpSrc, FRAME_X_PICTURE (f),
-				  &xc, x, y, width, height);
+	    {
+	      x_xrender_color_from_gc_foreground (f, gc, &xc, true);
+	      XRenderFillRectangle (FRAME_X_DISPLAY (f),
+				    PictOpSrc, FRAME_X_PICTURE (f),
+				    &xc, x, y, width, height);
+	    }
 	  x_xr_reset_ext_clip (f);
 	  x_mark_frame_dirty (f);
 
@@ -11017,8 +11017,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		goto XI_OTHER;
 
 #ifdef XI_TouchBegin
-	      if (xev->flags & XIPointerEmulated
-		  && dpyinfo->xi2_version >= 2)
+	      if (xev->flags & XIPointerEmulated)
 		goto XI_OTHER;
 #endif
 
@@ -11315,7 +11314,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      device = xi_device_from_id (dpyinfo, xev->deviceid);
 
-	      if (!device || !device->master_p)
+	      if (!device)
 		goto XI_OTHER;
 
 	      bv.button = xev->detail;
@@ -11488,7 +11487,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      device = xi_device_from_id (dpyinfo, xev->deviceid);
 
-	      if (!device || !device->master_p)
+	      if (!device)
 		goto XI_OTHER;
 
 #if defined (USE_X_TOOLKIT) || defined (USE_GTK)
@@ -12133,7 +12132,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      XIGesturePinchEvent *pev = (XIGesturePinchEvent *) xi_event;
 	      struct xi_device_t *device = xi_device_from_id (dpyinfo, pev->deviceid);
 
-	      if (!device || !device->master_p)
+	      if (!device)
 		goto XI_OTHER;
 
 #ifdef HAVE_XWIDGETS
@@ -15990,6 +15989,18 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 #else
   dpyinfo->display->db = xrdb;
 #endif
+
+#ifdef HAVE_XRENDER
+  int event_base, error_base;
+  dpyinfo->xrender_supported_p
+    = XRenderQueryExtension (dpyinfo->display, &event_base, &error_base);
+
+  if (dpyinfo->xrender_supported_p)
+    dpyinfo->xrender_supported_p
+      = XRenderQueryVersion (dpyinfo->display, &dpyinfo->xrender_major,
+			     &dpyinfo->xrender_minor);
+#endif
+
   /* Put the rdb where we can find it in a way that works on
      all versions.  */
   dpyinfo->rdb = xrdb;
@@ -16005,19 +16016,12 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
   reset_mouse_highlight (&dpyinfo->mouse_highlight);
 
 #ifdef HAVE_XRENDER
-  int event_base, error_base;
-  dpyinfo->xrender_supported_p
-    = XRenderQueryExtension (dpyinfo->display, &event_base, &error_base);
-
-  if (dpyinfo->xrender_supported_p)
-    {
-      if (!XRenderQueryVersion (dpyinfo->display, &dpyinfo->xrender_major,
-				&dpyinfo->xrender_minor))
-	dpyinfo->xrender_supported_p = false;
-      else
-	dpyinfo->pict_format = XRenderFindVisualFormat (dpyinfo->display,
-							dpyinfo->visual);
-    }
+  if (dpyinfo->xrender_supported_p
+      /* This could already have been initialized by
+	 `select_visual'.  */
+      && !dpyinfo->pict_format)
+    dpyinfo->pict_format = XRenderFindVisualFormat (dpyinfo->display,
+						    dpyinfo->visual);
 #endif
 
 #ifdef HAVE_XSYNC
