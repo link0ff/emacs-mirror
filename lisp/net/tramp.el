@@ -315,13 +315,19 @@ pair of the form (KEY VALUE).  The following KEYs are defined:
   * `tramp-connection-timeout'
     This is the maximum time to be spent for establishing a connection.
     In general, the global default value shall be used, but for
-    some methods, like \"su\" or \"sudo\", a shorter timeout
-    might be desirable.
+    some methods, like \"doas\", \"su\" or \"sudo\", a shorter
+    timeout might be desirable.
 
   * `tramp-session-timeout'
     How long a Tramp connection keeps open before being disconnected.
-    This is useful for methods like \"su\" or \"sudo\", which
+    This is useful for methods like \"doas\" or \"sudo\", which
     shouldn't run an open connection in the background forever.
+
+  * `tramp-password-previous-hop'
+    The password for this connection is the same like the
+    password for the previous hop.  If there is no previous hop,
+    the password of the local user is applied.  This is needed
+    for methods like \"doas\", \"sudo\" or \"sudoedit\".
 
   * `tramp-case-insensitive'
     Whether the remote file system handles file names case insensitive.
@@ -1426,6 +1432,11 @@ calling HANDLER.")
 (put #'tramp-file-name-port 'tramp-suppress-trace t)
 (put #'tramp-file-name-localname 'tramp-suppress-trace t)
 (put #'tramp-file-name-hop 'tramp-suppress-trace t)
+
+;; Needed for `tramp-read-passwd' and `tramp-get-remote-null-device'.
+(defconst tramp-null-hop
+  (make-tramp-file-name :user (user-login-name) :host tramp-system-name)
+"Connection hop which identifies the virtual hop before the first one.")
 
 (defun tramp-file-name-user-domain (vec)
   "Return user and domain components of VEC."
@@ -5744,12 +5755,15 @@ Consults the auth-source package."
 	 ;; adapt `default-directory'.  (Bug#39389, Bug#39489)
 	 (default-directory tramp-compat-temporary-file-directory)
 	 (case-fold-search t)
-	 (key (tramp-make-tramp-file-name
-	       ;; In tramp-sh.el, we must use "password-vector" due to
-	       ;; multi-hop.
-	       (tramp-get-connection-property
-		proc "password-vector" (process-get proc 'vector))
-	       'noloc))
+         ;; In tramp-sh.el, we must use "password-vector" due to
+         ;; multi-hop.
+	 (vec (tramp-get-connection-property
+	       proc "password-vector" (process-get proc 'vector)))
+	 (key (tramp-make-tramp-file-name vec 'noloc))
+	 (method (tramp-file-name-method vec))
+	 (user (or (tramp-file-name-user-domain vec)
+		   (tramp-get-connection-property key "login-as" nil)))
+	 (host (tramp-file-name-host-port vec))
 	 (pw-prompt
 	  (or prompt
 	      (with-current-buffer (process-buffer proc)
@@ -5765,51 +5779,40 @@ Consults the auth-source package."
 	 auth-info auth-passwd)
 
     (unwind-protect
-	(with-parsed-tramp-file-name key nil
-	  (setq tramp-password-save-function nil
-		user
-		(or user (tramp-get-connection-property key "login-as" nil)))
-	  (prog1
-	      (or
-	       ;; See if auth-sources contains something useful.
-	       (ignore-errors
-		 (and (tramp-get-connection-property
-		       v "first-password-request" nil)
-		      ;; Try with Tramp's current method.
-		      (setq auth-info
-			    (car
-			     (auth-source-search
-			      :max 1
-			      (and user :user)
-			      (if domain
-				  (concat
-				   user tramp-prefix-domain-format domain)
-				user)
-			      :host
-			      (if port
-				  (concat
-				   host tramp-prefix-port-format port)
-				host)
-			      :port method
-			      :require (cons :secret (and user '(:user)))
-			      :create t))
-			    tramp-password-save-function
-			    (plist-get auth-info :save-function)
-			    auth-passwd
-			    (tramp-compat-auth-info-password auth-info))))
+	;; We cannot use `with-parsed-tramp-file-name', because it
+	;; expands the file name.
+	(or
+	 (setq tramp-password-save-function nil)
+	 ;; See if auth-sources contains something useful.
+	 (ignore-errors
+	   (and (tramp-get-connection-property
+		 vec "first-password-request" nil)
+		;; Try with Tramp's current method.  If there is no
+		;; user name, `:create' triggers to ask for.  We
+		;; suppress it.
+		(setq auth-info
+		      (car
+		       (auth-source-search
+			:max 1 :user user :host host :port method
+			:require (cons :secret (and user '(:user)))
+			:create (and user t)))
+		      tramp-password-save-function
+		      (plist-get auth-info :save-function)
+		      auth-passwd
+		      (tramp-compat-auth-info-password auth-info))))
 
-	       ;; Try the password cache.
-	       (progn
-		 (setq auth-passwd (password-read pw-prompt key)
-		       tramp-password-save-function
-		       (lambda () (password-cache-add key auth-passwd)))
-		 auth-passwd))
+	 ;; Try the password cache.
+	 (progn
+	   (setq auth-passwd (password-read pw-prompt key)
+		 tramp-password-save-function
+		 (lambda () (password-cache-add key auth-passwd)))
+	   auth-passwd))
 
-	    ;; Workaround.  Prior Emacs 28.1, auth-source has saved
-	    ;; empty passwords.  See discussion in Bug#50399.
-	    (when (zerop (length auth-passwd))
-	      (setq tramp-password-save-function nil))
-	    (tramp-set-connection-property v "first-password-request" nil)))
+      ;; Workaround.  Prior Emacs 28.1, auth-source has saved empty
+      ;; passwords.  See discussion in Bug#50399.
+      (when (zerop (length auth-passwd))
+	(setq tramp-password-save-function nil))
+      (tramp-set-connection-property vec "first-password-request" nil)
 
       ;; Reenable the timers.
       (with-timeout-unsuspend stimers))))
@@ -5938,8 +5941,8 @@ name of a process or buffer, or nil to default to the current buffer."
 
 (defun tramp-get-remote-null-device (vec)
   "Return null device on the remote host identified by VEC.
-If VEC is nil, return local null device."
-  (if (null vec)
+If VEC is nil or `tramp-null-hop', return local null device."
+  (if (or (null vec) (equal vec tramp-null-hop))
       null-device
     (with-tramp-connection-property vec "null-device"
       (let ((default-directory (tramp-make-tramp-file-name vec)))
