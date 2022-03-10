@@ -2122,10 +2122,10 @@ Also see `ignore'."
 (ert-deftest tramp-test05-expand-file-name-relative ()
   "Check `expand-file-name'."
   (skip-unless (tramp--test-enabled))
-  ;; The bugs are fixed in Emacs 28.1.
-  (skip-unless (tramp--test-emacs28-p))
   ;; Methods with a share do not expand "/path/..".
   (skip-unless (not (tramp--test-share-p)))
+  ;; The bugs are fixed in Emacs 28.1.
+  (skip-unless (tramp--test-emacs28-p))
 
   (should
    (string-equal
@@ -2226,9 +2226,12 @@ This checks also `file-name-as-directory', `file-name-directory',
 (ert-deftest tramp-test07-abbreviate-file-name ()
   "Check that Tramp abbreviates file names correctly."
   (skip-unless (tramp--test-enabled))
-  (skip-unless (tramp--test-emacs29-p))
   (skip-unless (not (tramp--test-ange-ftp-p)))
+  ;; `abbreviate-file-name' is supported since Emacs 29.1.
+  (skip-unless (tramp--test-emacs29-p))
 
+  ;; We must refill the cache.  `file-truename' does it.
+  (file-truename tramp-test-temporary-file-directory)
   (let* ((remote-host (file-remote-p tramp-test-temporary-file-directory))
 	 (remote-host-nohop
 	  (tramp-make-tramp-file-name (tramp-dissect-file-name remote-host)))
@@ -2261,12 +2264,12 @@ This checks also `file-name-as-directory', `file-name-directory',
     (setq home-dir (concat remote-host "/")
 	  home-dir-nohop
 	  (tramp-make-tramp-file-name (tramp-dissect-file-name home-dir)))
-    ;; The remote home directory is kept in the connection property
-    ;; "home-directory".  We fake this setting.
-    (tramp-set-connection-property tramp-test-vec "home-directory" home-dir)
+    ;; The remote home directory is kept in the connection property "~".
+    ;; We fake this setting.
+    (tramp-set-connection-property tramp-test-vec "~" (file-local-name home-dir))
     (should (equal (abbreviate-file-name (concat home-dir "foo/bar"))
 		   (concat home-dir-nohop "foo/bar")))
-    (tramp-flush-connection-property tramp-test-vec "home-directory")))
+    (tramp-flush-connection-property tramp-test-vec "~")))
 
 (ert-deftest tramp-test07-file-exists-p ()
   "Check `file-exist-p', `write-region' and `delete-file'."
@@ -3437,8 +3440,10 @@ This tests also `access-file', `file-readable-p',
 	      (should
 	       (string-equal
 		(file-attribute-type attr)
-		(tramp-file-name-localname
-		 (tramp-dissect-file-name tmp-name3))))
+		(funcall
+		 (if (tramp--test-sshfs-p) #'file-name-nondirectory #'identity)
+		 (tramp-file-name-localname
+		  (tramp-dissect-file-name tmp-name3)))))
 	      (delete-file tmp-name2))
 
 	    (when test-file-ownership-preserved-p
@@ -3598,7 +3603,9 @@ This tests also `file-executable-p', `file-writable-p' and `set-file-modes'."
 	    (should (= (file-modes tmp-name1) #o444))
 	    (should-not (file-executable-p tmp-name1))
 	    ;; A file is always writable for user "root".
-	    (unless (zerop (file-attribute-user-id (file-attributes tmp-name1)))
+	    (unless
+		(or (zerop (file-attribute-user-id (file-attributes tmp-name1)))
+		    (tramp--test-sshfs-p))
 	      (should-not (file-writable-p tmp-name1)))
 	    ;; Check the NOFOLLOW arg.  It exists since Emacs 28.  For
 	    ;; regular files, there shouldn't be a difference.
@@ -6191,7 +6198,7 @@ This requires restrictions of file name syntax."
 (defun tramp--test-ange-ftp-p ()
   "Check, whether Ange-FTP is used."
   (eq
-   (tramp-find-foreign-file-name-handler tramp-test-temporary-file-directory)
+   (tramp-find-foreign-file-name-handler tramp-test-vec)
    'tramp-ftp-file-name-handler))
 
 (defun tramp--test-asynchronous-processes-p ()
@@ -6910,7 +6917,9 @@ This is needed in timer functions as well as process filters and sentinels."
 Such requests could arrive from timers, process filters and
 process sentinels.  They shall not disturb each other."
   :tags (append '(:expensive-test :tramp-asynchronous-processes)
-		(and (getenv "EMACS_HYDRA_CI") '(:unstable)))
+		(and (or (getenv "EMACS_HYDRA_CI")
+                         (getenv "EMACS_EMBA_CI"))
+                     '(:unstable)))
   (skip-unless (tramp--test-enabled))
   (skip-unless (tramp--test-supports-processes-p))
   ;; Prior Emacs 27, `shell-file-name' was hard coded as "/bin/sh" for

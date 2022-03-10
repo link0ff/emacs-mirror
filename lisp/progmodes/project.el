@@ -418,30 +418,33 @@ The directory names should be absolute.  Used in the VC project
 backend implementation of `project-external-roots'.")
 
 (defun project-try-vc (dir)
-  (let* ((backend
-          ;; FIXME: This is slow. Cache it.
-          (ignore-errors (vc-responsible-backend dir)))
-         (root
-          (pcase backend
-            ('Git
-             ;; Don't stop at submodule boundary.
-             ;; FIXME: Cache for a shorter time.
-             (or (vc-file-getprop dir 'project-git-root)
-                 (let ((root (vc-call-backend backend 'root dir)))
-                   (vc-file-setprop
-                    dir 'project-git-root
-                    (if (and
-                         ;; FIXME: Invalidate the cache when the value
-                         ;; of this variable changes.
-                         (project--vc-merge-submodules-p root)
-                         (project--submodule-p root))
-                        (let* ((parent (file-name-directory
-                                        (directory-file-name root))))
-                          (vc-call-backend backend 'root parent))
-                      root)))))
-            ('nil nil)
-            (_ (ignore-errors (vc-call-backend backend 'root dir))))))
-    (and root (cons 'vc root))))
+  (or (vc-file-getprop dir 'project-vc)
+      (let* ((backend (ignore-errors (vc-responsible-backend dir)))
+             (root
+              (pcase backend
+                ('Git
+                 ;; Don't stop at submodule boundary.
+                 (or (vc-file-getprop dir 'project-git-root)
+                     (let ((root (vc-call-backend backend 'root dir)))
+                       (vc-file-setprop
+                        dir 'project-git-root
+                        (if (and
+                             ;; FIXME: Invalidate the cache when the value
+                             ;; of this variable changes.
+                             (project--vc-merge-submodules-p root)
+                             (project--submodule-p root))
+                            (let* ((parent (file-name-directory
+                                            (directory-file-name root))))
+                              (vc-call-backend backend 'root parent))
+                          root)))))
+                ('nil nil)
+                (_ (ignore-errors (vc-call-backend backend 'root dir)))))
+             project)
+        (when root
+          (setq project (list 'vc backend root))
+          ;; FIXME: Cache for a shorter time.
+          (vc-file-setprop dir 'project-vc project)
+          project))))
 
 (defun project--submodule-p (root)
   ;; XXX: We only support Git submodules for now.
@@ -467,7 +470,7 @@ backend implementation of `project-external-roots'.")
      (t nil))))
 
 (cl-defmethod project-root ((project (head vc)))
-  (cdr project))
+  (nth 2 project))
 
 (cl-defmethod project-external-roots ((project (head vc)))
   (project-subtract-directories
@@ -482,8 +485,8 @@ backend implementation of `project-external-roots'.")
    (lambda (dir)
      (let ((ignores (project--value-in-dir 'project-vc-ignores dir))
            backend)
-       (if (and (file-equal-p dir (cdr project))
-                (setq backend (vc-responsible-backend dir))
+       (if (and (file-equal-p dir (nth 2 project))
+                (setq backend (cadr project))
                 (cond
                  ((eq backend 'Hg))
                  ((and (eq backend 'Git)
@@ -595,11 +598,11 @@ backend implementation of `project-external-roots'.")
     (file-missing nil)))
 
 (cl-defmethod project-ignores ((project (head vc)) dir)
-  (let* ((root (cdr project))
+  (let* ((root (nth 2 project))
          backend)
     (append
      (when (file-equal-p dir root)
-       (setq backend (vc-responsible-backend root))
+       (setq backend (cadr project))
        (delq
         nil
         (mapcar
@@ -1004,6 +1007,8 @@ directories listed in `vc-directory-exclusion-list'."
   (interactive)
   (vc-dir (project-root (project-current t))))
 
+(declare-function comint-check-proc "comint")
+
 ;;;###autoload
 (defun project-shell ()
   "Start an inferior shell in the current project's root directory.
@@ -1012,11 +1017,14 @@ switch to it.  Otherwise, create a new shell buffer.
 With \\[universal-argument] prefix arg, create a new inferior shell buffer even
 if one already exists."
   (interactive)
+  (require 'comint)
   (let* ((default-directory (project-root (project-current t)))
          (default-project-shell-name (project-prefixed-buffer-name "shell"))
          (shell-buffer (get-buffer default-project-shell-name)))
     (if (and shell-buffer (not current-prefix-arg))
-        (pop-to-buffer shell-buffer (bound-and-true-p display-comint-buffer-action))
+        (if (comint-check-proc shell-buffer)
+            (pop-to-buffer shell-buffer (bound-and-true-p display-comint-buffer-action))
+          (shell shell-buffer))
       (shell (generate-new-buffer-name default-project-shell-name)))))
 
 ;;;###autoload
@@ -1112,6 +1120,29 @@ If non-nil, it overrides `compilation-buffer-name-function' for
              compilation-buffer-name-function)))
     (call-interactively #'compile)))
 
+(defcustom project-ignore-buffer-conditions nil
+  "List of conditions to filter the buffers to be switched to.
+If any of these conditions are satisfied for a buffer in the
+current project, `project-switch-to-buffer',
+`project-display-buffer' and `project-display-buffer-other-frame'
+ignore it.
+See the doc string of `project-kill-buffer-conditions' for the
+general form of conditions."
+  :type '(repeat (choice regexp function symbol
+                         (cons :tag "Major mode"
+                               (const major-mode) symbol)
+                         (cons :tag "Derived mode"
+                               (const derived-mode) symbol)
+                         (cons :tag "Negation"
+                               (const not) sexp)
+                         (cons :tag "Conjunction"
+                               (const and) sexp)
+                         (cons :tag "Disjunction"
+                               (const or) sexp)))
+  :version "29.1"
+  :group 'project
+  :package-version '(project . "0.8.2"))
+
 (defun project--read-project-buffer ()
   (let* ((pr (project-current t))
          (current-buffer (current-buffer))
@@ -1121,7 +1152,10 @@ If non-nil, it overrides `compilation-buffer-name-function' for
          (predicate
           (lambda (buffer)
             ;; BUFFER is an entry (BUF-NAME . BUF-OBJ) of Vbuffer_alist.
-            (memq (cdr buffer) buffers))))
+            (and (memq (cdr buffer) buffers)
+                 (not
+                  (project--buffer-check
+                   (cdr buffer) project-ignore-buffer-conditions))))))
     (read-buffer
      "Switch to buffer: "
      (when (funcall predicate (cons other-name other-buffer))
@@ -1239,11 +1273,12 @@ Used by `project-kill-buffers'."
         (push buf bufs)))
     (nreverse bufs)))
 
-(defun project--kill-buffer-check (buf conditions)
+(defun project--buffer-check (buf conditions)
   "Check if buffer BUF matches any element of the list CONDITIONS.
-See `project-kill-buffer-conditions' for more details on the form
-of CONDITIONS."
-  (catch 'kill
+See `project-kill-buffer-conditions' or
+`project-ignore-buffer-conditions' for more details on the
+form of CONDITIONS."
+  (catch 'match
     (dolist (c conditions)
       (when (cond
              ((stringp c)
@@ -1258,15 +1293,15 @@ of CONDITIONS."
                (buffer-local-value 'major-mode buf)
                (cdr c)))
              ((eq (car-safe c) 'not)
-              (not (project--kill-buffer-check buf (cdr c))))
+              (not (project--buffer-check buf (cdr c))))
              ((eq (car-safe c) 'or)
-              (project--kill-buffer-check buf (cdr c)))
+              (project--buffer-check buf (cdr c)))
              ((eq (car-safe c) 'and)
               (seq-every-p
-               (apply-partially #'project--kill-buffer-check
+               (apply-partially #'project--buffer-check
                                 buf)
                (mapcar #'list (cdr c)))))
-        (throw 'kill t)))))
+        (throw 'match t)))))
 
 (defun project--buffers-to-kill (pr)
   "Return list of buffers in project PR to kill.
@@ -1274,7 +1309,7 @@ What buffers should or should not be killed is described
 in `project-kill-buffer-conditions'."
   (let (bufs)
     (dolist (buf (project-buffers pr))
-      (when (project--kill-buffer-check buf project-kill-buffer-conditions)
+      (when (project--buffer-check buf project-kill-buffer-conditions)
         (push buf bufs)))
     bufs))
 

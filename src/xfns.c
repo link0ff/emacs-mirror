@@ -818,7 +818,19 @@ x_set_inhibit_double_buffering (struct frame *f,
          and after any potential change.  One of the calls will end up
          being a no-op.  */
       if (want_double_buffering != was_double_buffered)
-        font_drop_xrender_surfaces (f);
+	{
+	  font_drop_xrender_surfaces (f);
+
+	  /* Scroll bars decide whether or not to use a back buffer
+	     based on the value of this frame parameter, so destroy
+	     all scroll bars.  */
+#ifndef USE_TOOLKIT_SCROLL_BARS
+	  if (FRAME_TERMINAL (f)->condemn_scroll_bars_hook)
+	    FRAME_TERMINAL (f)->condemn_scroll_bars_hook (f);
+	  if (FRAME_TERMINAL (f)->judge_scroll_bars_hook)
+	    FRAME_TERMINAL (f)->judge_scroll_bars_hook (f);
+#endif
+	}
       if (FRAME_X_DOUBLE_BUFFERED_P (f) && !want_double_buffering)
         tear_down_x_back_buffer (f);
       else if (!FRAME_X_DOUBLE_BUFFERED_P (f) && want_double_buffering)
@@ -907,6 +919,9 @@ static void
 x_set_parent_frame (struct frame *f, Lisp_Object new_value, Lisp_Object old_value)
 {
   struct frame *p = NULL;
+#ifdef HAVE_GTK3
+  GdkWindow *window;
+#endif
 
   if (!NILP (new_value)
       && (!FRAMEP (new_value)
@@ -929,6 +944,14 @@ x_set_parent_frame (struct frame *f, Lisp_Object new_value, Lisp_Object old_valu
 	gtk_container_set_resize_mode
 	  (GTK_CONTAINER (FRAME_GTK_OUTER_WIDGET (f)),
 	   p ? GTK_RESIZE_IMMEDIATE : GTK_RESIZE_QUEUE);
+#endif
+
+#ifdef HAVE_GTK3
+      if (p)
+	{
+	  window = gtk_widget_get_window (FRAME_GTK_OUTER_WIDGET (f));
+	  gdk_x11_window_set_frame_sync_enabled (window, false);
+	}
 #endif
       unblock_input ();
 
@@ -1471,6 +1494,21 @@ x_set_border_pixel (struct frame *f, unsigned long pix)
 {
   unload_color (f, f->output_data.x->border_pixel);
   f->output_data.x->border_pixel = pix;
+
+#ifdef USE_X_TOOLKIT
+  if (f->output_data.x->widget && f->border_width > 0)
+    {
+      block_input ();
+      XtVaSetValues (f->output_data.x->widget, XtNborderColor,
+		     (Pixel) pix, NULL);
+      unblock_input ();
+
+      if (FRAME_VISIBLE_P (f))
+	redraw_frame (f);
+
+      return;
+    }
+#endif
 
   if (FRAME_X_WINDOW (f) != 0 && f->border_width > 0)
     {
@@ -3541,7 +3579,7 @@ setup_xi_event_mask (struct frame *f)
   mask.mask_len = l;
 
   block_input ();
-#ifndef USE_GTK
+#ifndef HAVE_GTK3
   mask.deviceid = XIAllMasterDevices;
 
   XISetMask (m, XI_ButtonPress);
@@ -3549,8 +3587,10 @@ setup_xi_event_mask (struct frame *f)
   XISetMask (m, XI_Motion);
   XISetMask (m, XI_Enter);
   XISetMask (m, XI_Leave);
+#ifndef USE_GTK
   XISetMask (m, XI_FocusIn);
   XISetMask (m, XI_FocusOut);
+#endif
   XISetMask (m, XI_KeyPress);
   XISetMask (m, XI_KeyRelease);
   XISelectEvents (FRAME_X_DISPLAY (f),
@@ -3558,7 +3598,7 @@ setup_xi_event_mask (struct frame *f)
 		  &mask, 1);
 
   memset (m, 0, l);
-#endif /* !USE_GTK */
+#endif /* !HAVE_GTK3 */
 
 #ifdef USE_X_TOOLKIT
   XISetMask (m, XI_KeyPress);
@@ -5001,7 +5041,7 @@ DEFUN ("xw-display-color-p", Fxw_display_color_p, Sxw_display_color_p, 0, 1, 0,
   if (dpyinfo->n_planes <= 2)
     return Qnil;
 
-  switch (dpyinfo->visual->class)
+  switch (dpyinfo->visual_info.class)
     {
     case StaticColor:
     case PseudoColor:
@@ -5028,7 +5068,7 @@ If omitted or nil, that stands for the selected frame's display.  */)
   if (dpyinfo->n_planes <= 1)
     return Qnil;
 
-  switch (dpyinfo->visual->class)
+  switch (dpyinfo->visual_info.class)
     {
     case StaticColor:
     case PseudoColor:
@@ -5104,14 +5144,17 @@ If omitted or nil, that stands for the selected frame's display.
 {
   struct x_display_info *dpyinfo = check_x_display_info (terminal);
 
-  int nr_planes = DisplayPlanes (dpyinfo->display,
-                                 XScreenNumberOfScreen (dpyinfo->screen));
+  if (dpyinfo->visual_info.class != TrueColor
+      && dpyinfo->visual_info.class != DirectColor)
+    return make_fixnum (dpyinfo->visual_info.colormap_size);
 
-  /* Truncate nr_planes to 24 to avoid integer overflow.
-     Some displays says 32, but only 24 bits are actually significant.
+  int nr_planes = dpyinfo->n_planes;
+
+  /* Truncate nr_planes to 24 to avoid integer overflow.  Some
+     displays says 32, but only 24 bits are actually significant.
      There are only very few and rare video cards that have more than
-     24 significant bits.  Also 24 bits is more than 16 million colors,
-     it "should be enough for everyone".  */
+     24 significant bits.  Also 24 bits is more than 16 million
+     colors, it "should be enough for everyone".  */
   if (nr_planes > 24) nr_planes = 24;
 
   return make_fixnum (1 << nr_planes);
@@ -5305,7 +5348,7 @@ If omitted or nil, that stands for the selected frame's display.
   struct x_display_info *dpyinfo = check_x_display_info (terminal);
   Lisp_Object result;
 
-  switch (dpyinfo->visual->class)
+  switch (dpyinfo->visual_info.class)
     {
     case StaticGray:
       result = intern ("static-gray");
@@ -6578,6 +6621,7 @@ select_visual (struct x_display_info *dpyinfo)
 	       SSDATA (ENCODE_SYSTEM (value)));
 
       dpyinfo->visual = vinfo.visual;
+      dpyinfo->visual_info = vinfo;
     }
   else
     {
@@ -6611,6 +6655,7 @@ select_visual (struct x_display_info *dpyinfo)
 		{
 		  dpyinfo->n_planes = vinfo[i].depth;
 		  dpyinfo->visual = vinfo[i].visual;
+		  dpyinfo->visual_info = vinfo[i];
 		  dpyinfo->pict_format = format;
 
 		  XFree (vinfo);
@@ -6631,7 +6676,7 @@ select_visual (struct x_display_info *dpyinfo)
 			      &vinfo_template, &n_visuals);
       if (n_visuals <= 0)
 	fatal ("Can't get proper X visual info");
-
+      dpyinfo->visual_info = *vinfo;
       dpyinfo->n_planes = vinfo->depth;
       XFree (vinfo);
     }
@@ -7513,8 +7558,8 @@ x_create_tip_frame (struct x_display_info *dpyinfo, Lisp_Object parms)
 
     if (FRAME_DISPLAY_INFO (f)->n_planes == 1)
       disptype = Qmono;
-    else if (FRAME_DISPLAY_INFO (f)->visual->class == GrayScale
-             || FRAME_DISPLAY_INFO (f)->visual->class == StaticGray)
+    else if (FRAME_X_VISUAL_INFO (f)->class == GrayScale
+             || FRAME_X_VISUAL_INFO (f)->class == StaticGray)
       disptype = intern ("grayscale");
     else
       disptype = intern ("color");
@@ -8366,20 +8411,84 @@ DEFUN ("x-file-dialog", Fx_file_dialog, Sx_file_dialog, 2, 5, 0,
   result = 0;
   while (result == 0)
     {
-      XEvent event;
+      XEvent event, copy;
+#ifdef HAVE_XINPUT2
+      x_menu_wait_for_event (FRAME_X_DISPLAY (f));
+#else
       x_menu_wait_for_event (0);
-      XtAppNextEvent (Xt_app_con, &event);
-      if (event.type == KeyPress
-          && FRAME_X_DISPLAY (f) == event.xkey.display)
-        {
-          KeySym keysym = XLookupKeysym (&event.xkey, 0);
+#endif
 
-          /* Pop down on C-g.  */
-          if (keysym == XK_g && (event.xkey.state & ControlMask) != 0)
-            XtUnmanageChild (dialog);
-        }
+      if (
+#ifndef HAVE_XINPUT2
+	  XtAppPending (Xt_app_con)
+#else
+	  XPending (FRAME_X_DISPLAY (f))
+#endif
+	  )
+	{
+#ifndef HAVE_XINPUT2
+	  XtAppNextEvent (Xt_app_con, &event);
+#else
+	  XNextEvent (FRAME_X_DISPLAY (f), &event);
+#endif
 
-      (void) x_dispatch_event (&event, FRAME_X_DISPLAY (f));
+	  copy = event;
+	  if (event.type == KeyPress
+	      && FRAME_X_DISPLAY (f) == event.xkey.display)
+	    {
+	      KeySym keysym = XLookupKeysym (&event.xkey, 0);
+
+	      /* Pop down on C-g.  */
+	      if (keysym == XK_g && (event.xkey.state & ControlMask) != 0)
+		XtUnmanageChild (dialog);
+	    }
+#ifdef HAVE_XINPUT2
+	  else if (event.type == GenericEvent
+		   && FRAME_X_DISPLAY (f) == event.xgeneric.display
+		   && FRAME_DISPLAY_INFO (f)->supports_xi2
+		   && (event.xgeneric.extension
+		       == FRAME_DISPLAY_INFO (f)->xi2_opcode)
+		   && event.xgeneric.evtype == XI_KeyPress)
+	    {
+	      KeySym keysym;
+	      XIDeviceEvent *xev;
+
+	      if (event.xcookie.data)
+		emacs_abort ();
+
+	      if (XGetEventData (FRAME_X_DISPLAY (f), &event.xcookie))
+		{
+		  xev = (XIDeviceEvent *) event.xcookie.data;
+
+		  copy.xkey.type = KeyPress;
+		  copy.xkey.serial = xev->serial;
+		  copy.xkey.send_event = xev->send_event;
+		  copy.xkey.display = FRAME_X_DISPLAY (f);
+		  copy.xkey.window = xev->event;
+		  copy.xkey.root = xev->root;
+		  copy.xkey.subwindow = xev->child;
+		  copy.xkey.time = xev->time;
+		  copy.xkey.x = lrint (xev->event_x);
+		  copy.xkey.y = lrint (xev->event_y);
+		  copy.xkey.x_root = lrint (xev->root_x);
+		  copy.xkey.y_root = lrint (xev->root_y);
+		  copy.xkey.state = xev->mods.effective;
+		  copy.xkey.keycode = xev->detail;
+		  copy.xkey.same_screen = True;
+
+		  keysym = XLookupKeysym (&copy.xkey, 0);
+
+		  if (keysym == XK_g
+		      && (copy.xkey.state & ControlMask) != 0) /* Any escape, ignore modifiers.  */
+		    XtUnmanageChild (dialog);
+
+		  XFreeEventData (FRAME_X_DISPLAY (f), &event.xcookie);
+		}
+	    }
+#endif
+
+	  (void) x_dispatch_event (&copy, FRAME_X_DISPLAY (f));
+	}
     }
 
   /* Get the result.  */
@@ -8900,6 +9009,7 @@ frame_parm_handler x_frame_parm_handlers[] =
   x_set_override_redirect,
   gui_set_no_special_glyphs,
   x_set_alpha_background,
+  x_set_shaded,
 };
 
 /* Some versions of libX11 don't have symbols for a few functions we
@@ -8927,7 +9037,15 @@ XkbFreeNames (XkbDescPtr xkb, unsigned int which, Bool free_map)
 int
 XDisplayCells (Display *dpy, int screen_number)
 {
-  return 1677216;
+  struct x_display_info *dpyinfo = x_display_info_for_display (dpy);
+
+  if (!dpyinfo)
+    emacs_abort ();
+
+  /* Not strictly correct, since the display could be using a
+     non-default visual, but it satisfies the callers we need to care
+     about.  */
+  return dpyinfo->visual_info.colormap_size;
 }
 #endif
 

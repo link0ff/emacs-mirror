@@ -3908,6 +3908,9 @@ static const struct frame_parm_table frame_parms[] =
   {"override-redirect",		SYMBOL_INDEX (Qoverride_redirect)},
   {"no-special-glyphs",		SYMBOL_INDEX (Qno_special_glyphs)},
   {"alpha-background",          SYMBOL_INDEX (Qalpha_background)},
+#ifdef HAVE_X_WINDOWS
+  {"shaded", 			SYMBOL_INDEX (Qshaded)},
+#endif
 #ifdef NS_IMPL_COCOA
   {"ns-appearance",		SYMBOL_INDEX (Qns_appearance)},
   {"ns-transparent-titlebar",	SYMBOL_INDEX (Qns_transparent_titlebar)},
@@ -6084,6 +6087,7 @@ syms_of_frame (void)
   DEFSYM (Qfullheight, "fullheight");
   DEFSYM (Qfullboth, "fullboth");
   DEFSYM (Qmaximized, "maximized");
+  DEFSYM (Qshaded, "shaded");
   DEFSYM (Qx_resource_name, "x-resource-name");
   DEFSYM (Qx_frame_parameter, "x-frame-parameter");
 
@@ -6229,14 +6233,24 @@ You can also use a floating number between 0.0 and 1.0.  */);
 	       doc: /* Alist of default values for frame creation.
 These may be set in your init file, like this:
   (setq default-frame-alist \\='((width . 80) (height . 55) (menu-bar-lines . 1)))
+
 These override values given in window system configuration data,
- including X Windows' defaults database.
+including X Windows' defaults database.
+
+Note that many display-related modes (like `scroll-bar-mode' or
+`menu-bar-mode') alter `default-frame-alist', so if you set this
+variable directly, you may be overriding other settings
+unintentionally.  Instead it's often better to use
+`modify-all-frames-parameters' or push new elements to the front of
+this alist.
+
 For values specific to the first Emacs frame, see `initial-frame-alist'.
+
 For window-system specific values, see `window-system-default-frame-alist'.
+
 For values specific to the separate minibuffer frame, see
- `minibuffer-frame-alist'.
-The `menu-bar-lines' element of the list controls whether new frames
- have menu bars; `menu-bar-mode' works by altering this element.
+`minibuffer-frame-alist'.
+
 Setting this variable does not affect existing frames, only new ones.  */);
   Vdefault_frame_alist = Qnil;
 

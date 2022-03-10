@@ -266,6 +266,7 @@ xg_display_open (char *display_name, GdkDisplay **dpy)
 static int
 xg_get_gdk_scale (void)
 {
+#ifdef HAVE_GTK3
   const char *sscale = getenv ("GDK_SCALE");
 
   if (sscale)
@@ -274,6 +275,7 @@ xg_get_gdk_scale (void)
       if (0 < scale)
 	return min (scale, INT_MAX);
     }
+#endif
 
   return 1;
 }
@@ -3280,8 +3282,13 @@ menu_bar_button_pressed_cb (GtkWidget *widget, GdkEvent *event,
 {
   struct frame *f = user_data;
 
-  if (event->button.button < 4)
-    set_frame_menubar (f, true);
+  if (event->button.button < 4
+      && event->button.window != gtk_widget_get_window (widget)
+      && !popup_activated ())
+    {
+      pgtk_menu_set_in_use (true);
+      set_frame_menubar (f, true);
+    }
 
   return false;
 }
@@ -4223,13 +4230,13 @@ xg_event_is_for_menubar (struct frame *f, const XEvent *event)
     }
   else
     {
-#else
+#endif
       rec.x = event->xbutton.x / scale;
       rec.y = event->xbutton.y / scale;
-#endif
 #ifdef HAVE_XINPUT2
     }
 #endif
+
   rec.width = 1;
   rec.height = 1;
 
@@ -4637,11 +4644,6 @@ xg_update_scrollbar_pos (struct frame *f,
           gtk_widget_set_size_request (wscroll, width, height);
         }
 
-#if !defined HAVE_PGTK && GTK_CHECK_VERSION (2, 18, 0)
-	if (!gdk_window_ensure_native (gtk_widget_get_window (wscroll)))
-	  emacs_abort ();
-#endif
-
       if (oldx != -1 && oldw > 0 && oldh > 0)
         {
           /* Clear under old scroll bar position.  */
@@ -4739,11 +4741,6 @@ xg_update_horizontal_scrollbar_pos (struct frame *f,
         x_clear_area (f, oldx, oldy, oldw, oldh);
 #else
         pgtk_clear_area (f, oldx, oldy, oldw, oldh);
-#endif
-
-#if !defined HAVE_PGTK && GTK_CHECK_VERSION (2, 18, 0)
-	if (!gdk_window_ensure_native (gtk_widget_get_window (wscroll)))
-	  emacs_abort ();
 #endif
 
       /* GTK does not redraw until the main loop is entered again, but
@@ -4911,7 +4908,8 @@ xg_set_toolkit_horizontal_scroll_bar_thumb (struct scroll_bar *bar,
    frame.  This function does additional checks.  */
 
 bool
-xg_event_is_for_scrollbar (struct frame *f, const EVENT *event)
+xg_event_is_for_scrollbar (struct frame *f, const EVENT *event,
+			   bool for_valuator)
 {
   bool retval = 0;
 
@@ -4924,7 +4922,8 @@ xg_event_is_for_scrollbar (struct frame *f, const EVENT *event)
 	     && (event->xgeneric.evtype == XI_ButtonPress
 		 && xev->detail < 4))
 	    || (event->type == ButtonPress
-		&& event->xbutton.button < 4)))
+		&& event->xbutton.button < 4)
+	    || for_valuator))
 #else
   if (f
 #ifndef HAVE_PGTK
@@ -6259,6 +6258,13 @@ xg_widget_key_press_event_cb (GtkWidget *widget, GdkEvent *event,
 
   if (event->key.is_modifier)
     goto done;
+
+#ifndef HAVE_GTK3
+  /* FIXME: event->key.is_modifier is not accurate on GTK 2.  */
+
+  if (keysym >= GDK_KEY_Shift_L && keysym <= GDK_KEY_Hyper_R)
+    goto done;
+#endif
 
   /* First deal with keysyms which have defined
      translations to characters.  */

@@ -132,6 +132,7 @@ INLINE_HEADER_BEGIN
    | FocusChangeMask		\
    | LeaveWindowMask		\
    | EnterWindowMask		\
+   | PropertyChangeMask		\
    | VisibilityChangeMask)
 
 #ifdef HAVE_X11R6_XIM
@@ -142,6 +143,21 @@ struct xim_inst_t
   char *resource_name;
 };
 #endif /* HAVE_X11R6_XIM */
+
+#ifdef HAVE_XINPUT2
+#if HAVE_XISCROLLCLASSINFO_TYPE && defined XIScrollClass
+#define HAVE_XINPUT2_1
+#endif
+#if HAVE_XITOUCHCLASSINFO_TYPE && defined XITouchClass
+#define HAVE_XINPUT2_2
+#endif
+#if HAVE_XIBARRIERRELEASEPOINTERINFO_DEVICEID && defined XIBarrierPointerReleased
+#define HAVE_XINPUT2_3
+#endif
+#if HAVE_XIGESTURECLASSINFO_TYPE && defined XIGestureClass
+#define HAVE_XINPUT2_4
+#endif
+#endif
 
 /* Structure recording X pixmap and reference count.
    If REFCOUNT is 0 then this record is free to be reused.  */
@@ -185,6 +201,8 @@ struct color_name_cache_entry
 };
 
 #ifdef HAVE_XINPUT2
+
+#ifdef HAVE_XINPUT2_1
 struct xi_scroll_valuator_t
 {
   bool invalid_p;
@@ -196,7 +214,9 @@ struct xi_scroll_valuator_t
   int number;
   int horizontal;
 };
+#endif
 
+#ifdef HAVE_XINPUT2_2
 struct xi_touch_point_t
 {
   struct xi_touch_point_t *next;
@@ -204,17 +224,26 @@ struct xi_touch_point_t
   int number;
   double x, y;
 };
+#endif
 
 struct xi_device_t
 {
   int device_id;
+#ifdef HAVE_XINPUT2_1
   int scroll_valuator_count;
+#endif
   int grab;
   bool master_p;
+#ifdef HAVE_XINPUT2_2
   bool direct_p;
+#endif
 
+#ifdef HAVE_XINPUT2_1
   struct xi_scroll_valuator_t *valuators;
+#endif
+#ifdef HAVE_XINPUT2_2
   struct xi_touch_point_t *touchpoints;
+#endif
 };
 #endif
 
@@ -253,6 +282,9 @@ struct x_display_info
 
   /* The Visual being used for this display.  */
   Visual *visual;
+
+  /* The visual information corresponding to VISUAL.  */
+  XVisualInfo visual_info;
 
 #ifdef HAVE_XRENDER
   /* The picture format for this display.  */
@@ -379,7 +411,8 @@ struct x_display_info
   Atom Xatom_CLIPBOARD, Xatom_TIMESTAMP, Xatom_TEXT, Xatom_DELETE,
     Xatom_COMPOUND_TEXT, Xatom_UTF8_STRING,
     Xatom_MULTIPLE, Xatom_INCR, Xatom_EMACS_TMP, Xatom_TARGETS, Xatom_NULL,
-    Xatom_ATOM, Xatom_ATOM_PAIR, Xatom_CLIPBOARD_MANAGER, Xatom_COUNTER;
+    Xatom_ATOM, Xatom_ATOM_PAIR, Xatom_CLIPBOARD_MANAGER, Xatom_COUNTER,
+    Xatom_EMACS_SERVER_TIME_PROP;
 
   /* More atoms for font properties.  The last three are private
      properties, see the comments in src/fontset.h.  */
@@ -431,8 +464,10 @@ struct x_display_info
   /* The scroll bar in which the last X motion event occurred.  */
   struct scroll_bar *last_mouse_scroll_bar;
 
-  /* Time of last user interaction as returned in X events on this display.  */
-  Time last_user_time;
+  /* Time of last user interaction as returned in X events on this
+     display, and time where WM support for `_NET_WM_USER_TIME_WINDOW'
+     was last checked.  */
+  Time last_user_time, last_user_check_time;
 
   /* Position where the mouse was last time we reported a motion.
      This is a position on last_mouse_motion_frame.  */
@@ -508,10 +543,11 @@ struct x_display_info
     Xatom_net_wm_state_maximized_horz, Xatom_net_wm_state_maximized_vert,
     Xatom_net_wm_state_sticky, Xatom_net_wm_state_above, Xatom_net_wm_state_below,
     Xatom_net_wm_state_hidden, Xatom_net_wm_state_skip_taskbar,
-    Xatom_net_frame_extents, Xatom_net_current_desktop, Xatom_net_workarea,
-    Xatom_net_wm_opaque_region, Xatom_net_wm_ping, Xatom_net_wm_sync_request,
-    Xatom_net_wm_sync_request_counter, Xatom_net_wm_frame_drawn,
-    Xatom_net_wm_user_time, Xatom_net_wm_user_time_window;
+    Xatom_net_wm_state_shaded, Xatom_net_frame_extents, Xatom_net_current_desktop,
+    Xatom_net_workarea, Xatom_net_wm_opaque_region, Xatom_net_wm_ping,
+    Xatom_net_wm_sync_request, Xatom_net_wm_sync_request_counter,
+    Xatom_net_wm_frame_drawn, Xatom_net_wm_user_time,
+    Xatom_net_wm_user_time_window;
 
   /* XSettings atoms and windows.  */
   Atom Xatom_xsettings_sel, Xatom_xsettings_prop, Xatom_xsettings_mgr;
@@ -998,6 +1034,9 @@ extern void x_mark_frame_dirty (struct frame *f);
 /* This is the Visual which frame F is on.  */
 #define FRAME_X_VISUAL(f) FRAME_DISPLAY_INFO (f)->visual
 
+/* And its corresponding visual info.  */
+#define FRAME_X_VISUAL_INFO(f) (&FRAME_DISPLAY_INFO (f)->visual_info)
+
 #ifdef HAVE_XRENDER
 #define FRAME_X_PICTURE_FORMAT(f) FRAME_DISPLAY_INFO (f)->pict_format
 #define FRAME_X_PICTURE(f) ((f)->output_data.x->picture)
@@ -1047,6 +1086,11 @@ struct scroll_bar
 
   /* The X window representing this scroll bar.  */
   Window x_window;
+
+#if defined HAVE_XDBE && !defined USE_TOOLKIT_SCROLL_BARS
+  /* The X drawable representing this scroll bar.  */
+  Drawable x_drawable;
+#endif
 
   /* The position and size of the scroll bar in pixels, relative to the
      frame.  */
@@ -1276,7 +1320,7 @@ extern void x_clear_area (struct frame *f, int, int, int, int);
 extern void x_mouse_leave (struct x_display_info *);
 #endif
 
-#if defined USE_X_TOOLKIT || defined USE_MOTIF
+#ifndef USE_GTK
 extern int x_dispatch_event (XEvent *, Display *);
 #endif
 extern int x_x_to_emacs_modifiers (struct x_display_info *, int);
@@ -1337,13 +1381,14 @@ x_make_truecolor_pixel (struct x_display_info *dpyinfo, int r, int g, int b)
    also allows us to make other optimizations relating to server-side
    reference counts.  */
 INLINE bool
-x_mutable_colormap (Visual *visual)
+x_mutable_colormap (XVisualInfo *visual)
 {
   int class = visual->class;
   return (class != StaticColor && class != StaticGray && class != TrueColor);
 }
 
 extern void x_set_sticky (struct frame *, Lisp_Object, Lisp_Object);
+extern void x_set_shaded (struct frame *, Lisp_Object, Lisp_Object);
 extern void x_set_skip_taskbar (struct frame *, Lisp_Object, Lisp_Object);
 extern void x_set_z_group (struct frame *, Lisp_Object, Lisp_Object);
 extern bool x_wm_supports (struct frame *, Atom);
@@ -1468,21 +1513,6 @@ struct xi_device_t *xi_device_from_id (struct x_display_info *, int);
    (nr).y = (ry),					\
    (nr).width = (rwidth),				\
    (nr).height = (rheight))
-
-#ifdef HAVE_XINPUT2
-#if HAVE_XISCROLLCLASSINFO_TYPE && defined XIScrollClass
-#define HAVE_XINPUT2_1
-#endif
-#if HAVE_XITOUCHCLASSINFO_TYPE && defined XITouchClass
-#define HAVE_XINPUT2_2
-#endif
-#if HAVE_XIBARRIERRELEASEPOINTERINFO_DEVICEID && defined XIBarrierPointerReleased
-#define HAVE_XINPUT2_3
-#endif
-#if HAVE_XIGESTURECLASSINFO_TYPE && defined XIGestureClass
-#define HAVE_XINPUT2_4
-#endif
-#endif
 
 INLINE_HEADER_END
 

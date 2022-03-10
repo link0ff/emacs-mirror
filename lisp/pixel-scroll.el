@@ -129,6 +129,9 @@ is always with pixel resolution.")
     (define-key map [vertical-scroll-bar wheel-down] 'pixel-scroll-precision)
     (define-key map [vertical-scroll-bar wheel-up] 'pixel-scroll-precision)
     (define-key map [vertical-scroll-bar touch-end] 'pixel-scroll-start-momentum)
+    (define-key map [tool-bar wheel-down] 'pixel-scroll-precision)
+    (define-key map [tool-bar wheel-up] 'pixel-scroll-precision)
+    (define-key map [tool-bar touch-end] 'pixel-scroll-start-momentum)
     (define-key map [left-margin wheel-down] 'pixel-scroll-precision)
     (define-key map [left-margin wheel-up] 'pixel-scroll-precision)
     (define-key map [left-margin touch-end] 'pixel-scroll-start-momentum)
@@ -592,10 +595,11 @@ the height of the current window."
       (when (< delta 0)
         (set-window-vscroll nil (- delta) t)))))
 
-(defun pixel-scroll-precision-interpolate (delta)
+(defun pixel-scroll-precision-interpolate (delta &optional old-window)
   "Interpolate a scroll of DELTA pixels.
-This results in the window being scrolled by DELTA pixels with an
-animation."
+OLD-WINDOW is the window which will be selected when redisplay
+takes place, or nil for the current window.  This results in the
+window being scrolled by DELTA pixels with an animation."
   (let ((percentage 0)
         (total-time pixel-scroll-precision-interpolation-total-time)
         (factor pixel-scroll-precision-interpolation-factor)
@@ -613,7 +617,9 @@ animation."
         (while-no-input
           (unwind-protect
               (while (< percentage 1)
-                (redisplay t)
+                (with-selected-window (or old-window
+                                          (selected-window))
+                  (redisplay t))
                 (sleep-for between-scroll)
                 (setq time-elapsed (+ time-elapsed
                                       (- (float-time) last-time))
@@ -664,7 +670,10 @@ Move the display up or down by the pixel deltas in EVENT to
 scroll the display according to the user's turning the mouse
 wheel."
   (interactive "e")
-  (let ((window (mwheel-event-window event)))
+  (let ((window (mwheel-event-window event))
+        (current-window (selected-window)))
+    (when (framep window)
+      (setq window (frame-selected-window window)))
     (if (and (nth 4 event))
         (let ((delta (round (cdr (nth 4 event)))))
           (unless (zerop delta)
@@ -685,7 +694,7 @@ wheel."
                       (let ((kin-state (pixel-scroll-kinetic-state)))
                         (aset kin-state 0 (make-ring 30))
                         (aset kin-state 1 nil))
-                      (pixel-scroll-precision-interpolate delta))
+                      (pixel-scroll-precision-interpolate delta current-window))
                   (condition-case nil
                       (progn
                         (if (< delta 0)
@@ -738,6 +747,8 @@ It is a vector of the form [ VELOCITY TIME SIGN ]."
   (when pixel-scroll-precision-use-momentum
     (let ((window (mwheel-event-window event))
           (state nil))
+      (when (framep window)
+        (setq window (frame-selected-window window)))
       (setq state (pixel-scroll-kinetic-state window))
       (when (and (aref state 1)
                  (listp (aref state 0)))

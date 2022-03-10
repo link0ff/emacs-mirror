@@ -1197,6 +1197,7 @@ public:
   uint32_t previous_buttons = 0;
   int looper_locked_count = 0;
   BRegion sb_region;
+  BRegion invalid_region;
 
   BView *offscreen_draw_view = NULL;
   BBitmap *offscreen_draw_bitmap_1 = NULL;
@@ -1403,7 +1404,8 @@ public:
     SetViewBitmap (copy_bitmap,
 		   Frame (), Frame (), B_FOLLOW_NONE, 0);
 
-    Invalidate ();
+    Invalidate (&invalid_region);
+    invalid_region.MakeEmpty ();
     UnlockLooper ();
     return;
   }
@@ -1431,6 +1433,7 @@ public:
 	  gui_abort ("Failed to lock bitmap after double buffering was set up");
       }
 
+    invalid_region.MakeEmpty ();
     UnlockLooper ();
     Invalidate ();
   }
@@ -1554,7 +1557,11 @@ public:
 class EmacsScrollBar : public BScrollBar
 {
 public:
-  void *scroll_bar;
+  int dragging = 0;
+  bool horizontal;
+  enum haiku_scroll_bar_part current_part;
+  float old_value;
+  scroll_bar_info info;
 
   EmacsScrollBar (int x, int y, int x1, int y1, bool horizontal_p) :
     BScrollBar (BRect (x, y, x1, y1), NULL, NULL, 0, 0, horizontal_p ?
@@ -1562,6 +1569,8 @@ public:
   {
     BView *vw = (BView *) this;
     vw->SetResizingMode (B_FOLLOW_NONE);
+    horizontal = horizontal_p;
+    get_scroll_bar_info (&info);
   }
 
   void
@@ -1569,6 +1578,7 @@ public:
   {
     if (msg->what == SCROLL_BAR_UPDATE)
       {
+	old_value = msg->GetInt32 ("emacs:units", 0);
 	this->SetRange (0, msg->GetInt32 ("emacs:range", 0));
 	this->SetValue (msg->GetInt32 ("emacs:units", 0));
       }
@@ -1580,20 +1590,153 @@ public:
   ValueChanged (float new_value)
   {
     struct haiku_scroll_bar_value_event rq;
-    rq.scroll_bar = scroll_bar;
+    struct haiku_scroll_bar_part_event part;
+
+    if (dragging)
+      {
+	if (new_value != old_value)
+	  {
+	    if (dragging > 1)
+	      {
+		SetValue (old_value);
+
+		part.scroll_bar = this;
+		part.window = Window ();
+		part.part = current_part;
+		haiku_write (SCROLL_BAR_PART_EVENT, &part);
+	      }
+	    else
+	      dragging++;
+	  }
+
+	return;
+      }
+
+    rq.scroll_bar = this;
+    rq.window = Window ();
     rq.position = new_value;
 
     haiku_write (SCROLL_BAR_VALUE_EVENT, &rq);
+  }
+
+  BRegion
+  ButtonRegionFor (enum haiku_scroll_bar_part button)
+  {
+    BRegion region;
+    BRect bounds;
+    BRect rect;
+    float button_size;
+
+    bounds = Bounds ();
+    bounds.InsetBy (0.0, 0.0);
+
+    if (horizontal)
+      button_size = bounds.Height () + 1.0f;
+    else
+      button_size = bounds.Width () + 1.0f;
+
+    rect = BRect (bounds.left, bounds.top,
+		  bounds.left + button_size - 1.0f,
+		  bounds.top + button_size - 1.0f);
+
+    if (button == HAIKU_SCROLL_BAR_UP_BUTTON)
+      {
+	if (!horizontal)
+	  {
+	    region.Include (rect);
+	    if (info.double_arrows)
+	      region.Include (rect.OffsetToCopy (bounds.left,
+						 bounds.bottom - 2 * button_size + 1));
+	  }
+	else
+	  {
+	    region.Include (rect);
+	    if (info.double_arrows)
+	      region.Include (rect.OffsetToCopy (bounds.right - 2 * button_size,
+						 bounds.top));
+	  }
+      }
+    else
+      {
+	if (!horizontal)
+	  {
+	    region.Include (rect.OffsetToCopy (bounds.left, bounds.bottom - button_size));
+
+	    if (info.double_arrows)
+	      region.Include (rect.OffsetByCopy (0.0, button_size));
+	  }
+	else
+	  {
+	    region.Include (rect.OffsetToCopy (bounds.right - button_size, bounds.top));
+
+	    if (info.double_arrows)
+	      region.Include (rect.OffsetByCopy (button_size, 0.0));
+	  }
+      }
+
+    return region;
   }
 
   void
   MouseDown (BPoint pt)
   {
     struct haiku_scroll_bar_drag_event rq;
+    struct haiku_scroll_bar_part_event part;
+    BRegion r;
+    BLooper *looper;
+    BMessage *message;
+    int32 buttons;
+
+    looper = Looper ();
+
+    if (!looper)
+      GetMouse (&pt, (uint32 *) &buttons, false);
+    else
+      {
+	message = looper->CurrentMessage ();
+
+	if (!message || message->FindInt32 ("buttons", &buttons) != B_OK)
+	  GetMouse (&pt, (uint32 *) &buttons, false);
+      }
+
+    if (buttons == B_PRIMARY_MOUSE_BUTTON)
+      {
+	r = ButtonRegionFor (HAIKU_SCROLL_BAR_UP_BUTTON);
+
+	if (r.Contains (pt))
+	  {
+	    part.scroll_bar = this;
+	    part.window = Window ();
+	    part.part = HAIKU_SCROLL_BAR_UP_BUTTON;
+	    dragging = 1;
+	    current_part = HAIKU_SCROLL_BAR_UP_BUTTON;
+
+	    haiku_write (SCROLL_BAR_PART_EVENT, &part);
+	    goto out;
+	  }
+
+	r = ButtonRegionFor (HAIKU_SCROLL_BAR_DOWN_BUTTON);
+
+	if (r.Contains (pt))
+	  {
+	    part.scroll_bar = this;
+	    part.window = Window ();
+	    part.part = HAIKU_SCROLL_BAR_DOWN_BUTTON;
+	    dragging = 1;
+	    current_part = HAIKU_SCROLL_BAR_DOWN_BUTTON;
+
+	    haiku_write (SCROLL_BAR_PART_EVENT, &part);
+	    goto out;
+	  }
+      }
+
     rq.dragging_p = 1;
-    rq.scroll_bar = scroll_bar;
+    rq.window = Window ();
+    rq.scroll_bar = this;
 
     haiku_write (SCROLL_BAR_DRAG_EVENT, &rq);
+
+  out:
     BScrollBar::MouseDown (pt);
   }
 
@@ -1602,10 +1745,37 @@ public:
   {
     struct haiku_scroll_bar_drag_event rq;
     rq.dragging_p = 0;
-    rq.scroll_bar = scroll_bar;
+    rq.scroll_bar = this;
+    rq.window = Window ();
 
     haiku_write (SCROLL_BAR_DRAG_EVENT, &rq);
+    dragging = false;
+
     BScrollBar::MouseUp (pt);
+  }
+
+  void
+  MouseMoved (BPoint point, uint32 transit, const BMessage *msg)
+  {
+    struct haiku_menu_bar_left_event rq;
+    BPoint conv;
+
+    if (transit == B_EXITED_VIEW)
+      {
+	conv = ConvertToParent (point);
+
+	rq.x = std::lrint (conv.x);
+	rq.y = std::lrint (conv.y);
+	rq.window = this->Window ();
+
+	if (movement_locker.Lock ())
+	  {
+	    haiku_write (MENU_BAR_LEFT, &rq);
+	    movement_locker.Unlock ();
+	  }
+      }
+
+    BScrollBar::MouseMoved (point, transit, msg);
   }
 };
 
@@ -1910,6 +2080,16 @@ BWindow_set_offset (void *window, int x, int y)
     wn->MoveTo (x, y);
 }
 
+void
+BWindow_dimensions (void *window, int *width, int *height)
+{
+  BWindow *w = (BWindow *) window;
+  BRect frame = w->Frame ();
+
+  *width = BE_RECT_WIDTH (frame);
+  *height = BE_RECT_HEIGHT (frame);
+}
+
 /* Iconify WINDOW.  */
 void
 BWindow_iconify (void *window)
@@ -2051,10 +2231,9 @@ BScrollBar_make_for_view (void *view, int horizontal_p,
 			  void *scroll_bar_ptr)
 {
   EmacsScrollBar *sb = new EmacsScrollBar (x, y, x1, y1, horizontal_p);
-  sb->scroll_bar = scroll_bar_ptr;
-
   BView *vw = (BView *) view;
   BView *sv = (BView *) sb;
+
   if (!vw->LockLooper ())
     gui_abort ("Failed to lock scrollbar owner");
   vw->AddChild ((BView *) sb);
@@ -2123,14 +2302,23 @@ BView_invalidate (void *view)
 
 /* Lock VIEW in preparation for drawing operations.  This should be
    called before any attempt to draw onto VIEW or to lock it for Cairo
-   drawing.  `BView_draw_unlock' should be called afterwards.  */
+   drawing.  `BView_draw_unlock' should be called afterwards.
+
+   If any drawing is going to take place, INVALID_REGION should be
+   true, and X, Y, WIDTH, HEIGHT should specify a rectangle in which
+   the drawing will take place.  */
 void
-BView_draw_lock (void *view)
+BView_draw_lock (void *view, bool invalidate_region,
+		 int x, int y, int width, int height)
 {
   EmacsView *vw = (EmacsView *) view;
   if (vw->looper_locked_count)
     {
       vw->looper_locked_count++;
+
+      if (invalidate_region && vw->offscreen_draw_view)
+	vw->invalid_region.Include (BRect (x, y, x + width - 1,
+					   y + height - 1));
       return;
     }
   BView *v = (BView *) find_appropriate_view_for_draw (vw);
@@ -2144,7 +2332,21 @@ BView_draw_lock (void *view)
 
   if (v != vw && !vw->LockLooper ())
     gui_abort ("Failed to lock view while acquiring draw lock");
+
+  if (invalidate_region && vw->offscreen_draw_view)
+    vw->invalid_region.Include (BRect (x, y, x + width - 1,
+				       y + height - 1));
   vw->looper_locked_count++;
+}
+
+void
+BView_invalidate_region (void *view, int x, int y, int width, int height)
+{
+  EmacsView *vw = (EmacsView *) view;
+
+  if (vw->offscreen_draw_view)
+    vw->invalid_region.Include (BRect (x, y, x + width - 1,
+				       y + height - 1));
 }
 
 void
@@ -2264,6 +2466,23 @@ BView_forget_scroll_bar (void *view, int x, int y, int width, int height)
 				    y - 1 + height));
       vw->UnlockLooper ();
     }
+}
+
+bool
+BView_inside_scroll_bar (void *view, int x, int y)
+{
+  EmacsView *vw = (EmacsView *) view;
+  bool val;
+
+  if (vw->LockLooper ())
+    {
+      val = vw->sb_region.Contains (BPoint (x, y));
+      vw->UnlockLooper ();
+    }
+  else
+    val = false;
+
+  return val;
 }
 
 void
@@ -2478,7 +2697,7 @@ BMenu_run (void *menu, int x, int y,
 	   void (*run_help_callback) (void *, void *),
 	   void (*block_input_function) (void),
 	   void (*unblock_input_function) (void),
-	   void (*process_pending_signals_function) (void),
+	   struct timespec (*process_pending_signals_function) (void),
 	   void *run_help_callback_data)
 {
   BPopUpMenu *mn = (BPopUpMenu *) menu;
@@ -2486,10 +2705,12 @@ BMenu_run (void *menu, int x, int y,
   void *buf;
   void *ptr = NULL;
   struct be_popup_menu_data data;
-  struct object_wait_info infos[2];
+  struct object_wait_info infos[3];
   struct haiku_menu_bar_help_event *event;
   BMessage *msg;
   ssize_t stat;
+  struct timespec next_time;
+  bigtime_t timeout;
 
   block_input_function ();
   port_popup_menu_to_emacs = create_port (1800, "popup menu port");
@@ -2514,6 +2735,10 @@ BMenu_run (void *menu, int x, int y,
 				  (void *) &data);
   infos[1].type = B_OBJECT_TYPE_THREAD;
   infos[1].events = B_EVENT_INVALID;
+
+  infos[2].object = port_application_to_emacs;
+  infos[2].type = B_OBJECT_TYPE_PORT;
+  infos[2].events = B_EVENT_READ;
   unblock_input_function ();
 
   if (infos[1].object < B_OK)
@@ -2530,10 +2755,16 @@ BMenu_run (void *menu, int x, int y,
 
   while (true)
     {
-      process_pending_signals_function ();
+      next_time = process_pending_signals_function ();
 
-      if ((stat = wait_for_objects_etc ((object_wait_info *) &infos, 2,
-					B_RELATIVE_TIMEOUT, 10000)) < B_OK)
+      if (next_time.tv_nsec < 0)
+	timeout = 100000;
+      else
+	timeout = (next_time.tv_sec * 1000000
+		   + next_time.tv_nsec / 1000);
+
+      if ((stat = wait_for_objects_etc ((object_wait_info *) &infos, 3,
+					B_RELATIVE_TIMEOUT, timeout)) < B_OK)
 	{
 	  if (stat == B_INTERRUPTED || stat == B_TIMED_OUT)
 	    continue;
@@ -2573,6 +2804,7 @@ BMenu_run (void *menu, int x, int y,
 
       infos[0].events = B_EVENT_READ;
       infos[1].events = B_EVENT_INVALID;
+      infos[2].events = B_EVENT_READ;
     }
 }
 

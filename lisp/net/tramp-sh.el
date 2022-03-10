@@ -1025,6 +1025,7 @@ Format specifiers \"%s\" are replaced before the script is used.")
     (start-file-process . tramp-handle-start-file-process)
     (substitute-in-file-name . tramp-handle-substitute-in-file-name)
     (temporary-file-directory . tramp-handle-temporary-file-directory)
+    (tramp-get-home-directory . tramp-sh-handle-get-home-directory)
     (tramp-get-remote-gid . tramp-sh-handle-get-remote-gid)
     (tramp-get-remote-uid . tramp-sh-handle-get-remote-uid)
     (tramp-set-file-uid-gid . tramp-sh-handle-set-file-uid-gid)
@@ -1448,6 +1449,20 @@ of."
 	      "")
 	    (if (eq flag 'nofollow) "-h" "")
 	    (tramp-shell-quote-argument localname)))))))
+
+(defun tramp-sh-handle-get-home-directory (vec &optional user)
+  "The remote home directory for connection VEC as local file name.
+If USER is a string, return its home directory instead of the
+user identified by VEC.  If there is no user specified in either
+VEC or USER, or if there is no home directory, return nil."
+  (when (tramp-send-command-and-check
+	 vec (format
+	      "echo %s"
+	      (tramp-shell-quote-argument
+	       (concat "~" (or user (tramp-file-name-user vec))))))
+    (with-current-buffer (tramp-get-buffer vec)
+      (goto-char (point-min))
+      (buffer-substring (point) (point-at-eol)))))
 
 (defun tramp-sh-handle-get-remote-uid (vec id-format)
   "The uid of the remote connection VEC, in ID-FORMAT.
@@ -2741,27 +2756,21 @@ the result will be a local, non-Tramp, file name."
 	;; groks tilde expansion!  The function `tramp-find-shell' is
 	;; supposed to find such a shell on the remote host.  Please
 	;; tell me about it when this doesn't work on your system.
-	(when (string-match "\\`\\(~[^/]*\\)\\(.*\\)\\'" localname)
+	(when (string-match "\\`~\\([^/]*\\)\\(.*\\)\\'" localname)
 	  (let ((uname (match-string 1 localname))
-		(fname (match-string 2 localname)))
+		(fname (match-string 2 localname))
+		hname)
 	    ;; We cannot simply apply "~/", because under sudo "~/" is
 	    ;; expanded to the local user home directory but to the
 	    ;; root home directory.  On the other hand, using always
 	    ;; the default user name for tilde expansion is not
 	    ;; appropriate either, because ssh and companions might
 	    ;; use a user name from the config file.
-	    (when (and (string-equal uname "~")
+	    (when (and (zerop (length uname))
 		       (string-match-p "\\`su\\(do\\)?\\'" method))
-	      (setq uname (concat uname user)))
-	    (setq uname
-		  (with-tramp-connection-property v uname
-		    (tramp-send-command
-		     v
-		     (format "cd %s && pwd" (tramp-shell-quote-argument uname)))
-		    (with-current-buffer (tramp-get-buffer v)
-		      (goto-char (point-min))
-		      (buffer-substring (point) (point-at-eol)))))
-	    (setq localname (concat uname fname))))
+	      (setq uname user))
+	    (when (setq hname (tramp-get-home-directory v uname))
+	      (setq localname (concat hname fname)))))
 	;; There might be a double slash, for example when "~/"
 	;; expands to "/".  Remove this.
 	(while (string-match "//" localname)
@@ -2769,15 +2778,17 @@ the result will be a local, non-Tramp, file name."
 	;; Do not keep "/..".
 	(when (string-match-p "^/\\.\\.?$" localname)
 	  (setq localname "/"))
-	;; No tilde characters in file name, do normal
-	;; `expand-file-name' (this does "/./" and "/../").
+	;; Do normal `expand-file-name' (this does "/./" and "/../"),
+	;; unless there are tilde characters in file name.
 	;; `default-directory' is bound, because on Windows there
 	;; would be problems with UNC shares or Cygwin mounts.
 	(let ((default-directory tramp-compat-temporary-file-directory))
 	  (tramp-make-tramp-file-name
-	   v (tramp-drop-volume-letter
-	      (tramp-run-real-handler
-	       #'expand-file-name (list localname)))))))))
+	   v (if (string-match-p "\\`\\(~[^/]*\\)\\(.*\\)\\'" localname)
+		 localname
+	       (tramp-drop-volume-letter
+		(tramp-run-real-handler
+		 #'expand-file-name (list localname))))))))))
 
 ;;; Remote commands:
 
@@ -4783,36 +4794,33 @@ Goes through the list `tramp-inline-compress-commands'."
    (t (setq tramp-ssh-controlmaster-options "")
       (let ((case-fold-search t))
 	(ignore-errors
-	  (when (executable-find "ssh")
-	    (with-tramp-progress-reporter
-		vec 4 "Computing ControlMaster options"
-	      (with-temp-buffer
-		(tramp-call-process vec "ssh" nil t nil "-o" "ControlMaster")
-		(goto-char (point-min))
-		(when (search-forward-regexp "missing.+argument" nil t)
-		  (setq tramp-ssh-controlmaster-options
-			"-o ControlMaster=auto")))
-	      (unless (zerop (length tramp-ssh-controlmaster-options))
-		(with-temp-buffer
-		  ;; We use a non-existing IP address, in order to
-		  ;; avoid useless connections, and DNS timeouts.
-		  ;; Setting ConnectTimeout is needed since OpenSSH 7.
-		  (tramp-call-process
-		   vec "ssh" nil t nil
-		   "-o" "ConnectTimeout=1" "-o" "ControlPath=%C" "0.0.0.1")
-		  (goto-char (point-min))
+	  (with-tramp-progress-reporter
+	      vec 4 "Computing ControlMaster options"
+	    ;; We use a non-existing IP address, in order to avoid
+	    ;; useless connections, and DNS timeouts.
+	    (when (zerop
+		   (tramp-call-process
+		    vec "ssh" nil nil nil
+		    "-G" "-o" "ControlMaster=auto" "0.0.0.1"))
+	      (setq tramp-ssh-controlmaster-options
+		    "-o ControlMaster=auto")
+	      (if (zerop
+		   (tramp-call-process
+		    vec "ssh" nil nil nil
+		    "-G" "-o" "ControlPath='tramp.%C'" "0.0.0.1"))
 		  (setq tramp-ssh-controlmaster-options
 			(concat tramp-ssh-controlmaster-options
-				(if (search-forward-regexp "unknown.+key" nil t)
-				    " -o ControlPath='tramp.%%r@%%h:%%p'"
-				  " -o ControlPath='tramp.%%C'"))))
-		(with-temp-buffer
-		  (tramp-call-process vec "ssh" nil t nil "-o" "ControlPersist")
-		  (goto-char (point-min))
-		  (when (search-forward-regexp "missing.+argument" nil t)
-		    (setq tramp-ssh-controlmaster-options
-			  (concat tramp-ssh-controlmaster-options
-				  " -o ControlPersist=no")))))))))
+				" -o ControlPath='tramp.%%C'"))
+		(setq tramp-ssh-controlmaster-options
+		      (concat tramp-ssh-controlmaster-options
+			      " -o ControlPath='tramp.%%r@%%h:%%p'")))
+	      (when (zerop
+		     (tramp-call-process
+		      vec "ssh" nil nil nil
+		      "-G" "-o" "ControlPersist=no" "0.0.0.1"))
+		(setq tramp-ssh-controlmaster-options
+		      (concat tramp-ssh-controlmaster-options
+			      " -o ControlPersist=no")))))))
       tramp-ssh-controlmaster-options)))
 
 (defun tramp-scp-strict-file-name-checking (vec)

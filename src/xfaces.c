@@ -475,7 +475,7 @@ x_free_colors (struct frame *f, unsigned long *pixels, int npixels)
 {
   /* If display has an immutable color map, freeing colors is not
      necessary and some servers don't allow it.  So don't do it.  */
-  if (x_mutable_colormap (FRAME_X_VISUAL (f)))
+  if (x_mutable_colormap (FRAME_X_VISUAL_INFO (f)))
     {
 #ifdef DEBUG_X_COLORS
       unregister_colors (pixels, npixels);
@@ -500,7 +500,7 @@ x_free_dpy_colors (Display *dpy, Screen *screen, Colormap cmap,
 
   /* If display has an immutable color map, freeing colors is not
      necessary and some servers don't allow it.  So don't do it.  */
-  if (x_mutable_colormap (dpyinfo->visual))
+  if (x_mutable_colormap (&dpyinfo->visual_info))
     {
 #ifdef DEBUG_X_COLORS
       unregister_colors (pixels, npixels);
@@ -888,6 +888,11 @@ parse_hex_color_comp (const char *s, const char *e, unsigned short *dst)
 static double
 parse_float_color_comp (const char *s, const char *e)
 {
+  /* Only allow decimal float literals without whitespace.  */
+  for (const char *p = s; p < e; p++)
+    if (!((*p >= '0' && *p <= '9')
+	  || *p == '.' || *p == '+' || *p == '-' || *p == 'e' || *p == 'E'))
+      return -1;
   char *end;
   double x = strtod (s, &end);
   return (end == e && x >= 0 && x <= 1) ? x : -1;
@@ -5978,6 +5983,8 @@ realize_gui_face (struct face_cache *cache, Lisp_Object attrs[LFACE_VECTOR_SIZE]
     }
   else if (CONSP (box))
     {
+      bool set_color = false;
+
       /* `(:width WIDTH :color COLOR :shadow SHADOW)'.  SHADOW
 	 being one of `raised' or `sunken'.  */
       face->box = FACE_SIMPLE_BOX;
@@ -6015,6 +6022,7 @@ realize_gui_face (struct face_cache *cache, Lisp_Object attrs[LFACE_VECTOR_SIZE]
 		  face->box_color = load_color (f, face, value,
 						LFACE_BOX_INDEX);
 		  face->use_box_color_for_shadows_p = true;
+		  set_color = true;
 		}
 	    }
 	  else if (EQ (keyword, QCstyle))
@@ -6026,7 +6034,9 @@ realize_gui_face (struct face_cache *cache, Lisp_Object attrs[LFACE_VECTOR_SIZE]
 	      else if (EQ (value, Qflat_button))
 		{
 		  face->box = FACE_SIMPLE_BOX;
-		  face->box_color = face->background;
+		  /* Don't override colors set in this box. */
+		  if (!set_color)
+		    face->box_color = face->background;
 		}
 	    }
 	}
