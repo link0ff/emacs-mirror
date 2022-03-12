@@ -7238,9 +7238,9 @@ x_window_to_scroll_bar (Display *display, Window window_id, int type)
 {
   Lisp_Object tail, frame;
 
-#if defined (USE_GTK) && defined (USE_TOOLKIT_SCROLL_BARS)
+#if defined (USE_GTK) && !defined (HAVE_GTK3) && defined (USE_TOOLKIT_SCROLL_BARS)
   window_id = (Window) xg_get_scroll_id_for_window (display, window_id);
-#endif /* USE_GTK  && USE_TOOLKIT_SCROLL_BARS */
+#endif /* USE_GTK && !HAVE_GTK3  && USE_TOOLKIT_SCROLL_BARS */
 
   FOR_EACH_FRAME (tail, frame)
     {
@@ -11294,6 +11294,41 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    configureEvent = next_event;
         }
 
+#if defined HAVE_GTK3 && defined USE_TOOLKIT_SCROLL_BARS
+	  struct scroll_bar *bar = x_window_to_scroll_bar (dpyinfo->display,
+							   configureEvent.xconfigure.window, 2);
+
+	  /* There is really no other way to make GTK scroll bars fit
+	     in the dimensions we want them to.  */
+	  if (bar)
+	    {
+	      /* Skip all the pending configure events, not just the
+		 ones where window motion occurred.  */
+	      while (XPending (dpyinfo->display))
+		{
+		  XNextEvent (dpyinfo->display, &next_event);
+		  if (next_event.type != ConfigureNotify
+		      || next_event.xconfigure.window != event->xconfigure.window)
+		    {
+		      XPutBackEvent (dpyinfo->display, &next_event);
+		      break;
+		    }
+		  else
+		    configureEvent = next_event;
+		}
+
+	      if (configureEvent.xconfigure.width != max (bar->width, 1)
+		  || configureEvent.xconfigure.height != max (bar->height, 1))
+		XResizeWindow (dpyinfo->display, bar->x_window,
+			       max (bar->width, 1), max (bar->height, 1));
+
+	      if (f && FRAME_X_DOUBLE_BUFFERED_P (f))
+		x_drop_xrender_surfaces (f);
+
+	      goto OTHER;
+	    }
+#endif
+
       f = x_top_window_to_frame (dpyinfo, configureEvent.xconfigure.window);
       /* Unfortunately, we need to call x_drop_xrender_surfaces for
          _all_ ConfigureNotify events, otherwise we miss some and
@@ -12660,17 +12695,25 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    xembed_send_message (f, xev->time,
 					 XEMBED_REQUEST_FOCUS, 0, 0, 0);
 		}
-#ifndef USE_TOOLKIT_SCROLL_BARS
 	      else
 		{
 		  struct scroll_bar *bar
 		    = x_window_to_scroll_bar (dpyinfo->display,
 					      xev->event, 2);
 
+#ifndef USE_TOOLKIT_SCROLL_BARS
 		  if (bar)
 		    x_scroll_bar_handle_click (bar, (XEvent *) &bv, &inev.ie);
-		}
+#else
+		  /* Make the "Ctrl-Mouse-2 splits window" work for toolkit
+		     scroll bars.  */
+		  if (bar && xev->mods.effective & ControlMask)
+		    {
+		      x_scroll_bar_handle_click (bar, (XEvent *) &bv, &inev.ie);
+		      *finish = X_EVENT_DROP;
+		    }
 #endif
+		}
 
 	      if (xev->evtype == XI_ButtonPress)
 		{
@@ -12763,6 +12806,19 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      xkey.time = xev->time;
 	      xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
 			    | (xev->group.effective << 13));
+
+	      /* Some input methods react differently depending on the
+		 buttons that are pressed.  */
+	      if (xev->buttons.mask_len)
+		{
+		  if (XIMaskIsSet (xev->buttons.mask, 1))
+		    xkey.state |= Button1Mask;
+		  if (XIMaskIsSet (xev->buttons.mask, 2))
+		    xkey.state |= Button2Mask;
+		  if (XIMaskIsSet (xev->buttons.mask, 3))
+		    xkey.state |= Button3Mask;
+		}
+
 	      xkey.keycode = xev->detail;
 	      xkey.same_screen = True;
 
@@ -13118,6 +13174,19 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      xkey.time = xev->time;
 	      xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
 			    | (xev->group.effective << 13));
+
+	      /* Some input methods react differently depending on the
+		 buttons that are pressed.  */
+	      if (xev->buttons.mask_len)
+		{
+		  if (XIMaskIsSet (xev->buttons.mask, 1))
+		    xkey.state |= Button1Mask;
+		  if (XIMaskIsSet (xev->buttons.mask, 2))
+		    xkey.state |= Button2Mask;
+		  if (XIMaskIsSet (xev->buttons.mask, 3))
+		    xkey.state |= Button3Mask;
+		}
+
 	      xkey.keycode = xev->detail;
 	      xkey.same_screen = True;
 
@@ -16570,6 +16639,14 @@ x_free_frame_resources (struct frame *f)
 
       XFlush (FRAME_X_DISPLAY (f));
     }
+
+#ifdef HAVE_GTK3
+  if (FRAME_OUTPUT_DATA (f)->scrollbar_background_css_provider)
+    g_object_unref (FRAME_OUTPUT_DATA (f)->scrollbar_background_css_provider);
+
+  if (FRAME_OUTPUT_DATA (f)->scrollbar_foreground_css_provider)
+    g_object_unref (FRAME_OUTPUT_DATA (f)->scrollbar_foreground_css_provider);
+#endif
 
   xfree (f->output_data.x->saved_menu_event);
   xfree (f->output_data.x);

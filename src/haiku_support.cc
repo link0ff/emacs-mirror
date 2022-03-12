@@ -1563,6 +1563,9 @@ public:
   float old_value;
   scroll_bar_info info;
 
+  /* True if button events should be passed to the parent.  */
+  bool handle_button = false;
+
   EmacsScrollBar (int x, int y, int x1, int y1, bool horizontal_p) :
     BScrollBar (BRect (x, y, x1, y1), NULL, NULL, 0, 0, horizontal_p ?
 		B_HORIZONTAL : B_VERTICAL)
@@ -1571,16 +1574,30 @@ public:
     vw->SetResizingMode (B_FOLLOW_NONE);
     horizontal = horizontal_p;
     get_scroll_bar_info (&info);
+    SetSteps (5000, 10000);
   }
 
   void
   MessageReceived (BMessage *msg)
   {
+    int32 portion, range;
+    float proportion;
+
     if (msg->what == SCROLL_BAR_UPDATE)
       {
 	old_value = msg->GetInt32 ("emacs:units", 0);
-	this->SetRange (0, msg->GetInt32 ("emacs:range", 0));
-	this->SetValue (msg->GetInt32 ("emacs:units", 0));
+	portion = msg->GetInt32 ("emacs:portion", 0);
+	range = msg->GetInt32 ("emacs:range", 0);
+	proportion = (float) portion / range;
+
+	if (!msg->GetBool ("emacs:dragging", false))
+	  {
+	    /* Unlike on Motif, PORTION isn't included in the total
+	       range of the scroll bar.  */
+	    this->SetRange (0, range - portion);
+	    this->SetValue (old_value);
+	    this->SetProportion (proportion);
+	  }
       }
 
     BScrollBar::MessageReceived (msg);
@@ -1612,11 +1629,15 @@ public:
 	return;
       }
 
-    rq.scroll_bar = this;
-    rq.window = Window ();
-    rq.position = new_value;
+    if (new_value != old_value)
+      {
+	rq.scroll_bar = this;
+	rq.window = Window ();
+	rq.position = new_value;
+	old_value = new_value;
 
-    haiku_write (SCROLL_BAR_VALUE_EVENT, &rq);
+	haiku_write (SCROLL_BAR_VALUE_EVENT, &rq);
+      }
   }
 
   BRegion
@@ -1685,9 +1706,11 @@ public:
     BRegion r;
     BLooper *looper;
     BMessage *message;
-    int32 buttons;
+    int32 buttons, mods;
+    BView *parent;
 
     looper = Looper ();
+    message = NULL;
 
     if (!looper)
       GetMouse (&pt, (uint32 *) &buttons, false);
@@ -1697,6 +1720,18 @@ public:
 
 	if (!message || message->FindInt32 ("buttons", &buttons) != B_OK)
 	  GetMouse (&pt, (uint32 *) &buttons, false);
+      }
+
+    if (message && (message->FindInt32 ("modifiers", &mods)
+		    == B_OK)
+	&& mods & B_CONTROL_KEY)
+      {
+	/* Allow C-mouse-3 to split the window on a scroll bar.   */
+	handle_button = true;
+	parent = Parent ();
+	parent->MouseDown (ConvertToParent (pt));
+
+	return;
       }
 
     if (buttons == B_PRIMARY_MOUSE_BUTTON)
@@ -1744,6 +1779,17 @@ public:
   MouseUp (BPoint pt)
   {
     struct haiku_scroll_bar_drag_event rq;
+    BView *parent;
+
+    if (handle_button)
+      {
+	handle_button = false;
+	parent = Parent ();
+	parent->MouseUp (ConvertToParent (pt));
+
+	return;
+      }
+
     rq.dragging_p = 0;
     rq.scroll_bar = this;
     rq.window = Window ();
@@ -2269,13 +2315,16 @@ BView_move_frame (void *view, int x, int y, int x1, int y1)
 }
 
 void
-BView_scroll_bar_update (void *sb, int portion, int whole, int position)
+BView_scroll_bar_update (void *sb, int portion, int whole, int position,
+			 bool dragging)
 {
   BScrollBar *bar = (BScrollBar *) sb;
   BMessage msg = BMessage (SCROLL_BAR_UPDATE);
   BMessenger mr = BMessenger (bar);
   msg.AddInt32 ("emacs:range", whole);
   msg.AddInt32 ("emacs:units", position);
+  msg.AddInt32 ("emacs:portion", portion);
+  msg.AddBool ("emacs:dragging", dragging);
 
   mr.SendMessage (&msg);
 }
@@ -2758,7 +2807,7 @@ BMenu_run (void *menu, int x, int y,
       next_time = process_pending_signals_function ();
 
       if (next_time.tv_nsec < 0)
-	timeout = 100000;
+	timeout = 10000000000;
       else
 	timeout = (next_time.tv_sec * 1000000
 		   + next_time.tv_nsec / 1000);
@@ -2766,7 +2815,8 @@ BMenu_run (void *menu, int x, int y,
       if ((stat = wait_for_objects_etc ((object_wait_info *) &infos, 3,
 					B_RELATIVE_TIMEOUT, timeout)) < B_OK)
 	{
-	  if (stat == B_INTERRUPTED || stat == B_TIMED_OUT)
+	  if (stat == B_INTERRUPTED || stat == B_TIMED_OUT
+	      || stat == B_WOULD_BLOCK)
 	    continue;
 	  else
 	    gui_abort ("Failed to wait for popup");
