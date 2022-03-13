@@ -1469,17 +1469,19 @@ public:
     this->GetMouse (&point, &buttons, false);
 
     rq.window = this->Window ();
-    rq.btn_no = 0;
 
-    if (!(previous_buttons & B_PRIMARY_MOUSE_BUTTON) &&
-	(buttons & B_PRIMARY_MOUSE_BUTTON))
+    if (!(previous_buttons & B_PRIMARY_MOUSE_BUTTON)
+	&& (buttons & B_PRIMARY_MOUSE_BUTTON))
       rq.btn_no = 0;
-    else if (!(previous_buttons & B_SECONDARY_MOUSE_BUTTON) &&
-	     (buttons & B_SECONDARY_MOUSE_BUTTON))
+    else if (!(previous_buttons & B_SECONDARY_MOUSE_BUTTON)
+	     && (buttons & B_SECONDARY_MOUSE_BUTTON))
       rq.btn_no = 2;
-    else if (!(previous_buttons & B_TERTIARY_MOUSE_BUTTON) &&
-	     (buttons & B_TERTIARY_MOUSE_BUTTON))
+    else if (!(previous_buttons & B_TERTIARY_MOUSE_BUTTON)
+	     && (buttons & B_TERTIARY_MOUSE_BUTTON))
       rq.btn_no = 1;
+    else
+      return;
+
     previous_buttons = buttons;
 
     rq.x = point.x;
@@ -1515,7 +1517,6 @@ public:
     this->GetMouse (&point, &buttons, false);
 
     rq.window = this->Window ();
-    rq.btn_no = 0;
 
     if ((previous_buttons & B_PRIMARY_MOUSE_BUTTON)
 	&& !(buttons & B_PRIMARY_MOUSE_BUTTON))
@@ -1526,6 +1527,9 @@ public:
     else if ((previous_buttons & B_TERTIARY_MOUSE_BUTTON)
 	     && !(buttons & B_TERTIARY_MOUSE_BUTTON))
       rq.btn_no = 1;
+    else
+      return;
+
     previous_buttons = buttons;
 
     rq.x = point.x;
@@ -1569,7 +1573,8 @@ public:
   bool can_overscroll = false;
   BPoint last_overscroll;
   int last_reported_overscroll_value;
-  int max_value;
+  int max_value, real_max_value;
+  int overscroll_start_value;
 
   EmacsScrollBar (int x, int y, int x1, int y1, bool horizontal_p) :
     BScrollBar (BRect (x, y, x1, y1), NULL, NULL, 0, 0, horizontal_p ?
@@ -1593,7 +1598,8 @@ public:
 	portion = msg->GetInt32 ("emacs:portion", 0);
 	range = msg->GetInt32 ("emacs:range", 0);
 	dragging = msg->GetInt32 ("emacs:dragging", 0);
-	proportion = (float) portion / range;
+	proportion = ((range <= 0 || portion <= 0)
+		      ? 1.0f : (float) portion / range);
 	value = msg->GetInt32 ("emacs:units", 0);
 	can_overscroll = msg->GetBool ("emacs:overscroll", false);
 
@@ -1616,6 +1622,7 @@ public:
 		SetRange (0, range - portion);
 		SetProportion (proportion);
 		max_value = range - portion;
+		real_max_value = range;
 
 		if (in_overscroll || value > max_value)
 		  value = max_value;
@@ -1634,6 +1641,7 @@ public:
 		old_value = value;
 		SetValue (value);
 		max_value = range - portion;
+		real_max_value = range;
 	      }
 	  }
       }
@@ -1809,6 +1817,9 @@ public:
     rq.window = Window ();
     rq.scroll_bar = this;
 
+    SetMouseEventMask (B_POINTER_EVENTS, (B_SUSPEND_VIEW_FOCUS
+					  | B_LOCK_WINDOW_FOCUS));
+
     haiku_write (SCROLL_BAR_DRAG_EVENT, &rq);
 
   out:
@@ -1879,21 +1890,20 @@ public:
 	    goto allow;
 	  }
 
-	range = max_value;
+	range = real_max_value;
 	bounds = Bounds ();
 	bounds.InsetBy (1.0, 1.0);
-	value = Value ();
+	value = overscroll_start_value;
 	trough_size = BE_RECT_HEIGHT (bounds);
 	trough_size -= BE_RECT_WIDTH (bounds) / 2;
 	if (info.double_arrows)
 	  trough_size -= BE_RECT_WIDTH (bounds) / 2;
 
-	value += ((double) range / trough_size) * diff * 2;
+	value += ((double) range / trough_size) * diff;
 
 	if (value != last_reported_overscroll_value)
 	  {
 	    last_reported_overscroll_value = value;
-	    last_overscroll = point;
 
 	    value_event.scroll_bar = this;
 	    value_event.window = Window ();
@@ -1911,8 +1921,9 @@ public:
 	  {
 	    BScrollBar::MouseMoved (point, transit, msg);
 
-	    if (value == Value () && Proportion () < 1.0f)
+	    if (value == Value ())
 	      {
+		overscroll_start_value = value;
 		in_overscroll = true;
 		last_overscroll = point;
 		last_reported_overscroll_value = value;
