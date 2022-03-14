@@ -699,6 +699,11 @@ displayed as emojis.  Default nil.
 This is bound to 'W D e' and will display symbols that have emoji
 representation as emojis.
 
++++
+*** New command 'gnus-summary-browse-all-urls'.
+This is for the rare cases when you want to open _all_ the URLs in the
+article, and is bound to "v".
+
 ** EIEIO
 
 +++
@@ -1080,6 +1085,22 @@ Emacs buffers, like indentation and the like.  The new ert function
 ** The return value of 'clear-message-function' is not ignored now.
 If the function returns t, then the message is not cleared,
 with an assumption that the function cleared it itself.
+
+---
+** 'prin1' doesn't always escape "." and "?" in symbols any more.
+Previously, symbols like 'foo.bar' would be printed by 'prin1' as
+"foo\.bar".  This now prints as "foo.bar" instead.  The Emacs Lisp
+reader interprets these strings as referring to the same symbol, so
+this is virtually always backwards-compatible, but there may
+theoretically be code out there that expects a specific printed
+representation.
+
+The same is the case with the "?" character: The 'foo?' symbol is now
+printed as "foo?" instead of "foo\?".
+
+If the "." and "?" characters are the first character in the symbol,
+they will still be escaped, so the '.foo' symbol is still printed as
+"\.foo" and the '?bar' symbol is still printed as "\?bar".
 
 +++
 ** Remapping 'mode-line' no longer works as expected.
