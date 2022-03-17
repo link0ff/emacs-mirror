@@ -3546,7 +3546,7 @@ struct handler
   sys_jmp_buf jmp;
   EMACS_INT f_lisp_eval_depth;
   specpdl_ref pdlcount;
-  Lisp_Object *act_rec;
+  struct bc_frame *act_rec;
   int poll_suppress_count;
   int interrupt_input_blocked;
 };
@@ -4861,14 +4861,14 @@ extern void init_bc_thread (struct bc_thread_state *bc);
 extern void free_bc_thread (struct bc_thread_state *bc);
 extern void mark_bytecode (struct bc_thread_state *bc);
 
-INLINE Lisp_Object *
+INLINE struct bc_frame *
 get_act_rec (struct thread_state *th)
 {
   return th->bc.fp;
 }
 
 INLINE void
-set_act_rec (struct thread_state *th, Lisp_Object *act_rec)
+set_act_rec (struct thread_state *th, struct bc_frame *act_rec)
 {
   th->bc.fp = act_rec;
 }
@@ -4926,6 +4926,7 @@ extern void child_setup_tty (int);
 extern void setup_pty (int);
 extern int set_window_size (int, int, int);
 extern EMACS_INT get_random (void);
+extern unsigned long int get_random_ulong (void);
 extern void seed_random (void *, ptrdiff_t);
 extern void init_random (void);
 extern void emacs_backtrace (int);
