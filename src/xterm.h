@@ -550,7 +550,7 @@ struct x_display_info
     Xatom_net_workarea, Xatom_net_wm_opaque_region, Xatom_net_wm_ping,
     Xatom_net_wm_sync_request, Xatom_net_wm_sync_request_counter,
     Xatom_net_wm_frame_drawn, Xatom_net_wm_user_time,
-    Xatom_net_wm_user_time_window;
+    Xatom_net_wm_user_time_window, Xatom_net_client_list_stacking;
 
   /* XSettings atoms and windows.  */
   Atom Xatom_xsettings_sel, Xatom_xsettings_prop, Xatom_xsettings_mgr;
@@ -1361,8 +1361,6 @@ extern Lisp_Object x_cr_export_frames (Lisp_Object, cairo_surface_type_t);
 #endif
 
 #ifdef HAVE_XRENDER
-extern void x_xrender_color_from_gc_foreground (struct frame *, GC,
-						XRenderColor *, bool);
 extern void x_xrender_color_from_gc_background (struct frame *, GC,
 						XRenderColor *, bool);
 extern void x_xr_ensure_picture (struct frame *f);
@@ -1373,8 +1371,6 @@ extern void x_xr_reset_ext_clip (struct frame *f);
 #ifdef HAVE_GTK3
 extern void x_scroll_bar_configure (GdkEvent *);
 #endif
-
-extern void x_display_set_last_user_time (struct x_display_info *, Time);
 
 extern Lisp_Object x_dnd_begin_drag_and_drop (struct frame *, Time, Atom,
 					      bool);
