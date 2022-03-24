@@ -422,6 +422,10 @@ public:
 			    B_NORMAL_WINDOW_FEEL, B_NO_SERVER_SIDE_WINDOW_MODIFIERS)
   {
     window_id = current_window_id++;
+
+    /* This pulse rate is used by scroll bars for repeating a button
+       action while a button is held down.  */
+    SetPulseRate (30000);
   }
 
   ~EmacsWindow ()
@@ -1766,10 +1770,35 @@ public:
   }
 
   void
+  Pulse (void)
+  {
+    struct haiku_scroll_bar_part_event rq;
+    BPoint point;
+    uint32 buttons;
+
+    if (!dragging)
+      {
+	SetFlags (Flags () & ~B_PULSE_NEEDED);
+	return;
+      }
+
+    GetMouse (&point, &buttons, false);
+
+    if (ButtonRegionFor (current_part).Contains (point))
+      {
+	rq.scroll_bar = this;
+	rq.window = Window ();
+	rq.part = current_part;
+	haiku_write (SCROLL_BAR_PART_EVENT, &rq);
+      }
+
+    BScrollBar::Pulse ();
+  }
+
+  void
   ValueChanged (float new_value)
   {
     struct haiku_scroll_bar_value_event rq;
-    struct haiku_scroll_bar_part_event part;
 
     new_value = Value ();
 
@@ -1780,11 +1809,7 @@ public:
 	    if (dragging > 1)
 	      {
 		SetValue (old_value);
-
-		part.scroll_bar = this;
-		part.window = Window ();
-		part.part = current_part;
-		haiku_write (SCROLL_BAR_PART_EVENT, &part);
+		SetFlags (Flags () | B_PULSE_NEEDED);
 	      }
 	    else
 	      dragging++;
@@ -1924,6 +1949,12 @@ public:
 	    dragging = 1;
 	    current_part = HAIKU_SCROLL_BAR_DOWN_BUTTON;
 
+	    if (Value () == max_value)
+	      {
+		SetFlags (Flags () | B_PULSE_NEEDED);
+		dragging = 2;
+	      }
+
 	    haiku_write (SCROLL_BAR_PART_EVENT, &part);
 	    goto out;
 	  }
@@ -1967,7 +1998,7 @@ public:
     rq.window = Window ();
 
     haiku_write (SCROLL_BAR_DRAG_EVENT, &rq);
-    dragging = false;
+    dragging = 0;
 
     BScrollBar::MouseUp (pt);
   }
@@ -3395,6 +3426,8 @@ void
 be_get_version_string (char *version, int len)
 {
   std::strncpy (version, "Unknown Haiku release", len - 1);
+  version[len - 1] = '\0';
+
   BPath path;
   if (find_directory (B_BEOS_LIB_DIRECTORY, &path) == B_OK)
     {
@@ -3408,7 +3441,10 @@ be_get_version_string (char *version, int len)
           && appFileInfo.GetVersionInfo (&versionInfo,
                                          B_APP_VERSION_KIND) == B_OK
           && versionInfo.short_info[0] != '\0')
-	std::strncpy (version, versionInfo.short_info, len - 1);
+	{
+	  std::strncpy (version, versionInfo.short_info, len - 1);
+	  version[len - 1] = '\0';
+	}
     }
 }
 

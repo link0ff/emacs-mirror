@@ -83,6 +83,18 @@ input of sequences such as 'C-;' and 'C-S-u'.
 Instead, they're fetched as needed from the corresponding ".elc" file,
 as was already the case for all the non-preloaded files.
 
+** Emacs Sessions (Desktop)
+
++++
+*** New option to load a locked desktop if locking Emacs is not running.
+The option 'desktop-load-locked-desktop' can now be set to the value
+'check-pid', which means to allow loading a locked ".emacs.desktop"
+file if the Emacs process which locked it is no longer running on the
+local machine.  This allows to avoid asking questions about locked
+desktop files when the Emacs session which locked it crashes or was
+otherwise interrupted and didn't exit gracefully.  See the "(emacs)
+Saving Emacs Sessions" node in the Emacs manual for more details.
+
 
 * Startup Changes in Emacs 29.1
 
@@ -575,8 +587,10 @@ value.
 
 *** The "*Completions*" buffer can now be automatically selected.
 To enable this behavior, customize the user option
-'completion-auto-select' to t.  Then pressing 'TAB' will switch to the
-"*Completions*" buffer when it pops up that buffer.
+'completion-auto-select' to t and pressing 'TAB' will switch to the
+"*Completions*" buffer when it pops up that buffer. If the value is
+'second-tab', then the first tab will display "*Completions*" and the
+second one will switch to the "*Completions*" buffer.
 
 *** New user option 'completion-wrap-movement'.
 When non-nil, the commands 'next-completion' and 'previous-completion'
@@ -1197,6 +1211,7 @@ a weight of 'normal' and the font doesn't have this weight, Emacs
 won't find the font spec.  In these cases, replacing ":weight 'normal"
 with ":weight 'medium" should fix the issue.
 
+---
 ** Keymap descriptions have changed.
 'help--describe-command', 'C-h b' and associated functions that output
 keymap descriptions have changed.  In particular, prefix commands are
@@ -1263,6 +1278,7 @@ Use 'exif-parse-file' and 'exif-field' instead.
 ** 'insert-directory' alternatives should not change the free disk space line.
 This change is now applied in 'dired-insert-directory'.
 
+---
 ** Some functions and variables obsolete since Emacs 23 have been removed:
 'find-emacs-lisp-shadows', 'newsticker-cache-filename',
 'unify-8859-on-decoding-mode', 'unify-8859-on-encoding-mode',
@@ -1583,6 +1599,7 @@ values passed as a single token, such as '-oVALUE' or '--option=VALUE'.
 
 ** XDG support
 
+---
 *** New function 'xdg-state-home' returns 'XDG_STATE_HOME' environment variable.
 This new location, introduced in the XDG Base Directory Specification
 version 0.8 (8th May 2021), "contains state data that should persist
@@ -1745,6 +1762,7 @@ that should be displayed, and the xwidget that asked to display it.
 This function is used to control where and if an xwidget stores
 cookies set by web pages on disk.
 
+---
 ** New variable 'help-buffer-under-preparation'.
 This variable is bound to t during the preparation of a "*Help*" buffer.
 
