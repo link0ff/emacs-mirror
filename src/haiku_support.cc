@@ -725,17 +725,16 @@ public:
 	    && windowid == this->window_id)
 	  return;
 
-	if (msg->FindPoint ("_drop_point_", &whereto) == B_OK)
-	  {
-	    this->ConvertFromScreen (&whereto);
+	whereto = msg->DropPoint ();
 
-	    rq.window = this;
-	    rq.message = DetachCurrentMessage ();
-	    rq.x = whereto.x;
-	    rq.y = whereto.y;
+	this->ConvertFromScreen (&whereto);
 
-	    haiku_write (DRAG_AND_DROP_EVENT, &rq);
-	  }
+	rq.window = this;
+	rq.message = DetachCurrentMessage ();
+	rq.x = whereto.x;
+	rq.y = whereto.y;
+
+	haiku_write (DRAG_AND_DROP_EVENT, &rq);
       }
     else if (msg->GetPointer ("menuptr"))
       {
@@ -4068,7 +4067,7 @@ be_drag_message_thread_entry (void *thread_data)
 }
 
 bool
-be_drag_message (void *view, void *message,
+be_drag_message (void *view, void *message, bool allow_same_view,
 		 void (*block_input_function) (void),
 		 void (*unblock_input_function) (void),
 		 void (*process_pending_signals_function) (void),
@@ -4083,7 +4082,12 @@ be_drag_message (void *view, void *message,
   ssize_t stat;
 
   block_input_function ();
-  msg->AddInt32 ("emacs:window_id", window->window_id);
+
+  if (!allow_same_view &&
+      (msg->ReplaceInt32 ("emacs:window_id", window->window_id)
+       == B_NAME_NOT_FOUND))
+    msg->AddInt32 ("emacs:window_id", window->window_id);
+
   if (!vw->LockLooper ())
     gui_abort ("Failed to lock view looper for drag");
 

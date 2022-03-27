@@ -550,6 +550,10 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <X11/extensions/shape.h>
 #endif
 
+#ifdef HAVE_XCB_SHAPE
+#include <xcb/shape.h>
+#endif
+
 /* Load sys/types.h if not already loaded.
    In some systems loading it twice is suicidal.  */
 #ifndef makedev
@@ -656,6 +660,12 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 bool use_xim = true;
 #else
 bool use_xim = false;  /* configure --without-xim */
+#endif
+
+#if XCB_SHAPE_MAJOR_VERSION > 1	      \
+  || (XCB_SHAPE_MAJOR_VERSION == 1 && \
+      XCB_SHAPE_MINOR_VERSION >= 1)
+#define HAVE_XCB_SHAPE_INPUT_RECTS
 #endif
 
 #ifdef USE_GTK
@@ -799,6 +809,7 @@ static bool x_dnd_in_progress;
 static bool x_dnd_waiting_for_finish;
 static Window x_dnd_pending_finish_target;
 static int x_dnd_waiting_for_finish_proto;
+static bool x_dnd_allow_current_frame;
 
 /* Whether or not to return a frame from `x_dnd_begin_drag_and_drop'.
 
@@ -886,14 +897,46 @@ static int
 x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 {
   Atom type;
-  Window *toplevels, child;
-  int format, rc, dest_x, dest_y;
-  unsigned long nitems, wmstate_items, bytes_after, *wmstate;
-  unsigned char *data = NULL, *wmstate_data = NULL;
+  Window *toplevels;
+  int format, rc;
+  unsigned long nitems, bytes_after;
   unsigned long i;
+  unsigned char *data = NULL;
+
+#ifndef USE_XCB
+  int dest_x, dest_y;
+  unsigned long *wmstate;
+  unsigned long wmstate_items;
+  unsigned char *wmstate_data = NULL;
   XWindowAttributes attrs;
+  Window child;
+#else
+  uint32_t *wmstate;
+  xcb_get_window_attributes_cookie_t *window_attribute_cookies;
+  xcb_translate_coordinates_cookie_t *translate_coordinate_cookies;
+  xcb_get_property_cookie_t *get_property_cookies;
+  xcb_get_geometry_cookie_t *get_geometry_cookies;
+  xcb_get_window_attributes_reply_t attrs, *attrs_reply;
+  xcb_translate_coordinates_reply_t *coordinates_reply;
+  xcb_get_property_reply_t *property_reply;
+  xcb_get_geometry_reply_t *geometry_reply;
+  xcb_generic_error_t *error;
+#endif
+
+#ifdef HAVE_XCB_SHAPE
+  xcb_shape_get_rectangles_cookie_t *bounding_rect_cookies;
+  xcb_shape_get_rectangles_reply_t *bounding_rect_reply;
+  xcb_rectangle_iterator_t bounding_rect_iterator;
+#endif
+
+#ifdef HAVE_XCB_SHAPE_INPUT_RECTS
+  xcb_shape_get_rectangles_cookie_t *input_rect_cookies;
+  xcb_shape_get_rectangles_reply_t *input_rect_reply;
+  xcb_rectangle_iterator_t input_rect_iterator;
+#endif
+
   struct x_client_list_window *tem;
-#ifdef HAVE_XSHAPE
+#if defined HAVE_XSHAPE && !defined HAVE_XCB_SHAPE_INPUT_RECTS
   int count, ordering;
   XRectangle *rects;
 #endif
@@ -914,10 +957,67 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 
   toplevels = (Window *) data;
 
+#ifdef USE_XCB
+  window_attribute_cookies
+    = alloca (sizeof *window_attribute_cookies * nitems);
+  translate_coordinate_cookies
+    = alloca (sizeof *translate_coordinate_cookies * nitems);
+  get_property_cookies
+    = alloca (sizeof *get_property_cookies * nitems);
+  get_geometry_cookies
+    = alloca (sizeof *get_geometry_cookies * nitems);
+
+#ifdef HAVE_XCB_SHAPE
+  bounding_rect_cookies
+    = alloca (sizeof *bounding_rect_cookies * nitems);
+#endif
+
+#ifdef HAVE_XCB_SHAPE_INPUT_RECTS
+  input_rect_cookies
+    = alloca (sizeof *input_rect_cookies * nitems);
+#endif
+
+  for (i = 0; i < nitems; ++i)
+    {
+      window_attribute_cookies[i]
+	= xcb_get_window_attributes (dpyinfo->xcb_connection,
+				     (xcb_window_t) toplevels[i]);
+      translate_coordinate_cookies[i]
+	= xcb_translate_coordinates (dpyinfo->xcb_connection,
+				     (xcb_window_t) toplevels[i],
+				     (xcb_window_t) dpyinfo->root_window,
+				     0, 0);
+      get_property_cookies[i]
+	= xcb_get_property (dpyinfo->xcb_connection, 0, (xcb_window_t) toplevels[i],
+			    (xcb_atom_t) dpyinfo->Xatom_wm_state, XCB_ATOM_ANY,
+			    0, 2);
+      get_geometry_cookies[i]
+	= xcb_get_geometry (dpyinfo->xcb_connection, (xcb_window_t) toplevels[i]);
+
+#ifdef HAVE_XCB_SHAPE
+      bounding_rect_cookies[i]
+	= xcb_shape_get_rectangles (dpyinfo->xcb_connection,
+				    (xcb_window_t) toplevels[i],
+				    XCB_SHAPE_SK_BOUNDING);
+#endif
+
+#ifdef HAVE_XCB_SHAPE_INPUT_RECTS
+      if (dpyinfo->xshape_major > 1
+	  || (dpyinfo->xshape_major == 1
+	      && dpyinfo->xshape_minor >= 1))
+	input_rect_cookies[i]
+	  = xcb_shape_get_rectangles (dpyinfo->xcb_connection,
+				      (xcb_window_t) toplevels[i],
+				      XCB_SHAPE_SK_INPUT);
+#endif
+    }
+#endif
+
   /* Actually right because _NET_CLIENT_LIST_STACKING has bottom-up
      order.  */
   for (i = 0; i < nitems; ++i)
     {
+#ifndef USE_XCB
       x_catch_errors (dpyinfo->display);
       rc = (XGetWindowAttributes (dpyinfo->display,
 				  toplevels[i], &attrs)
@@ -940,27 +1040,99 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 	      && !x_had_errors_p (dpyinfo->display)
 	      && wmstate_data && wmstate_items == 2 && format == 32);
       x_uncatch_errors_after_check ();
+#else
+      rc = true;
+
+      attrs_reply
+	= xcb_get_window_attributes_reply (dpyinfo->xcb_connection,
+					   window_attribute_cookies[i],
+					   &error);
+
+      if (!attrs_reply)
+	{
+	  rc = false;
+	  free (error);
+	}
+
+      coordinates_reply
+	= xcb_translate_coordinates_reply (dpyinfo->xcb_connection,
+					   translate_coordinate_cookies[i],
+					   &error);
+
+      if (!coordinates_reply)
+	{
+	  rc = false;
+	  free (error);
+	}
+
+      property_reply = xcb_get_property_reply (dpyinfo->xcb_connection,
+					       get_property_cookies[i],
+					       &error);
+
+      if (!property_reply)
+	{
+	  rc = false;
+	  free (error);
+	}
+
+      if (property_reply
+	  && (xcb_get_property_value_length (property_reply) != 8
+	      || property_reply->format != 32))
+	rc = false;
+
+      geometry_reply = xcb_get_geometry_reply (dpyinfo->xcb_connection,
+					       get_geometry_cookies[i],
+					       &error);
+
+      if (!geometry_reply)
+	{
+	  rc = false;
+	  free (error);
+	}
+#endif
 
       if (rc)
 	{
+#ifdef USE_XCB
+	  wmstate = (uint32_t *) xcb_get_property_value (property_reply);
+	  attrs = *attrs_reply;
+#else
 	  wmstate = (unsigned long *) wmstate_data;
+#endif
 
 	  tem = xmalloc (sizeof *tem);
 	  tem->window = toplevels[i];
 	  tem->dpy = dpyinfo->display;
+#ifndef USE_XCB
 	  tem->x = dest_x;
 	  tem->y = dest_y;
 	  tem->width = attrs.width + attrs.border_width;
 	  tem->height = attrs.height + attrs.border_width;
+#else
+	  tem->x = (coordinates_reply->dst_x
+		    - geometry_reply->border_width);
+	  tem->y = (coordinates_reply->dst_y
+		    - geometry_reply->border_width);
+	  tem->width = (geometry_reply->width
+			+ geometry_reply->border_width);
+	  tem->height = (geometry_reply->height
+			 + geometry_reply->border_width);
+#endif
 	  tem->mapped_p = (attrs.map_state != IsUnmapped);
 	  tem->next = x_dnd_toplevels;
 	  tem->previous_event_mask = attrs.your_event_mask;
 	  tem->wm_state = wmstate[0];
 
+#ifndef USE_XCB
 	  XFree (wmstate_data);
+#endif
 
 #ifdef HAVE_XSHAPE
+#ifndef USE_XCB
 	  tem->border_width = attrs.border_width;
+#else
+	  tem->border_width = geometry_reply->border_width;
+#endif
 	  tem->n_bounding_rects = -1;
 	  tem->n_input_rects = -1;
 
@@ -972,6 +1144,7 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 				 ShapeNotifyMask);
 	      x_uncatch_errors ();
 
+#ifndef HAVE_XCB_SHAPE
 	      x_catch_errors (dpyinfo->display);
 	      rects = XShapeGetRectangles (dpyinfo->display,
 					   toplevels[i],
@@ -992,7 +1165,78 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 
 		  XFree (rects);
 		}
+#else
+	      bounding_rect_reply = xcb_shape_get_rectangles_reply (dpyinfo->xcb_connection,
+								    bounding_rect_cookies[i],
+								    &error);
 
+	      if (bounding_rect_reply)
+		{
+		  bounding_rect_iterator
+		    = xcb_shape_get_rectangles_rectangles_iterator (bounding_rect_reply);
+		  tem->n_bounding_rects = bounding_rect_iterator.rem + 1;
+		  tem->bounding_rects = xmalloc (tem->n_bounding_rects
+						 * sizeof *tem->bounding_rects);
+		  tem->n_bounding_rects = 0;
+
+		  for (; bounding_rect_iterator.rem; xcb_rectangle_next (&bounding_rect_iterator))
+		    {
+		      tem->bounding_rects[tem->n_bounding_rects].x
+			= bounding_rect_iterator.data->x;
+		      tem->bounding_rects[tem->n_bounding_rects].y
+			= bounding_rect_iterator.data->y;
+		      tem->bounding_rects[tem->n_bounding_rects].width
+			= bounding_rect_iterator.data->width;
+		      tem->bounding_rects[tem->n_bounding_rects].height
+			= bounding_rect_iterator.data->height;
+
+		      tem->n_bounding_rects++;
+		    }
+
+		  free (bounding_rect_reply);
+		}
+	      else
+		free (error);
+#endif
+
+#ifdef HAVE_XCB_SHAPE_INPUT_RECTS
+	      if (dpyinfo->xshape_major > 1
+		  || (dpyinfo->xshape_major == 1
+		      && dpyinfo->xshape_minor >= 1))
+		{
+		  input_rect_reply = xcb_shape_get_rectangles_reply (dpyinfo->xcb_connection,
+								     input_rect_cookies[i],
+								     &error);
+
+		  if (input_rect_reply)
+		    {
+		      input_rect_iterator
+			= xcb_shape_get_rectangles_rectangles_iterator (input_rect_reply);
+		      tem->n_input_rects = input_rect_iterator.rem + 1;
+		      tem->input_rects = xmalloc (tem->n_input_rects
+						  * sizeof *tem->input_rects);
+		      tem->n_input_rects = 0;
+
+		      for (; input_rect_iterator.rem; xcb_rectangle_next (&input_rect_iterator))
+			{
+			  tem->input_rects[tem->n_input_rects].x
+			    = input_rect_iterator.data->x;
+			  tem->input_rects[tem->n_input_rects].y
+			    = input_rect_iterator.data->y;
+			  tem->input_rects[tem->n_input_rects].width
+			    = input_rect_iterator.data->width;
+			  tem->input_rects[tem->n_input_rects].height
+			    = input_rect_iterator.data->height;
+
+			  tem->n_input_rects++;
+			}
+
+		      free (input_rect_reply);
+		    }
+		  else
+		    free (error);
+		}
+#else
 #ifdef ShapeInput
 	      if (dpyinfo->xshape_major > 1
 		  || (dpyinfo->xshape_major == 1
@@ -1019,6 +1263,7 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 		    }
 		}
 #endif
+#endif
 	    }
 
 	  /* Handle the common case where the input shape equals the
@@ -1043,6 +1288,53 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 
 	  x_dnd_toplevels = tem;
 	}
+      else
+	{
+#ifdef HAVE_XCB_SHAPE
+	  if (dpyinfo->xshape_supported_p)
+	    {
+	      bounding_rect_reply = xcb_shape_get_rectangles_reply (dpyinfo->xcb_connection,
+								    bounding_rect_cookies[i],
+								    &error);
+
+	      if (bounding_rect_reply)
+		free (bounding_rect_reply);
+	      else
+		free (error);
+	    }
+#endif
+
+#ifdef HAVE_XCB_SHAPE_INPUT_RECTS
+	  if (dpyinfo->xshape_supported_p
+	      && (dpyinfo->xshape_major > 1
+		  || (dpyinfo->xshape_major == 1
+		      && dpyinfo->xshape_minor >= 1)))
+	    {
+	      input_rect_reply = xcb_shape_get_rectangles_reply (dpyinfo->xcb_connection,
+								    input_rect_cookies[i],
+								    &error);
+
+	      if (input_rect_reply)
+		free (input_rect_reply);
+	      else
+		free (error);
+	    }
+#endif
+	}
+
+#ifdef USE_XCB
+      if (attrs_reply)
+	free (attrs_reply);
+
+      if (coordinates_reply)
+	free (coordinates_reply);
+
+      if (property_reply)
+	free (property_reply);
+
+      if (geometry_reply)
+	free (geometry_reply);
+#endif
     }
 
   return 0;
@@ -1368,7 +1660,8 @@ x_dnd_get_window_proto (struct x_display_info *dpyinfo, Window wdesc)
   unsigned long n, left;
   bool had_errors;
 
-  if (wdesc == None || wdesc == FRAME_OUTER_WINDOW (x_dnd_frame))
+  if (wdesc == None || (!x_dnd_allow_current_frame
+			&& wdesc == FRAME_OUTER_WINDOW (x_dnd_frame)))
     return -1;
 
   x_catch_errors (dpyinfo->display);
@@ -1393,6 +1686,9 @@ x_dnd_send_enter (struct frame *f, Window target, int supported)
   struct x_display_info *dpyinfo = FRAME_DISPLAY_INFO (f);
   int i;
   XEvent msg;
+
+  if (x_top_window_to_frame (dpyinfo, target))
+    return;
 
   msg.xclient.type = ClientMessage;
   msg.xclient.message_type = dpyinfo->Xatom_XdndEnter;
@@ -1441,6 +1737,9 @@ x_dnd_send_position (struct frame *f, Window target, int supported,
 	return;
     }
 
+  if (x_top_window_to_frame (dpyinfo, target))
+    return;
+
   msg.xclient.type = ClientMessage;
   msg.xclient.message_type = dpyinfo->Xatom_XdndPosition;
   msg.xclient.format = 32;
@@ -1468,6 +1767,9 @@ x_dnd_send_leave (struct frame *f, Window target)
   struct x_display_info *dpyinfo = FRAME_DISPLAY_INFO (f);
   XEvent msg;
 
+  if (x_top_window_to_frame (dpyinfo, target))
+    return;
+
   msg.xclient.type = ClientMessage;
   msg.xclient.message_type = dpyinfo->Xatom_XdndLeave;
   msg.xclient.format = 32;
@@ -1489,6 +1791,62 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 {
   struct x_display_info *dpyinfo = FRAME_DISPLAY_INFO (f);
   XEvent msg;
+  struct input_event ie;
+  struct frame *self_frame;
+  int root_x, root_y, win_x, win_y, i;
+  unsigned int mask;
+  Window root, child;
+  Lisp_Object lval;
+  char **atom_names;
+  char *name;
+
+  self_frame = x_top_window_to_frame (dpyinfo, target);
+
+  if (self_frame)
+    {
+      /* Send a special drag-and-drop event when dropping on top of an
+	 Emacs frame to avoid all the overhead involved with sending
+	 client events.  */
+      EVENT_INIT (ie);
+
+      if (XQueryPointer (dpyinfo->display, FRAME_X_WINDOW (self_frame),
+			 &root, &child, &root_x, &root_y, &win_x, &win_y,
+			 &mask))
+	{
+	  ie.kind = DRAG_N_DROP_EVENT;
+	  XSETFRAME (ie.frame_or_window, self_frame);
+
+	  lval = Qnil;
+	  atom_names = alloca (x_dnd_n_targets * sizeof *atom_names);
+	  name = XGetAtomName (dpyinfo->display, x_dnd_wanted_action);
+
+	  if (!XGetAtomNames (dpyinfo->display, x_dnd_targets,
+			      x_dnd_n_targets, atom_names))
+	    {
+	      XFree (name);
+	      return;
+	    }
+
+	  for (i = x_dnd_n_targets; i != 0; --i)
+	    {
+	      lval = Fcons (intern (atom_names[i - 1]), lval);
+	      XFree (atom_names[i - 1]);
+	    }
+
+	  lval = Fcons (intern (name), lval);
+	  lval = Fcons (QXdndSelection, lval);
+	  ie.arg = lval;
+	  ie.timestamp = CurrentTime;
+
+	  XSETINT (ie.x, win_x);
+	  XSETINT (ie.y, win_y);
+
+	  XFree (name);
+	  kbd_buffer_store_event (&ie);
+
+	  return;
+	}
+    }
 
   msg.xclient.type = ClientMessage;
   msg.xclient.message_type = dpyinfo->Xatom_XdndDrop;
@@ -7299,7 +7657,12 @@ x_top_window_to_frame (struct x_display_info *dpyinfo, int wdesc)
 #else /* !USE_X_TOOLKIT && !USE_GTK */
 
 #define x_any_window_to_frame(d, i) x_window_to_frame (d, i)
-#define x_top_window_to_frame(d, i) x_window_to_frame (d, i)
+
+struct frame *
+x_top_window_to_frame (struct x_display_info *dpyinfo, int wdesc)
+{
+  return x_window_to_frame (dpyinfo, wdesc);
+}
 
 #endif /* USE_X_TOOLKIT || USE_GTK */
 
@@ -7310,7 +7673,7 @@ Lisp_Object
 x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			   bool return_frame_p, Atom *ask_action_list,
 			   const char **ask_action_names,
-			   size_t n_ask_actions)
+			   size_t n_ask_actions, bool allow_current_frame)
 {
 #ifndef USE_GTK
   XEvent next_event;
@@ -7394,7 +7757,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 
   x_dnd_in_progress = true;
   x_dnd_frame = f;
-  x_dnd_last_seen_window = FRAME_OUTER_WINDOW (f);
+  x_dnd_last_seen_window = None;
   x_dnd_last_protocol_version = -1;
   x_dnd_mouse_rect_target = None;
   x_dnd_action = None;
@@ -7405,6 +7768,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   x_dnd_use_toplevels
     = x_wm_supports (f, FRAME_DISPLAY_INFO (f)->Xatom_net_client_list_stacking);
   x_dnd_toplevels = NULL;
+  x_dnd_allow_current_frame = allow_current_frame;
 
   if (x_dnd_use_toplevels)
     {
@@ -13079,7 +13443,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  dnd_grab = true;
 	      }
 
-	    if (dnd_grab && event->xbutton.type == ButtonRelease)
+	    if (!dnd_grab && event->xbutton.type == ButtonRelease)
 	      {
 		x_dnd_end_window = x_dnd_last_seen_window;
 		x_dnd_in_progress = false;
@@ -15340,8 +15704,20 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	{
 	  XEvent xevent;
 	  XShapeEvent *xse = (XShapeEvent *) event;
+#if defined HAVE_XCB_SHAPE && defined HAVE_XCB_SHAPE_INPUT_RECTS
+	  xcb_shape_get_rectangles_cookie_t bounding_rect_cookie;
+	  xcb_shape_get_rectangles_reply_t *bounding_rect_reply;
+	  xcb_rectangle_iterator_t bounding_rect_iterator;
+
+	  xcb_shape_get_rectangles_cookie_t input_rect_cookie;
+	  xcb_shape_get_rectangles_reply_t *input_rect_reply;
+	  xcb_rectangle_iterator_t input_rect_iterator;
+
+	  xcb_generic_error_t *error;
+#else
 	  XRectangle *rects;
 	  int rc, ordering;
+#endif
 
 	  while (XPending (dpyinfo->display))
 	    {
@@ -15370,6 +15746,86 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  tem->n_input_rects = -1;
 		  tem->n_bounding_rects = -1;
 
+#if defined HAVE_XCB_SHAPE && defined HAVE_XCB_SHAPE_INPUT_RECTS
+		  bounding_rect_cookie = xcb_shape_get_rectangles (dpyinfo->xcb_connection,
+								   (xcb_window_t) xse->window,
+								   XCB_SHAPE_SK_BOUNDING);
+		  if (dpyinfo->xshape_major > 1
+		      || (dpyinfo->xshape_major == 1
+			  && dpyinfo->xshape_minor >= 1))
+		    input_rect_cookie
+		      = xcb_shape_get_rectangles (dpyinfo->xcb_connection,
+						  (xcb_window_t) xse->window,
+						  XCB_SHAPE_SK_INPUT);
+
+		  bounding_rect_reply = xcb_shape_get_rectangles_reply (dpyinfo->xcb_connection,
+									bounding_rect_cookie,
+									&error);
+
+		  if (bounding_rect_reply)
+		    {
+		      bounding_rect_iterator
+			= xcb_shape_get_rectangles_rectangles_iterator (bounding_rect_reply);
+		      tem->n_bounding_rects = bounding_rect_iterator.rem + 1;
+		      tem->bounding_rects = xmalloc (tem->n_bounding_rects
+						     * sizeof *tem->bounding_rects);
+		      tem->n_bounding_rects = 0;
+
+		      for (; bounding_rect_iterator.rem; xcb_rectangle_next (&bounding_rect_iterator))
+			{
+			  tem->bounding_rects[tem->n_bounding_rects].x
+			    = bounding_rect_iterator.data->x;
+			  tem->bounding_rects[tem->n_bounding_rects].y
+			    = bounding_rect_iterator.data->y;
+			  tem->bounding_rects[tem->n_bounding_rects].width
+			    = bounding_rect_iterator.data->width;
+			  tem->bounding_rects[tem->n_bounding_rects].height
+			    = bounding_rect_iterator.data->height;
+
+			  tem->n_bounding_rects++;
+			}
+
+		      free (bounding_rect_reply);
+		    }
+		  else
+		    free (error);
+
+		  if (dpyinfo->xshape_major > 1
+		      || (dpyinfo->xshape_major == 1
+			  && dpyinfo->xshape_minor >= 1))
+		    {
+		      input_rect_reply = xcb_shape_get_rectangles_reply (dpyinfo->xcb_connection,
+									 input_rect_cookie, &error);
+
+		      if (input_rect_reply)
+			{
+			  input_rect_iterator
+			    = xcb_shape_get_rectangles_rectangles_iterator (input_rect_reply);
+			  tem->n_input_rects = input_rect_iterator.rem + 1;
+			  tem->input_rects = xmalloc (tem->n_input_rects
+						      * sizeof *tem->input_rects);
+			  tem->n_input_rects = 0;
+
+			  for (; input_rect_iterator.rem; xcb_rectangle_next (&input_rect_iterator))
+			    {
+			      tem->input_rects[tem->n_input_rects].x
+				= input_rect_iterator.data->x;
+			      tem->input_rects[tem->n_input_rects].y
+				= input_rect_iterator.data->y;
+			      tem->input_rects[tem->n_input_rects].width
+				= input_rect_iterator.data->width;
+			      tem->input_rects[tem->n_input_rects].height
+				= input_rect_iterator.data->height;
+
+			      tem->n_input_rects++;
+			    }
+
+			  free (input_rect_reply);
+			}
+		      else
+			free (error);
+		    }
+#else
 		  x_catch_errors (dpyinfo->display);
 		  rects = XShapeGetRectangles (dpyinfo->display,
 					       xse->window,
@@ -15416,6 +15872,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  XFree (rects);
 			}
 		    }
+#endif
 #endif
 
 		  /* Handle the common case where the input shape equals the
