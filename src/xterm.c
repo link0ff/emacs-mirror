@@ -1108,6 +1108,7 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 	  tem->y = dest_y;
 	  tem->width = attrs.width + attrs.border_width;
 	  tem->height = attrs.height + attrs.border_width;
+	  tem->mapped_p = (attrs.map_state != IsUnmapped);
 #else
 	  tem->x = (coordinates_reply->dst_x
 		    - geometry_reply->border_width);
@@ -1117,8 +1118,8 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 			+ geometry_reply->border_width);
 	  tem->height = (geometry_reply->height
 			 + geometry_reply->border_width);
+	  tem->mapped_p = (attrs.map_state != XCB_MAP_STATE_UNMAPPED);
 #endif
-	  tem->mapped_p = (attrs.map_state != IsUnmapped);
 	  tem->next = x_dnd_toplevels;
 	  tem->previous_event_mask = attrs.your_event_mask;
 	  tem->wm_state = wmstate[0];
@@ -1311,8 +1312,8 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 		      && dpyinfo->xshape_minor >= 1)))
 	    {
 	      input_rect_reply = xcb_shape_get_rectangles_reply (dpyinfo->xcb_connection,
-								    input_rect_cookies[i],
-								    &error);
+								 input_rect_cookies[i],
+								 &error);
 
 	      if (input_rect_reply)
 		free (input_rect_reply);
@@ -1342,8 +1343,75 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 
 #define X_DND_SUPPORTED_VERSION 5
 
+
 static int x_dnd_get_window_proto (struct x_display_info *, Window);
 static Window x_dnd_get_window_proxy (struct x_display_info *, Window);
+
+#ifdef USE_XCB
+static void
+x_dnd_get_proxy_proto (struct x_display_info *dpyinfo, Window wdesc,
+		       Window *proxy_out, int *proto_out)
+{
+  xcb_get_property_cookie_t xdnd_proto_cookie;
+  xcb_get_property_cookie_t xdnd_proxy_cookie;
+  xcb_get_property_reply_t *reply;
+  xcb_generic_error_t *error;
+
+  if (proxy_out)
+    *proxy_out = None;
+
+  if (proto_out)
+    *proto_out = -1;
+
+  if (proxy_out)
+    xdnd_proxy_cookie = xcb_get_property (dpyinfo->xcb_connection, 0,
+					  (xcb_window_t) wdesc,
+					  (xcb_atom_t) dpyinfo->Xatom_XdndProxy,
+					  XCB_ATOM_WINDOW, 0, 1);
+
+  if (proto_out)
+    xdnd_proto_cookie = xcb_get_property (dpyinfo->xcb_connection, 0,
+					  (xcb_window_t) wdesc,
+					  (xcb_atom_t) dpyinfo->Xatom_XdndAware,
+					  XCB_ATOM_ATOM, 0, 1);
+
+  if (proxy_out)
+    {
+      reply = xcb_get_property_reply (dpyinfo->xcb_connection,
+				      xdnd_proxy_cookie, &error);
+
+      if (!reply)
+	free (error);
+      else
+	{
+	  if (reply->format == 32
+	      && reply->type == XCB_ATOM_WINDOW
+	      && (xcb_get_property_value_length (reply) >= 4))
+	    *proxy_out = *(xcb_window_t *) xcb_get_property_value (reply);
+
+	  free (reply);
+	}
+    }
+
+  if (proto_out)
+    {
+      reply = xcb_get_property_reply (dpyinfo->xcb_connection,
+				      xdnd_proto_cookie, &error);
+
+      if (!reply)
+	free (error);
+      else
+	{
+	  if (reply->format == 32
+	      && reply->type == XCB_ATOM_ATOM
+	      && (xcb_get_property_value_length (reply) >= 4))
+	    *proto_out = (int) *(xcb_atom_t *) xcb_get_property_value (reply);
+
+	  free (reply);
+	}
+    }
+}
+#endif
 
 #ifdef HAVE_XSHAPE
 static bool
@@ -1432,7 +1500,11 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
 
       if (child != None)
 	{
-	  proxy = x_dnd_get_window_proxy (dpyinfo, child_return);
+#ifndef USE_XCB
+	  proxy = x_dnd_get_window_proxy (dpyinfo, child);
+#else
+	  x_dnd_get_proxy_proto (dpyinfo, child, &proxy, proto_out);
+#endif
 
 	  if (proxy != None)
 	    {
@@ -1445,7 +1517,9 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
 		}
 	    }
 
+#ifndef USE_XCB
 	  *proto_out = x_dnd_get_window_proto (dpyinfo, child);
+#endif
 	  return child;
 	}
 
@@ -1785,7 +1859,7 @@ x_dnd_send_leave (struct frame *f, Window target)
   x_uncatch_errors ();
 }
 
-static void
+static bool
 x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 		 int supported)
 {
@@ -1824,7 +1898,7 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 			      x_dnd_n_targets, atom_names))
 	    {
 	      XFree (name);
-	      return;
+	      return false;
 	    }
 
 	  for (i = x_dnd_n_targets; i != 0; --i)
@@ -1844,8 +1918,13 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 	  XFree (name);
 	  kbd_buffer_store_event (&ie);
 
-	  return;
+	  return false;
 	}
+    }
+  else if (x_dnd_action == None)
+    {
+      x_dnd_send_leave (f, target);
+      return false;
     }
 
   msg.xclient.type = ClientMessage;
@@ -1864,6 +1943,7 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
   x_catch_errors (dpyinfo->display);
   XSendEvent (FRAME_X_DISPLAY (f), target, False, 0, &msg);
   x_uncatch_errors ();
+  return true;
 }
 
 void
@@ -13451,16 +13531,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		if (x_dnd_last_seen_window != None
 		    && x_dnd_last_protocol_version != -1)
 		  {
-		    /* Crazy hack to make dragging from one frame to
-		       another work.  */
-		    x_dnd_waiting_for_finish = !x_any_window_to_frame (dpyinfo,
-								       x_dnd_last_seen_window);
 		    x_dnd_pending_finish_target = x_dnd_last_seen_window;
 		    x_dnd_waiting_for_finish_proto = x_dnd_last_protocol_version;
 
-		    x_dnd_send_drop (x_dnd_frame, x_dnd_last_seen_window,
-				     x_dnd_selection_timestamp,
-				     x_dnd_last_protocol_version);
+		    x_dnd_waiting_for_finish
+		      = x_dnd_send_drop (x_dnd_frame, x_dnd_last_seen_window,
+					 x_dnd_selection_timestamp,
+					 x_dnd_last_protocol_version);
 		  }
 
 		x_dnd_last_protocol_version = -1;
@@ -14453,14 +14530,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      if (x_dnd_last_seen_window != None
 			  && x_dnd_last_protocol_version != -1)
 			{
-			  x_dnd_waiting_for_finish = !x_any_window_to_frame (dpyinfo,
-									     x_dnd_last_seen_window);
 			  x_dnd_pending_finish_target = x_dnd_last_seen_window;
 			  x_dnd_waiting_for_finish_proto = x_dnd_last_protocol_version;
 
-			  x_dnd_send_drop (x_dnd_frame, x_dnd_last_seen_window,
-					   x_dnd_selection_timestamp,
-					   x_dnd_last_protocol_version);
+			  x_dnd_waiting_for_finish
+			    = x_dnd_send_drop (x_dnd_frame, x_dnd_last_seen_window,
+					       x_dnd_selection_timestamp,
+					       x_dnd_last_protocol_version);
 			}
 
 		      x_dnd_last_protocol_version = -1;
@@ -20230,6 +20306,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       ATOM_REFS_INIT ("CLIPBOARD_MANAGER", Xatom_CLIPBOARD_MANAGER)
       ATOM_REFS_INIT ("XATOM_COUNTER", Xatom_XEMBED_INFO)
       ATOM_REFS_INIT ("_XEMBED_INFO", Xatom_XEMBED_INFO)
+      ATOM_REFS_INIT ("_MOTIF_WM_HINTS", Xatom_MOTIF_WM_HINTS)
       /* For properties of font.  */
       ATOM_REFS_INIT ("PIXEL_SIZE", Xatom_PIXEL_SIZE)
       ATOM_REFS_INIT ("AVERAGE_WIDTH", Xatom_AVERAGE_WIDTH)
@@ -20279,6 +20356,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       ATOM_REFS_INIT ("_NET_WM_STATE_BELOW", Xatom_net_wm_state_below)
       ATOM_REFS_INIT ("_NET_WM_OPAQUE_REGION", Xatom_net_wm_opaque_region)
       ATOM_REFS_INIT ("_NET_WM_PING", Xatom_net_wm_ping)
+      ATOM_REFS_INIT ("_NET_WM_PID", Xatom_net_wm_pid)
 #ifdef HAVE_XKB
       ATOM_REFS_INIT ("Meta", Xatom_Meta)
       ATOM_REFS_INIT ("Super", Xatom_Super)
