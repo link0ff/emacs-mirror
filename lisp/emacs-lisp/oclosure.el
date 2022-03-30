@@ -248,6 +248,8 @@ list of slot properties.  The currently known properties are the following:
        ,(when options (macroexp-warn-and-return name
                        (format "Ignored options: %S" options)
                        nil))
+       (eval-when-compile (unless (fboundp 'oclosure--define)
+                            (load "oclosure.el")))
        (eval-and-compile
          (oclosure--define ',name ,docstring ',parent-names ',slots
                            ,@(when predicate `(:predicate ',predicate))))
@@ -319,6 +321,7 @@ list of slot properties.  The currently known properties are the following:
        ,@(oclosure--defstruct-make-copiers
           copiers slotdescs name))))
 
+;;;###autoload
 (defun oclosure--define (name docstring parent-names slots
                               &rest props)
   (let* ((class (oclosure--build-class name docstring parent-names slots))
