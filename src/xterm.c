@@ -807,6 +807,13 @@ static int x_filter_event (struct x_display_info *, XEvent *);
 
 static bool x_dnd_in_progress;
 static bool x_dnd_waiting_for_finish;
+/* 0 means nothing has happened.  1 means an XmDROP_START message was
+   sent to the target, but no response has yet been received.  2 means
+   a response to our XmDROP_START message was received and the target
+   accepted the drop, so Emacs should start waiting for the drop
+   target to convert one of the special selections XmTRANSFER_SUCCESS
+   or XmTRANSFER_FAILURE.  */
+static int x_dnd_waiting_for_motif_finish;
 static Window x_dnd_pending_finish_target;
 static int x_dnd_waiting_for_finish_proto;
 static bool x_dnd_allow_current_frame;
@@ -860,6 +867,634 @@ struct x_client_list_window
 
 static struct x_client_list_window *x_dnd_toplevels = NULL;
 static bool x_dnd_use_toplevels;
+
+/* Motif drag-and-drop protocol support.  */
+
+typedef enum xm_targets_table_byte_order
+  {
+    XM_TARGETS_TABLE_LSB = 'l',
+    XM_TARGETS_TABLE_MSB = 'B',
+#ifndef WORDS_BIGENDIAN
+    XM_TARGETS_TABLE_CUR = 'l',
+#else
+    XM_TARGETS_TABLE_CUR = 'B',
+#endif
+  } xm_targets_table_byte_order;
+
+#define SWAPCARD32(l)				\
+  {						\
+    struct { unsigned t : 32; } bit32;		\
+    char n, *tp = (char *) &bit32;		\
+    bit32.t = l;				\
+    n = tp[0]; tp[0] = tp[3]; tp[3] = n;	\
+    n = tp[1]; tp[1] = tp[2]; tp[2] = n;	\
+    l = bit32.t;				\
+  }
+
+#define SWAPCARD16(s)				\
+  {						\
+    struct { unsigned t : 16; } bit16;		\
+    char n, *tp = (char *) &bit16;		\
+    bit16.t = s;				\
+    n = tp[0]; tp[0] = tp[1]; tp[1] = n;	\
+    s = bit16.t;				\
+  }
+
+typedef struct xm_targets_table_header
+{
+  /* BYTE   */ uint8_t byte_order;
+  /* BYTE   */ uint8_t protocol;
+
+  /* CARD16 */ uint16_t target_list_count;
+  /* CARD32 */ uint32_t total_data_size;
+} xm_targets_table_header;
+
+typedef struct xm_targets_table_rec
+{
+  /* CARD16 */ uint16_t n_targets;
+  /* CARD32 */ uint32_t targets[FLEXIBLE_ARRAY_MEMBER];
+} xm_targets_table_rec;
+
+typedef struct xm_drop_start_message
+{
+  /* BYTE   */ uint8_t reason;
+  /* BYTE   */ uint8_t byte_order;
+
+  /* CARD16 */ uint16_t side_effects;
+  /* CARD32 */ uint32_t timestamp;
+  /* CARD16 */ uint16_t x, y;
+  /* CARD32 */ uint32_t index_atom;
+  /* CARD32 */ uint32_t source_window;
+} xm_drop_start_message;
+
+typedef struct xm_drop_start_reply
+{
+  /* BYTE   */ uint8_t reason;
+  /* BYTE   */ uint8_t byte_order;
+
+  /* CARD16 */ uint16_t side_effects;
+  /* CARD16 */ uint16_t better_x;
+  /* CARD16 */ uint16_t better_y;
+} xm_drop_start_reply;
+
+typedef struct xm_drag_initiator_info
+{
+  /* BYTE   */ uint8_t byteorder;
+  /* BYTE   */ uint8_t protocol;
+
+  /* CARD16 */ uint16_t table_index;
+  /* CARD32 */ uint32_t selection;
+} xm_drag_initiator_info;
+
+typedef struct xm_drag_receiver_info
+{
+  /* BYTE   */ uint8_t byteorder;
+  /* BYTE   */ uint8_t protocol;
+
+  /* BYTE   */ uint8_t protocol_style;
+  /* BYTE   */ uint8_t unspecified0;
+  /* CARD32 */ uint32_t unspecified1;
+  /* CARD32 */ uint32_t unspecified2;
+  /* CARD32 */ uint32_t unspecified3;
+} xm_drag_receiver_info;
+
+#define XM_DRAG_SIDE_EFFECT(op, site, ops, act)		\
+  ((op) | ((site) << 4) | ((ops) << 8) | ((act) << 12))
+
+/* Some of the macros below are temporarily unused.  */
+
+#define XM_DRAG_SIDE_EFFECT_OPERATION(effect)	((effect) & 0xf)
+#define XM_DRAG_SIDE_EFFECT_SITE_STATUS(effect)	(((effect) & 0xf0) >> 4)
+/* #define XM_DRAG_SIDE_EFFECT_OPERATIONS(effect)	(((effect) & 0xf00) >> 8) */
+#define XM_DRAG_SIDE_EFFECT_DROP_ACTION(effect)	(((effect) & 0xf000) >> 12)
+
+#define XM_DRAG_NOOP 0
+#define XM_DRAG_MOVE (1L << 0)
+#define XM_DRAG_COPY (1L << 1)
+#define XM_DRAG_LINK (1L << 2)
+
+#define XM_DROP_ACTION_DROP		0
+/* #define XM_DROP_ACTION_DROP_HELP	1 */
+#define XM_DROP_ACTION_DROP_CANCEL	2
+
+#define XM_DRAG_REASON(originator, code)	((code) | ((originator) << 7))
+#define XM_DRAG_REASON_ORIGINATOR(reason)	(((reason) & 0x80) ? 1 : 0)
+#define XM_DRAG_REASON_CODE(reason)		((reason) & 0x7f)
+
+#define XM_DRAG_REASON_DROP_START	5
+#define XM_DRAG_ORIGINATOR_INITIATOR	0
+#define XM_DRAG_ORIGINATOR_RECEIVER	1
+
+#define XM_DRAG_STYLE_NONE 0
+
+#define XM_DROP_SITE_VALID	3
+/* #define XM_DROP_SITE_INVALID	2 */
+/* #define XM_DROP_SITE_NONE	1 */
+
+static uint8_t
+xm_side_effect_from_action (struct x_display_info *dpyinfo, Atom action)
+{
+  if (action == dpyinfo->Xatom_XdndActionCopy)
+    return XM_DRAG_COPY;
+  else if (action == dpyinfo->Xatom_XdndActionMove)
+    return XM_DRAG_MOVE;
+  else if (action == dpyinfo->Xatom_XdndActionLink)
+    return XM_DRAG_LINK;
+
+  return XM_DRAG_NOOP;
+}
+
+static int
+xm_read_targets_table_header (uint8_t *bytes, ptrdiff_t length,
+			      xm_targets_table_header *header_return,
+			      xm_targets_table_byte_order *byteorder_return)
+{
+  if (length < 8)
+    return -1;
+
+  header_return->byte_order = *byteorder_return = *(bytes++);
+  header_return->protocol = *(bytes++);
+
+  header_return->target_list_count = *(uint16_t *) bytes;
+  header_return->total_data_size = *(uint32_t *) (bytes + 2);
+
+  if (header_return->byte_order != XM_TARGETS_TABLE_CUR)
+    {
+      SWAPCARD16 (header_return->target_list_count);
+      SWAPCARD32 (header_return->total_data_size);
+    }
+
+  header_return->byte_order = XM_TARGETS_TABLE_CUR;
+
+  return 8;
+}
+
+static xm_targets_table_rec *
+xm_read_targets_table_rec (uint8_t *bytes, ptrdiff_t length,
+			   xm_targets_table_byte_order byteorder)
+{
+  uint16_t nitems, i;
+  xm_targets_table_rec *rec;
+
+  if (length < 2)
+    return NULL;
+
+  nitems = *(uint16_t *) bytes;
+
+  if (length < 2 + nitems * 4)
+    return NULL;
+
+  if (byteorder != XM_TARGETS_TABLE_CUR)
+    SWAPCARD16 (nitems);
+
+  rec = xmalloc (sizeof *rec + nitems * 4);
+  rec->n_targets = nitems;
+
+  for (i = 0; i < nitems; ++i)
+    {
+      rec->targets[i] = ((uint32_t *) (bytes + 2))[i];
+
+      if (byteorder != XM_TARGETS_TABLE_CUR)
+	SWAPCARD32 (rec->targets[i]);
+    }
+
+  return rec;
+}
+
+static int
+xm_find_targets_table_idx (xm_targets_table_header *header,
+			   xm_targets_table_rec **recs,
+			   Atom *sorted_targets, int ntargets)
+{
+  int j;
+  uint16_t i;
+  uint32_t *targets;
+
+  targets = alloca (sizeof *targets * ntargets);
+
+  for (j = 0; j < ntargets; ++j)
+    targets[j] = sorted_targets[j];
+
+  for (i = 0; i < header->target_list_count; ++i)
+    {
+      if (recs[i]->n_targets == ntargets
+	  && !memcmp (&recs[i]->targets, targets,
+		      sizeof *targets * ntargets))
+	return i;
+    }
+
+  return -1;
+}
+
+static int
+x_atoms_compare (const void *a, const void *b)
+{
+  return *(Atom *) a - *(Atom *) b;
+}
+
+static void
+xm_write_targets_table (Display *dpy, Window wdesc,
+			Atom targets_table_atom,
+			xm_targets_table_header *header,
+			xm_targets_table_rec **recs)
+{
+  uint8_t *header_buffer, *ptr, *rec_buffer;
+  ptrdiff_t rec_buffer_size;
+  uint16_t i, j;
+
+  header_buffer = alloca (8);
+  ptr = header_buffer;
+
+  *(header_buffer++) = header->byte_order;
+  *(header_buffer++) = header->protocol;
+  *((uint16_t *) header_buffer) = header->target_list_count;
+  *((uint32_t *) (header_buffer + 2)) = header->total_data_size;
+
+  rec_buffer = xmalloc (600);
+  rec_buffer_size = 600;
+
+  XGrabServer (dpy);
+  XChangeProperty (dpy, wdesc, targets_table_atom,
+		   targets_table_atom, 8, PropModeReplace,
+		   (unsigned char *) ptr, 8);
+
+  for (i = 0; i < header->target_list_count; ++i)
+    {
+      if (rec_buffer_size < 2 + recs[i]->n_targets * 4)
+	{
+	  rec_buffer_size = 2 + recs[i]->n_targets * 4;
+	  rec_buffer = xrealloc (rec_buffer, rec_buffer_size);
+	}
+
+      *((uint16_t *) rec_buffer) = recs[i]->n_targets;
+
+      for (j = 0; j < recs[i]->n_targets; ++j)
+	((uint32_t *) (rec_buffer + 2))[j] = recs[i]->targets[j];
+
+      XChangeProperty (dpy, wdesc, targets_table_atom,
+		       targets_table_atom, 8, PropModeAppend,
+		       (unsigned char *) rec_buffer,
+		       2 + recs[i]->n_targets * 4);
+    }
+  XUngrabServer (dpy);
+
+  xfree (rec_buffer);
+}
+
+static void
+xm_write_drag_initiator_info (Display *dpy, Window wdesc,
+			      Atom prop_name, Atom type_name,
+			      xm_drag_initiator_info *info)
+{
+  uint8_t *buf;
+
+  buf = alloca (8);
+  buf[0] = info->byteorder;
+  buf[1] = info->protocol;
+
+  *((uint16_t *) (buf + 2)) = info->table_index;
+  *((uint32_t *) (buf + 4)) = info->selection;
+
+  XChangeProperty (dpy, wdesc, prop_name, type_name, 8,
+		   PropModeReplace, (unsigned char *) buf, 8);
+}
+
+static Window
+xm_get_drag_window (struct x_display_info *dpyinfo)
+{
+  Atom actual_type;
+  int rc, actual_format;
+  unsigned long nitems, bytes_remaining;
+  unsigned char *tmp_data = NULL;
+  Window drag_window;
+  XSetWindowAttributes attrs;
+  XWindowAttributes wattrs;
+  Display *temp_display;
+
+  drag_window = None;
+  rc = XGetWindowProperty (dpyinfo->display, dpyinfo->root_window,
+			   dpyinfo->Xatom_MOTIF_DRAG_WINDOW,
+			   0, 1, False, XA_WINDOW, &actual_type,
+			   &actual_format, &nitems, &bytes_remaining,
+			   &tmp_data) == Success;
+
+  if (rc)
+    {
+      if (actual_type == XA_WINDOW
+	  && actual_format == 32 && nitems == 1)
+	{
+	  drag_window = *(Window *) tmp_data;
+	  x_catch_errors (dpyinfo->display);
+	  XGetWindowAttributes (dpyinfo->display,
+				drag_window, &wattrs);
+	  rc = !x_had_errors_p (dpyinfo->display);
+	  x_uncatch_errors_after_check ();
+
+	  if (!rc)
+	    drag_window = None;
+	}
+
+      if (tmp_data)
+	XFree (tmp_data);
+    }
+
+  if (drag_window == None)
+    {
+      unrequest_sigio ();
+      temp_display = XOpenDisplay (XDisplayString (dpyinfo->display));
+      request_sigio ();
+
+      if (!temp_display)
+	return None;
+
+      XSetCloseDownMode (temp_display, RetainPermanent);
+      attrs.override_redirect = True;
+      drag_window = XCreateWindow (temp_display, DefaultRootWindow (temp_display),
+				   -1, -1, 1, 1, 0, CopyFromParent, InputOnly,
+				   CopyFromParent, CWOverrideRedirect, &attrs);
+      XChangeProperty (temp_display, DefaultRootWindow (temp_display),
+		       XInternAtom (temp_display,
+				    "_MOTIF_DRAG_WINDOW", False),
+		       XA_WINDOW, 32, PropModeReplace,
+		       (unsigned char *) &drag_window, 1);
+      XCloseDisplay (temp_display);
+
+      /* Make sure the drag window created is actually valid for the
+	 current display, and the XOpenDisplay above didn't
+	 accidentally connect to some other display.  */
+      x_catch_errors (dpyinfo->display);
+      XGetWindowAttributes (dpyinfo->display,
+			    drag_window, &wattrs);
+      rc = !x_had_errors_p (dpyinfo->display);
+      x_uncatch_errors_after_check ();
+
+      /* We connected to the wrong display, so just give up.  */
+      if (!rc)
+	drag_window = None;
+    }
+
+  return drag_window;
+}
+
+/* TODO: overflow checks when inserting targets.  */
+static int
+xm_setup_dnd_targets (struct x_display_info *dpyinfo,
+		      Atom *targets, int ntargets)
+{
+  Window drag_window;
+  Atom *targets_sorted, actual_type;
+  unsigned char *tmp_data = NULL;
+  unsigned long nitems, bytes_remaining;
+  int rc, actual_format, idx;
+  xm_targets_table_header header;
+  xm_targets_table_rec **recs;
+  xm_targets_table_byte_order byteorder;
+  uint8_t *data;
+  ptrdiff_t total_bytes, total_items, i;
+
+  drag_window = xm_get_drag_window (dpyinfo);
+
+  if (drag_window == None || ntargets > 64)
+    return -1;
+
+  targets_sorted = xmalloc (sizeof *targets * ntargets);
+  memcpy (targets_sorted, targets,
+	  sizeof *targets * ntargets);
+  qsort (targets_sorted, ntargets,
+	 sizeof (Atom), x_atoms_compare);
+
+  XGrabServer (dpyinfo->display);
+  rc = XGetWindowProperty (dpyinfo->display, drag_window,
+			   dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
+			   /* Do larger values occur in practice? */
+			   0L, 20000L, False,
+			   dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
+			   &actual_type, &actual_format, &nitems,
+			   &bytes_remaining, &tmp_data) == Success;
+
+  if (rc && tmp_data && !bytes_remaining
+      && actual_type == dpyinfo->Xatom_MOTIF_DRAG_TARGETS
+      && actual_format == 8)
+    {
+      data = (uint8_t *) tmp_data;
+      if (xm_read_targets_table_header ((uint8_t *) tmp_data,
+					nitems, &header,
+					&byteorder) == 8)
+	{
+	  data += 8;
+	  nitems -= 8;
+	  total_bytes = 0;
+	  total_items = 0;
+
+	  /* The extra rec is used to store a new target list if a
+	     preexisting one doesn't already exist.  */
+	  recs = xmalloc ((header.target_list_count + 1)
+			  * sizeof *recs);
+
+	  while (total_items < header.target_list_count)
+	    {
+	      recs[total_items] = xm_read_targets_table_rec (data + total_bytes,
+							     nitems, byteorder);
+
+	      if (!recs[total_items])
+		break;
+
+	      total_bytes += 2 + recs[total_items]->n_targets * 4;
+	      nitems -= 2 + recs[total_items]->n_targets * 4;
+	      total_items++;
+	    }
+
+	  if (header.target_list_count != total_items
+	      || header.total_data_size != 8 + total_bytes)
+	    {
+	      for (i = 0; i < total_items; ++i)
+		{
+		  if (recs[i])
+		      xfree (recs[i]);
+		  else
+		    break;
+		}
+
+	      xfree (recs);
+
+	      rc = false;
+	    }
+	}
+      else
+	rc = false;
+    }
+  else
+    rc = false;
+
+  if (tmp_data)
+    XFree (tmp_data);
+
+  /* Now rc means whether or not the target lists weren't updated and
+     shouldn't be written to the drag window.  */
+
+  if (!rc)
+    {
+      header.byte_order = XM_TARGETS_TABLE_CUR;
+      header.protocol = 0;
+      header.target_list_count = 1;
+      header.total_data_size = 8 + 2 + ntargets * 4;
+
+      recs = xmalloc (sizeof *recs);
+      recs[0] = xmalloc (sizeof **recs + ntargets * 4);
+
+      recs[0]->n_targets = ntargets;
+
+      for (i = 0; i < ntargets; ++i)
+	recs[0]->targets[i] = targets_sorted[i];
+
+      idx = 0;
+    }
+  else
+    {
+      idx = xm_find_targets_table_idx (&header, recs,
+				       targets_sorted,
+				       ntargets);
+
+      if (idx == -1)
+	{
+	  header.target_list_count++;
+	  header.total_data_size += 2 + ntargets * 4;
+
+	  recs[header.target_list_count - 1] = xmalloc (sizeof **recs + ntargets * 4);
+	  recs[header.target_list_count - 1]->n_targets = ntargets;
+
+	  for (i = 0; i < ntargets; ++i)
+	    recs[header.target_list_count - 1]->targets[i] = targets_sorted[i];
+
+	  idx = header.target_list_count - 1;
+	  rc = false;
+	}
+    }
+
+  if (!rc)
+    xm_write_targets_table (dpyinfo->display, drag_window,
+			    dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
+			    &header, recs);
+
+  XUngrabServer (dpyinfo->display);
+
+  for (i = 0; i < header.target_list_count; ++i)
+    xfree (recs[i]);
+
+  xfree (recs);
+  xfree (targets_sorted);
+
+  return idx;
+}
+
+static void
+xm_send_drop_message (struct x_display_info *dpyinfo, Window source,
+		      Window target, xm_drop_start_message *dmsg)
+{
+  XEvent msg;
+
+  msg.xclient.type = ClientMessage;
+  msg.xclient.message_type
+    = dpyinfo->Xatom_MOTIF_DRAG_AND_DROP_MESSAGE;
+  msg.xclient.format = 8;
+  msg.xclient.window = target;
+  msg.xclient.data.b[0] = dmsg->reason;
+  msg.xclient.data.b[1] = dmsg->byte_order;
+  *((uint16_t *) &msg.xclient.data.b[2]) = dmsg->side_effects;
+  *((uint32_t *) &msg.xclient.data.b[4]) = dmsg->timestamp;
+  *((uint16_t *) &msg.xclient.data.b[8]) = dmsg->x;
+  *((uint16_t *) &msg.xclient.data.b[10]) = dmsg->y;
+  *((uint32_t *) &msg.xclient.data.b[12]) = dmsg->index_atom;
+  *((uint32_t *) &msg.xclient.data.b[16]) = dmsg->source_window;
+
+  x_catch_errors (dpyinfo->display);
+  XSendEvent (dpyinfo->display, target, False, NoEventMask, &msg);
+  x_uncatch_errors ();
+}
+
+static int
+xm_read_drop_start_reply (XEvent *msg, xm_drop_start_reply *reply)
+{
+  uint8_t *data;
+
+  data = (uint8_t *) &msg->xclient.data.b[0];
+
+  if ((XM_DRAG_REASON_ORIGINATOR (data[0])
+       != XM_DRAG_ORIGINATOR_RECEIVER)
+      || (XM_DRAG_REASON_CODE (data[0])
+	  != XM_DRAG_REASON_DROP_START))
+    return 1;
+
+  reply->reason = *(data++);
+  reply->byte_order = *(data++);
+  reply->side_effects = *(uint16_t *) data;
+  reply->better_x = *(uint16_t *) (data + 2);
+  reply->better_y = *(uint16_t *) (data + 4);
+
+  if (reply->byte_order != XM_TARGETS_TABLE_CUR)
+    {
+      SWAPCARD16 (reply->side_effects);
+      SWAPCARD16 (reply->better_x);
+      SWAPCARD16 (reply->better_y);
+    }
+
+  reply->byte_order = XM_TARGETS_TABLE_CUR;
+
+  return 0;
+}
+
+static int
+xm_read_drag_receiver_info (struct x_display_info *dpyinfo,
+			    Window wdesc, xm_drag_receiver_info *rec)
+{
+  Atom actual_type;
+  int rc, actual_format;
+  unsigned long nitems, bytes_remaining;
+  unsigned char *tmp_data = NULL;
+  uint8_t *data;
+
+  x_catch_errors (dpyinfo->display);
+  rc = XGetWindowProperty (dpyinfo->display, wdesc,
+			   dpyinfo->Xatom_MOTIF_DRAG_RECEIVER_INFO,
+			   0, LONG_MAX, False,
+			   dpyinfo->Xatom_MOTIF_DRAG_RECEIVER_INFO,
+			   &actual_type, &actual_format, &nitems,
+			   &bytes_remaining,
+			   &tmp_data) == Success;
+
+  if (x_had_errors_p (dpyinfo->display)
+      || actual_format != 8 || nitems < 16 || !tmp_data
+      || actual_type != dpyinfo->Xatom_MOTIF_DRAG_RECEIVER_INFO)
+    rc = 0;
+  x_uncatch_errors_after_check ();
+
+  if (rc)
+    {
+      data = (uint8_t *) tmp_data;
+
+      rec->byteorder = data[0];
+      rec->protocol = data[1];
+      rec->protocol_style = data[2];
+      rec->unspecified0 = data[3];
+      rec->unspecified1 = *(uint32_t *) &data[4];
+      rec->unspecified2 = *(uint32_t *) &data[8];
+      rec->unspecified3 = *(uint32_t *) &data[12];
+
+      if (rec->byteorder != XM_TARGETS_TABLE_CUR)
+	{
+	  SWAPCARD32 (rec->unspecified1);
+	  SWAPCARD32 (rec->unspecified2);
+	  SWAPCARD32 (rec->unspecified3);
+	}
+
+      rec->byteorder = XM_TARGETS_TABLE_CUR;
+    }
+
+  if (tmp_data)
+    XFree (tmp_data);
+
+  return !rc;
+}
 
 static void
 x_dnd_free_toplevels (void)
@@ -1039,7 +1674,7 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 	       == Success)
 	      && !x_had_errors_p (dpyinfo->display)
 	      && wmstate_data && wmstate_items == 2 && format == 32);
-      x_uncatch_errors_after_check ();
+      x_uncatch_errors ();
 #else
       rc = true;
 
@@ -1123,10 +1758,6 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 	  tem->next = x_dnd_toplevels;
 	  tem->previous_event_mask = attrs.your_event_mask;
 	  tem->wm_state = wmstate[0];
-
-#ifndef USE_XCB
-	  XFree (wmstate_data);
-#endif
 
 #ifdef HAVE_XSHAPE
 #ifndef USE_XCB
@@ -1360,6 +1991,14 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
       if (geometry_reply)
 	free (geometry_reply);
 #endif
+
+#ifndef USE_XCB
+      if (wmstate_data)
+	{
+	  XFree (wmstate_data);
+	  wmstate_data = NULL;
+	}
+#endif
     }
 
   return 0;
@@ -1502,6 +2141,92 @@ x_dnd_get_target_window_1 (struct x_display_info *dpyinfo,
   return None;
 }
 
+static int
+x_dnd_get_wm_state_and_proto (struct x_display_info *dpyinfo,
+			      Window window, int *wmstate_out,
+			      int *proto_out)
+{
+#ifndef USE_XCB
+  Atom type;
+  int format, rc;
+  unsigned long nitems, bytes_after;
+  unsigned char *data = NULL;
+
+  x_catch_errors (dpyinfo->display);
+  rc = ((XGetWindowProperty (dpyinfo->display, window,
+			     dpyinfo->Xatom_wm_state,
+			     0, 2, False, AnyPropertyType,
+			     &type, &format, &nitems,
+			     &bytes_after, &data)
+	 == Success)
+	&& !x_had_errors_p (dpyinfo->display)
+	&& data && nitems == 2 && format == 32);
+  x_uncatch_errors ();
+
+  if (rc)
+    {
+      *wmstate_out = *(unsigned long *) data;
+      *proto_out = x_dnd_get_window_proto (dpyinfo, window);
+    }
+
+  if (data)
+    XFree (data);
+
+  return rc;
+#else
+  xcb_get_property_cookie_t wmstate_cookie;
+  xcb_get_property_cookie_t xdnd_proto_cookie;
+  xcb_get_property_reply_t *reply;
+  xcb_generic_error_t *error;
+  int rc;
+
+  rc = true;
+
+  wmstate_cookie = xcb_get_property (dpyinfo->xcb_connection, 0,
+				     (xcb_window_t) window,
+				     (xcb_atom_t) dpyinfo->Xatom_wm_state,
+				     XCB_ATOM_ANY, 0, 2);
+  xdnd_proto_cookie = xcb_get_property (dpyinfo->xcb_connection, 0,
+					(xcb_window_t) window,
+					(xcb_atom_t) dpyinfo->Xatom_XdndAware,
+					XCB_ATOM_ATOM, 0, 1);
+
+  reply = xcb_get_property_reply (dpyinfo->xcb_connection,
+				  wmstate_cookie, &error);
+
+  if (!reply)
+    free (error), rc = false;
+  else
+    {
+      if (reply->format != 32
+	  || xcb_get_property_value_length (reply) != 8)
+	rc = false;
+      else
+	*wmstate_out = *(uint32_t *) xcb_get_property_value (reply);
+
+      free (reply);
+    }
+
+  reply = xcb_get_property_reply (dpyinfo->xcb_connection,
+				  xdnd_proto_cookie, &error);
+
+  if (!reply)
+    free (error);
+  else
+    {
+      if (reply->format == 32
+	  && xcb_get_property_value_length (reply) >= 4)
+	*proto_out = *(uint32_t *) xcb_get_property_value (reply);
+      else
+	*proto_out = -1;
+
+      free (reply);
+    }
+
+  return rc;
+#endif
+}
+
 static Window
 x_dnd_get_target_window (struct x_display_info *dpyinfo,
 			 int root_x, int root_y, int *proto_out)
@@ -1512,6 +2237,8 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
   Window overlay_window;
   XWindowAttributes attrs;
 #endif
+  int wmstate;
+
   child_return = dpyinfo->root_window;
   dest_x_return = root_x;
   dest_y_return = root_y;
@@ -1631,6 +2358,15 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
 
       if (child_return)
 	{
+	  if (x_dnd_get_wm_state_and_proto (dpyinfo, child_return,
+					    &wmstate, &proto))
+	    {
+	      *proto_out = proto;
+	      x_uncatch_errors ();
+
+	      return child_return;
+	    }
+
 	  proto = x_dnd_get_window_proto (dpyinfo, child_return);
 
 	  if (proto != -1)
@@ -1715,7 +2451,7 @@ x_dnd_get_window_proxy (struct x_display_info *dpyinfo, Window wdesc)
 {
   int rc, actual_format;
   unsigned long actual_size, bytes_remaining;
-  unsigned char *tmp_data;
+  unsigned char *tmp_data = NULL;
   XWindowAttributes attrs;
   Atom actual_type;
   Window proxy;
@@ -1731,12 +2467,12 @@ x_dnd_get_window_proxy (struct x_display_info *dpyinfo, Window wdesc)
 
   if (!x_had_errors_p (dpyinfo->display)
       && rc == Success
+      && tmp_data
       && actual_type == XA_WINDOW
       && actual_format == 32
       && actual_size == 1)
     {
       proxy = *(Window *) tmp_data;
-      XFree (tmp_data);
 
       /* Verify the proxy window exists.  */
       XGetWindowAttributes (dpyinfo->display, proxy, &attrs);
@@ -1744,6 +2480,9 @@ x_dnd_get_window_proxy (struct x_display_info *dpyinfo, Window wdesc)
       if (x_had_errors_p (dpyinfo->display))
 	proxy = None;
     }
+
+  if (tmp_data)
+    XFree (tmp_data);
   x_uncatch_errors_after_check ();
 
   return proxy;
@@ -1753,7 +2492,7 @@ static int
 x_dnd_get_window_proto (struct x_display_info *dpyinfo, Window wdesc)
 {
   Atom actual, value;
-  unsigned char *tmp_data;
+  unsigned char *tmp_data = NULL;
   int rc, format;
   unsigned long n, left;
   bool had_errors;
@@ -1769,8 +2508,13 @@ x_dnd_get_window_proto (struct x_display_info *dpyinfo, Window wdesc)
   had_errors = x_had_errors_p (dpyinfo->display);
   x_uncatch_errors_after_check ();
 
-  if (had_errors || rc != Success || actual != XA_ATOM || format != 32 || n < 1)
-    return -1;
+  if (had_errors || rc != Success || actual != XA_ATOM || format != 32 || n < 1
+      || !tmp_data)
+    {
+      if (tmp_data)
+	XFree (tmp_data);
+      return -1;
+    }
 
   value = (int) *(Atom *) tmp_data;
   XFree (tmp_data);
@@ -1902,6 +2646,10 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 
   if (self_frame)
     {
+      if (!x_dnd_allow_current_frame
+	  && self_frame == x_dnd_frame)
+	return false;
+
       /* Send a special drag-and-drop event when dropping on top of an
 	 Emacs frame to avoid all the overhead involved with sending
 	 client events.  */
@@ -3545,7 +4293,7 @@ x_set_frame_alpha (struct frame *f)
 
   /* return unless necessary */
   {
-    unsigned char *data;
+    unsigned char *data = NULL;
     Atom actual;
     int rc, format;
     unsigned long n, left;
@@ -3555,16 +4303,19 @@ x_set_frame_alpha (struct frame *f)
 			     &actual, &format, &n, &left,
 			     &data);
 
-    if (rc == Success && actual != None)
+    if (rc == Success && actual != None && data)
       {
-        unsigned long value = *(unsigned long *)data;
-	XFree (data);
+        unsigned long value = *(unsigned long *) data;
 	if (value == opac)
 	  {
 	    x_uncatch_errors ();
+	    XFree (data);
 	    return;
 	  }
       }
+
+    if (data)
+      XFree (data);
   }
 
   XChangeProperty (dpy, win, dpyinfo->Xatom_net_wm_window_opacity,
@@ -7868,6 +8619,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   x_dnd_wanted_action = xaction;
   x_dnd_return_frame = 0;
   x_dnd_waiting_for_finish = false;
+  x_dnd_waiting_for_motif_finish = 0;
   x_dnd_end_window = None;
   x_dnd_use_toplevels
     = x_wm_supports (f, FRAME_DISPLAY_INFO (f)->Xatom_net_client_list_stacking);
@@ -8022,7 +8774,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   if (x_dnd_end_window != None
       && (any = x_any_window_to_frame (FRAME_DISPLAY_INFO (f),
 				       x_dnd_end_window))
-      && (any != f))
+      && (allow_current_frame || any != f))
     return QXdndActionPrivate;
 
   if (x_dnd_action != None)
@@ -11777,7 +12529,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  }
 
 	if (event->xclient.message_type == dpyinfo->Xatom_XdndFinished
-	    && x_dnd_waiting_for_finish
+	    && (x_dnd_waiting_for_finish && !x_dnd_waiting_for_motif_finish)
 	    && event->xclient.data.l[0] == x_dnd_pending_finish_target)
 	  {
 	    x_dnd_waiting_for_finish = false;
@@ -11788,6 +12540,59 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    if (x_dnd_waiting_for_finish_proto >= 5
 		&& !(event->xclient.data.l[1] & 1))
 	      x_dnd_action = None;
+	  }
+
+	if ((event->xclient.message_type
+	     == dpyinfo->Xatom_MOTIF_DRAG_AND_DROP_MESSAGE)
+	    /* FIXME: There should probably be a check that the event
+	       comes from the same display where the drop event was
+	       sent, but there's no way to get that information here
+	       safely.  */
+	    && x_dnd_waiting_for_finish
+	    && x_dnd_waiting_for_motif_finish == 1)
+	  {
+	    xm_drop_start_reply reply;
+	    uint16_t operation, status, action;
+
+	    if (!xm_read_drop_start_reply (event, &reply))
+	      {
+		operation = XM_DRAG_SIDE_EFFECT_OPERATION (reply.side_effects);
+		status = XM_DRAG_SIDE_EFFECT_SITE_STATUS (reply.side_effects);
+		action = XM_DRAG_SIDE_EFFECT_DROP_ACTION (reply.side_effects);
+
+		if (operation != XM_DRAG_MOVE
+		    && operation != XM_DRAG_COPY
+		    && operation != XM_DRAG_LINK)
+		  {
+		    x_dnd_waiting_for_finish = false;
+		    goto OTHER;
+		  }
+
+		if (status != XM_DROP_SITE_VALID
+		    || action == XM_DROP_ACTION_DROP_CANCEL)
+		  {
+		    x_dnd_waiting_for_finish = false;
+		    goto OTHER;
+		  }
+
+		switch (operation)
+		  {
+		  case XM_DRAG_MOVE:
+		    x_dnd_action = dpyinfo->Xatom_XdndActionMove;
+		    break;
+
+		  case XM_DRAG_COPY:
+		    x_dnd_action = dpyinfo->Xatom_XdndActionCopy;
+		    break;
+
+		  case XM_DRAG_LINK:
+		    x_dnd_action = dpyinfo->Xatom_XdndActionLink;
+		    break;
+		  }
+
+		x_dnd_waiting_for_motif_finish = 2;
+		goto OTHER;
+	      }
 	  }
 
         if (event->xclient.message_type == dpyinfo->Xatom_wm_protocols
@@ -12096,6 +12901,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    *hold_quit = inev.ie;
 	    EVENT_INIT (inev.ie);
 	  }
+
+	if (x_dnd_waiting_for_finish
+	    && x_dnd_waiting_for_motif_finish == 2
+	    && eventp->selection == dpyinfo->Xatom_XdndSelection
+	    && (eventp->target == dpyinfo->Xatom_XmTRANSFER_SUCCESS
+		|| eventp->target == dpyinfo->Xatom_XmTRANSFER_FAILURE))
+	  x_dnd_waiting_for_finish = false;
       }
       break;
 
@@ -12144,12 +12956,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 		      if (!x_had_errors_p (dpyinfo->display) && rc == Success && data
 			  && nitems == 2 && actual_format == 32)
-			{
-			  tem->wm_state = ((unsigned long *) data)[0];
-			  XFree (data);
-			}
+			tem->wm_state = ((unsigned long *) data)[0];
 		      else
 			tem->wm_state = WithdrawnState;
+
+		      if (data)
+			XFree (data);
 		      x_uncatch_errors_after_check ();
 		    }
 
@@ -13563,6 +14375,59 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 					 x_dnd_selection_timestamp,
 					 x_dnd_last_protocol_version);
 		  }
+		else if (x_dnd_last_seen_window != None)
+		  {
+		    xm_drag_receiver_info drag_receiver_info;
+		    xm_drag_initiator_info drag_initiator_info;
+		    xm_drop_start_message dmsg;
+		    int idx;
+
+		    if (!xm_read_drag_receiver_info (dpyinfo, x_dnd_last_seen_window,
+						     &drag_receiver_info)
+			&& drag_receiver_info.protocol_style != XM_DRAG_STYLE_NONE
+			&& (x_dnd_allow_current_frame
+			    || FRAME_OUTER_WINDOW (x_dnd_frame) != x_dnd_last_seen_window))
+		      {
+			idx = xm_setup_dnd_targets (dpyinfo, x_dnd_targets,
+						    x_dnd_n_targets);
+
+			if (idx != -1)
+			  {
+			    drag_initiator_info.byteorder = XM_TARGETS_TABLE_CUR;
+			    drag_initiator_info.protocol = 0;
+			    drag_initiator_info.table_index = idx;
+			    drag_initiator_info.selection = dpyinfo->Xatom_XdndSelection;
+
+			    memset (&dmsg, 0, sizeof dmsg);
+
+			    xm_write_drag_initiator_info (dpyinfo->display,
+							  FRAME_X_WINDOW (x_dnd_frame),
+							  dpyinfo->Xatom_XdndSelection,
+							  dpyinfo->Xatom_MOTIF_DRAG_INITIATOR_INFO,
+							  &drag_initiator_info);
+
+			    dmsg.reason = XM_DRAG_REASON (XM_DRAG_ORIGINATOR_INITIATOR,
+							  XM_DRAG_REASON_DROP_START);
+			    dmsg.byte_order = XM_TARGETS_TABLE_CUR;
+			    dmsg.side_effects
+			      = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
+										 x_dnd_wanted_action),
+						     XM_DROP_SITE_VALID, XM_DRAG_NOOP,
+						     XM_DROP_ACTION_DROP);
+			    dmsg.timestamp = event->xbutton.time;
+			    dmsg.x = event->xbutton.x_root;
+			    dmsg.y = event->xbutton.y_root;
+			    dmsg.index_atom = dpyinfo->Xatom_XdndSelection;
+			    dmsg.source_window = FRAME_X_WINDOW (x_dnd_frame);
+
+			    xm_send_drop_message (dpyinfo, FRAME_X_WINDOW (x_dnd_frame),
+						  x_dnd_last_seen_window, &dmsg);
+
+			    x_dnd_waiting_for_finish = true;
+			    x_dnd_waiting_for_motif_finish = 1;
+			  }
+		      }
+		  }
 
 		x_dnd_last_protocol_version = -1;
 		x_dnd_last_seen_window = None;
@@ -14561,6 +15426,70 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			    = x_dnd_send_drop (x_dnd_frame, x_dnd_last_seen_window,
 					       x_dnd_selection_timestamp,
 					       x_dnd_last_protocol_version);
+			}
+		      else if (x_dnd_last_seen_window != None)
+			{
+			  xm_drag_receiver_info drag_receiver_info;
+			  xm_drag_initiator_info drag_initiator_info;
+			  xm_drop_start_message dmsg;
+			  int idx;
+
+			  if (!xm_read_drag_receiver_info (dpyinfo, x_dnd_last_seen_window,
+							   &drag_receiver_info)
+			      && drag_receiver_info.protocol_style != XM_DRAG_STYLE_NONE
+			      && (x_dnd_allow_current_frame
+				  || FRAME_OUTER_WINDOW (x_dnd_frame) != x_dnd_last_seen_window))
+			    {
+			      idx = xm_setup_dnd_targets (dpyinfo, x_dnd_targets,
+							  x_dnd_n_targets);
+
+			      if (idx != -1)
+				{
+				  drag_initiator_info.byteorder = XM_TARGETS_TABLE_CUR;
+				  drag_initiator_info.protocol = 0;
+				  drag_initiator_info.table_index = idx;
+				  drag_initiator_info.selection = dpyinfo->Xatom_XdndSelection;
+
+				  memset (&dmsg, 0, sizeof dmsg);
+
+				  xm_write_drag_initiator_info (dpyinfo->display,
+								FRAME_X_WINDOW (x_dnd_frame),
+								dpyinfo->Xatom_XdndSelection,
+								dpyinfo->Xatom_MOTIF_DRAG_INITIATOR_INFO,
+								&drag_initiator_info);
+
+				  dmsg.reason = XM_DRAG_REASON (XM_DRAG_ORIGINATOR_INITIATOR,
+								XM_DRAG_REASON_DROP_START);
+				  dmsg.byte_order = XM_TARGETS_TABLE_CUR;
+				  dmsg.side_effects
+				    = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
+										       x_dnd_wanted_action),
+							   XM_DROP_SITE_VALID,
+							   xm_side_effect_from_action (dpyinfo,
+										       x_dnd_wanted_action),
+							   XM_DROP_ACTION_DROP);
+				  dmsg.timestamp = xev->time;
+				  dmsg.x = lrint (xev->root_x);
+				  dmsg.y = lrint (xev->root_y);
+				  /* This atom technically has to be
+				     unique to each drag-and-drop
+				     operation, but that isn't easy to
+				     accomplish, since we cannot
+				     randomly move data around between
+				     selections.  Let's hope no two
+				     instances of Emacs try to drag
+				     into the same window at the same
+				     time.  */
+				  dmsg.index_atom = dpyinfo->Xatom_XdndSelection;
+				  dmsg.source_window = FRAME_X_WINDOW (x_dnd_frame);
+
+				  xm_send_drop_message (dpyinfo, FRAME_X_WINDOW (x_dnd_frame),
+							x_dnd_last_seen_window, &dmsg);
+
+				  x_dnd_waiting_for_finish = true;
+				  x_dnd_waiting_for_motif_finish = 1;
+				}
+			    }
 			}
 
 		      x_dnd_last_protocol_version = -1;
@@ -20420,6 +21349,17 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       ATOM_REFS_INIT ("XdndLeave", Xatom_XdndLeave)
       ATOM_REFS_INIT ("XdndDrop", Xatom_XdndDrop)
       ATOM_REFS_INIT ("XdndFinished", Xatom_XdndFinished)
+      /* Motif drop protocol support.  */
+      ATOM_REFS_INIT ("_MOTIF_DRAG_WINDOW", Xatom_MOTIF_DRAG_WINDOW)
+      ATOM_REFS_INIT ("_MOTIF_DRAG_TARGETS", Xatom_MOTIF_DRAG_TARGETS)
+      ATOM_REFS_INIT ("_MOTIF_DRAG_AND_DROP_MESSAGE",
+		      Xatom_MOTIF_DRAG_AND_DROP_MESSAGE)
+      ATOM_REFS_INIT ("_MOTIF_DRAG_INITIATOR_INFO",
+		      Xatom_MOTIF_DRAG_INITIATOR_INFO)
+      ATOM_REFS_INIT ("_MOTIF_DRAG_RECEIVER_INFO",
+		      Xatom_MOTIF_DRAG_RECEIVER_INFO)
+      ATOM_REFS_INIT ("XmTRANSFER_SUCCESS", Xatom_XmTRANSFER_SUCCESS)
+      ATOM_REFS_INIT ("XmTRANSFER_FAILURE", Xatom_XmTRANSFER_FAILURE)
     };
 
     int i;
