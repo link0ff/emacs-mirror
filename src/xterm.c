@@ -496,7 +496,44 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
   compositing manager that the contents of the window now accurately
   reflect the new size.  The compositing manager will then display the
   contents of the window, and the window manager might also postpone
-  updating the window decorations until this moment.  */
+  updating the window decorations until this moment.
+
+  DRAG AND DROP
+
+  Drag and drop in Emacs is implemented in two ways, depending on
+  which side initiated the drag-and-drop operation.  When another X
+  client initiates a drag, and the user drops something on Emacs, a
+  `drag-n-drop-event' is sent with the contents of the ClientMessage,
+  and further processing (i.e. retrieving selection contents and
+  replying to the initiating client) is performed from Lisp inside
+  `x-dnd.el'.
+
+  However, dragging contents from Emacs is implemented entirely in C.
+  X Windows has several competing drag-and-drop protocols, of which
+  Emacs supports two: the XDND protocol (see
+  https://freedesktop.org/wiki/Specifications/XDND) and the Motif drop
+  protocol.  These protocols are based on the initiator owning a
+  special selection, specifying an action the recipient should
+  perform, grabbing the mouse, and sending various different client
+  messages to the toplevel window underneath the mouse as it moves, or
+  when buttons are released.
+
+  The Lisp interface to drag-and-drop is synchronous, and involves
+  running a nested event loop with some global state until the drag
+  finishes.  When the mouse moves, Emacs looks up the toplevel window
+  underneath the pointer (the target window) either using a cache
+  provided by window managers that support the
+  _NET_WM_CLIENT_LIST_STACKING root window property, or by calling
+  XTranslateCoordinates in a loop until a toplevel window is found,
+  and sends various entry, exit, or motion events to the window
+  containing a list of targets the special selection can be converted
+  to, and the chosen action that the recipient should perform.  The
+  recipient can then send messages in reply detailing the action it
+  has actually chosen to perform.  Finally, when the mouse buttons are
+  released over the recipient window, Emacs sends a "drop" message to
+  the target window, waits for a reply, and returns the action
+  selected by the recipient to the Lisp code that initiated the
+  drag-and-drop operation.  */
 
 #include <config.h>
 #include <stdlib.h>
@@ -814,6 +851,7 @@ static bool x_dnd_waiting_for_finish;
    target to convert one of the special selections XmTRANSFER_SUCCESS
    or XmTRANSFER_FAILURE.  */
 static int x_dnd_waiting_for_motif_finish;
+static bool x_dnd_xm_use_help;
 static Window x_dnd_pending_finish_target;
 static int x_dnd_waiting_for_finish_proto;
 static bool x_dnd_allow_current_frame;
@@ -974,7 +1012,7 @@ typedef struct xm_drag_receiver_info
 #define XM_DRAG_LINK (1L << 2)
 
 #define XM_DROP_ACTION_DROP		0
-/* #define XM_DROP_ACTION_DROP_HELP	1 */
+#define XM_DROP_ACTION_DROP_HELP	1
 #define XM_DROP_ACTION_DROP_CANCEL	2
 
 #define XM_DRAG_REASON(originator, code)	((code) | ((originator) << 7))
@@ -1413,11 +1451,11 @@ xm_send_drop_message (struct x_display_info *dpyinfo, Window source,
 }
 
 static int
-xm_read_drop_start_reply (XEvent *msg, xm_drop_start_reply *reply)
+xm_read_drop_start_reply (const XEvent *msg, xm_drop_start_reply *reply)
 {
-  uint8_t *data;
+  const uint8_t *data;
 
-  data = (uint8_t *) &msg->xclient.data.b[0];
+  data = (const uint8_t *) &msg->xclient.data.b[0];
 
   if ((XM_DRAG_REASON_ORIGINATOR (data[0])
        != XM_DRAG_ORIGINATOR_RECEIVER)
@@ -1456,7 +1494,7 @@ xm_read_drag_receiver_info (struct x_display_info *dpyinfo,
   x_catch_errors (dpyinfo->display);
   rc = XGetWindowProperty (dpyinfo->display, wdesc,
 			   dpyinfo->Xatom_MOTIF_DRAG_RECEIVER_INFO,
-			   0, LONG_MAX, False,
+			   0, 4, False,
 			   dpyinfo->Xatom_MOTIF_DRAG_RECEIVER_INFO,
 			   &actual_type, &actual_format, &nitems,
 			   &bytes_remaining,
@@ -2164,10 +2202,9 @@ x_dnd_get_wm_state_and_proto (struct x_display_info *dpyinfo,
   x_uncatch_errors ();
 
   if (rc)
-    {
-      *wmstate_out = *(unsigned long *) data;
-      *proto_out = x_dnd_get_window_proto (dpyinfo, window);
-    }
+    *wmstate_out = *(unsigned long *) data;
+
+  *proto_out = x_dnd_get_window_proto (dpyinfo, window);
 
   if (data)
     XFree (data);
@@ -2210,6 +2247,7 @@ x_dnd_get_wm_state_and_proto (struct x_display_info *dpyinfo,
   reply = xcb_get_property_reply (dpyinfo->xcb_connection,
 				  xdnd_proto_cookie, &error);
 
+  *proto_out = -1;
   if (!reply)
     free (error);
   else
@@ -2217,8 +2255,6 @@ x_dnd_get_wm_state_and_proto (struct x_display_info *dpyinfo,
       if (reply->format == 32
 	  && xcb_get_property_value_length (reply) >= 4)
 	*proto_out = *(uint32_t *) xcb_get_property_value (reply);
-      else
-	*proto_out = -1;
 
       free (reply);
     }
@@ -2359,17 +2395,10 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
       if (child_return)
 	{
 	  if (x_dnd_get_wm_state_and_proto (dpyinfo, child_return,
-					    &wmstate, &proto))
-	    {
-	      *proto_out = proto;
-	      x_uncatch_errors ();
-
-	      return child_return;
-	    }
-
-	  proto = x_dnd_get_window_proto (dpyinfo, child_return);
-
-	  if (proto != -1)
+					    &wmstate, &proto)
+	      /* Proto is set by x_dnd_get_wm_state even if getting
+		 the wm state failed.  */
+	      || proto != -1)
 	    {
 	      *proto_out = proto;
 	      x_uncatch_errors ();
@@ -8620,6 +8649,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   x_dnd_return_frame = 0;
   x_dnd_waiting_for_finish = false;
   x_dnd_waiting_for_motif_finish = 0;
+  x_dnd_xm_use_help = false;
   x_dnd_end_window = None;
   x_dnd_use_toplevels
     = x_wm_supports (f, FRAME_DISPLAY_INFO (f)->Xatom_net_client_list_stacking);
@@ -12569,7 +12599,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  }
 
 		if (status != XM_DROP_SITE_VALID
-		    || action == XM_DROP_ACTION_DROP_CANCEL)
+		    || (action == XM_DROP_ACTION_DROP_CANCEL
+			|| action == XM_DROP_ACTION_DROP_HELP))
 		  {
 		    x_dnd_waiting_for_finish = false;
 		    goto OTHER;
@@ -13514,6 +13545,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
                                   &compose_status);
 #endif
 
+#ifdef XK_F1
+	  if (x_dnd_in_progress && keysym == XK_F1)
+	    {
+	      x_dnd_xm_use_help = true;
+	      goto done_keysym;
+	    }
+#endif
+
           /* If not using XIM/XIC, and a compose sequence is in progress,
              we break here.  Otherwise, chars_matched is always 0.  */
           if (compose_status.chars_matched > 0 && nbytes == 0)
@@ -14413,7 +14452,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			      = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 										 x_dnd_wanted_action),
 						     XM_DROP_SITE_VALID, XM_DRAG_NOOP,
-						     XM_DROP_ACTION_DROP);
+						     (!x_dnd_xm_use_help
+						      ? XM_DROP_ACTION_DROP
+						      : XM_DROP_ACTION_DROP_HELP));
 			    dmsg.timestamp = event->xbutton.time;
 			    dmsg.x = event->xbutton.x_root;
 			    dmsg.y = event->xbutton.y_root;
@@ -15467,7 +15508,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 							   XM_DROP_SITE_VALID,
 							   xm_side_effect_from_action (dpyinfo,
 										       x_dnd_wanted_action),
-							   XM_DROP_ACTION_DROP);
+							   (!x_dnd_xm_use_help
+							    ? XM_DROP_ACTION_DROP
+							    : XM_DROP_ACTION_DROP_HELP));
 				  dmsg.timestamp = xev->time;
 				  dmsg.x = lrint (xev->root_x);
 				  dmsg.y = lrint (xev->root_y);
@@ -16086,6 +16129,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 						  NULL);
 			}
 		    }
+
+#ifdef XK_F1
+		  if (x_dnd_in_progress && keysym == XK_F1)
+		    {
+		      x_dnd_xm_use_help = true;
+		      goto xi_done_keysym;
+		    }
+#endif
 
 		  /* First deal with keysyms which have defined
 		     translations to characters.  */
