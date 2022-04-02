@@ -190,6 +190,11 @@ methods instead.
 If non-nil, this option allows dragging text in the region from Emacs
 to another program.
 
+---
+** New user option 'mouse-drag-and-drop-region-scroll-margin'.
+If non-nil, this option allows scrolling a window while dragging text
+around without a scroll wheel.
+
 +++
 ** New function 'command-query'.
 This function makes its argument command prompt the user for
@@ -575,6 +580,12 @@ This uses the Tai Tham script, whose support has been enhanced.
 
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
+
+---
+** kmacro
+Kmacros are now OClosures and have a new constructor 'kmacro' which
+uses the 'key-parse' syntax.  It replaces the old 'kmacro-lambda-form'
+(which is now declared obsolete).
 
 ---
 ** 'savehist.el' can now truncate variables that are too long.
@@ -1130,6 +1141,11 @@ support for pipelines which will move a lot of data.  See section
 ** Miscellaneous
 
 +++
+*** New user option 'font-lock-ignore'.
+This option provides a mechanism to selectively disable font-lock
+keyword-driven fontifications.
+
++++
 *** New package vtable.el for formatting tabular data.
 This package allows formatting data using variable-pitch fonts.
 The resulting tables can display text in variable pitch fonts, text
@@ -1444,10 +1460,10 @@ option.
 ** Keymaps and key definitions
 
 +++
-*** New functions for defining and manipulating keystrokes have been added.
-These all take just the syntax defined by 'key-valid-p'.  None of the
-older functions have been depreciated or altered, but are deemphasised
-in the documentation.
+*** New functions for defining and manipulating keystrokes.
+These all take the syntax defined by 'key-valid-p'.  None of the older
+functions have been deprecated or altered, but they are now
+de-emphasized in the documentation.
 
 +++
 *** Use 'keymap-set' instead of 'define-key'.

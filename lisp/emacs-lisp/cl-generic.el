@@ -308,8 +308,10 @@ DEFAULT-BODY, if present, is used as the body of a default method.
                   `(help-add-fundoc-usage ,doc ',args)
                 (help-add-fundoc-usage doc args)))
            :autoload-end
-           ,@(mapcar (lambda (method) `(cl-defmethod ,name ,@method))
-                     (nreverse methods)))
+           ,(when methods
+              `(with-suppressed-warnings ((obsolete ,name))
+                 ,@(mapcar (lambda (method) `(cl-defmethod ,name ,@method))
+                           (nreverse methods)))))
        ,@(mapcar (lambda (declaration)
                    (let ((f (cdr (assq (car declaration)
                                        defun-declarations-alist))))
@@ -552,8 +554,7 @@ The set of acceptable TYPEs (also called \"specializers\") is defined
                     cl--generic-edebug-make-name nil]
              lambda-doc                 ; documentation string
              def-body)))                ; part to be debugged
-  (let ((qualifiers nil)
-        (orig-name name))
+  (let ((qualifiers nil))
     (while (cl-generic--method-qualifier-p args)
       (push args qualifiers)
       (setq args (pop body)))
@@ -563,18 +564,15 @@ The set of acceptable TYPEs (also called \"specializers\") is defined
       (setq name (gv-setter (cadr name))))
     (pcase-let* ((`(,call-con . ,fun) (cl--generic-lambda args body)))
       `(progn
-         ,(and (get name 'byte-obsolete-info)
-               (let* ((obsolete (get name 'byte-obsolete-info)))
-                 (macroexp-warn-and-return
-                  (macroexp--obsolete-warning name obsolete "generic function")
-                  nil (list 'obsolete name) nil orig-name)))
          ;; You could argue that `defmethod' modifies rather than defines the
          ;; function, so warnings like "not known to be defined" are fair game.
          ;; But in practice, it's common to use `cl-defmethod'
          ;; without a previous `cl-defgeneric'.
          ;; The ",'" is a no-op that pacifies check-declare.
          (,'declare-function ,name "")
-         (cl-generic-define-method ',name ',(nreverse qualifiers) ',args
+         ;; We use #' to quote `name' so as to trigger an
+         ;; obsolescence warning when applicable.
+         (cl-generic-define-method #',name ',(nreverse qualifiers) ',args
                                    ',call-con ,fun)))))
 
 (defun cl--generic-member-method (specializers qualifiers methods)
@@ -1098,7 +1096,13 @@ MET-NAME is as returned by `cl--generic-load-hist-format'."
         (dolist (method (cl--generic-method-table generic))
           (let* ((info (cl--generic-method-info method)))
             ;; FIXME: Add hyperlinks for the types as well.
-            (insert (format "%s%S" (nth 0 info) (cons function (nth 1 info))))
+            (if (length> (nth 0 info) 0)
+                (insert (format "%s%S" (nth 0 info)
+                                (let ((print-quoted nil))
+                                  (nth 1 info))))
+              ;; Make the non-":extra" bits look more like `C-h f'
+              ;; output.
+              (insert (format "%S" (cons function (nth 1 info)))))
             (let* ((met-name (cl--generic-load-hist-format
                               function
                               (cl--generic-method-qualifiers method)
@@ -1126,7 +1130,7 @@ MET-NAME is as returned by `cl--generic-load-hist-format'."
                  (let ((sclass (cl--find-class specializer))
                        (tclass (cl--find-class type)))
                    (when (and sclass tclass)
-                     (member specializer (cl--generic-class-parents tclass))))))
+                     (member specializer (cl--class-allparents tclass))))))
            (setq applies t)))
     applies))
 
@@ -1255,22 +1259,11 @@ These match if the argument is `eql' to VAL."
   ;; Use exactly the same code as for `typeof'.
   `(if ,name (type-of ,name) 'null))
 
-(defun cl--generic-class-parents (class)
-  (let ((parents ())
-        (classes (list class)))
-    ;; BFS precedence.  FIXME: Use a topological sort.
-    (while (let ((class (pop classes)))
-             (cl-pushnew (cl--class-name class) parents)
-             (setq classes
-                   (append classes
-                           (cl--class-parents class)))))
-    (nreverse parents)))
-
 (defun cl--generic-struct-specializers (tag &rest _)
   (and (symbolp tag)
        (let ((class (get tag 'cl--class)))
          (when (cl-typep class 'cl-structure-class)
-           (cl--generic-class-parents class)))))
+           (cl--class-allparents class)))))
 
 (cl-generic-define-generalizer cl--generic-struct-generalizer
   50 #'cl--generic-struct-tag
@@ -1352,6 +1345,42 @@ Used internally for the (major-mode MODE) context specializers."
                     ;;E.g. could be (eql ...)
                     (progn (cl-assert (null modes)) mode)
                   `(derived-mode ,mode . ,modes))))
+
+;;; Dispatch on OClosure type
+
+;; It would make sense to put this into `oclosure.el' except that when
+;; `oclosure.el' is loaded `cl-defmethod' is not available yet.
+
+(defun cl--generic-oclosure-tag (name &rest _)
+  `(oclosure-type ,name))
+
+(defun cl-generic--oclosure-specializers (tag &rest _)
+  (and (symbolp tag)
+       (let ((class (cl--find-class tag)))
+         (when (cl-typep class 'oclosure--class)
+           (oclosure--class-allparents class)))))
+
+(cl-generic-define-generalizer cl-generic--oclosure-generalizer
+  ;; Give slightly higher priority than the struct specializer, so that
+  ;; for a generic function with methods dispatching structs and on OClosures,
+  ;; we first try `oclosure-type' before `type-of' since `type-of' will return
+  ;; non-nil for an OClosure as well.
+  51 #'cl--generic-oclosure-tag
+  #'cl-generic--oclosure-specializers)
+
+(cl-defmethod cl-generic-generalizers :extra "oclosure-struct" (type)
+  "Support for dispatch on types defined by `oclosure-define'."
+  (or
+   (when (symbolp type)
+     ;; Use the "cl--struct-class*" (inlinable) functions/macros rather than
+     ;; the "cl-struct-*" variants which aren't inlined, so that dispatch can
+     ;; take place without requiring cl-lib.
+     (let ((class (cl--find-class type)))
+       (and (cl-typep class 'oclosure--class)
+            (list cl-generic--oclosure-generalizer))))
+   (cl-call-next-method)))
+
+(cl--generic-prefill-dispatchers 0 oclosure)
 
 ;;; Support for unloading.
 
