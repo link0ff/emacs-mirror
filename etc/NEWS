@@ -196,6 +196,11 @@ If non-nil, this option allows scrolling a window while dragging text
 around without a scroll wheel.
 
 +++
+** New user options 'dnd-indicate-insertion-point' and 'dnd-scroll-margin'.
+These options allow adjusting point and scrolling a window when
+dragging items from another program.
+
++++
 ** New function 'command-query'.
 This function makes its argument command prompt the user for
 confirmation before executing.
@@ -1330,6 +1335,12 @@ functions.
 
 
 * Lisp Changes in Emacs 29.1
+
++++
+** 'track-mouse' can be a new value 'drag-source'.
+This means the same as 'dropping', but modifies the mouse position
+list in reported motion events if there is no frame underneath the
+mouse pointer.
 
 +++
 ** New function 'x-begin-drag'.

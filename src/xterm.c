@@ -1610,7 +1610,8 @@ xm_send_top_level_leave_message (struct x_display_info *dpyinfo, Window source,
       mmsg.byteorder = XM_TARGETS_TABLE_CUR;
       mmsg.side_effects = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 									   x_dnd_wanted_action),
-					       XM_DROP_SITE_NONE, 0, 0);
+					       XM_DROP_SITE_NONE, XM_DRAG_NOOP,
+					       XM_DROP_ACTION_DROP_CANCEL);
       mmsg.timestamp = dmsg->timestamp;
       mmsg.x = 65535;
       mmsg.y = 65535;
@@ -2652,8 +2653,23 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
 	}
 #endif
 
-      /* No toplevel was found and the overlay window was not a proxy,
-	 so return None.  */
+      /* Now look for an XdndProxy on the root window.  */
+
+      proxy = x_dnd_get_window_proxy (dpyinfo, dpyinfo->root_window);
+
+      if (proxy != None)
+	{
+	  proto = x_dnd_get_window_proto (dpyinfo, dpyinfo->root_window);
+
+	  if (proto != -1)
+	    {
+	      *proto_out = proto;
+	      return proxy;
+	    }
+	}
+
+      /* No toplevel was found and the overlay and root windows were
+	 not proxies, so return None.  */
       *proto_out = -1;
       return None;
     }
@@ -9795,7 +9811,8 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 
 	x_catch_errors (FRAME_X_DISPLAY (*fp));
 
-	if (gui_mouse_grabbed (dpyinfo) && !EQ (track_mouse, Qdropping))
+	if (gui_mouse_grabbed (dpyinfo) && !EQ (track_mouse, Qdropping)
+	    && !EQ (track_mouse, Qdrag_source))
 	  {
 	    /* If mouse was grabbed on a frame, give coords for that frame
 	       even if the mouse is now outside it.  */
@@ -9884,7 +9901,8 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 	  }
 
 	if ((!f1 || FRAME_TOOLTIP_P (f1))
-	    && EQ (track_mouse, Qdropping)
+	    && (EQ (track_mouse, Qdropping)
+		|| EQ (track_mouse, Qdrag_source))
 	    && gui_mouse_grabbed (dpyinfo))
 	  {
 	    /* When dropping then if we didn't get a frame or only a
@@ -9900,12 +9918,26 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 				   root_x, root_y, &win_x, &win_y,
 				   /* Child of win.  */
 				   &child);
-	    f1 = dpyinfo->last_mouse_frame;
+
+	    if (!EQ (track_mouse, Qdrag_source))
+	      f1 = dpyinfo->last_mouse_frame;
+	    else
+	      {
+		/* Don't set FP but do set WIN_X and WIN_Y in this
+		   case, so make_lispy_movement knows which
+		   coordinates to report.  */
+		*bar_window = Qnil;
+		*part = 0;
+		*fp = NULL;
+		XSETINT (*x, win_x);
+		XSETINT (*y, win_y);
+		*timestamp = dpyinfo->last_mouse_movement_time;
+	      }
 	  }
 	else if (f1 && FRAME_TOOLTIP_P (f1))
 	  f1 = NULL;
 
-	if (x_had_errors_p (FRAME_X_DISPLAY (*fp)))
+	if (x_had_errors_p (dpyinfo->display))
 	  f1 = NULL;
 
 	x_uncatch_errors_after_check ();
@@ -9915,7 +9947,7 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 	  {
 	    struct scroll_bar *bar;
 
-            bar = x_window_to_scroll_bar (FRAME_X_DISPLAY (*fp), win, 2);
+            bar = x_window_to_scroll_bar (dpyinfo->display, win, 2);
 
 	    if (bar)
 	      {
@@ -12719,7 +12751,8 @@ mouse_or_wdesc_frame (struct x_display_info *dpyinfo, int wdesc)
 			? dpyinfo->last_mouse_frame
 			: NULL);
 
-  if (lm_f && !EQ (track_mouse, Qdropping))
+  if (lm_f && !EQ (track_mouse, Qdropping)
+      && !EQ (track_mouse, Qdrag_source))
     return lm_f;
   else
     {
@@ -14414,7 +14447,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    dmsg.byteorder = XM_TARGETS_TABLE_CUR;
 		    dmsg.side_effects = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 											 x_dnd_wanted_action),
-							     XM_DROP_SITE_NONE, 0, 0);
+							     XM_DROP_SITE_NONE, XM_DRAG_NOOP,
+							     XM_DROP_ACTION_DROP_CANCEL);
 		    dmsg.timestamp = event->xmotion.time;
 		    dmsg.x = event->xmotion.x_root;
 		    dmsg.y = event->xmotion.y_root;
@@ -14975,7 +15009,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			    dmsg.side_effects
 			      = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 										 x_dnd_wanted_action),
-						     XM_DROP_SITE_VALID, XM_DRAG_NOOP,
+						     XM_DROP_SITE_VALID,
+						     xm_side_effect_from_action (dpyinfo,
+										 x_dnd_wanted_action),
 						     (!x_dnd_xm_use_help
 						      ? XM_DROP_ACTION_DROP
 						      : XM_DROP_ACTION_DROP_HELP));
@@ -15865,7 +15901,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  dmsg.side_effects
 			    = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 									       x_dnd_wanted_action),
-						   XM_DROP_SITE_NONE, 0, 0);
+						   XM_DROP_SITE_NONE, XM_DRAG_NOOP,
+						   XM_DROP_ACTION_DROP_CANCEL);
 			  dmsg.timestamp = xev->time;
 			  dmsg.x = lrint (xev->root_x);
 			  dmsg.y = lrint (xev->root_y);
