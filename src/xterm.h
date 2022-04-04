@@ -1389,7 +1389,7 @@ extern void x_scroll_bar_configure (GdkEvent *);
 #endif
 
 extern Lisp_Object x_dnd_begin_drag_and_drop (struct frame *, Time, Atom,
-					      bool, Atom *, const char **,
+					      Lisp_Object, Atom *, const char **,
 					      size_t, bool);
 extern void x_set_dnd_targets (Atom *, int);
 
@@ -1547,6 +1547,9 @@ extern void x_session_close (void);
 #ifdef USE_GTK
 extern struct input_event xg_pending_quit_event;
 #endif
+
+extern bool x_dnd_in_progress;
+extern struct frame *x_dnd_frame;
 
 #ifdef HAVE_XINPUT2
 struct xi_device_t *xi_device_from_id (struct x_display_info *, int);
