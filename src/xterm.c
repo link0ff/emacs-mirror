@@ -2806,7 +2806,10 @@ x_dnd_send_unsupported_drop (struct x_display_info *dpyinfo, Window target_windo
   XSETFRAME (frame, x_dnd_frame);
 
   x_catch_errors (dpyinfo->display);
+
   child = dpyinfo->root_window;
+  dest_x = root_x;
+  dest_y = root_y;
 
   while (XTranslateCoordinates (dpyinfo->display, child,
 				child, root_x, root_y, &dest_x,
@@ -2821,27 +2824,24 @@ x_dnd_send_unsupported_drop (struct x_display_info *dpyinfo, Window target_windo
       root_y = dest_y;
     }
 
-  if (child != dpyinfo->root_window)
-    {
-      x_own_selection (QPRIMARY, Qnil, frame);
+  x_own_selection (QPRIMARY, Qnil, frame);
 
-      event.xbutton.window = child;
-      event.xbutton.x = dest_x;
-      event.xbutton.y = dest_y;
-      event.xbutton.state = 0;
-      event.xbutton.button = 2;
-      event.xbutton.same_screen = True;
-      event.xbutton.time = before + 1;
-      event.xbutton.time = before + 2;
+  event.xbutton.window = child;
+  event.xbutton.x = dest_x;
+  event.xbutton.y = dest_y;
+  event.xbutton.state = 0;
+  event.xbutton.button = 2;
+  event.xbutton.same_screen = True;
+  event.xbutton.time = before + 1;
+  event.xbutton.time = before + 2;
 
-      x_set_pending_dnd_time (before);
+  x_set_pending_dnd_time (before);
 
-      XSendEvent (dpyinfo->display, child,
-		  True, ButtonPressMask, &event);
-      event.xbutton.type = ButtonRelease;
-      XSendEvent (dpyinfo->display, child,
-		  True, ButtonReleaseMask, &event);
-    }
+  XSendEvent (dpyinfo->display, child,
+	      True, ButtonPressMask, &event);
+  event.xbutton.type = ButtonRelease;
+  XSendEvent (dpyinfo->display, child,
+	      True, ButtonReleaseMask, &event);
 
   x_uncatch_errors ();
 }
@@ -3497,6 +3497,8 @@ x_dnd_cleanup_drag_and_drop (void *frame)
 #ifdef USE_GTK
   current_hold_quit = NULL;
 #endif
+  x_dnd_return_frame_object = NULL;
+  x_dnd_movement_frame = NULL;
 
   block_input ();
   /* Restore the old event mask.  */
@@ -9528,6 +9530,9 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 	  if (x_dnd_use_toplevels)
 	    x_dnd_free_toplevels ();
 
+	  x_dnd_return_frame_object = NULL;
+	  x_dnd_movement_frame = NULL;
+
 	  FRAME_DISPLAY_INFO (f)->grabbed = 0;
 #ifdef USE_GTK
 	  current_hold_quit = NULL;
@@ -9546,6 +9551,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 #ifdef USE_GTK
   current_hold_quit = NULL;
 #endif
+  x_dnd_movement_frame = NULL;
 
   /* Restore the old event mask.  */
   XSelectInput (FRAME_X_DISPLAY (f),
@@ -9554,13 +9560,17 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 
   unblock_input ();
 
-  if (x_dnd_return_frame == 3)
+  if (x_dnd_return_frame == 3
+      && FRAME_LIVE_P (x_dnd_return_frame_object))
     {
       x_dnd_return_frame_object->mouse_moved = true;
 
       XSETFRAME (action, x_dnd_return_frame_object);
+      x_dnd_return_frame_object = NULL;
       return action;
     }
+
+  x_dnd_return_frame_object = NULL;
 
   if (x_dnd_use_toplevels)
     x_dnd_free_toplevels ();
@@ -15443,7 +15453,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    else
 		      {
 			x_set_pending_dnd_time (event->xbutton.time);
-			x_dnd_send_unsupported_drop (dpyinfo, x_dnd_last_seen_window,
+			x_dnd_send_unsupported_drop (dpyinfo, (x_dnd_last_seen_toplevel != None
+							       ? x_dnd_last_seen_toplevel
+							       : x_dnd_last_seen_window),
 						     event->xbutton.x_root, event->xbutton.y_root,
 						     event->xbutton.time);
 		      }
@@ -16605,7 +16617,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  else
 			    {
 			      x_set_pending_dnd_time (xev->time);
-			      x_dnd_send_unsupported_drop (dpyinfo, x_dnd_last_seen_window,
+			      x_dnd_send_unsupported_drop (dpyinfo, (x_dnd_last_seen_toplevel != None
+								     ? x_dnd_last_seen_toplevel
+								     : x_dnd_last_seen_window),
 							   xev->root_x, xev->root_y, xev->time);
 			    }
 			}
@@ -23010,6 +23024,24 @@ init_xterm (void)
 #endif
 }
 #endif
+
+void
+mark_xterm (void)
+{
+  Lisp_Object val;
+
+  if (x_dnd_return_frame_object)
+    {
+      XSETFRAME (val, x_dnd_return_frame_object);
+      mark_object (val);
+    }
+
+  if (x_dnd_movement_frame)
+    {
+      XSETFRAME (val, x_dnd_movement_frame);
+      mark_object (val);
+    }
+}
 
 void
 syms_of_xterm (void)
