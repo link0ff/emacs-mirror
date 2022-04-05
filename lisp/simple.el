@@ -9092,7 +9092,6 @@ makes it easier to edit it."
     (define-key map [follow-link] 'mouse-face)
     (define-key map [down-mouse-2] nil)
     (define-key map "\C-m" 'choose-completion)
-    (define-key map [C-return] 'choose-completion-no-auto-exit)
     (define-key map "\e\e\e" 'delete-completion-window)
     (define-key map [remap keyboard-quit] #'delete-completion-window)
     (define-key map [left] 'previous-completion)
@@ -9274,7 +9273,7 @@ minibuffer, but don't quit the completions window."
                 ((and (not (bobp))
                       (get-text-property (1- (point)) 'mouse-face))
                  (setq beg (point)))
-                ;; FIX
+                ;; FIXME:
                 (t (error "No completion here")))
                (setq beg (previous-single-property-change beg 'mouse-face))
                (substring-no-properties
@@ -9293,14 +9292,6 @@ minibuffer, but don't quit the completions window."
              ;; If all else fails, just guess.
              (list (choose-completion-guess-base-position choice)))
          insert-function)))))
-
-(defun choose-completion-no-auto-exit (&optional event)
-  "Insert the completion at point to the minibuffer without exiting it.
-Like `choose-completion', it chooses the completion at point,
-inserts it to the minibuffer, but doesn't exit the minibuffer."
-  (interactive (list last-nonmenu-event))
-  (let ((completion-no-auto-exit t))
-    (choose-completion event)))
 
 ;; Delete the longest partial match for STRING
 ;; that can be found before POINT.
