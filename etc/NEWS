@@ -818,6 +818,11 @@ displayed as emojis.  Default nil.
 This is bound to 'W D e' and will display symbols that have emoji
 representation as emojis.
 
++++
+*** New mu backend for gnus-search.
+Configuration is very similar to the notmuch and namazu backends.  It
+supports the unified search syntax.
+
 ** EIEIO
 
 +++
@@ -1352,6 +1357,11 @@ functions.
 
 
 * Lisp Changes in Emacs 29.1
+
++++
+** New variable 'last-event-device'.
+On X Windows, this specifies the input extension device from which the
+last input event originated.
 
 +++
 ** 'track-mouse' can be a new value 'drag-source'.
