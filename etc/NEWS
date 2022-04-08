@@ -1341,6 +1341,12 @@ This change is now applied in 'dired-insert-directory'.
 'vc-arch-command'.
 
 +++
+** New generic function 'function-doumentation'.
+Can dynamically generate a raw docstring depending on the type of
+a function.
+Used mainly for docstrings of OClosures.
+
++++
 ** Base64 encoding no longer tolerates latin-1 input.
 The functions 'base64-encode-string', 'base64url-encode-string',
 'base64-encode-region' and 'base64url-encode-region' no longer accept
@@ -1359,9 +1365,10 @@ functions.
 * Lisp Changes in Emacs 29.1
 
 +++
-** New variable 'last-event-device'.
-On X Windows, this specifies the input extension device from which the
-last input event originated.
+** New variable 'last-event-device' and new function 'device-class'.
+On X Windows, 'last-event-device' specifies the input extension device
+from which the last input event originated, and 'device-class' can be
+used to determine the type of an input device.
 
 +++
 ** 'track-mouse' can be a new value 'drag-source'.

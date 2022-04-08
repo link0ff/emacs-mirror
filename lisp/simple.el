@@ -2357,6 +2357,38 @@ maps."
   (with-suppressed-warnings ((interactive-only execute-extended-command))
     (execute-extended-command prefixarg command-name typed)))
 
+(cl-defgeneric function-documentation (function)
+  "Extract the raw docstring info from FUNCTION.
+FUNCTION is expected to be a function value rather than, say, a mere symbol.
+This is intended to be specialized via `cl-defmethod' but not called directly:
+if you need a function's documentation use `documentation' which will call this
+function as needed."
+  (let ((docstring-p (lambda (doc)
+                       ;; A docstring can be either a string or a reference
+                       ;; into either the `etc/DOC' or a `.elc' file.
+                       (or (stringp doc)
+                           (fixnump doc) (fixnump (cdr-safe doc))))))
+    (pcase function
+      ((pred byte-code-function-p)
+       (when (> (length function) 4)
+         (let ((doc (aref function 4)))
+           (when (funcall docstring-p doc) doc))))
+      ((or (pred stringp) (pred vectorp)) "Keyboard macro.")
+      (`(keymap . ,_)
+       "Prefix command (definition is a keymap associating keystrokes with commands).")
+      ((or `(lambda ,_args . ,body) `(closure ,_env ,_args . ,body)
+           `(autoload ,_file . ,body))
+       (let ((doc (car body)))
+	 (when (and (funcall docstring-p doc)
+	            ;; Handle a doc reference--but these never come last
+	            ;; in the function body, so reject them if they are last.
+	            (or (cdr body) (eq 'autoload (car-safe function))))
+           doc)))
+      (_ (signal 'invalid-function (list function))))))
+
+(cl-defmethod function-documentation ((function accessor))
+  (oclosure--accessor-docstring function)) ;; FIXME: η-reduce!
+
 (defun command-execute (cmd &optional record-flag keys special)
   ;; BEWARE: Called directly from the C code.
   "Execute CMD as an editor command.
@@ -3891,12 +3923,12 @@ to the end of the list of defaults just after the default value."
 (defvar minibuffer-local-shell-command-map
   (let ((map (make-sparse-keymap)))
     (set-keymap-parent map minibuffer-local-map)
-    (define-key map "\t" 'completion-at-point)
-    (define-key map [M-up]   'minibuffer-choose-previous-completion)
-    (define-key map [M-down] 'minibuffer-choose-next-completion)
-    (define-key map [M-S-up]   'minibuffer-previous-completion)
-    (define-key map [M-S-down] 'minibuffer-next-completion)
-    (define-key map [?\M-\r]   'minibuffer-choose-completion)
+    (define-key map "\t"       #'completion-at-point)
+    (define-key map [M-up]     #'minibuffer-choose-previous-completion)
+    (define-key map [M-down]   #'minibuffer-choose-next-completion)
+    (define-key map [M-S-up]   #'minibuffer-previous-completion)
+    (define-key map [M-S-down] #'minibuffer-next-completion)
+    (define-key map [?\M-\r]   #'minibuffer-choose-completion)
     map)
   "Keymap used for completing shell commands in minibuffer.")
 
@@ -10008,7 +10040,7 @@ warning using STRING as the message.")
         (and list
              (boundp symbol)
              (or (eq symbol t)
-                 (and (stringp (setq symbol (eval symbol)))
+                 (and (stringp (setq symbol (symbol-value symbol)))
                       (string-match-p (nth 2 list) symbol)))
              (display-warning package (nth 3 list) :warning)))
     (error nil)))
