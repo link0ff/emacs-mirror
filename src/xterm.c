@@ -3331,7 +3331,7 @@ x_dnd_send_enter (struct frame *f, Window target, int supported)
 		     x_dnd_n_targets);
 
   x_catch_errors (dpyinfo->display);
-  XSendEvent (FRAME_X_DISPLAY (f), target, False, 0, &msg);
+  XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
   x_uncatch_errors ();
 }
 
@@ -3390,7 +3390,7 @@ x_dnd_send_position (struct frame *f, Window target, int supported,
     msg.xclient.data.l[4] = action;
 
   x_catch_errors (dpyinfo->display);
-  XSendEvent (FRAME_X_DISPLAY (f), target, False, 0, &msg);
+  XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
   x_uncatch_errors ();
 }
 
@@ -3414,7 +3414,7 @@ x_dnd_send_leave (struct frame *f, Window target)
   msg.xclient.data.l[4] = 0;
 
   x_catch_errors (dpyinfo->display);
-  XSendEvent (FRAME_X_DISPLAY (f), target, False, 0, &msg);
+  XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
   x_uncatch_errors ();
 }
 
@@ -3504,7 +3504,7 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
     msg.xclient.data.l[2] = timestamp;
 
   x_catch_errors (dpyinfo->display);
-  XSendEvent (FRAME_X_DISPLAY (f), target, False, 0, &msg);
+  XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
   x_uncatch_errors ();
   return true;
 }
@@ -3842,6 +3842,77 @@ x_free_xi_devices (struct x_display_info *dpyinfo)
   unblock_input ();
 }
 
+static void
+xi_populate_device_from_info (struct xi_device_t *xi_device,
+			      XIDeviceInfo *device)
+{
+#ifdef HAVE_XINPUT2_1
+  struct xi_scroll_valuator_t *valuator;
+  int actual_valuator_count;
+  XIScrollClassInfo *info;
+#endif
+#ifdef HAVE_XINPUT2_2
+  XITouchClassInfo *touch_info;
+#endif
+  int c;
+
+  xi_device->device_id = device->deviceid;
+  xi_device->grab = 0;
+
+#ifdef HAVE_XINPUT2_1
+  actual_valuator_count = 0;
+  xi_device->valuators =
+    xmalloc (sizeof *xi_device->valuators * device->num_classes);
+#endif
+#ifdef HAVE_XINPUT2_2
+  xi_device->touchpoints = NULL;
+#endif
+
+  xi_device->master_p = (device->use == XIMasterKeyboard
+			 || device->use == XIMasterPointer);
+#ifdef HAVE_XINPUT2_2
+  xi_device->direct_p = false;
+#endif
+  xi_device->name = build_string (device->name);
+
+  for (c = 0; c < device->num_classes; ++c)
+    {
+      switch (device->classes[c]->type)
+	{
+#ifdef HAVE_XINPUT2_1
+	case XIScrollClass:
+	  {
+	    info = (XIScrollClassInfo *) device->classes[c];
+
+	    valuator = &xi_device->valuators[actual_valuator_count++];
+	    valuator->horizontal
+	      = (info->scroll_type == XIScrollTypeHorizontal);
+	    valuator->invalid_p = true;
+	    valuator->emacs_value = DBL_MIN;
+	    valuator->increment = info->increment;
+	    valuator->number = info->number;
+	    valuator->pending_enter_reset = false;
+
+	    break;
+	  }
+#endif
+#ifdef HAVE_XINPUT2_2
+	case XITouchClass:
+	  {
+	    touch_info = (XITouchClassInfo *) device->classes[c];
+	    xi_device->direct_p = touch_info->mode == XIDirectTouch;
+	  }
+#endif
+	default:
+	  break;
+	}
+    }
+
+#ifdef HAVE_XINPUT2_1
+  xi_device->scroll_valuator_count = actual_valuator_count;
+#endif
+}
+
 /* The code below handles the tracking of scroll valuators on XInput
    2, in order to support scroll wheels that report information more
    granular than a screen line.
@@ -3876,9 +3947,10 @@ x_free_xi_devices (struct x_display_info *dpyinfo)
 static void
 x_init_master_valuators (struct x_display_info *dpyinfo)
 {
-  int ndevices;
+  int ndevices, actual_devices;
   XIDeviceInfo *infos;
 
+  actual_devices = 0;
   block_input ();
   x_free_xi_devices (dpyinfo);
   infos = XIQueryDevice (dpyinfo->display,
@@ -3892,79 +3964,13 @@ x_init_master_valuators (struct x_display_info *dpyinfo)
       return;
     }
 
-  int actual_devices = 0;
   dpyinfo->devices = xmalloc (sizeof *dpyinfo->devices * ndevices);
 
   for (int i = 0; i < ndevices; ++i)
     {
-      XIDeviceInfo *device = &infos[i];
-
-      if (device->enabled)
-	{
-#ifdef HAVE_XINPUT2_1
-	  int actual_valuator_count = 0;
-#endif
-
-	  struct xi_device_t *xi_device = &dpyinfo->devices[actual_devices++];
-	  xi_device->device_id = device->deviceid;
-	  xi_device->grab = 0;
-
-#ifdef HAVE_XINPUT2_1
-	  xi_device->valuators =
-	    xmalloc (sizeof *xi_device->valuators * device->num_classes);
-#endif
-#ifdef HAVE_XINPUT2_2
-	  xi_device->touchpoints = NULL;
-#endif
-
-	  xi_device->master_p = (device->use == XIMasterKeyboard
-				 || device->use == XIMasterPointer);
-#ifdef HAVE_XINPUT2_2
-	  xi_device->direct_p = false;
-#endif
-	  xi_device->name = build_string (device->name);
-
-	  for (int c = 0; c < device->num_classes; ++c)
-	    {
-	      switch (device->classes[c]->type)
-		{
-#ifdef HAVE_XINPUT2_1
-		case XIScrollClass:
-		  {
-		    XIScrollClassInfo *info =
-		      (XIScrollClassInfo *) device->classes[c];
-		    struct xi_scroll_valuator_t *valuator;
-
-		    valuator = &xi_device->valuators[actual_valuator_count++];
-		    valuator->horizontal
-		      = (info->scroll_type == XIScrollTypeHorizontal);
-		    valuator->invalid_p = true;
-		    valuator->emacs_value = DBL_MIN;
-		    valuator->increment = info->increment;
-		    valuator->number = info->number;
-		    valuator->pending_enter_reset = false;
-
-		    break;
-		  }
-#endif
-#ifdef HAVE_XINPUT2_2
-		case XITouchClass:
-		  {
-		    XITouchClassInfo *info;
-
-		    info = (XITouchClassInfo *) device->classes[c];
-		    xi_device->direct_p = info->mode == XIDirectTouch;
-		  }
-#endif
-		default:
-		  break;
-		}
-	    }
-
-#ifdef HAVE_XINPUT2_1
-	  xi_device->scroll_valuator_count = actual_valuator_count;
-#endif
-	}
+      if (infos[i].enabled)
+	xi_populate_device_from_info (&dpyinfo->devices[actual_devices++],
+				      &infos[i]);
     }
 
   dpyinfo->num_devices = actual_devices;
@@ -3974,58 +3980,49 @@ x_init_master_valuators (struct x_display_info *dpyinfo)
 
 #ifdef HAVE_XINPUT2_1
 /* Return the delta of the scroll valuator VALUATOR_NUMBER under
-   DEVICE_ID in the display DPYINFO with VALUE.  The valuator's
-   valuator will be set to VALUE afterwards.  In case no scroll
-   valuator is found, or if the valuator state is invalid (see the
-   comment under XI_Enter in handle_one_xevent), or if device_id is
-   not known to Emacs, DBL_MAX is returned.  Otherwise, the valuator
-   is returned in VALUATOR_RETURN.  */
+   DEVICE in the display DPYINFO with VALUE.  The valuator's valuator
+   will be set to VALUE afterwards.  In case no scroll valuator is
+   found, or if the valuator state is invalid (see the comment under
+   XI_Enter in handle_one_xevent).  Otherwise, the valuator is
+   returned in VALUATOR_RETURN.  */
 static double
-x_get_scroll_valuator_delta (struct x_display_info *dpyinfo, int device_id,
+x_get_scroll_valuator_delta (struct x_display_info *dpyinfo,
+			     struct xi_device_t *device,
 			     int valuator_number, double value,
 			     struct xi_scroll_valuator_t **valuator_return)
 {
-  block_input ();
+  struct xi_scroll_valuator_t *sv;
+  double delta;
+  int i;
 
-  for (int i = 0; i < dpyinfo->num_devices; ++i)
+  for (i = 0; i < device->scroll_valuator_count; ++i)
     {
-      struct xi_device_t *device = &dpyinfo->devices[i];
+      sv = &device->valuators[i];
 
-      if (device->device_id == device_id)
+      if (sv->number == valuator_number)
 	{
-	  for (int j = 0; j < device->scroll_valuator_count; ++j)
+	  *valuator_return = sv;
+
+	  if (sv->increment == 0)
+	    return DBL_MAX;
+
+	  if (sv->invalid_p)
 	    {
-	      struct xi_scroll_valuator_t *sv = &device->valuators[j];
+	      sv->current_value = value;
+	      sv->invalid_p = false;
 
-	      if (sv->number == valuator_number)
-		{
-		  if (sv->invalid_p)
-		    {
-		      sv->current_value = value;
-		      sv->invalid_p = false;
-		      *valuator_return = sv;
-
-		      unblock_input ();
-		      return DBL_MAX;
-		    }
-		  else
-		    {
-		      double delta = (sv->current_value - value) / sv->increment;
-                      sv->current_value = value;
-		      *valuator_return = sv;
-
-		      unblock_input ();
-		      return delta;
-		    }
-		}
+	      return DBL_MAX;
 	    }
+	  else
+	    {
+	      delta = (sv->current_value - value) / sv->increment;
+	      sv->current_value = value;
 
-	  unblock_input ();
-	  return DBL_MAX;
+	      return delta;
+	    }
 	}
     }
 
-  unblock_input ();
   return DBL_MAX;
 }
 
@@ -4240,8 +4237,11 @@ x_set_cr_source_with_gc_foreground (struct frame *f, GC gc,
       cairo_set_operator (FRAME_CR_CONTEXT (f), CAIRO_OPERATOR_SOURCE);
     }
   else
-    cairo_set_source_rgb (FRAME_CR_CONTEXT (f), color.red / 65535.0,
-                          color.green / 65535.0, color.blue / 65535.0);
+    {
+      cairo_set_source_rgb (FRAME_CR_CONTEXT (f), color.red / 65535.0,
+			    color.green / 65535.0, color.blue / 65535.0);
+      cairo_set_operator (FRAME_CR_CONTEXT (f), CAIRO_OPERATOR_OVER);
+    }
 }
 
 void
@@ -4269,8 +4269,11 @@ x_set_cr_source_with_gc_background (struct frame *f, GC gc,
       cairo_set_operator (FRAME_CR_CONTEXT (f), CAIRO_OPERATOR_SOURCE);
     }
   else
-    cairo_set_source_rgb (FRAME_CR_CONTEXT (f), color.red / 65535.0,
-                          color.green / 65535.0, color.blue / 65535.0);
+    {
+      cairo_set_source_rgb (FRAME_CR_CONTEXT (f), color.red / 65535.0,
+			    color.green / 65535.0, color.blue / 65535.0);
+      cairo_set_operator (FRAME_CR_CONTEXT (f), CAIRO_OPERATOR_OVER);
+    }
 }
 
 static const cairo_user_data_key_t xlib_surface_key, saved_drawable_key;
@@ -10738,7 +10741,8 @@ x_send_scroll_bar_event (Lisp_Object window, enum scroll_bar_part part,
   /* Setting the event mask to zero means that the message will
      be sent to the client that created the window, and if that
      window no longer exists, no event will be sent.  */
-  XSendEvent (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), False, 0, &event);
+  XSendEvent (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f), False,
+	      NoEventMask, &event);
   unblock_input ();
 }
 
@@ -13305,6 +13309,29 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 	  if (x_dnd_return_frame == 2
 	      && x_any_window_to_frame (dpyinfo, toplevel))
 	    {
+	      if (x_dnd_last_seen_window != None
+		  && x_dnd_last_protocol_version != -1
+		  && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
+		x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
+	      else if (x_dnd_last_seen_window != None
+		       && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+		       && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
+		{
+		  if (!x_dnd_motif_setup_p)
+		    xm_setup_drag_info (dpyinfo, x_dnd_frame);
+
+		  lmsg.reason = XM_DRAG_REASON (XM_DRAG_ORIGINATOR_INITIATOR,
+						XM_DRAG_REASON_TOP_LEVEL_LEAVE);
+		  lmsg.byteorder = XM_TARGETS_TABLE_CUR;
+		  lmsg.zero = 0;
+		  lmsg.timestamp = timestamp;
+		  lmsg.source_window = FRAME_X_WINDOW (x_dnd_frame);
+
+		  if (x_dnd_motif_setup_p)
+		    xm_send_top_level_leave_message (dpyinfo, FRAME_X_WINDOW (x_dnd_frame),
+						     x_dnd_last_seen_window, &lmsg);
+		}
+
 	      x_dnd_end_window = x_dnd_last_seen_window;
 	      x_dnd_last_seen_window = None;
 	      x_dnd_last_seen_toplevel = None;
@@ -13930,7 +13957,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	if (x_dnd_in_progress || x_dnd_waiting_for_finish)
 	  {
-	    eassert (hold_quit);
+	    eassume (hold_quit);
 
 	    *hold_quit = inev.ie;
 	    EVENT_INIT (inev.ie);
@@ -14951,6 +14978,29 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		if (x_dnd_return_frame == 2
 		    && x_any_window_to_frame (dpyinfo, toplevel))
 		  {
+		    if (x_dnd_last_seen_window != None
+			&& x_dnd_last_protocol_version != -1
+			&& x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
+		      x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
+		    else if (x_dnd_last_seen_window != None
+			     && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+			     && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
+		      {
+			if (!x_dnd_motif_setup_p)
+			  xm_setup_drag_info (dpyinfo, x_dnd_frame);
+
+			lmsg.reason = XM_DRAG_REASON (XM_DRAG_ORIGINATOR_INITIATOR,
+						      XM_DRAG_REASON_TOP_LEVEL_LEAVE);
+			lmsg.byteorder = XM_TARGETS_TABLE_CUR;
+			lmsg.zero = 0;
+			lmsg.timestamp = event->xmotion.time;
+			lmsg.source_window = FRAME_X_WINDOW (x_dnd_frame);
+
+			if (x_dnd_motif_setup_p)
+			  xm_send_top_level_leave_message (dpyinfo, FRAME_X_WINDOW (x_dnd_frame),
+							   x_dnd_last_seen_window, &lmsg);
+		      }
+
 		    x_dnd_end_window = x_dnd_last_seen_window;
 		    x_dnd_last_seen_window = None;
 		    x_dnd_last_seen_toplevel = None;
@@ -15869,8 +15919,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  case XI_FocusIn:
 	    {
 	      XIFocusInEvent *focusin = (XIFocusInEvent *) xi_event;
+	      struct xi_device_t *source;
 
 	      any = x_any_window_to_frame (dpyinfo, focusin->event);
+	      source = xi_device_from_id (dpyinfo, focusin->sourceid);
 #ifdef USE_GTK
 	      /* Some WMs (e.g. Mutter in Gnome Shell), don't unmap
 		 minimized/iconified windows; thus, for those WMs we won't get
@@ -15898,16 +15950,25 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      XSETFRAME (inev.ie.frame_or_window, f);
 		    }
 		}
+
 	      x_detect_focus_change (dpyinfo, any, event, &inev.ie);
+
+	      if (inev.ie.kind != NO_EVENT && source)
+		inev.ie.device = source->name;
 	      goto XI_OTHER;
 	    }
 
 	  case XI_FocusOut:
 	    {
 	      XIFocusOutEvent *focusout = (XIFocusOutEvent *) xi_event;
+	      struct xi_device_t *source;
 
 	      any = x_any_window_to_frame (dpyinfo, focusout->event);
+	      source = xi_device_from_id (dpyinfo, focusout->sourceid);
 	      x_detect_focus_change (dpyinfo, any, event, &inev.ie);
+
+	      if (inev.ie.kind != NO_EVENT && source)
+		inev.ie.device = source->name;
 	      goto XI_OTHER;
 	    }
 
@@ -16180,7 +16241,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      /* See the comment on top of
 			 x_init_master_valuators for more details on how
 			 scroll wheel movement is reported on XInput 2.  */
-		      delta = x_get_scroll_valuator_delta (dpyinfo, xev->deviceid,
+		      delta = x_get_scroll_valuator_delta (dpyinfo, device,
 							   i, *values, &val);
 		      values++;
 
@@ -16442,6 +16503,29 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      if (x_dnd_return_frame == 2
 			  && x_any_window_to_frame (dpyinfo, toplevel))
 			{
+			  if (x_dnd_last_seen_window != None
+			      && x_dnd_last_protocol_version != -1
+			      && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
+			    x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
+			  else if (x_dnd_last_seen_window != None
+				   && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+				   && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
+			    {
+			      if (!x_dnd_motif_setup_p)
+				xm_setup_drag_info (dpyinfo, x_dnd_frame);
+
+			      lmsg.reason = XM_DRAG_REASON (XM_DRAG_ORIGINATOR_INITIATOR,
+							    XM_DRAG_REASON_TOP_LEVEL_LEAVE);
+			      lmsg.byteorder = XM_TARGETS_TABLE_CUR;
+			      lmsg.zero = 0;
+			      lmsg.timestamp = event->xmotion.time;
+			      lmsg.source_window = FRAME_X_WINDOW (x_dnd_frame);
+
+			      if (x_dnd_motif_setup_p)
+				xm_send_top_level_leave_message (dpyinfo, FRAME_X_WINDOW (x_dnd_frame),
+								 x_dnd_last_seen_window, &lmsg);
+			    }
+
 			  x_dnd_end_window = x_dnd_last_seen_window;
 			  x_dnd_last_seen_window = None;
 			  x_dnd_last_seen_toplevel = None;
@@ -17614,8 +17698,83 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    goto XI_OTHER;
 
 	  case XI_HierarchyChanged:
-	    x_init_master_valuators (dpyinfo);
-	    goto XI_OTHER;
+	    {
+	      XIHierarchyEvent *hev = (XIHierarchyEvent *) xi_event;
+	      XIDeviceInfo *info;
+	      int i, j, ndevices, n_disabled, *disabled;
+	      struct xi_device_t *device, *devices;
+#ifdef HAVE_XINPUT2_2
+	      struct xi_touch_point_t *tem, *last;
+#endif
+
+	      disabled = alloca (sizeof *disabled * hev->num_info);
+	      n_disabled = 0;
+
+	      for (i = 0; i < hev->num_info; ++i)
+		{
+		  if (hev->info[i].flags & XIDeviceEnabled)
+		    {
+		      x_catch_errors (dpyinfo->display);
+		      info = XIQueryDevice (dpyinfo->display, hev->info[i].deviceid,
+					    &ndevices);
+		      x_uncatch_errors ();
+
+		      if (info && info->enabled)
+			{
+			  dpyinfo->devices
+			    = xrealloc (dpyinfo->devices, (sizeof *dpyinfo->devices
+							   * ++dpyinfo->num_devices));
+			  device = &dpyinfo->devices[dpyinfo->num_devices - 1];
+			  xi_populate_device_from_info (device, info);
+			}
+
+		      if (info)
+			XIFreeDeviceInfo (info);
+		    }
+		  else if (hev->info[i].flags & XIDeviceDisabled)
+		    disabled[n_disabled++] = hev->info[i].deviceid;
+		}
+
+	      if (n_disabled)
+		{
+		  ndevices = 0;
+		  devices = xmalloc (sizeof *devices * dpyinfo->num_devices);
+
+		  for (i = 0; i < dpyinfo->num_devices; ++i)
+		    {
+		      for (j = 0; j < n_disabled; ++j)
+			{
+			  if (disabled[j] == dpyinfo->devices[i].device_id)
+			    {
+#ifdef HAVE_XINPUT2_1
+			      xfree (dpyinfo->devices[i].valuators);
+#endif
+#ifdef HAVE_XINPUT2_2
+			      tem = dpyinfo->devices[i].touchpoints;
+			      while (tem)
+				{
+				  last = tem;
+				  tem = tem->next;
+				  xfree (last);
+				}
+#endif
+			      goto continue_detachment;
+			    }
+			}
+
+		      devices[ndevices++] = dpyinfo->devices[i];
+
+		    continue_detachment:
+		      continue;
+		    }
+
+		  xfree (dpyinfo->devices);
+		  dpyinfo->devices = devices;
+		  dpyinfo->num_devices = ndevices;
+		}
+
+	      goto XI_OTHER;
+	    }
 
 	  case XI_DeviceChanged:
 	    {
@@ -17789,10 +17948,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  if (f && device->direct_p)
 		    {
 		      *finish = X_EVENT_DROP;
-		      x_catch_errors (dpyinfo->display);
 		      if (x_input_grab_touch_events)
 			XIAllowTouchEvents (dpyinfo->display, xev->deviceid,
 					    xev->detail, xev->event, XIAcceptTouch);
+
 		      if (!x_had_errors_p (dpyinfo->display))
 			{
 			  xi_link_touch_point (device, xev->detail, xev->event_x,
@@ -17808,17 +17967,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  if (source)
 			    inev.ie.device = source->name;
 			}
-		      x_uncatch_errors_after_check ();
 		    }
 #ifndef HAVE_GTK3
-		  else
-		    {
-		      x_catch_errors (dpyinfo->display);
-		      if (x_input_grab_touch_events)
-			XIAllowTouchEvents (dpyinfo->display, xev->deviceid,
-					    xev->detail, xev->event, XIRejectTouch);
-		      x_uncatch_errors ();
-		    }
+		  else if (x_input_grab_touch_events)
+		    XIAllowTouchEvents (dpyinfo->display, xev->deviceid,
+					xev->detail, xev->event, XIRejectTouch);
 #endif
 		}
 	      else
@@ -19218,11 +19371,15 @@ x_error_handler (Display *display, XErrorEvent *event)
 #ifdef HAVE_XINPUT2
   dpyinfo = x_display_info_for_display (display);
 
-  /* 51 is X_XIGrabDevice and 52 is X_XIUngrabDevice.  */
+  /* 51 is X_XIGrabDevice and 52 is X_XIUngrabDevice.
+
+     53 is X_XIAllowEvents.  We handle errors from that here to avoid
+     a sync in handle_one_xevent.  */
   if (dpyinfo && dpyinfo->supports_xi2
       && event->request_code == dpyinfo->xi2_opcode
       && (event->minor_code == 51
-	  || event->minor_code == 52))
+	  || event->minor_code == 52
+	  || event->minor_code == 53))
     return 0;
 #endif
 

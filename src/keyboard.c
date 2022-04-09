@@ -3766,6 +3766,7 @@ gen_help_event (Lisp_Object help, Lisp_Object frame, Lisp_Object window,
 		Lisp_Object object, ptrdiff_t pos)
 {
   struct input_event event;
+  EVENT_INIT (event);
 
   event.kind = HELP_EVENT;
   event.frame_or_window = frame;
@@ -3783,6 +3784,7 @@ void
 kbd_buffer_store_help_event (Lisp_Object frame, Lisp_Object help)
 {
   struct input_event event;
+  EVENT_INIT (event);
 
   event.kind = HELP_EVENT;
   event.frame_or_window = frame;
@@ -4275,12 +4277,13 @@ kbd_buffer_get_event (KBOARD **kbp,
   /* Try generating a mouse motion event.  */
   else if (some_mouse_moved ())
     {
-      struct frame *f = some_mouse_moved ();
+      struct frame *f, *movement_frame = some_mouse_moved ();
       Lisp_Object bar_window;
       enum scroll_bar_part part;
       Lisp_Object x, y;
       Time t;
 
+      f = movement_frame;
       *kbp = current_kboard;
       /* Note that this uses F to determine which terminal to look at.
 	 If there is no valid info, it does not store anything
@@ -4317,8 +4320,8 @@ kbd_buffer_get_event (KBOARD **kbp,
 	obj = make_lispy_movement (f, bar_window, part, x, y, t);
 
       if (!NILP (obj))
-	Vlast_event_device = (STRINGP (f->last_mouse_device)
-			      ? f->last_mouse_device
+	Vlast_event_device = (STRINGP (movement_frame->last_mouse_device)
+			      ? movement_frame->last_mouse_device
 			      : virtual_core_pointer_name);
     }
   else
