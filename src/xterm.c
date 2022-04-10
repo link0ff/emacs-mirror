@@ -2856,10 +2856,11 @@ x_dnd_do_unsupported_drop (struct x_display_info *dpyinfo,
       root_y = dest_y;
     }
 
-  x_own_selection (QPRIMARY,
-		   assq_no_quit (QPRIMARY,
-				 dpyinfo->terminal->Vselection_alist),
-		   frame);
+  if (CONSP (value))
+    x_own_selection (QPRIMARY, Fnth (make_fixnum (1), value),
+		     frame);
+  else
+    x_own_selection (QPRIMARY, Qnil, frame);
 
   event.xbutton.window = child;
   event.xbutton.x = dest_x;
@@ -9369,19 +9370,26 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   ptrdiff_t i, end, fill;
   XTextProperty prop;
   xm_drop_start_message dmsg;
-  Lisp_Object frame_object, x, y;
+  Lisp_Object frame_object, x, y, frame, local_value;
 
   if (!FRAME_VISIBLE_P (f))
     error ("Frame is invisible");
 
+  XSETFRAME (frame, f);
+  local_value = assq_no_quit (QXdndSelection,
+			      FRAME_TERMINAL (f)->Vselection_alist);
+
   if (x_dnd_in_progress || x_dnd_waiting_for_finish)
     error ("A drag-and-drop session is already in progress");
 
+  if (CONSP (local_value))
+    x_own_selection (QXdndSelection,
+		     Fnth (make_fixnum (1), local_value), frame);
+  else
+    error ("No local value for XdndSelection");
+
   ltimestamp = x_timestamp_for_selection (FRAME_DISPLAY_INFO (f),
 					  QXdndSelection);
-
-  if (NILP (ltimestamp))
-    error ("No local value for XdndSelection");
 
   if (BIGNUMP (ltimestamp))
     x_dnd_selection_timestamp = bignum_to_intmax (ltimestamp);
@@ -17271,6 +17279,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
 			    | (xev->group.effective << 13));
 
+	      xkey.x = lrint (xev->event_x);
+	      xkey.y = lrint (xev->event_y);
+	      xkey.x_root = lrint (xev->root_x);
+	      xkey.y_root = lrint (xev->root_y);
+
 	      /* Some input methods react differently depending on the
 		 buttons that are pressed.  */
 	      if (xev->buttons.mask_len)
@@ -17664,6 +17677,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      xkey.time = xev->time;
 	      xkey.state = ((xev->mods.effective & ~(1 << 13 | 1 << 14))
 			    | (xev->group.effective << 13));
+	      xkey.x = lrint (xev->event_x);
+	      xkey.y = lrint (xev->event_y);
+	      xkey.x_root = lrint (xev->root_x);
+	      xkey.y_root = lrint (xev->root_y);
 
 	      /* Some input methods react differently depending on the
 		 buttons that are pressed.  */
@@ -17733,6 +17750,26 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    }
 		  else if (hev->info[i].flags & XIDeviceDisabled)
 		    disabled[n_disabled++] = hev->info[i].deviceid;
+		  else if (hev->info[i].flags & XISlaveDetached
+			   || hev->info[i].flags & XISlaveAttached)
+		    {
+		      device = xi_device_from_id (dpyinfo, hev->info[i].deviceid);
+		      x_catch_errors (dpyinfo->display);
+		      info = XIQueryDevice (dpyinfo->display, hev->info[i].deviceid,
+					    &ndevices);
+		      x_uncatch_errors ();
+
+		      if (info)
+			{
+			  if (device && info->enabled)
+			    device->master_p = (info->use == XIMasterKeyboard
+						|| info->use == XIMasterPointer);
+			  else if (device)
+			    disabled[n_disabled++] = hev->info[i].deviceid;
+
+			  XIFreeDeviceInfo (info);
+			}
+		    }
 		}
 
 	      if (n_disabled)
