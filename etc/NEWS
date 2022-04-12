@@ -605,7 +605,8 @@ value.
 When the minibuffer is the current buffer, typing 'M-<up>' or
 'M-<down>' selects a previous/next completion candidate from the
 "*Completions*" buffer and inserts it to the minibuffer.
-'M-S-<up>' and 'M-S-<down>' do the same, but without inserting
+When the variable 'minibuffer-completion-auto-choose' is nil,
+'M-<up>' and 'M-<down>' do the same, but without inserting
 a completion candidate to the minibuffer, then 'M-RET' can be used
 to choose the currently active candidate from the "*Completions*"
 buffer and exit the minibuffer.  With a prefix argument, 'C-u M-RET'
@@ -1365,6 +1366,9 @@ functions.
 * Lisp Changes in Emacs 29.1
 
 +++
+** 'macroexp-let2*' can omit 'test' arg and use single-var bindings.
+
++++
 ** New variable 'last-event-device' and new function 'device-class'.
 On X Windows, 'last-event-device' specifies the input extension device
 from which the last input event originated, and 'device-class' can be
@@ -1598,7 +1602,7 @@ the clipboard, and insert it into the buffer.
 
 ---
 ** New function 'minibuffer-lazy-highlight-setup'.
-This function allows to set up the minibuffer so that lazy
+This function allows setting up the minibuffer so that lazy
 highlighting of its content is applied in the original window.
 
 +++
