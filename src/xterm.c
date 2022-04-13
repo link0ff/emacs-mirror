@@ -8652,6 +8652,8 @@ XTflash (struct frame *f)
 {
   GC gc;
   XGCValues values;
+  fd_set fds;
+  int fd;
 
   block_input ();
 
@@ -8702,6 +8704,7 @@ XTflash (struct frame *f)
 
   struct timespec delay = make_timespec (0, 150 * 1000 * 1000);
   struct timespec wakeup = timespec_add (current_timespec (), delay);
+  fd = ConnectionNumber (FRAME_X_DISPLAY (f));
 
   /* Keep waiting until past the time wakeup or any input gets
      available.  */
@@ -8717,8 +8720,17 @@ XTflash (struct frame *f)
       /* How long `select' should wait.  */
       timeout = make_timespec (0, 10 * 1000 * 1000);
 
+      /* Wait for some input to become available on the X
+	 connection.  */
+      FD_ZERO (&fds);
+      FD_SET (fd, &fds);
+
       /* Try to wait that long--but we might wake up sooner.  */
-      pselect (0, NULL, NULL, NULL, &timeout, NULL);
+      pselect (fd + 1, &fds, NULL, NULL, &timeout, NULL);
+
+      /* Some input is available, exit the visible bell.  */
+      if (FD_ISSET (fd, &fds))
+	break;
     }
 
   /* If window is tall, flash top and bottom line.  */
@@ -9055,12 +9067,37 @@ static void
 x_new_focus_frame (struct x_display_info *dpyinfo, struct frame *frame)
 {
   struct frame *old_focus = dpyinfo->x_focus_frame;
+#if defined USE_GTK && !defined HAVE_GTK3 && defined HAVE_XINPUT2
+  XIEventMask mask;
+  ptrdiff_t l;
+
+  if (dpyinfo->supports_xi2)
+    {
+      l = XIMaskLen (XI_LASTEVENT);
+      mask.mask = alloca (l);
+      mask.mask_len = l;
+      memset (mask.mask, 0, l);
+
+      mask.deviceid = XIAllDevices;
+    }
+#endif
 
   if (frame != dpyinfo->x_focus_frame)
     {
       /* Set this before calling other routines, so that they see
 	 the correct value of x_focus_frame.  */
       dpyinfo->x_focus_frame = frame;
+
+      /* Once none of our frames are focused anymore, stop selecting
+	 for raw input events from the root window.  */
+
+#if defined USE_GTK && !defined HAVE_GTK3 && defined HAVE_XINPUT2
+      if (frame && dpyinfo->supports_xi2)
+	XISetMask (mask.mask, XI_RawKeyPress);
+
+      if (dpyinfo->supports_xi2)
+	XISelectEvents (dpyinfo->display, dpyinfo->root_window, &mask, 1);
+#endif
 
       if (old_focus && old_focus->auto_lower)
 	x_lower_frame (old_focus);
@@ -12647,7 +12684,7 @@ x_scroll_bar_expose (struct scroll_bar *bar, const XEvent *event)
   /* Switch to scroll bar foreground color.  */
   if (f->output_data.x->scroll_bar_foreground_pixel != -1)
     XSetForeground (FRAME_X_DISPLAY (f), gc,
- 		    f->output_data.x->scroll_bar_foreground_pixel);
+		    f->output_data.x->scroll_bar_foreground_pixel);
 
   /* Draw a one-pixel border just inside the edges of the scroll bar.  */
   XDrawRectangle (FRAME_X_DISPLAY (f), w, gc,
@@ -14640,19 +14677,19 @@ handle_one_xevent (struct x_display_info *dpyinfo,
           memset (&compose_status, 0, sizeof (compose_status));
           orig_keysym = keysym;
 
- 	  /* Common for all keysym input events.  */
- 	  XSETFRAME (inev.ie.frame_or_window, f);
- 	  inev.ie.modifiers
- 	    = x_x_to_emacs_modifiers (FRAME_DISPLAY_INFO (f), modifiers);
- 	  inev.ie.timestamp = xkey.time;
+	  /* Common for all keysym input events.  */
+	  XSETFRAME (inev.ie.frame_or_window, f);
+	  inev.ie.modifiers
+	    = x_x_to_emacs_modifiers (FRAME_DISPLAY_INFO (f), modifiers);
+	  inev.ie.timestamp = xkey.time;
 
- 	  /* First deal with keysyms which have defined
- 	     translations to characters.  */
- 	  if (keysym >= 32 && keysym < 128)
- 	    /* Avoid explicitly decoding each ASCII character.  */
- 	    {
- 	      inev.ie.kind = ASCII_KEYSTROKE_EVENT;
- 	      inev.ie.code = keysym;
+	  /* First deal with keysyms which have defined
+	     translations to characters.  */
+	  if (keysym >= 32 && keysym < 128)
+	    /* Avoid explicitly decoding each ASCII character.  */
+	    {
+	      inev.ie.kind = ASCII_KEYSTROKE_EVENT;
+	      inev.ie.code = keysym;
 
 #ifdef HAVE_XINPUT2
 	      if (event->xkey.time == pending_keystroke_time)
@@ -14697,7 +14734,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 				Vx_keysym_table,
 				Qnil),
 		  FIXNATP (c)))
- 	    {
+	    {
 	      inev.ie.kind = (SINGLE_BYTE_CHAR_P (XFIXNAT (c))
                               ? ASCII_KEYSTROKE_EVENT
                               : MULTIBYTE_CHAR_KEYSTROKE_EVENT);
@@ -14714,11 +14751,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		}
 #endif
 
- 	      goto done_keysym;
- 	    }
+	      goto done_keysym;
+	    }
 
- 	  /* Random non-modifier sorts of keysyms.  */
- 	  if (((keysym >= XK_BackSpace && keysym <= XK_Escape)
+	  /* Random non-modifier sorts of keysyms.  */
+	  if (((keysym >= XK_BackSpace && keysym <= XK_Escape)
 	       || keysym == XK_Delete
 #ifdef XK_ISO_Left_Tab
 	       || (keysym >= XK_ISO_Left_Tab
@@ -22443,7 +22480,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 		      vendor ? build_string (vendor) : empty_unibyte_string));
 	    block_input ();
 	    terminal->next_terminal = terminal_list;
- 	    terminal_list = terminal;
+	    terminal_list = terminal;
 	  }
 
 	/* Don't let the initial kboard remain current longer than necessary.
