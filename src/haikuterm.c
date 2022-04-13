@@ -3517,36 +3517,24 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	  {
 	    struct haiku_menu_bar_state_event *b = buf;
 	    struct frame *f = haiku_window_to_frame (b->window);
+	    int was_waiting_for_input_p;
 
 	    if (!f || !FRAME_EXTERNAL_MENU_BAR (f))
 	      continue;
 
 	    if (type == MENU_BAR_OPEN)
 	      {
-		/* b->no_lock means that MenusBeginning was called
-		   from the main thread, which means tracking was
-		   started manually, and we have already updated the
-		   menu bar.  */
-		if (!b->no_lock)
-		  {
-		    BView_draw_lock (FRAME_HAIKU_VIEW (f), false, 0, 0, 0, 0);
-		    /* This shouldn't be here, but nsmenu does it, so
-		       it should probably be safe.  */
-		    int was_waiting_for_input_p = waiting_for_input;
-		    if (waiting_for_input)
-		      waiting_for_input = 0;
-		    set_frame_menubar (f, 1);
-		    waiting_for_input = was_waiting_for_input_p;
-		    BView_draw_unlock (FRAME_HAIKU_VIEW (f));
-		  }
+		was_waiting_for_input_p = waiting_for_input;
+		if (waiting_for_input)
+		  waiting_for_input = 0;
 
-		/* But set the flag anyway, because the menu will end
-		   from the window thread.  */
+		set_frame_menubar (f, 1);
+		waiting_for_input = was_waiting_for_input_p;
+
 		FRAME_OUTPUT_DATA (f)->menu_bar_open_p = 1;
 		popup_activated_p += 1;
 
-		if (!b->no_lock)
-		  EmacsWindow_signal_menu_update_complete (b->window);
+		EmacsWindow_signal_menu_update_complete (b->window);
 	      }
 	    else
 	      {
@@ -3735,10 +3723,13 @@ haiku_flash (struct frame *f)
   int flash_right = FRAME_PIXEL_WIDTH (f) - FRAME_INTERNAL_BORDER_WIDTH (f);
   int width = flash_right - flash_left;
   void *view = FRAME_HAIKU_VIEW (f);
-  struct timespec delay, wakeup, current, timeout;
+  object_wait_info info;
+  bigtime_t wakeup;
 
-  delay = make_timespec (0, 150 * 1000 * 1000);
-  wakeup = timespec_add (current_timespec (), delay);
+  info.object = port_application_to_emacs;
+  info.type = B_OBJECT_TYPE_PORT;
+  info.events = B_EVENT_READ;
+  wakeup = system_time () + 150000;
 
   BView_draw_lock (view, true, 0, 0, FRAME_PIXEL_WIDTH (f),
 		   FRAME_PIXEL_HEIGHT (f));
@@ -3772,17 +3763,17 @@ haiku_flash (struct frame *f)
      available.  */
   while (!detect_input_pending ())
     {
-      current = current_timespec ();
-
       /* Break if result would not be positive.  */
-      if (timespec_cmp (wakeup, current) <= 0)
+      if (wakeup < system_time ())
 	break;
 
-      /* How long `select' should wait.  */
-      timeout = make_timespec (0, 10 * 1000 * 1000);
-
       /* Try to wait that long--but we might wake up sooner.  */
-      pselect (0, NULL, NULL, NULL, &timeout, NULL);
+      wait_for_objects_etc (&info, 1, B_ABSOLUTE_TIMEOUT, wakeup);
+
+      if (info.events & B_EVENT_READ)
+	break;
+
+      info.events = B_EVENT_READ;
     }
 
   BView_draw_lock (view, true, 0, 0, FRAME_PIXEL_WIDTH (f),

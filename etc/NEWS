@@ -408,6 +408,11 @@ These will take you (respectively) to the next and previous "page".
 This will take you to the Emacs Lisp manual entry for the item
 displayed, if any.
 
+---
+*** The 'C-h m' ('describe-mode') *Help* buffer has been reformatted.
+It now only includes local minor modes at the start, and the global
+minor modes are listed after the major mode.
+
 ** Outline Mode
 
 +++
@@ -434,8 +439,9 @@ This is a list of pairs of open/close strings used to display buttons.
 +++
 ** Support for the WebP image format.
 This support is built by default when the libwebp library is
-available.  To disable it, use the '--without-webp' configure flag.
-Image specifiers can now use ':type webp'.
+available.  (This also includes support for animated WebP images.)  To
+disable WebP support, use the '--without-webp' configure flag.  Image
+specifiers can now use ':type webp'.
 
 ** Windows
 
