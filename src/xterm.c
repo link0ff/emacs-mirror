@@ -986,6 +986,11 @@ static struct frame *x_dnd_movement_frame;
    with.  */
 static int x_dnd_movement_x, x_dnd_movement_y;
 
+#ifdef HAVE_XKB
+/* The keyboard state during the drag-and-drop operation.  */
+static unsigned int x_dnd_keyboard_state;
+#endif
+
 struct x_client_list_window
 {
   Window window;
@@ -3608,6 +3613,11 @@ x_dnd_cleanup_drag_and_drop (void *frame)
   XSelectInput (FRAME_X_DISPLAY (f),
 		FRAME_DISPLAY_INFO (f)->root_window,
 		x_dnd_old_window_attrs.your_event_mask);
+
+#ifdef HAVE_XKB
+  XkbSelectEvents (FRAME_X_DISPLAY (f), XkbUseCoreKbd,
+		   XkbStateNotifyMask, 0);
+#endif
   unblock_input ();
 
   x_dnd_frame = NULL;
@@ -3702,6 +3712,29 @@ record_event (char *locus, int type)
   event_record_index++;
 }
 
+#endif
+
+#ifdef HAVE_XINPUT2
+bool
+xi_frame_selected_for (struct frame *f, unsigned long event)
+{
+  XIEventMask *masks;
+  int i;
+
+  masks = FRAME_X_OUTPUT (f)->xi_masks;
+
+  if (!masks)
+    return false;
+
+  for (i = 0; i < FRAME_X_OUTPUT (f)->num_xi_masks; ++i)
+    {
+      if (masks[i].mask_len >= XIMaskLen (event)
+	  && XIMaskIsSet (masks[i].mask, event))
+	return true;
+    }
+
+  return false;
+}
 #endif
 
 static void
@@ -3886,8 +3919,7 @@ xi_populate_device_from_info (struct xi_device_t *xi_device,
   xi_device->touchpoints = NULL;
 #endif
 
-  xi_device->master_p = (device->use == XIMasterKeyboard
-			 || device->use == XIMasterPointer);
+  xi_device->use = device->use;
 #ifdef HAVE_XINPUT2_2
   xi_device->direct_p = false;
 #endif
@@ -9425,6 +9457,9 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   XTextProperty prop;
   xm_drop_start_message dmsg;
   Lisp_Object frame_object, x, y, frame, local_value;
+#ifdef HAVE_XKB
+  XkbStateRec keyboard_state;
+#endif
 
   if (!FRAME_VISIBLE_P (f))
     {
@@ -9535,6 +9570,20 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   x_dnd_toplevels = NULL;
   x_dnd_allow_current_frame = allow_current_frame;
   x_dnd_movement_frame = NULL;
+#ifdef HAVE_XKB
+  x_dnd_keyboard_state = 0;
+
+  if (FRAME_DISPLAY_INFO (f)->supports_xkb)
+    {
+      XkbSelectEvents (FRAME_X_DISPLAY (f), XkbUseCoreKbd,
+		       XkbStateNotifyMask, XkbStateNotifyMask);
+      XkbGetState (FRAME_X_DISPLAY (f), XkbUseCoreKbd,
+		   &keyboard_state);
+
+      x_dnd_keyboard_state = (keyboard_state.mods
+			      | keyboard_state.ptr_buttons);
+    }
+#endif
 
   if (x_dnd_use_toplevels)
     {
@@ -9551,15 +9600,10 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   if (EQ (return_frame, Qnow))
     x_dnd_return_frame = 2;
 
-#ifdef USE_GTK
-  current_count = 0;
-#endif
-
   /* Now select for SubstructureNotifyMask and PropertyNotifyMask on
      the root window, so we can get notified when window stacking
      changes, a common operation during drag-and-drop.  */
 
-  block_input ();
   XGetWindowAttributes (FRAME_X_DISPLAY (f),
 			FRAME_DISPLAY_INFO (f)->root_window,
 			&root_window_attrs);
@@ -9579,8 +9623,10 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 #ifdef USE_GTK
       current_finish = X_EVENT_NORMAL;
       current_hold_quit = &hold_quit;
+      current_count = 0;
 #endif
 
+      block_input ();
 #ifdef USE_GTK
       gtk_main_iteration ();
 #else
@@ -9612,6 +9658,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			 &next_event, &finish, &hold_quit);
 #endif
 #endif
+      unblock_input ();
 
       if (x_dnd_movement_frame)
 	{
@@ -9712,7 +9759,10 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 	  XSelectInput (FRAME_X_DISPLAY (f),
 			FRAME_DISPLAY_INFO (f)->root_window,
 			root_window_attrs.your_event_mask);
-	  unblock_input ();
+#ifdef HAVE_XKB
+	  XkbSelectEvents (FRAME_X_DISPLAY (f), XkbUseCoreKbd,
+			   XkbStateNotifyMask, 0);
+#endif
 	  quit ();
 	}
     }
@@ -9725,11 +9775,15 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 #endif
   x_dnd_movement_frame = NULL;
 
+  block_input ();
   /* Restore the old event mask.  */
   XSelectInput (FRAME_X_DISPLAY (f),
 		FRAME_DISPLAY_INFO (f)->root_window,
 		root_window_attrs.your_event_mask);
-
+#ifdef HAVE_XKB
+  XkbSelectEvents (FRAME_X_DISPLAY (f), XkbUseCoreKbd,
+		   XkbStateNotifyMask, 0);
+#endif
   unblock_input ();
 
   if (x_dnd_return_frame == 3
@@ -13484,7 +13538,13 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 			     x_dnd_last_protocol_version,
 			     root_x, root_y,
 			     x_dnd_selection_timestamp,
-			     x_dnd_wanted_action, 0, 0);
+			     x_dnd_wanted_action, 0,
+#ifdef HAVE_XKB
+			     x_dnd_keyboard_state
+#else
+			     0
+#endif
+			     );
       else if (XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style) && target != None)
 	{
 	  if (!x_dnd_motif_setup_p)
@@ -18024,8 +18084,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      if (info)
 			{
 			  if (device && info->enabled)
-			    device->master_p = (info->use == XIMasterKeyboard
-						|| info->use == XIMasterPointer);
+			    device->use = info->use;
 			  else if (device)
 			    disabled[n_disabled++] = hev->info[i].deviceid;
 
@@ -18510,6 +18569,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      XkbRefreshKeyboardMapping (&xkbevent->map);
 	      x_find_modifier_meanings (dpyinfo);
 	    }
+	  else if (x_dnd_in_progress
+		   && xkbevent->any.xkb_type == XkbStateNotify)
+	    x_dnd_keyboard_state = (xkbevent->state.mods
+				    | xkbevent->state.ptr_buttons);
 	}
 #endif
 #ifdef HAVE_XSHAPE
@@ -21666,9 +21729,6 @@ x_free_frame_resources (struct frame *f)
 #ifdef HAVE_X_I18N
       if (FRAME_XIC (f))
 	free_frame_xic (f);
-
-      if (f->output_data.x->preedit_chars)
-	xfree (f->output_data.x->preedit_chars);
 #endif
 
 #ifdef USE_CAIRO
@@ -21821,6 +21881,17 @@ x_destroy_window (struct frame *f)
 
   xfree (f->output_data.x->saved_menu_event);
   xfree (f->output_data.x);
+
+#ifdef HAVE_X_I18N
+  if (f->output_data.x->preedit_chars)
+    xfree (f->output_data.x->preedit_chars);
+#endif
+
+#ifdef HAVE_XINPUT2
+  if (f->output_data.x->xi_masks)
+    XFree (f->output_data.x->xi_masks);
+#endif
+
   f->output_data.x = NULL;
 
   dpyinfo->reference_count--;
@@ -22972,8 +23043,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 		     XkbGroupNamesMask | XkbVirtualModNamesMask,
 		     dpyinfo->xkb_desc);
 
-      XkbSelectEvents (dpyinfo->display,
-		       XkbUseCoreKbd,
+      XkbSelectEvents (dpyinfo->display, XkbUseCoreKbd,
 		       XkbNewKeyboardNotifyMask | XkbMapNotifyMask,
 		       XkbNewKeyboardNotifyMask | XkbMapNotifyMask);
     }
