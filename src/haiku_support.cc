@@ -89,6 +89,7 @@ enum
     CANCEL_DROP		= 3003,
     SHOW_MENU_BAR	= 3004,
     BE_MENU_BAR_OPEN	= 3005,
+    QUIT_APPLICATION	= 3006,
   };
 
 static color_space dpy_color_space = B_NO_COLOR_SPACE;
@@ -417,6 +418,15 @@ public:
     struct haiku_app_quit_requested_event rq;
     haiku_write (APP_QUIT_REQUESTED_EVENT, &rq);
     return 0;
+  }
+
+  void
+  MessageReceived (BMessage *msg)
+  {
+    if (msg->what == QUIT_APPLICATION)
+      Quit ();
+    else
+      BApplication::MessageReceived (msg);
   }
 };
 
@@ -1777,6 +1787,7 @@ public:
   int last_reported_overscroll_value;
   int max_value, real_max_value;
   int overscroll_start_value;
+  bigtime_t repeater_start;
 
   EmacsScrollBar (int x, int y, int x1, int y1, bool horizontal_p) :
     BScrollBar (BRect (x, y, x1, y1), NULL, NULL, 0, 0, horizontal_p ?
@@ -1864,14 +1875,17 @@ public:
 	return;
       }
 
-    GetMouse (&point, &buttons, false);
-
-    if (ButtonRegionFor (current_part).Contains (point))
+    if (repeater_start < system_time ())
       {
-	rq.scroll_bar = this;
-	rq.window = Window ();
-	rq.part = current_part;
-	haiku_write (SCROLL_BAR_PART_EVENT, &rq);
+	GetMouse (&point, &buttons, false);
+
+	if (ButtonRegionFor (current_part).Contains (point))
+	  {
+	    rq.scroll_bar = this;
+	    rq.window = Window ();
+	    rq.part = current_part;
+	    haiku_write (SCROLL_BAR_PART_EVENT, &rq);
+	  }
       }
 
     BScrollBar::Pulse ();
@@ -2004,6 +2018,8 @@ public:
 
 	return;
       }
+
+    repeater_start = system_time () + 300000;
 
     if (buttons == B_PRIMARY_MOUSE_BUTTON)
       {
@@ -2328,13 +2344,15 @@ public:
 static int32
 start_running_application (void *data)
 {
+  Emacs *app = (Emacs *) data;
+
   haiku_io_init_in_app_thread ();
 
-  if (!((Emacs *) data)->Lock ())
+  if (!app->Lock ())
     gui_abort ("Failed to lock application");
 
-  ((Emacs *) data)->Run ();
-  ((Emacs *) data)->Unlock ();
+  app->Run ();
+  app->Unlock ();
   return 0;
 }
 
@@ -2404,25 +2422,37 @@ BBitmap_dimensions (void *bitmap, int *left, int *top,
   *mono_p = (((BBitmap *) bitmap)->ColorSpace () == B_GRAY1);
 }
 
+static void
+wait_for_exit_of_app_thread (void)
+{
+  status_t ret;
+
+  be_app->PostMessage (QUIT_APPLICATION);
+  wait_for_thread (app_thread, &ret);
+}
+
 /* Set up an application and return it.  If starting the application
    thread fails, abort Emacs.  */
 void *
 BApplication_setup (void)
 {
-  if (be_app)
-    return be_app;
   thread_id id;
   Emacs *app;
 
+  if (be_app)
+    return be_app;
+
   app = new Emacs;
   app->Unlock ();
+
   if ((id = spawn_thread (start_running_application, "Emacs app thread",
 			  B_DEFAULT_MEDIA_PRIORITY, app)) < 0)
     gui_abort ("spawn_thread failed");
 
   resume_thread (id);
-
   app_thread = id;
+
+  atexit (wait_for_exit_of_app_thread);
   return app;
 }
 
@@ -3769,16 +3799,6 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
 	  return ptr;
 	}
       unblock_input_function ();
-    }
-}
-
-void
-be_app_quit (void)
-{
-  if (be_app)
-    {
-      while (!be_app->Lock ());
-      be_app->Quit ();
     }
 }
 
