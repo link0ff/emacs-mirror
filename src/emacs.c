@@ -233,6 +233,7 @@ HANDLE w32_daemon_event;
 /* Save argv and argc.  */
 char **initial_argv;
 int initial_argc;
+static char *initial_emacs_executable = NULL;
 
 /* The name of the working directory, or NULL if this info is unavailable.  */
 char const *emacs_wd;
@@ -295,7 +296,10 @@ Initialization options:\n\
                               -q --no-site-file --no-site-lisp --no-splash\n\
                               --no-x-resources\n\
 --script FILE               run FILE as an Emacs Lisp script\n\
---terminal, -t DEVICE       use DEVICE for terminal I/O\n\
+-x                          to be used in #!/usr/bin/emacs -x\n\
+                              and has approximately the same meaning\n\
+			      as -Q --script\n\
+--terminal, -t DEVICE       use DEVICE for terminal I/O\n		\
 --user, -u USER             load ~USER/.emacs instead of your own\n\
 \n\
 ",
@@ -714,34 +718,6 @@ argmatch (char **argv, int argc, const char *sstr, const char *lstr,
     }
 }
 
-#ifdef HAVE_PDUMPER
-
-static const char *
-dump_error_to_string (int result)
-{
-  switch (result)
-    {
-    case PDUMPER_LOAD_SUCCESS:
-      return "success";
-    case PDUMPER_LOAD_OOM:
-      return "out of memory";
-    case PDUMPER_NOT_LOADED:
-      return "not loaded";
-    case PDUMPER_LOAD_FILE_NOT_FOUND:
-      return "could not open file";
-    case PDUMPER_LOAD_BAD_FILE_TYPE:
-      return "not a dump file";
-    case PDUMPER_LOAD_FAILED_DUMP:
-      return "dump file is result of failed dump attempt";
-    case PDUMPER_LOAD_VERSION_MISMATCH:
-      return "not built for this Emacs executable";
-    default:
-      return (result <= PDUMPER_LOAD_ERROR
-	      ? "generic error"
-	      : strerror (result - PDUMPER_LOAD_ERROR));
-    }
-}
-
 /* Find a name (absolute or relative) of the Emacs executable whose
    name (as passed into this program) is ARGV0.  Called early in
    initialization by portable dumper loading code, so avoid Lisp and
@@ -750,7 +726,7 @@ dump_error_to_string (int result)
    if not found.  Store into *CANDIDATE_SIZE a lower bound on the size
    of any heap allocation.  */
 static char *
-load_pdump_find_executable (char const *argv0, ptrdiff_t *candidate_size)
+find_emacs_executable (char const *argv0, ptrdiff_t *candidate_size)
 {
   *candidate_size = 0;
 
@@ -841,7 +817,36 @@ load_pdump_find_executable (char const *argv0, ptrdiff_t *candidate_size)
 #endif	/* !WINDOWSNT */
 }
 
-static void
+#ifdef HAVE_PDUMPER
+
+static const char *
+dump_error_to_string (int result)
+{
+  switch (result)
+    {
+    case PDUMPER_LOAD_SUCCESS:
+      return "success";
+    case PDUMPER_LOAD_OOM:
+      return "out of memory";
+    case PDUMPER_NOT_LOADED:
+      return "not loaded";
+    case PDUMPER_LOAD_FILE_NOT_FOUND:
+      return "could not open file";
+    case PDUMPER_LOAD_BAD_FILE_TYPE:
+      return "not a dump file";
+    case PDUMPER_LOAD_FAILED_DUMP:
+      return "dump file is result of failed dump attempt";
+    case PDUMPER_LOAD_VERSION_MISMATCH:
+      return "not built for this Emacs executable";
+    default:
+      return (result <= PDUMPER_LOAD_ERROR
+	      ? "generic error"
+	      : strerror (result - PDUMPER_LOAD_ERROR));
+    }
+}
+
+/* This function returns the Emacs executable.  */
+static char *
 load_pdump (int argc, char **argv)
 {
   const char *const suffix = ".pdmp";
@@ -890,7 +895,7 @@ load_pdump (int argc, char **argv)
 #ifndef NS_SELF_CONTAINED
   ptrdiff_t exec_bufsize;
 #endif
-  emacs_executable = load_pdump_find_executable (argv[0], &bufsize);
+  emacs_executable = find_emacs_executable (argv[0], &bufsize);
 #ifndef NS_SELF_CONTAINED
   exec_bufsize = bufsize;
 #endif
@@ -907,7 +912,7 @@ load_pdump (int argc, char **argv)
       if (result != PDUMPER_LOAD_SUCCESS)
         fatal ("could not load dump file \"%s\": %s",
                dump_file, dump_error_to_string (result));
-      return;
+      return emacs_executable;
     }
 
   /* Look for a dump file in the same directory as the executable; it
@@ -1032,7 +1037,8 @@ load_pdump (int argc, char **argv)
 
  out:
   xfree (dump_file);
-  xfree (emacs_executable);
+
+  return emacs_executable;
 }
 #endif /* HAVE_PDUMPER */
 
@@ -1346,7 +1352,10 @@ main (int argc, char **argv)
 
 #ifdef HAVE_PDUMPER
   if (attempt_load_pdump)
-    load_pdump (argc, argv);
+    initial_emacs_executable = load_pdump (argc, argv);
+#else
+  ptrdiff_t bufsize;
+  initial_emacs_executable = find_emacs_executable (argv[0], &bufsize);
 #endif
 
   argc = maybe_disable_address_randomization (argc, argv);
@@ -2057,6 +2066,16 @@ Using an Emacs configured with --with-x-toolkit=lucid does not have this problem
           no_site_lisp = 1;
       }
 
+    if (argmatch (argv, argc, "-x", 0, 1, &junk, &skip_args))
+      {
+	noninteractive = 1;
+	no_site_lisp = 1;
+	/* This is picked up in startup.el.  */
+	argv[skip_args - 1] = (char *) "-scripteval";
+	skip_args -= 1;
+	sort_args (argc, argv);
+      }
+
     /* Don't actually discard this arg.  */
     skip_args = count_before;
   }
@@ -2498,6 +2517,7 @@ static const struct standard_args standard_args[] =
   /* (Note that to imply -nsl, -Q is partially handled here.)  */
   { "-Q", "--quick", 55, 0 },
   { "-quick", 0, 55, 0 },
+  { "-x", 0, 55, 0 },
   { "-q", "--no-init-file", 50, 0 },
   { "-no-init-file", 0, 50, 0 },
   { "-init-directory", "--init-directory", 30, 1 },
@@ -2770,6 +2790,25 @@ killed.  */
 {
   int exit_code;
 
+#ifndef WINDOWSNT
+  /* Do some checking before shutting down Emacs, because errors
+     can't be meaningfully reported afterwards.  */
+  if (!NILP (restart))
+    {
+      /* This is very unlikely, but it's possible to execute a binary
+	 (on some systems) with no argv.  */
+      if (initial_argc < 1)
+	error ("No command line arguments known; unable to re-execute Emacs");
+
+      /* Check that the binary hasn't gone away.  */
+      if (!initial_emacs_executable)
+	error ("Unknown Emacs executable");
+
+      if (!file_access_p (initial_emacs_executable, F_OK))
+	error ("Emacs executable \"%s\" can't be found", initial_argv[0]);
+    }
+#endif
+
 #ifdef HAVE_LIBSYSTEMD
   /* Notify systemd we are shutting down, but only if we have notified
      it about startup.  */
@@ -2815,16 +2854,13 @@ killed.  */
 
   if (!NILP (restart))
     {
-      /* This is very unlikely, but it's possible to execute a binary
-	 (on some systems) with no argv.  */
-      if (initial_argc < 1)
-	error ("No command line arguments known; unable to re-execute Emacs");
 #ifdef WINDOWSNT
       if (w32_reexec_emacs (initial_cmdline, initial_wd) < 0)
 #else
+      initial_argv[0] = initial_emacs_executable;
       if (execvp (*initial_argv, initial_argv) < 1)
 #endif
-	error ("Unable to re-execute Emacs");
+	emacs_perror ("Unable to re-execute Emacs");
     }
 
   if (FIXNUMP (arg))
