@@ -10411,6 +10411,24 @@ some major modes from being locked under some circumstances.
 
 ;;;***
 
+;;;### (autoloads nil "emacs-news-mode" "textmodes/emacs-news-mode.el"
+;;;;;;  (0 0 0 0))
+;;; Generated autoloads from textmodes/emacs-news-mode.el
+
+(autoload 'emacs-news-mode "emacs-news-mode" "\
+Major mode for editing the Emacs NEWS file.
+
+\(fn)" t nil)
+
+(autoload 'emacs-news-view-mode "emacs-news-mode" "\
+Major mode for viewing the Emacs NEWS file.
+
+\(fn)" t nil)
+
+(register-definition-prefixes "emacs-news-mode" '("emacs-news-"))
+
+;;;***
+
 ;;;### (autoloads nil "emacsbug" "mail/emacsbug.el" (0 0 0 0))
 ;;; Generated autoloads from mail/emacsbug.el
 
@@ -27002,6 +27020,8 @@ identical.  Only the buffers that match a condition in
 is non-nil, the command will not ask the user for confirmation.
 NO-CONFIRM is always nil when the command is invoked
 interactively.
+
+Also see the `project-kill-buffers-display-buffer-list' variable.
 
 \(fn &optional NO-CONFIRM)" t nil)
 

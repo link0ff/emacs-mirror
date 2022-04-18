@@ -2876,7 +2876,7 @@ You type        Translation\n\
       CALLN (Ffuncall,
 	     Qdescribe_map_tree,
 	     Vkey_translation_map, Qnil, Qnil, prefix,
-	     msg, nomenu, Qt, Qnil, Qnil);
+	     msg, nomenu, Qt, Qnil, Qnil, buffer);
     }
 
   /* Print the (major mode) local map.  */
@@ -2890,7 +2890,7 @@ You type        Translation\n\
       CALLN (Ffuncall,
 	     Qdescribe_map_tree,
 	     start1, Qt, shadow, prefix,
-	     msg, nomenu, Qnil, Qnil, Qnil);
+	     msg, nomenu, Qnil, Qnil, Qnil, buffer);
       shadow = Fcons (start1, shadow);
       start1 = Qnil;
     }
@@ -2903,7 +2903,7 @@ You type        Translation\n\
       CALLN (Ffuncall,
 	     Qdescribe_map_tree,
 	     start1, Qt, shadow, prefix,
-	     msg, nomenu, Qnil, Qnil, Qnil);
+	     msg, nomenu, Qnil, Qnil, Qnil, buffer);
       shadow = Fcons (start1, shadow);
     }
   else
@@ -2926,7 +2926,7 @@ You type        Translation\n\
 	  CALLN (Ffuncall,
 		 Qdescribe_map_tree,
 		 start1, Qt, shadow, prefix,
-		 msg, nomenu, Qnil, Qnil, Qnil);
+		 msg, nomenu, Qnil, Qnil, Qnil, buffer);
 	  shadow = Fcons (start1, shadow);
 	}
 
@@ -2959,7 +2959,7 @@ You type        Translation\n\
 	  CALLN (Ffuncall,
 		 Qdescribe_map_tree,
 		 maps[i], Qt, shadow, prefix,
-		 msg, nomenu, Qnil, Qnil, Qnil);
+		 msg, nomenu, Qnil, Qnil, Qnil, buffer);
 	  shadow = Fcons (maps[i], shadow);
 	  SAFE_FREE ();
 	}
@@ -2977,7 +2977,7 @@ You type        Translation\n\
 	      CALLN (Ffuncall,
 		     Qdescribe_map_tree,
 		     start1, Qt, shadow, prefix,
-		     msg, nomenu, Qnil, Qnil, Qnil);
+		     msg, nomenu, Qnil, Qnil, Qnil, buffer);
 	    }
 	  else
 	    {
@@ -2985,7 +2985,7 @@ You type        Translation\n\
 	      CALLN (Ffuncall,
 		     Qdescribe_map_tree,
 		     start1, Qt, shadow, prefix,
-		     msg, nomenu, Qnil, Qnil, Qnil);
+		     msg, nomenu, Qnil, Qnil, Qnil, buffer);
 	    }
 
 	  shadow = Fcons (start1, shadow);
@@ -2996,7 +2996,7 @@ You type        Translation\n\
   CALLN (Ffuncall,
 	 Qdescribe_map_tree,
 	 current_global_map, Qt, shadow, prefix,
-	 msg, nomenu, Qnil, Qt, Qnil);
+	 msg, nomenu, Qnil, Qt, Qnil, buffer);
 
   /* Print the function-key-map translations under this prefix.  */
   if (!NILP (KVAR (current_kboard, Vlocal_function_key_map)))
@@ -3005,7 +3005,7 @@ You type        Translation\n\
       CALLN (Ffuncall,
 	     Qdescribe_map_tree,
 	     KVAR (current_kboard, Vlocal_function_key_map), Qnil, Qnil, prefix,
-	     msg, nomenu, Qt, Qnil, Qnil);
+	     msg, nomenu, Qt, Qnil, Qnil, buffer);
     }
 
   /* Print the input-decode-map translations under this prefix.  */
@@ -3015,7 +3015,7 @@ You type        Translation\n\
       CALLN (Ffuncall,
 	     Qdescribe_map_tree,
 	     KVAR (current_kboard, Vinput_decode_map), Qnil, Qnil, prefix,
-	     msg, nomenu, Qt, Qnil, Qnil);
+	     msg, nomenu, Qt, Qnil, Qnil, buffer);
     }
   return Qnil;
 }

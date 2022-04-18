@@ -1353,6 +1353,12 @@ xm_write_drag_initiator_info (Display *dpy, Window wdesc,
   buf[0] = info->byteorder;
   buf[1] = info->protocol;
 
+  if (info->byteorder != XM_BYTE_ORDER_CUR_FIRST)
+    {
+      SWAPCARD16 (info->table_index);
+      SWAPCARD16 (info->selection);
+    }
+
   *((uint16_t *) (buf + 2)) = info->table_index;
   *((uint32_t *) (buf + 4)) = info->selection;
 
@@ -1473,8 +1479,7 @@ xm_setup_dnd_targets (struct x_display_info *dpyinfo,
   XGrabServer (dpyinfo->display);
   rc = XGetWindowProperty (dpyinfo->display, drag_window,
 			   dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
-			   /* Do larger values occur in practice? */
-			   0L, 20000L, False,
+			   0L, LONG_MAX, False,
 			   dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
 			   &actual_type, &actual_format, &nitems,
 			   &bytes_remaining, &tmp_data) == Success;
@@ -9435,6 +9440,13 @@ x_top_window_to_frame (struct x_display_info *dpyinfo, int wdesc)
 
 #endif /* USE_X_TOOLKIT || USE_GTK */
 
+static void
+x_clear_dnd_targets (void)
+{
+  if (x_dnd_unwind_flag)
+    x_set_dnd_targets (NULL, 0);
+}
+
 /* This function is defined far away from the rest of the XDND code so
    it can utilize `x_any_window_to_frame'.  */
 
@@ -9458,6 +9470,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   XTextProperty prop;
   xm_drop_start_message dmsg;
   Lisp_Object frame_object, x, y, frame, local_value;
+  bool signals_were_pending;
 #ifdef HAVE_XKB
   XkbStateRec keyboard_state;
 #endif
@@ -9479,8 +9492,16 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
     }
 
   if (CONSP (local_value))
-    x_own_selection (QXdndSelection,
-		     Fnth (make_fixnum (1), local_value), frame);
+    {
+      ref = SPECPDL_INDEX ();
+
+      record_unwind_protect_void (x_clear_dnd_targets);
+      x_dnd_unwind_flag = true;
+      x_own_selection (QXdndSelection,
+		       Fnth (make_fixnum (1), local_value), frame);
+      x_dnd_unwind_flag = false;
+      unbind_to (ref, Qnil);
+    }
   else
     {
       x_set_dnd_targets (NULL, 0);
@@ -9659,7 +9680,12 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			 &next_event, &finish, &hold_quit);
 #endif
 #endif
+      /* The unblock_input below might try to read input, but
+	 XTread_socket does nothing inside a drag-and-drop event
+	 loop, so don't let it clear the pending_signals flag.  */
+      signals_were_pending = pending_signals;
       unblock_input ();
+      pending_signals = signals_were_pending;
 
       if (x_dnd_movement_frame)
 	{
@@ -9823,10 +9849,18 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   if (x_dnd_action != None)
     {
       block_input ();
+      x_catch_errors (FRAME_X_DISPLAY (f));
       atom_name = XGetAtomName (FRAME_X_DISPLAY (f),
 				x_dnd_action);
-      action = intern (atom_name);
-      XFree (atom_name);
+      x_uncatch_errors ();
+
+      if (atom_name)
+	{
+	  action = intern (atom_name);
+	  XFree (atom_name);
+	}
+      else
+	action = Qnil;
       unblock_input ();
 
       return action;
@@ -10831,6 +10865,35 @@ xt_horizontal_action_hook (Widget widget, XtPointer client_data, String action_n
 }
 #endif /* not USE_GTK */
 
+/* Protect WINDOW from garbage collection until a matching scroll bar
+   message is received.  Return whether or not protection
+   succeeded.  */
+static bool
+x_protect_window_for_callback (struct x_display_info *dpyinfo,
+			       Lisp_Object window)
+{
+  if (dpyinfo->n_protected_windows + 1
+      >= dpyinfo->protected_windows_max)
+    return false;
+
+  dpyinfo->protected_windows[dpyinfo->n_protected_windows++]
+    = window;
+  return true;
+}
+
+static void
+x_unprotect_window_for_callback (struct x_display_info *dpyinfo)
+{
+  if (!dpyinfo->n_protected_windows)
+    emacs_abort ();
+
+  dpyinfo->n_protected_windows--;
+
+  if (dpyinfo->n_protected_windows)
+    memmove (dpyinfo->protected_windows, &dpyinfo->protected_windows[1],
+	     sizeof (Lisp_Object) * dpyinfo->n_protected_windows);
+}
+
 /* Send a client message with message type Xatom_Scrollbar for a
    scroll action to the frame of WINDOW.  PART is a value identifying
    the part of the scroll bar that was clicked on.  PORTION is the
@@ -10848,8 +10911,12 @@ x_send_scroll_bar_event (Lisp_Object window, enum scroll_bar_part part,
   verify (INTPTR_WIDTH <= 64);
   int sign_shift = INTPTR_WIDTH - 32;
 
-  block_input ();
+  /* Don't do anything if too many scroll bar events have been
+     sent but not received.  */
+  if (!x_protect_window_for_callback (FRAME_DISPLAY_INFO (f), window))
+    return;
 
+  block_input ();
   /* Construct a ClientMessage event to send to the frame.  */
   ev->type = ClientMessage;
   ev->message_type = (horizontal
@@ -17535,6 +17602,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      char *copy_bufptr = copy_buffer;
 	      int copy_bufsiz = sizeof (copy_buffer);
 	      ptrdiff_t i;
+	      uint old_state;
 	      struct xi_device_t *device, *source;
 
 	      coding = Qlatin_1;
@@ -17779,9 +17847,18 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      else
 #endif
 			{
+			  old_state = xkey.state;
+			  xkey.state &= ~ControlMask;
+			  xkey.state &= ~(dpyinfo->meta_mod_mask
+					  | dpyinfo->super_mod_mask
+					  | dpyinfo->hyper_mod_mask
+					  | dpyinfo->alt_mod_mask);
+
 			  nbytes = XLookupString (&xkey, copy_bufptr,
 						  copy_bufsiz, &keysym,
 						  NULL);
+
+			  xkey.state = old_state;
 			}
 		    }
 
@@ -18584,7 +18661,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  && x_dnd_in_progress && x_dnd_use_toplevels
 	  && dpyinfo == FRAME_DISPLAY_INFO (x_dnd_frame))
 	{
+#ifndef USE_GTK
 	  XEvent xevent;
+#endif
 	  XShapeEvent *xse = (XShapeEvent *) event;
 #if defined HAVE_XCB_SHAPE && defined HAVE_XCB_SHAPE_INPUT_RECTS
 	  xcb_shape_get_rectangles_cookie_t bounding_rect_cookie;
@@ -18601,6 +18680,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  int rc, ordering;
 #endif
 
+	  /* Somehow this really interferes with GTK's own processing
+	     of ShapeNotify events.  Not sure what GTK uses them for,
+	     but we cannot skip any of them here.  */
+#ifndef USE_GTK
 	  while (XPending (dpyinfo->display))
 	    {
 	      XNextEvent (dpyinfo->display, &xevent);
@@ -18614,6 +18697,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  break;
 		}
 	    }
+#endif
 
 	  for (struct x_client_list_window *tem = x_dnd_toplevels; tem;
 	       tem = tem->next)
@@ -18829,6 +18913,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       count++;
     }
 
+#ifdef USE_TOOLKIT_SCROLL_BARS
+  if (event->xany.type == ClientMessage
+      && inev.ie.kind == SCROLL_BAR_CLICK_EVENT)
+    x_unprotect_window_for_callback (dpyinfo);
+#endif
+
   if (do_help
       && !(hold_quit && hold_quit->kind != NO_EVENT))
     {
@@ -18903,6 +18993,13 @@ XTread_socket (struct terminal *terminal, struct input_event *hold_quit)
   int count = 0;
   bool event_found = false;
   struct x_display_info *dpyinfo = terminal->display_info.x;
+
+  /* Don't allow XTread_socket to do anything if drag-and-drop is in
+     progress.  If unblock_input causes XTread_socket to be called and
+     read X events while the drag-and-drop event loop is in progress,
+     things can go wrong very quick.  */
+  if (x_dnd_in_progress || x_dnd_waiting_for_finish)
+    return 0;
 
   block_input ();
 
@@ -19696,7 +19793,7 @@ For details, see etc/PROBLEMS.\n",
   if (terminal_list == 0)
     {
       fprintf (stderr, "%s\n", error_msg);
-      Fkill_emacs (make_fixnum (70));
+      Fkill_emacs (make_fixnum (70), Qnil);
     }
 
   totally_unblock_input ();
@@ -21910,10 +22007,10 @@ x_destroy_window (struct frame *f)
    flag (this is useful when FLAGS is 0).
    The GTK version is in gtkutils.c.  */
 
-#ifndef USE_GTK
 void
 x_wm_set_size_hint (struct frame *f, long flags, bool user_position)
 {
+#ifndef USE_GTK
   XSizeHints size_hints;
   Window window = FRAME_OUTER_WINDOW (f);
 #ifdef USE_X_TOOLKIT
@@ -22070,8 +22167,10 @@ x_wm_set_size_hint (struct frame *f, long flags, bool user_position)
 #endif /* PWinGravity */
 
   XSetWMNormalHints (FRAME_X_DISPLAY (f), window, &size_hints);
+#else
+  xg_wm_set_size_hint (f, flags, user_position);
+#endif /* USE_GTK */
 }
-#endif /* not USE_GTK */
 
 /* Used for IconicState or NormalState */
 
@@ -23390,6 +23489,12 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
   x_extension_initialize (dpyinfo);
 #endif
 
+#ifdef USE_TOOLKIT_SCROLL_BARS
+  dpyinfo->protected_windows = xmalloc (sizeof (Lisp_Object) * 256);
+  dpyinfo->n_protected_windows = 0;
+  dpyinfo->protected_windows_max = 256;
+#endif
+
   unblock_input ();
 
   return dpyinfo;
@@ -23444,12 +23549,14 @@ x_delete_display (struct x_display_info *dpyinfo)
   xfree (dpyinfo->x_id_name);
   xfree (dpyinfo->x_dnd_atoms);
   xfree (dpyinfo->color_cells);
-  xfree (dpyinfo);
-
+#ifdef USE_TOOLKIT_SCROLL_BARS
+  xfree (dpyinfo->protected_windows);
+#endif
 #ifdef HAVE_XINPUT2
   if (dpyinfo->supports_xi2)
     x_free_xi_devices (dpyinfo);
 #endif
+  xfree (dpyinfo);
 }
 
 #ifdef USE_X_TOOLKIT
@@ -23775,7 +23882,7 @@ void
 mark_xterm (void)
 {
   Lisp_Object val;
-#ifdef HAVE_XINPUT2
+#if defined HAVE_XINPUT2 || defined USE_TOOLKIT_SCROLL_BARS
   struct x_display_info *dpyinfo;
   int i;
 #endif
@@ -23792,11 +23899,17 @@ mark_xterm (void)
       mark_object (val);
     }
 
-#ifdef HAVE_XINPUT2
+#if defined HAVE_XINPUT2 || defined USE_TOOLKIT_SCROLL_BARS
   for (dpyinfo = x_display_list; dpyinfo; dpyinfo = dpyinfo->next)
     {
+#ifdef HAVE_XINPUT2
       for (i = 0; i < dpyinfo->num_devices; ++i)
 	mark_object (dpyinfo->devices[i].name);
+#endif
+#ifdef USE_TOOLKIT_SCROLL_BARS
+      for (i = 0; i < dpyinfo->n_protected_windows; ++i)
+	mark_object (dpyinfo->protected_windows[i]);
+#endif
     }
 #endif
 }

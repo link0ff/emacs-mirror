@@ -409,7 +409,7 @@ haiku_frame_raise_lower (struct frame *f, bool raise_p)
 }
 
 static struct frame *
-haiku_mouse_or_wdesc_frame (void *window)
+haiku_mouse_or_wdesc_frame (void *window, bool accept_tooltip)
 {
   struct frame *lm_f = (gui_mouse_grabbed (x_display_list)
 			? x_display_list->last_mouse_frame
@@ -423,7 +423,7 @@ haiku_mouse_or_wdesc_frame (void *window)
       struct frame *w_f = haiku_window_to_frame (window);
 
       /* Do not return a tooltip frame.  */
-      if (!w_f || FRAME_TOOLTIP_P (w_f))
+      if (!w_f || (FRAME_TOOLTIP_P (w_f) && !accept_tooltip))
 	return EQ (track_mouse, Qdropping) ? lm_f : NULL;
       else
 	/* When dropping it would be probably nice to raise w_f
@@ -2766,26 +2766,63 @@ flush_dirty_back_buffers (void)
   unblock_input ();
 }
 
+/* N.B. that support for TYPE must be explictly added to
+   haiku_read_socket.  */
+void
+haiku_wait_for_event (struct frame *f, int type)
+{
+  int input_blocked_to;
+  object_wait_info info;
+  specpdl_ref depth;
+
+  input_blocked_to = interrupt_input_blocked;
+  info.object = port_application_to_emacs;
+  info.type = B_OBJECT_TYPE_PORT;
+  info.events = B_EVENT_READ;
+
+  depth = SPECPDL_INDEX ();
+  specbind (Qinhibit_quit, Qt);
+
+  FRAME_OUTPUT_DATA (f)->wait_for_event_type = type;
+
+  while (FRAME_OUTPUT_DATA (f)->wait_for_event_type == type)
+    {
+      if (wait_for_objects (&info, 1) < B_OK)
+	continue;
+
+      pending_signals = true;
+      /* This will call the read_socket_hook.  */
+      totally_unblock_input ();
+      interrupt_input_blocked = input_blocked_to;
+      info.events = B_EVENT_READ;
+    }
+
+  unbind_to (depth, Qnil);
+}
+
 static int
 haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 {
-  block_input ();
-  int message_count = 0;
-  static void *buf = NULL;
+  int message_count;
+  static void *buf;
   ssize_t b_size;
   struct unhandled_event *unhandled_events = NULL;
-  int button_or_motion_p;
-  int need_flush = 0;
-  int do_help = 0;
+  int button_or_motion_p, need_flush, do_help;
+  enum haiku_event_type type;
+  struct input_event inev, inev2;
 
+  message_count = 0;
+  need_flush = 0;
+  button_or_motion_p = 0;
+  do_help = 0;
+  buf = NULL;
+
+  block_input ();
   if (!buf)
     buf = xmalloc (200);
   haiku_read_size (&b_size, false);
   while (b_size >= 0)
     {
-      enum haiku_event_type type;
-      struct input_event inev, inev2;
-
       if (b_size > 200)
 	emacs_abort ();
 
@@ -2797,7 +2834,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
       inev2.arg = Qnil;
 
       button_or_motion_p = 0;
-
       haiku_read (&type, buf, b_size);
 
       switch (type)
@@ -2864,7 +2900,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	      continue;
 
 	    expose_frame (f, b->x, b->y, b->width, b->height);
-
 	    haiku_clear_under_internal_border (f);
 	    break;
 	  }
@@ -2873,6 +2908,9 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	    struct haiku_key_event *b = buf;
 	    Mouse_HLInfo *hlinfo = &x_display_list->mouse_highlight;
 	    struct frame *f = haiku_window_to_frame (b->window);
+
+	    if (!f)
+	      continue;
 
 	    /* If mouse-highlight is an integer, input clears out
 	       mouse highlighting.  */
@@ -2885,9 +2923,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 		hlinfo->mouse_face_hidden = true;
 		need_flush = 1;
 	      }
-
-	    if (!f)
-	      continue;
 
 	    inev.code = b->keysym ? b->keysym : b->multibyte_char;
 
@@ -2917,8 +2952,8 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	    if (!f)
 	      continue;
 
-	    if ((x_display_list->focus_event_frame != f && b->activated_p) ||
-		(x_display_list->focus_event_frame == f && !b->activated_p))
+	    if ((x_display_list->focus_event_frame != f && b->activated_p)
+		|| (x_display_list->focus_event_frame == f && !b->activated_p))
 	      {
 		haiku_new_focus_frame (b->activated_p ? f : NULL);
 		if (b->activated_p)
@@ -2951,7 +2986,7 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	case MOUSE_MOTION:
 	  {
 	    struct haiku_mouse_motion_event *b = buf;
-	    struct frame *f = haiku_mouse_or_wdesc_frame (b->window);
+	    struct frame *f = haiku_mouse_or_wdesc_frame (b->window, true);
 	    Mouse_HLInfo *hlinfo = &x_display_list->mouse_highlight;
 	    Lisp_Object frame;
 
@@ -2966,7 +3001,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 
 		if (any_help_event_p)
 		  do_help = -1;
-
 		break;
 	      }
 
@@ -3133,7 +3167,7 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	case BUTTON_DOWN:
 	  {
 	    struct haiku_button_event *b = buf;
-	    struct frame *f = haiku_mouse_or_wdesc_frame (b->window);
+	    struct frame *f = haiku_mouse_or_wdesc_frame (b->window, false);
 	    Lisp_Object tab_bar_arg = Qnil;
 	    int tab_bar_p = 0, tool_bar_p = 0;
 	    bool up_okay_p = false;
@@ -3453,7 +3487,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 
 	    break;
 	  }
-
 	case MENU_BAR_RESIZE:
 	  {
 	    struct haiku_menu_bar_resize_event *b = buf;
@@ -3462,17 +3495,36 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	    if (!f || !FRAME_EXTERNAL_MENU_BAR (f))
 	      continue;
 
+	    if (FRAME_OUTPUT_DATA (f)->wait_for_event_type
+		== MENU_BAR_RESIZE)
+	      FRAME_OUTPUT_DATA (f)->wait_for_event_type = -1;
+
 	    int old_height = FRAME_MENU_BAR_HEIGHT (f);
 
 	    FRAME_MENU_BAR_HEIGHT (f) = b->height + 1;
-	    FRAME_MENU_BAR_LINES (f) =
-	      (b->height + FRAME_LINE_HEIGHT (f)) / FRAME_LINE_HEIGHT (f);
+	    FRAME_MENU_BAR_LINES (f)
+	      = (b->height + FRAME_LINE_HEIGHT (f)) / FRAME_LINE_HEIGHT (f);
 
-	    if (old_height != b->height)
+	    if (old_height != b->height + 1)
 	      {
 		adjust_frame_size (f, -1, -1, 3, true, Qmenu_bar_lines);
 		haiku_clear_under_internal_border (f);
 	      }
+	    break;
+	  }
+	case MENU_BAR_CLICK:
+	  {
+	    struct haiku_menu_bar_click_event *b = buf;
+	    struct frame *f = haiku_window_to_frame (b->window);
+
+	    if (!f || !FRAME_EXTERNAL_MENU_BAR (f))
+	      continue;
+
+	    if (!FRAME_OUTPUT_DATA (f)->saved_menu_event)
+	      FRAME_OUTPUT_DATA (f)->saved_menu_event = xmalloc (sizeof *b);
+	    *FRAME_OUTPUT_DATA (f)->saved_menu_event = *b;
+	    inev.kind = MENU_BAR_ACTIVATE_EVENT;
+	    XSETFRAME (inev.frame_or_window, f);
 	    break;
 	  }
 	case MENU_BAR_OPEN:
@@ -3480,29 +3532,20 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	  {
 	    struct haiku_menu_bar_state_event *b = buf;
 	    struct frame *f = haiku_window_to_frame (b->window);
-	    int was_waiting_for_input_p;
 
 	    if (!f || !FRAME_EXTERNAL_MENU_BAR (f))
 	      continue;
 
 	    if (type == MENU_BAR_OPEN)
 	      {
-		was_waiting_for_input_p = waiting_for_input;
-		if (waiting_for_input)
-		  waiting_for_input = 0;
-
-		set_frame_menubar (f, 1);
-		waiting_for_input = was_waiting_for_input_p;
-
 		FRAME_OUTPUT_DATA (f)->menu_bar_open_p = 1;
 		popup_activated_p += 1;
-
-		EmacsWindow_signal_menu_update_complete (b->window);
 	      }
 	    else
 	      {
 		if (!popup_activated_p)
 		  emacs_abort ();
+
 		if (FRAME_OUTPUT_DATA (f)->menu_bar_open_p)
 		  {
 		    FRAME_OUTPUT_DATA (f)->menu_bar_open_p = 0;
@@ -3519,9 +3562,8 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	    if (!f || !FRAME_EXTERNAL_MENU_BAR (f))
 	      continue;
 
-	    if (FRAME_OUTPUT_DATA (f)->menu_up_to_date_p)
-	      find_and_call_menu_selection (f, f->menu_bar_items_used,
-					    f->menu_bar_vector, b->ptr);
+	    find_and_call_menu_selection (f, f->menu_bar_items_used,
+					  f->menu_bar_vector, b->ptr);
 	    break;
 	  }
 	case FILE_PANEL_EVENT:
@@ -3545,12 +3587,11 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	      continue;
 
 	    struct frame *f = haiku_window_to_frame (b->window);
-	    if (!f || !FRAME_EXTERNAL_MENU_BAR (f) ||
-		!FRAME_OUTPUT_DATA (f)->menu_bar_open_p)
+	    if (!f || !FRAME_EXTERNAL_MENU_BAR (f)
+		|| !FRAME_OUTPUT_DATA (f)->menu_bar_open_p)
 	      continue;
 
 	    run_menu_bar_help_event (f, b->mb_idx);
-
 	    break;
 	  }
 	case ZOOM_EVENT:
@@ -3873,6 +3914,7 @@ haiku_create_terminal (struct haiku_display_info *dpyinfo)
   terminal->toggle_invisible_pointer_hook = haiku_toggle_invisible_pointer;
   terminal->fullscreen_hook = haiku_fullscreen;
   terminal->toolkit_position_hook = haiku_toolkit_position;
+  terminal->activate_menubar_hook = haiku_activate_menubar;
 
   return terminal;
 }
@@ -4183,7 +4225,6 @@ This is either one of the symbols `shift', `control', `command', and
 
 Setting it to any other value is equivalent to `shift'.  */);
   Vhaiku_shift_keysym = Qnil;
-
 
   DEFSYM (Qx_use_underline_position_properties,
 	  "x-use-underline-position-properties");

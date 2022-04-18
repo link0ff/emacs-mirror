@@ -81,6 +81,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #include "haiku_support.h"
 
+/* Some messages that Emacs sends to itself.  */
 enum
   {
     SCROLL_BAR_UPDATE	= 3000,
@@ -90,6 +91,35 @@ enum
     SHOW_MENU_BAR	= 3004,
     BE_MENU_BAR_OPEN	= 3005,
     QUIT_APPLICATION	= 3006,
+    REPLAY_MENU_BAR	= 3007,
+  };
+
+/* X11 keysyms that we use.  */
+enum
+  {
+    KEY_BACKSPACE	  = 0xff08,
+    KEY_TAB		  = 0xff09,
+    KEY_RETURN		  = 0xff0d,
+    KEY_PAUSE		  = 0xff13,
+    KEY_ESCAPE		  = 0xff1b,
+    KEY_DELETE		  = 0xffff,
+    KEY_HOME		  = 0xff50,
+    KEY_LEFT_ARROW	  = 0xff51,
+    KEY_UP_ARROW	  = 0xff52,
+    KEY_RIGHT_ARROW	  = 0xff53,
+    KEY_DOWN_ARROW	  = 0xff54,
+    KEY_PAGE_UP		  = 0xff55,
+    KEY_PAGE_DOWN	  = 0xff56,
+    KEY_END		  = 0xff57,
+    KEY_PRINT		  = 0xff61,
+    KEY_INSERT		  = 0xff63,
+    /* This is used to indicate the first function key.  */
+    KEY_F1		  = 0xffbe,
+    /* These are found on some multilingual keyboards.  */
+    KEY_HANGUL		  = 0xff31,
+    KEY_HANGUL_HANJA	  = 0xff34,
+    KEY_HIRIGANA_KATAGANA = 0xff27,
+    KEY_ZENKAKU_HANKAKU	  = 0xff2a,
   };
 
 static color_space dpy_color_space = B_NO_COLOR_SPACE;
@@ -219,63 +249,76 @@ keysym_from_raw_char (int32 raw, int32 key, unsigned *code)
   switch (raw)
     {
     case B_BACKSPACE:
-      *code = XK_BackSpace;
+      *code = KEY_BACKSPACE;
       break;
     case B_RETURN:
-      *code = XK_Return;
+      *code = KEY_RETURN;
       break;
     case B_TAB:
-      *code = XK_Tab;
+      *code = KEY_TAB;
       break;
     case B_ESCAPE:
-      *code = XK_Escape;
+      *code = KEY_ESCAPE;
       break;
     case B_LEFT_ARROW:
-      *code = XK_Left;
+      *code = KEY_LEFT_ARROW;
       break;
     case B_RIGHT_ARROW:
-      *code = XK_Right;
+      *code = KEY_RIGHT_ARROW;
       break;
     case B_UP_ARROW:
-      *code = XK_Up;
+      *code = KEY_UP_ARROW;
       break;
     case B_DOWN_ARROW:
-      *code = XK_Down;
+      *code = KEY_DOWN_ARROW;
       break;
     case B_INSERT:
-      *code = XK_Insert;
+      *code = KEY_INSERT;
       break;
     case B_DELETE:
-      *code = XK_Delete;
+      *code = KEY_DELETE;
       break;
     case B_HOME:
-      *code = XK_Home;
+      *code = KEY_HOME;
       break;
     case B_END:
-      *code = XK_End;
+      *code = KEY_END;
       break;
     case B_PAGE_UP:
-      *code = XK_Page_Up;
+      *code = KEY_PAGE_UP;
       break;
     case B_PAGE_DOWN:
-      *code = XK_Page_Down;
+      *code = KEY_PAGE_DOWN;
       break;
 
     case B_FUNCTION_KEY:
-      *code = XK_F1 + key - 2;
+      *code = KEY_F1 + key - 2;
 
-      if (*code - XK_F1 == 12)
-	*code = XK_Print;
-      else if (*code - XK_F1 == 13)
+      if (*code - KEY_F1 == 12)
+	*code = KEY_PRINT;
+      else if (*code - KEY_F1 == 13)
 	/* Okay, Scroll Lock is a bit too much: keyboard.c doesn't
 	   know about it yet, and it shouldn't, since that's a
 	   modifier key.
 
-	   *code = XK_Scroll_Lock; */
+	   *code = KEY_SCROLL_LOCK; */
 	return -1;
-      else if (*code - XK_F1 == 14)
-	*code = XK_Pause;
+      else if (*code - KEY_F1 == 14)
+	*code = KEY_PAUSE;
 
+      break;
+
+    case B_HANGUL:
+      *code = KEY_HANGUL;
+      break;
+    case B_HANGUL_HANJA:
+      *code = KEY_HANGUL_HANJA;
+      break;
+    case B_KATAKANA_HIRAGANA:
+      *code = KEY_HIRIGANA_KATAGANA;
+      break;
+    case B_HANKAKU_ZENKAKU:
+      *code = KEY_ZENKAKU_HANKAKU;
       break;
 
     default:
@@ -454,9 +497,6 @@ public:
   window_look pre_override_redirect_look;
   window_feel pre_override_redirect_feel;
   uint32 pre_override_redirect_workspaces;
-  pthread_mutex_t menu_update_mutex = PTHREAD_MUTEX_INITIALIZER;
-  pthread_cond_t menu_update_cv = PTHREAD_COND_INITIALIZER;
-  bool menu_updated_p = false;
   int window_id;
   bool *menus_begun = NULL;
 
@@ -488,9 +528,6 @@ public:
     if (this->parent)
       UnparentAndUnlink ();
     child_frame_lock.Unlock ();
-
-    pthread_cond_destroy (&menu_update_cv);
-    pthread_mutex_destroy (&menu_update_mutex);
   }
 
   BRect
@@ -935,34 +972,13 @@ public:
   }
 
   void
-  MenusBeginning ()
+  MenusBeginning (void)
   {
     struct haiku_menu_bar_state_event rq;
-    int lock_count;
 
     rq.window = this;
-    lock_count = 0;
-
     if (!menus_begun)
-      {
-	haiku_write (MENU_BAR_OPEN, &rq);
-	while (IsLocked ())
-	  {
-	    ++lock_count;
-	    UnlockLooper ();
-	  }
-	pthread_mutex_lock (&menu_update_mutex);
-	while (!menu_updated_p)
-	  pthread_cond_wait (&menu_update_cv,
-			     &menu_update_mutex);
-	menu_updated_p = false;
-	pthread_mutex_unlock (&menu_update_mutex);
-	for (; lock_count; --lock_count)
-	  {
-	    if (!LockLooper ())
-	      gui_abort ("Failed to lock after cv signal denoting menu update");
-	  }
-      }
+      haiku_write (MENU_BAR_OPEN, &rq);
     else
       *menus_begun = true;
 
@@ -1236,6 +1252,8 @@ public:
 
 class EmacsMenuBar : public BMenuBar
 {
+  bool tracking_p;
+
 public:
   EmacsMenuBar () : BMenuBar (BRect (0, 0, 0, 0), NULL)
   {
@@ -1259,6 +1277,22 @@ public:
 
     haiku_write (MENU_BAR_RESIZE, &rq);
     BMenuBar::FrameResized (newWidth, newHeight);
+  }
+
+  void
+  MouseDown (BPoint point)
+  {
+    struct haiku_menu_bar_click_event rq;
+    EmacsWindow *ew = (EmacsWindow *) Window ();
+
+    rq.window = ew;
+    rq.x = std::lrint (point.x);
+    rq.y = std::lrint (point.y);
+
+    if (!ew->menu_bar_active_p)
+      haiku_write (MENU_BAR_CLICK, &rq);
+    else
+      BMenuBar::MouseDown (point);
   }
 
   void
@@ -1301,7 +1335,23 @@ public:
 
 	window->menus_begun = &menus_begun;
 	set_mouse_position (pt.x, pt.y);
-	MouseDown (l);
+	BMenuBar::MouseDown (l);
+	window->menus_begun = NULL;
+
+	if (!menus_begun)
+	  msg->SendReply (msg);
+	else
+	  msg->SendReply (BE_MENU_BAR_OPEN);
+      }
+    else if (msg->what == REPLAY_MENU_BAR)
+      {
+	window = (EmacsWindow *) Window ();
+	menus_begun = false;
+	window->menus_begun = &menus_begun;
+
+	if (msg->FindPoint ("emacs:point", &pt) == B_OK)
+	  BMenuBar::MouseDown (pt);
+
 	window->menus_begun = NULL;
 
 	if (!menus_begun)
@@ -2458,20 +2508,22 @@ BApplication_setup (void)
 
 /* Set up and return a window with its view put in VIEW.  */
 void *
-BWindow_new (void *_view)
+BWindow_new (void **view)
 {
-  BWindow *window = new (std::nothrow) EmacsWindow;
-  BView **v = (BView **) _view;
+  BWindow *window;
+  BView *vw;
+
+  window = new (std::nothrow) EmacsWindow;
   if (!window)
     {
-      *v = NULL;
+      *view = NULL;
       return window;
     }
 
-  BView *vw = new (std::nothrow) EmacsView;
+  vw = new (std::nothrow) EmacsView;
   if (!vw)
     {
-      *v = NULL;
+      *view = NULL;
       window->LockLooper ();
       window->Quit ();
       return NULL;
@@ -2485,15 +2537,17 @@ BWindow_new (void *_view)
      the first time.  */
   window->UnlockLooper ();
   window->AddChild (vw);
-  *v = vw;
+  *view = vw;
   return window;
 }
 
 void
 BWindow_quit (void *window)
 {
-  ((BWindow *) window)->LockLooper ();
-  ((BWindow *) window)->Quit ();
+  BWindow *w = (BWindow *) window;
+
+  w->LockLooper ();
+  w->Quit ();
 }
 
 /* Set WINDOW's offset to X, Y.  */
@@ -2812,42 +2866,6 @@ BWindow_center_on_screen (void *window)
 {
   BWindow *w = (BWindow *) window;
   w->CenterOnScreen ();
-}
-
-/* Tell VIEW it has been clicked at X by Y.  */
-void
-BView_mouse_down (void *view, int x, int y)
-{
-  BView *vw = (BView *) view;
-  if (vw->LockLooper ())
-    {
-      vw->MouseDown (BPoint (x, y));
-      vw->UnlockLooper ();
-    }
-}
-
-/* Tell VIEW the mouse has been released at X by Y.  */
-void
-BView_mouse_up (void *view, int x, int y)
-{
-  BView *vw = (BView *) view;
-  if (vw->LockLooper ())
-    {
-      vw->MouseUp (BPoint (x, y));
-      vw->UnlockLooper ();
-    }
-}
-
-/* Tell VIEW that the mouse has moved to Y by Y.  */
-void
-BView_mouse_moved (void *view, int x, int y, uint32_t transit)
-{
-  BView *vw = (BView *) view;
-  if (vw->LockLooper ())
-    {
-      vw->MouseMoved (BPoint (x, y), transit, NULL);
-      vw->UnlockLooper ();
-    }
 }
 
 /* Import fringe bitmap (short array, low bit rightmost) BITS into
@@ -3715,44 +3733,45 @@ struct popup_file_dialog_data
 static void
 unwind_popup_file_dialog (void *ptr)
 {
-  struct popup_file_dialog_data *data =
-    (struct popup_file_dialog_data *) ptr;
+  struct popup_file_dialog_data *data
+    = (struct popup_file_dialog_data *) ptr;
   BFilePanel *panel = data->panel;
+
   delete panel;
   delete data->entry;
   delete data->msg;
 }
 
-static void
-be_popup_file_dialog_safe_set_target (BFilePanel *dialog, BWindow *window)
-{
-  dialog->SetTarget (BMessenger (window));
-}
-
 /* Popup a file dialog.  */
 char *
-be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int dir_only_p,
-		      void *window, const char *save_text, const char *prompt,
-		      void (*block_input_function) (void),
+be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p,
+		      int dir_only_p, void *window, const char *save_text,
+		      const char *prompt, void (*block_input_function) (void),
 		      void (*unblock_input_function) (void),
 		      void (*maybe_quit_function) (void))
 {
   specpdl_ref idx = c_specpdl_idx_from_cxx ();
   /* setjmp/longjmp is UB with automatic objects. */
-  block_input_function ();
   BWindow *w = (BWindow *) window;
-  uint32_t mode = dir_only_p ? B_DIRECTORY_NODE : B_FILE_NODE | B_DIRECTORY_NODE;
+  uint32_t mode = (dir_only_p
+		   ? B_DIRECTORY_NODE
+		   : B_FILE_NODE | B_DIRECTORY_NODE);
   BEntry *path = new BEntry;
   BMessage *msg = new BMessage ('FPSE');
   BFilePanel *panel = new BFilePanel (open_p ? B_OPEN_PANEL : B_SAVE_PANEL,
 				      NULL, NULL, mode);
-
+  void *buf;
+  enum haiku_event_type type;
+  char *ptr;
   struct popup_file_dialog_data dat;
+  ssize_t b_s;
+
   dat.entry = path;
   dat.msg = msg;
   dat.panel = panel;
 
   record_c_unwind_protect_from_cxx (unwind_popup_file_dialog, &dat);
+
   if (default_dir)
     {
       if (path->SetTo (default_dir, 0) != B_OK)
@@ -3760,22 +3779,21 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
     }
 
   panel->SetMessage (msg);
+
   if (default_dir)
     panel->SetPanelDirectory (path);
   if (save_text)
     panel->SetSaveText (save_text);
+
   panel->SetHideWhenDone (0);
   panel->Window ()->SetTitle (prompt);
-  be_popup_file_dialog_safe_set_target (panel, w);
-
+  panel->SetTarget (BMessenger (w));
   panel->Show ();
-  unblock_input_function ();
 
-  void *buf = alloca (200);
+  buf = alloca (200);
   while (1)
     {
-      enum haiku_event_type type;
-      char *ptr = NULL;
+      ptr = NULL;
 
       if (!haiku_read_with_timeout (&type, buf, 200, 1000000, false))
 	{
@@ -3789,7 +3807,6 @@ be_popup_file_dialog (int open_p, const char *default_dir, int must_match_p, int
 	  maybe_quit_function ();
 	}
 
-      ssize_t b_s;
       block_input_function ();
       haiku_read_size (&b_s, false);
       if (!b_s || ptr || panel->Window ()->IsHidden ())
@@ -4139,17 +4156,6 @@ be_find_setting (const char *name)
 }
 
 void
-EmacsWindow_signal_menu_update_complete (void *window)
-{
-  EmacsWindow *w = (EmacsWindow *) window;
-
-  pthread_mutex_lock (&w->menu_update_mutex);
-  w->menu_updated_p = true;
-  pthread_cond_signal (&w->menu_update_cv);
-  pthread_mutex_unlock (&w->menu_update_mutex);
-}
-
-void
 BMessage_delete (void *message)
 {
   delete (BMessage *) message;
@@ -4264,4 +4270,19 @@ bool
 be_drag_and_drop_in_progress (void)
 {
   return drag_and_drop_in_progress;
+}
+
+/* Replay the menu bar click event EVENT.  Return whether or not the
+   menu bar actually opened.  */
+bool
+be_replay_menu_bar_event (void *menu_bar,
+			  struct haiku_menu_bar_click_event *event)
+{
+  BMenuBar *m = (BMenuBar *) menu_bar;
+  BMessenger messenger (m);
+  BMessage reply, msg (REPLAY_MENU_BAR);
+
+  msg.AddPoint ("emacs:point", BPoint (event->x, event->y));
+  messenger.SendMessage (&msg, &reply);
+  return reply.what == BE_MENU_BAR_OPEN;
 }

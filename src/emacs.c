@@ -159,6 +159,10 @@ Lisp_Object empty_unibyte_string, empty_multibyte_string;
 #ifdef WINDOWSNT
 /* Cache for externally loaded libraries.  */
 Lisp_Object Vlibrary_cache;
+/* Original command line string as received from the OS.  */
+static char *initial_cmdline;
+/* Original working directory when invoked.  */
+static const char *initial_wd;
 #endif
 
 struct gflags gflags;
@@ -427,7 +431,7 @@ terminate_due_to_signal (int sig, int backtrace_limit)
 		 don't care about the message stack.  */
 	      if (sig == SIGINT && noninteractive)
 		clear_message_stack ();
-	      Fkill_emacs (make_fixnum (sig));
+	      Fkill_emacs (make_fixnum (sig), Qnil);
 	    }
 
           shut_down_emacs (sig, Qnil);
@@ -1319,6 +1323,7 @@ main (int argc, char **argv)
 	}
     }
   init_heap (use_dynamic_heap);
+  initial_cmdline = GetCommandLine ();
 #endif
 #if defined WINDOWSNT || defined HAVE_NTGUI
   /* Set global variables used to detect Windows version.  Do this as
@@ -1465,6 +1470,9 @@ main (int argc, char **argv)
 #endif
 
   emacs_wd = emacs_get_current_dir_name ();
+#ifdef WINDOWSNT
+  initial_wd = emacs_wd;
+#endif
 #ifdef HAVE_PDUMPER
   if (dumped_with_pdumper_p ())
     pdumper_record_wd (emacs_wd);
@@ -2740,21 +2748,25 @@ sort_args (int argc, char **argv)
   xfree (priority);
 }
 
-DEFUN ("kill-emacs", Fkill_emacs, Skill_emacs, 0, 1, "P",
+DEFUN ("kill-emacs", Fkill_emacs, Skill_emacs, 0, 2, "P",
        doc: /* Exit the Emacs job and kill it.
 If ARG is an integer, return ARG as the exit program code.
 If ARG is a string, stuff it as keyboard input.
 Any other value of ARG, or ARG omitted, means return an
 exit code that indicates successful program termination.
 
+If RESTART is non-nil, instead of just exiting at the end, start a new
+Emacs process, using the same command line arguments as the currently
+running Emacs process.
+
 This function is called upon receipt of the signals SIGTERM
 or SIGHUP, and upon SIGINT in batch mode.
 
-The value of `kill-emacs-hook', if not void,
-is a list of functions (of no args),
-all of which are called before Emacs is actually killed.  */
+The value of `kill-emacs-hook', if not void, is a list of functions
+(of no args), all of which are called before Emacs is actually
+killed.  */
        attributes: noreturn)
-  (Lisp_Object arg)
+  (Lisp_Object arg, Lisp_Object restart)
 {
   int exit_code;
 
@@ -2800,6 +2812,20 @@ all of which are called before Emacs is actually killed.  */
 #ifdef HAVE_NATIVE_COMP
   eln_load_path_final_clean_up ();
 #endif
+
+  if (!NILP (restart))
+    {
+      /* This is very unlikely, but it's possible to execute a binary
+	 (on some systems) with no argv.  */
+      if (initial_argc < 1)
+	error ("No command line arguments known; unable to re-execute Emacs");
+#ifdef WINDOWSNT
+      if (w32_reexec_emacs (initial_cmdline, initial_wd) < 0)
+#else
+      if (execvp (*initial_argv, initial_argv) < 1)
+#endif
+	error ("Unable to re-execute Emacs");
+    }
 
   if (FIXNUMP (arg))
     exit_code = (XFIXNUM (arg) < 0
