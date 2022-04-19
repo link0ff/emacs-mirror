@@ -756,6 +756,10 @@ static bool toolkit_scroll_bar_interaction;
 
 static Time ignore_next_mouse_click_timeout;
 
+/* The display that ignore_next_mouse_click_timeout applies to.  */
+
+static struct x_display_info *mouse_click_timeout_display;
+
 /* Used locally within XTread_socket.  */
 
 static int x_noop_count;
@@ -1366,10 +1370,16 @@ xm_write_drag_initiator_info (Display *dpy, Window wdesc,
 		   PropModeReplace, (unsigned char *) buf, 8);
 }
 
+static int
+xm_drag_window_error_handler (Display *display, XErrorEvent *event)
+{
+  return 0;
+}
+
 static Window
 xm_get_drag_window (struct x_display_info *dpyinfo)
 {
-  Atom actual_type;
+  Atom actual_type, _MOTIF_DRAG_WINDOW;
   int rc, actual_format;
   unsigned long nitems, bytes_remaining;
   unsigned char *tmp_data = NULL;
@@ -1377,6 +1387,7 @@ xm_get_drag_window (struct x_display_info *dpyinfo)
   XSetWindowAttributes attrs;
   XWindowAttributes wattrs;
   Display *temp_display;
+  void *old_handler;
 
   drag_window = None;
   rc = XGetWindowProperty (dpyinfo->display, dpyinfo->root_window,
@@ -1420,16 +1431,44 @@ xm_get_drag_window (struct x_display_info *dpyinfo)
 
       XGrabServer (temp_display);
       XSetCloseDownMode (temp_display, RetainPermanent);
-      attrs.override_redirect = True;
-      drag_window = XCreateWindow (temp_display, DefaultRootWindow (temp_display),
-				   -1, -1, 1, 1, 0, CopyFromParent, InputOnly,
-				   CopyFromParent, CWOverrideRedirect, &attrs);
-      XChangeProperty (temp_display, DefaultRootWindow (temp_display),
-		       XInternAtom (temp_display,
-				    "_MOTIF_DRAG_WINDOW", False),
-		       XA_WINDOW, 32, PropModeReplace,
-		       (unsigned char *) &drag_window, 1);
+
+      /* We can't use XErrorHandler since it's not in the Xlib
+	 specification, and Emacs tries to be portable.  */
+      old_handler = (void *) XSetErrorHandler (xm_drag_window_error_handler);
+
+      _MOTIF_DRAG_WINDOW = XInternAtom (temp_display,
+					"_MOTIF_DRAG_WINDOW", False);
+
+      /* Some other program might've created a drag window between now
+	 and when we first looked.  Use that if it exists.  */
+
+      tmp_data = NULL;
+      rc = XGetWindowProperty (temp_display, DefaultRootWindow (temp_display),
+			       _MOTIF_DRAG_WINDOW, 0, 1, False, XA_WINDOW,
+			       &actual_type, &actual_format, &nitems,
+			       &bytes_remaining, &tmp_data) == Success;
+
+      if (rc && actual_type == XA_WINDOW
+	  && actual_format == 32 && nitems == 1
+	  && tmp_data)
+	drag_window = *(Window *) tmp_data;
+
+      if (tmp_data)
+	XFree (tmp_data);
+
+      if (drag_window == None)
+	{
+	  attrs.override_redirect = True;
+	  drag_window = XCreateWindow (temp_display, DefaultRootWindow (temp_display),
+				       -1, -1, 1, 1, 0, CopyFromParent, InputOnly,
+				       CopyFromParent, CWOverrideRedirect, &attrs);
+	  XChangeProperty (temp_display, DefaultRootWindow (temp_display),
+			   _MOTIF_DRAG_WINDOW, XA_WINDOW, 32, PropModeReplace,
+			   (unsigned char *) &drag_window, 1);
+	}
+
       XCloseDisplay (temp_display);
+      XSetErrorHandler (old_handler);
 
       /* Make sure the drag window created is actually valid for the
 	 current display, and the XOpenDisplay above didn't
@@ -15134,7 +15173,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       f = any;
 
       if (f && x_mouse_click_focus_ignore_position)
-	ignore_next_mouse_click_timeout = event->xmotion.time + 200;
+	{
+	  ignore_next_mouse_click_timeout = event->xmotion.time + 200;
+	  mouse_click_timeout_display = dpyinfo;
+	}
 
       /* EnterNotify counts as mouse movement,
 	 so update things that depend on mouse position.  */
@@ -16011,7 +16053,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		&& event->xbutton.button < 9
 		&& f)
 	      {
-		if (ignore_next_mouse_click_timeout)
+		if (ignore_next_mouse_click_timeout
+		    && dpyinfo == mouse_click_timeout_display)
 		  {
 		    if (event->type == ButtonPress
 			&& event->xbutton.time > ignore_next_mouse_click_timeout)
@@ -16080,7 +16123,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
               if (! popup_activated ())
 #endif
                 {
-                  if (ignore_next_mouse_click_timeout)
+                  if (ignore_next_mouse_click_timeout
+		      && dpyinfo == mouse_click_timeout_display)
                     {
                       if (event->type == ButtonPress
                           && event->xbutton.time > ignore_next_mouse_click_timeout)
@@ -16377,7 +16421,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      f = any;
 
 	      if (f && x_mouse_click_focus_ignore_position)
-		ignore_next_mouse_click_timeout = xi_event->time + 200;
+		{
+		  ignore_next_mouse_click_timeout = xev->time + 200;
+		  mouse_click_timeout_display = dpyinfo;
+		}
 
 	      /* EnterNotify counts as mouse movement,
 		 so update things that depend on mouse position.  */
@@ -23543,6 +23590,9 @@ x_delete_display (struct x_display_info *dpyinfo)
   if (next_noop_dpyinfo == dpyinfo)
     next_noop_dpyinfo = dpyinfo->next;
 
+  if (mouse_click_timeout_display == dpyinfo)
+    mouse_click_timeout_display = NULL;
+
   if (x_display_list == dpyinfo)
     x_display_list = dpyinfo->next;
   else
@@ -23830,6 +23880,7 @@ x_initialize (void)
   x_noop_count = 0;
   any_help_event_p = false;
   ignore_next_mouse_click_timeout = 0;
+  mouse_click_timeout_display = NULL;
 
 #ifdef USE_GTK
   current_count = -1;
