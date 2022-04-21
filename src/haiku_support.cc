@@ -173,7 +173,7 @@ static bool drag_and_drop_in_progress;
    Rectifying that problem is simple: all code in a looper callback
    must lock the child frame data with this macro instead.
 
-   IOW, If some other code is already running with the child frame
+   IOW, if some other code is already running with the child frame
    lock held, don't interfere: wait until it's finished before
    continuing.  */
 #define CHILD_FRAME_LOCK_INSIDE_LOOPER_CALLBACK		\
@@ -189,13 +189,7 @@ static bool drag_and_drop_in_progress;
    port, so it's probably here to stay.  */
 extern status_t get_subpixel_antialiasing (bool *);
 
-extern "C"
-{
-  extern _Noreturn void emacs_abort (void);
-  /* Also defined in haikuterm.h.  */
-  extern void be_app_quit (void);
-}
-
+/* The ID of the thread the BApplication is running in.  */
 static thread_id app_thread;
 
 _Noreturn void
@@ -205,7 +199,7 @@ gui_abort (const char *msg)
   fprintf (stderr, "Under Haiku, Emacs cannot recover from errors in GUI code\n");
   fprintf (stderr, "App Server disconnects usually manifest as bitmap "
 	   "initialization failures or lock failures.");
-  emacs_abort ();
+  abort ();
 }
 
 struct be_popup_menu_data
@@ -500,6 +494,7 @@ public:
   int window_id;
   bool *menus_begun = NULL;
   enum haiku_z_group z_group;
+  bool tooltip_p = false;
 
   EmacsWindow () : BWindow (BRect (0, 0, 0, 0), "", B_TITLED_WINDOW_LOOK,
 			    B_NORMAL_WINDOW_FEEL, B_NO_SERVER_SIDE_WINDOW_MODIFIERS)
@@ -535,7 +530,7 @@ public:
   void
   RecomputeFeel (void)
   {
-    if (override_redirect_p)
+    if (override_redirect_p || tooltip_p)
       SetFeel (kMenuWindowFeel);
     else if (parent)
       SetFeel (B_FLOATING_SUBSET_WINDOW_FEEL);
@@ -3037,11 +3032,12 @@ BWindow_change_decoration (void *window, int decorate_p)
 void
 BWindow_set_tooltip_decoration (void *window)
 {
-  BWindow *w = (BWindow *) window;
+  EmacsWindow *w = (EmacsWindow *) window;
   if (!w->LockLooper ())
     gui_abort ("Failed to lock window while setting ttip decoration");
+  w->tooltip_p = true;
+  w->RecomputeFeel ();
   w->SetLook (B_BORDERED_WINDOW_LOOK);
-  w->SetFeel (kMenuWindowFeel);
   w->SetFlags (B_NOT_ZOOMABLE
 	       | B_NOT_MINIMIZABLE
 	       | B_AVOID_FRONT
