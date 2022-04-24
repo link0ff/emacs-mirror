@@ -621,18 +621,17 @@ haiku_calculate_relief_colors (struct glyph_string *s, uint32_t *rgbout_w,
 			       uint32_t *rgbout_b)
 {
   struct face *face = s->face;
+  double h, cs, l;
+  uint32_t rgbin;
 
   prepare_face_for_display (s->f, s->face);
-
-  uint32_t rgbin = face->use_box_color_for_shadows_p
-    ?  face->box_color : face->background;
+  rgbin = (face->use_box_color_for_shadows_p
+	   ? face->box_color : face->background);
 
   if (s->hl == DRAW_CURSOR)
     rgbin = FRAME_CURSOR_COLOR (s->f).pixel;
 
-  double h, cs, l;
   rgb_color_hsl (rgbin, &h, &cs, &l);
-
   hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 0.6), rgbout_b);
   hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 1.2), rgbout_w);
 }
@@ -640,16 +639,16 @@ haiku_calculate_relief_colors (struct glyph_string *s, uint32_t *rgbout_w,
 static void
 haiku_draw_relief_rect (struct glyph_string *s,
 			int left_x, int top_y, int right_x, int bottom_y,
-			int hwidth, int vwidth, bool raised_p, bool top_p, bool bot_p,
-			bool left_p, bool right_p,
+			int hwidth, int vwidth, bool raised_p, bool top_p,
+			bool bot_p, bool left_p, bool right_p,
 			struct haiku_rect *clip_rect, bool fancy_p)
 {
-  uint32_t color_white;
-  uint32_t color_black;
+  uint32_t color_white, color_black;
+  void *view;
 
   haiku_calculate_relief_colors (s, &color_white, &color_black);
 
-  void *view = FRAME_HAIKU_VIEW (s->f);
+  view = FRAME_HAIKU_VIEW (s->f);
   BView_SetHighColor (view, raised_p ? color_white : color_black);
   if (clip_rect)
     {
@@ -726,14 +725,13 @@ haiku_draw_underwave (struct glyph_string *s, int width, int x)
 {
   int wave_height = 3, wave_length = 2;
   int y, dx, dy, odd, xmax;
+  float ax, ay, bx, by;
+  void *view = FRAME_HAIKU_VIEW (s->f);
+
   dx = wave_length;
   dy = wave_height - 1;
   y = s->ybase - wave_height + 3;
-
-  float ax, ay, bx, by;
   xmax = x + width;
-
-  void *view = FRAME_HAIKU_VIEW (s->f);
 
   BView_StartClip (view);
   haiku_clip_to_string (s);
@@ -3121,7 +3119,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 		    || b->y < r.y || b->y >= r.y + r.height)
 		  {
 		    f->mouse_moved = true;
-		    dpyinfo->last_mouse_scroll_bar = NULL;
 		    note_mouse_highlight (f, b->x, b->y);
 		    remember_mouse_glyph (f, b->x, b->y,
 					  &FRAME_DISPLAY_INFO (f)->last_mouse_glyph);
@@ -3165,7 +3162,8 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 		    /* It doesn't make sense to show tooltips when
 		       another program is dragging stuff over us.  */
 
-		    do_help = -1;
+		    if (any_help_event_p || do_help)
+		      do_help = -1;
 
 		    if (!be_drag_and_drop_in_progress ())
 		      {
@@ -3948,8 +3946,9 @@ haiku_term_init (void)
 {
   struct haiku_display_info *dpyinfo;
   struct terminal *terminal;
-
-  Lisp_Object color_file, color_map;
+  Lisp_Object color_file, color_map, system_name;
+  ptrdiff_t nbytes;
+  void *name_buffer;
 
   block_input ();
   Fset_input_interrupt_mode (Qt);
@@ -4026,6 +4025,23 @@ haiku_term_init (void)
 		 BCursor_from_id (CURSOR_ID_NO_CURSOR));
 #undef ASSIGN_CURSOR
 
+  system_name = Fsystem_name ();
+
+  if (STRINGP (system_name))
+    {
+      nbytes = sizeof "GNU Emacs" + sizeof " at ";
+
+      if (INT_ADD_WRAPV (nbytes, SBYTES (system_name), &nbytes))
+	memory_full (SIZE_MAX);
+
+      name_buffer = alloca (nbytes);
+      sprintf (name_buffer, "%s%s%s", "GNU Emacs",
+	       " at ", SDATA (system_name));
+      dpyinfo->default_name = build_string (name_buffer);
+    }
+  else
+    dpyinfo->default_name = build_string ("GNU Emacs");
+
   unblock_input ();
 
   return dpyinfo;
@@ -4093,7 +4109,10 @@ void
 mark_haiku_display (void)
 {
   if (x_display_list)
-    mark_object (x_display_list->color_map);
+    {
+      mark_object (x_display_list->color_map);
+      mark_object (x_display_list->default_name);
+    }
 }
 
 void

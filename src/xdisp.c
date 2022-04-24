@@ -36568,11 +36568,14 @@ message displayed by this function), and `command-error-function'
 Usually this function is called when the next input event arrives.
 It is expected to clear the message displayed by its counterpart
 function specified by `set-message-function'.
+
 The function is called without arguments.
-If this function returns a non-t value, the message is cleared
-from the echo area as usual.  If this function returns t,
-this means that the message was already handled, and the original
-message text will not be cleared from the echo area.  */);
+
+If this function returns a value that isn't `dont-clear-message', the
+message is cleared from the echo area as usual.  If this function
+returns `dont-clear-message', this means that the message was already
+handled, and the original message text will not be cleared from the
+echo area.  */);
   Vclear_message_function = Qnil;
 
   DEFVAR_LISP ("redisplay--all-windows-cause", Vredisplay__all_windows_cause,
