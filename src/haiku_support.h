@@ -457,7 +457,6 @@ extern void BWindow_center_on_screen (void *);
 extern void BWindow_change_decoration (void *, int);
 extern void BWindow_set_tooltip_decoration (void *);
 extern void BWindow_set_avoid_focus (void *, int);
-extern uint32_t BWindow_workspaces (void *);
 extern void BWindow_zoom (void *);
 extern void BWindow_set_min_size (void *, int, int);
 extern void BWindow_set_size_alignment (void *, int, int);
@@ -550,7 +549,6 @@ extern void BView_convert_to_screen (void *, int *, int *);
 extern void BView_convert_from_screen (void *, int *, int *);
 
 extern void BView_emacs_delete (void *);
-extern uint32_t haiku_current_workspace (void);
 
 extern void *BPopUpMenu_new (const char *);
 
@@ -639,7 +637,7 @@ extern int be_get_display_screens (void);
 extern bool be_use_subpixel_antialiasing (void);
 extern const char *be_find_setting (const char *);
 extern haiku_font_family_or_style *be_list_font_families (size_t *);
-extern int be_get_ui_color (const char *, uint32 *);
+extern int be_get_ui_color (const char *, uint32_t *);
 
 extern void BMessage_delete (void *);
 
