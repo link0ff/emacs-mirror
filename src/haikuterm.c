@@ -623,17 +623,28 @@ haiku_calculate_relief_colors (struct glyph_string *s, uint32_t *rgbout_w,
   struct face *face = s->face;
   double h, cs, l;
   uint32_t rgbin;
+  struct haiku_output *di;
 
-  prepare_face_for_display (s->f, s->face);
   rgbin = (face->use_box_color_for_shadows_p
 	   ? face->box_color : face->background);
+  di = FRAME_OUTPUT_DATA (s->f);
 
   if (s->hl == DRAW_CURSOR)
     rgbin = FRAME_CURSOR_COLOR (s->f).pixel;
 
-  rgb_color_hsl (rgbin, &h, &cs, &l);
-  hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 0.6), rgbout_b);
-  hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 1.2), rgbout_w);
+  if (di->relief_background != rgbin)
+    {
+      di->relief_background = rgbin & 0xffffffff;
+
+      rgb_color_hsl (rgbin, &h, &cs, &l);
+      hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 0.6),
+		     &di->black_relief_pixel);
+      hsl_color_rgb (h, cs, fmin (1.0, fmax (0.2, l) * 1.2),
+		     &di->white_relief_pixel);
+    }
+
+  *rgbout_w = di->white_relief_pixel;
+  *rgbout_b = di->black_relief_pixel;
 }
 
 static void
@@ -3651,6 +3662,9 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	    break;
 	  }
 	case APP_QUIT_REQUESTED_EVENT:
+	  inev.kind = SAVE_SESSION_EVENT;
+	  inev.arg = Qt;
+	  break;
 	case KEY_UP:
 	case DUMMY_EVENT:
 	default:
@@ -3951,15 +3965,14 @@ haiku_term_init (void)
   void *name_buffer;
 
   block_input ();
+
   Fset_input_interrupt_mode (Qt);
-
   baud_rate = 19200;
-
   dpyinfo = xzalloc (sizeof *dpyinfo);
-
   haiku_io_init ();
 
-  if (port_application_to_emacs < B_OK)
+  if (port_application_to_emacs < B_OK
+      || port_emacs_to_session_manager < B_OK)
     emacs_abort ();
 
   color_file = Fexpand_file_name (build_string ("rgb.txt"),

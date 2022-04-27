@@ -202,6 +202,14 @@ speakers of the Tamil language.  To get back the previous behavior,
 use the new 'tamil-itrans-digits' and 'tamil-inscript-digits' input
 methods instead.
 
++++
+** current-time and related functions now yield (TICKS . HZ) timestamps.
+Previously they yielded timestamps of the forms (HI LO US PS), (HI LO
+US) or (HI LO), which were less regular and less efficient and which
+lacked information about clock resolution.  This long-planned change
+was documented in Emacs 27.  To convert a timestamp X to the old
+4-element list form, you can use (time-convert X 'list).
+
 
 * Changes in Emacs 29.1
 
@@ -415,6 +423,18 @@ command also works for non-Emoji characters.)
 *** New input method 'emoji'.
 
 ** Help
+
+---
+*** Commands like 'C-h f' have changed how they describe menu bindings.
+For instance, previously a command might be described as having the
+following bindings:
+
+  It is bound to <open>, C-x C-f, <menu-bar> <file> <new-file>.
+
+This has been changed to:
+
+  It is bound to <open> and C-x C-f.
+  It can also be invoked from the menu: File → Visit New File...
 
 +++
 *** The 'C-h .' command now accepts a prefix argument.
@@ -648,6 +668,11 @@ script that was used in ancient South Asia.  A new input method,
 
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
+
+** Flymake
+
++++
+*** New user option 'flymake-mode-line-lighter'.
 
 +++
 ** New minor mode 'word-wrap-whitespace-mode' for extending 'word-wrap'.
@@ -914,6 +939,12 @@ representation as emojis.
 *** New mu backend for gnus-search.
 Configuration is very similar to the notmuch and namazu backends.  It
 supports the unified search syntax.
+
+---
+*** gnus-html-image-cache-ttl is now a seconds count.
+Formerly it was a pair of numbers (A B) that represented 65536*A + B,
+to cater to older Emacs implementations that lacked bignums.
+The older form still works but is undocumented.
 
 ** EIEIO
 
@@ -1319,6 +1350,11 @@ remote host are shown.  Alternatively, the user option
 ** New package 'oclosure'.
 Allows the creation of "functions with slots" or "function objects"
 via the macros 'oclosure-define' and 'oclosure-lambda'.
+
+*** New generic function 'oclosure-interactive-form'.
+Used by 'interactive-form' when called on an OClosure.
+This allows specific OClosure types to compute their interactive specs
+on demand rather than precompute them when created.
 
 ---
 ** New theme 'leuven-dark'.
@@ -2003,6 +2039,11 @@ This variable is bound to t during the preparation of a "*Help*" buffer.
 For example, '(time-add nil '(1 . 1000))' no longer warns that the
 '(1 . 1000)' acts like '(1000 . 1000000)'.  This warning, which was a
 temporary transition aid for Emacs 27, has served its purpose.
+
++++
+** 'encode-time' now also accepts a 6-element list with just time and date.
+(encode-time (list SECOND MINUTE HOUR DAY MONTH YEAR)) is now short for
+(encode-time (list SECOND MINUTE HOUR DAY MONTH YEAR nil -1 nil)).
 
 +++
 ** 'date-to-time' now assumes earliest values if its argument lacks
