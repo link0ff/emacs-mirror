@@ -2684,9 +2684,10 @@ is bound to outside of Isearch."
                        (isearch-mode nil))
                    (key-binding (this-command-keys-vector) t))))
     (message "! isearch-mouse-2 %S" w)
-    (if (and (window-minibuffer-p w)
-	     (not (minibuffer-window-active-p w))) ; in echo area
-	(isearch-yank-x-selection)
+    (if (or mouse-yank-at-point
+            (and (window-minibuffer-p w)
+	         (not (minibuffer-window-active-p w)))) ; in echo area
+        (isearch-yank-x-selection)
       (when (functionp binding)
 	(call-interactively binding)))))
 
