@@ -478,6 +478,11 @@ displayed, if any.
 It now only includes local minor modes at the start, and the global
 minor modes are listed after the major mode.
 
++++
+*** The user option 'help-window-select' now affects apropos commands.
+The apropos commands will now select the apropos window if
+'help-window-select' is non-nil.
+
 ** Outline Mode
 
 +++
@@ -582,6 +587,15 @@ available options can be restored by enabling this option.
 * Editing Changes in Emacs 29.1
 
 ---
+** 'scroll-other-window' and 'scroll-other-window-down' now respects remapping.
+These commands (bound to 'C-M-v' and 'C-M-V') used to scroll the other
+windows without looking a customizations in that other window.  These
+functions now check whether they have been rebound in the buffer in
+that other window, and then call the remapped function instead.  In
+addition, these commands now also respect the
+'scroll-error-top-bottom' user option.
+
+---
 ** Indentation of 'cl-flet' and 'cl-labels' has changed.
 These forms now indent like this:
 
@@ -671,6 +685,22 @@ script that was used in ancient South Asia.  A new input method,
 
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
+
+** Debugging
+
+*** New user option 'debug-allow-recursive-debug'.
+This user option controls whether the 'e' (in a *Backtrace*
+buffer or while edebugging) and 'C-x C-e' (while edebugging) commands
+lead to a (further) backtrace.  By default, this variable is nil,
+which is a change in behaviour from previous Emacs versions.
+
+** Compile
+
++++
+*** New user option 'compilation-max-output-line-length'.
+Lines longer than this will have the ends hidden, with a button to
+reveal the hidden text.  This speeds up operations like grepping on
+files that have few newlines.
 
 ** Flymake
 
@@ -920,6 +950,16 @@ These are used to alter an URL before using it.  By default it removes
 the common "utm_" trackers from URLs.
 
 ** Gnus
+
++++
+*** Tool bar changes in Gnus/Message.
+There were previously two styles of tool bars available in Gnus and
+Message, referred to as 'gnus-summary-tool-bar-retro',
+'gnus-group-tool-bar-retro' and 'message-tool-bar-retro', and
+'gnus-summary-tool-bar-gnome', 'gnus-group-tool-bar-gnome' and
+'message-tool-bar-gnome'.  The "retro" tool bars have been removed (as
+well as the icons used), and the "Gnome" tool bars are now the only
+pre-defined toolbars.
 
 ---
 *** Gnus now uses a variable-pitch font in the headers by default.
@@ -1525,6 +1565,18 @@ functions.
 
 
 * Lisp Changes in Emacs 29.1
+
+---
+** New function 'malloc-trim'.
+This function allows returning unused memory back to the operating
+system, and is mainly meant as a debugging tool.  It is currently
+available only when Emacs was built with glibc as the C library.
+
+---
+** 'x-show-tip' no longer hard-codes a timeout default.
+The new 'x-show-tooltip-timeout' variable allows the user to alter
+this for packages that don't use 'tooltip-show', but instead calls the
+lower level function directly.
 
 +++
 ** New function 'window-max-characters-per-line'.
@@ -2150,6 +2202,21 @@ to preserve the old behavior, apply
 * Changes in Emacs 29.1 on Non-Free Operating Systems
 
 ** MS-Windows
+
+---
+*** Emacs now supports double-buffering on MS-Windows to reduce display flicker.
+(This was supported on Free systems since Emacs 26.1.)
+
+To disable double-buffering (e.g., if it causes display problems), set
+the frame parameter 'inhibit-double-buffering' to a non-nil value.
+You can do that either by adding
+
+   '(inhibit-double-buffering . t)
+
+to 'default-frame-alist', or by modifying the frame parameters of the
+selected frame by evaluating
+
+   (modify-frame-parameters nil '((inhibit-double-buffering . t)))
 
 +++
 *** Emacs now supports system dark mode.

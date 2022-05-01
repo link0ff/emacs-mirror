@@ -144,23 +144,15 @@ get_string_resource (void *ignored, const char *name, const char *class)
 static void
 haiku_update_size_hints (struct frame *f)
 {
-  int base_width, base_height;
-  eassert (FRAME_HAIKU_P (f) && FRAME_HAIKU_WINDOW (f));
-
   if (f->tooltip)
     return;
 
-  base_width = FRAME_TEXT_COLS_TO_PIXEL_WIDTH (f, 0);
-  base_height = FRAME_TEXT_LINES_TO_PIXEL_HEIGHT (f, 0);
-
   block_input ();
   BWindow_set_size_alignment (FRAME_HAIKU_WINDOW (f),
-			      frame_resize_pixelwise ? 1 : FRAME_COLUMN_WIDTH (f),
-			      frame_resize_pixelwise ? 1 : FRAME_LINE_HEIGHT (f));
-  BWindow_set_min_size (FRAME_HAIKU_WINDOW (f), base_width,
-			base_height
-			+ FRAME_TOOL_BAR_HEIGHT (f)
-			+ FRAME_MENU_BAR_HEIGHT (f));
+			      (frame_resize_pixelwise
+			       ? 1 : FRAME_COLUMN_WIDTH (f)),
+			      (frame_resize_pixelwise
+			       ? 1 : FRAME_LINE_HEIGHT (f)));
   unblock_input ();
 }
 
@@ -2005,7 +1997,8 @@ haiku_draw_window_cursor (struct window *w,
 static void
 haiku_show_hourglass (struct frame *f)
 {
-  if (FRAME_OUTPUT_DATA (f)->hourglass_p)
+  if (FRAME_TOOLTIP_P (f)
+      || FRAME_OUTPUT_DATA (f)->hourglass_p)
     return;
 
   block_input ();
@@ -2020,7 +2013,8 @@ haiku_show_hourglass (struct frame *f)
 static void
 haiku_hide_hourglass (struct frame *f)
 {
-  if (!FRAME_OUTPUT_DATA (f)->hourglass_p)
+  if (FRAME_TOOLTIP_P (f)
+      || !FRAME_OUTPUT_DATA (f)->hourglass_p)
     return;
 
   block_input ();
@@ -2659,8 +2653,9 @@ haiku_flush (struct frame *f)
 static void
 haiku_define_frame_cursor (struct frame *f, Emacs_Cursor cursor)
 {
-  if (f->tooltip)
+  if (FRAME_TOOLTIP_P (f))
     return;
+
   block_input ();
   if (!f->pointer_invisible && FRAME_HAIKU_VIEW (f)
       && !FRAME_OUTPUT_DATA (f)->hourglass_p)
@@ -3852,12 +3847,12 @@ haiku_toggle_invisible_pointer (struct frame *f, bool invisible_p)
 {
   void *view = FRAME_HAIKU_VIEW (f);
 
-  if (view)
+  if (view && !FRAME_TOOLTIP_P (f))
     {
       block_input ();
-      BView_set_view_cursor (view, invisible_p ?
-			     FRAME_OUTPUT_DATA (f)->no_cursor :
-			     FRAME_OUTPUT_DATA (f)->current_cursor);
+      BView_set_view_cursor (view, (invisible_p
+				    ? FRAME_OUTPUT_DATA (f)->no_cursor
+				    : FRAME_OUTPUT_DATA (f)->current_cursor));
       f->pointer_invisible = invisible_p;
       unblock_input ();
     }

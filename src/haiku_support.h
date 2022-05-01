@@ -468,7 +468,6 @@ extern void BWindow_change_decoration (void *, int);
 extern void BWindow_set_tooltip_decoration (void *);
 extern void BWindow_set_avoid_focus (void *, int);
 extern void BWindow_zoom (void *);
-extern void BWindow_set_min_size (void *, int, int);
 extern void BWindow_set_size_alignment (void *, int, int);
 extern void BWindow_sync (void *);
 extern void BWindow_send_behind (void *, void *);
@@ -648,6 +647,7 @@ extern int be_get_display_screens (void);
 extern bool be_use_subpixel_antialiasing (void);
 extern const char *be_find_setting (const char *);
 extern haiku_font_family_or_style *be_list_font_families (size_t *);
+extern void be_font_style_to_flags (char *, struct haiku_font_pattern *);
 extern int be_get_ui_color (const char *, uint32_t *);
 
 extern void BMessage_delete (void *);
@@ -658,6 +658,10 @@ extern bool be_drag_message (void *, void *, bool, void (*) (void),
 extern bool be_drag_and_drop_in_progress (void);
 
 extern bool be_replay_menu_bar_event (void *, struct haiku_menu_bar_click_event *);
+extern bool be_select_font (void (*) (void), bool (*) (void),
+			    haiku_font_family_or_style *,
+			    haiku_font_family_or_style *,
+			    int *, bool);
 #ifdef __cplusplus
 }
 

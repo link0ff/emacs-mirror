@@ -9703,6 +9703,45 @@ x_top_window_to_frame (struct x_display_info *dpyinfo, int wdesc)
   return x_window_to_frame (dpyinfo, wdesc);
 }
 
+static void
+x_next_event_from_any_display (XEvent *event)
+{
+  struct x_display_info *dpyinfo;
+  fd_set fds;
+  int fd, maxfd;
+
+  while (true)
+    {
+      FD_ZERO (&fds);
+      maxfd = -1;
+
+      for (dpyinfo = x_display_list; dpyinfo;
+	   dpyinfo = dpyinfo->next)
+	{
+	  if (XPending (dpyinfo->display))
+	    {
+	      XNextEvent (dpyinfo->display, event);
+	      return;
+	    }
+
+	  fd = XConnectionNumber (dpyinfo->display);
+
+	  if (fd > maxfd)
+	    maxfd = fd;
+
+	  eassert (fd < FD_SETSIZE);
+	  FD_SET (XConnectionNumber (dpyinfo->display), &fds);
+	}
+
+      eassert (maxfd >= 0);
+
+      /* We don't have to check the return of pselect, because if an
+	 error occurs XPending will call the IO error handler, which
+	 then brings us out of this loop.  */
+      pselect (maxfd, &fds, NULL, NULL, NULL, NULL);
+    }
+}
+
 #endif /* USE_X_TOOLKIT || USE_GTK */
 
 static void
@@ -9738,6 +9777,9 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   bool signals_were_pending;
 #ifdef HAVE_XKB
   XkbStateRec keyboard_state;
+#endif
+#ifndef USE_GTK
+  struct x_display_info *event_display;
 #endif
 
   if (!FRAME_VISIBLE_P (f))
@@ -9916,35 +9958,42 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
       block_input ();
 #ifdef USE_GTK
       gtk_main_iteration ();
-#else
-#ifdef USE_X_TOOLKIT
+#elif defined USE_X_TOOLKIT
       XtAppNextEvent (Xt_app_con, &next_event);
 #else
-      XNextEvent (FRAME_X_DISPLAY (f), &next_event);
+      x_next_event_from_any_display (&next_event);
 #endif
 
+#ifndef USE_GTK
+      event_display
+	= x_display_info_for_display (next_event.xany.display);
+
+      if (event_display)
+	{
 #ifdef HAVE_X_I18N
 #ifdef HAVE_XINPUT2
-      if (next_event.type != GenericEvent
-	  || !FRAME_DISPLAY_INFO (f)->supports_xi2
-	  || (next_event.xgeneric.extension
-	      != FRAME_DISPLAY_INFO (f)->xi2_opcode))
-	{
+	  if (next_event.type != GenericEvent
+	      || !event_display->supports_xi2
+	      || (next_event.xgeneric.extension
+		  != event_display->xi2_opcode))
+	    {
 #endif
-	  if (!x_filter_event (FRAME_DISPLAY_INFO (f), &next_event))
-	    handle_one_xevent (FRAME_DISPLAY_INFO (f),
-			       &next_event, &finish, &hold_quit);
+	      if (!x_filter_event (event_display, &next_event))
+		handle_one_xevent (event_display,
+				   &next_event, &finish, &hold_quit);
 #ifdef HAVE_XINPUT2
-	}
-      else
-	handle_one_xevent (FRAME_DISPLAY_INFO (f),
-			   &next_event, &finish, &hold_quit);
+	    }
+	  else
+	    handle_one_xevent (event_display,
+			       &next_event, &finish, &hold_quit);
 #endif
 #else
-      handle_one_xevent (FRAME_DISPLAY_INFO (f),
-			 &next_event, &finish, &hold_quit);
+	  handle_one_xevent (event_display,
+			     &next_event, &finish, &hold_quit);
 #endif
+	}
 #endif
+
       /* The unblock_input below might try to read input, but
 	 XTread_socket does nothing inside a drag-and-drop event
 	 loop, so don't let it clear the pending_signals flag.  */
@@ -14077,6 +14126,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	if (event->xclient.message_type == dpyinfo->Xatom_XdndFinished
 	    && (x_dnd_waiting_for_finish && !x_dnd_waiting_for_motif_finish)
+	    /* Also check that the display is correct, since
+	       `x_dnd_pending_finish_target' could still be valid on
+	       another X server.  */
+	    && dpyinfo->display == x_dnd_finish_display
 	    && event->xclient.data.l[0] == x_dnd_pending_finish_target)
 	  {
 	    x_dnd_waiting_for_finish = false;
@@ -14338,9 +14391,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
           {
 	    f = any;
 	    if (f)
-              _XEditResCheckMessages (f->output_data.x->widget,
-				      NULL, (XEvent *) event, NULL);
-	    goto done;
+	      {
+		_XEditResCheckMessages (f->output_data.x->widget,
+					NULL, (XEvent *) event, NULL);
+		goto done;
+	      }
+
+	    goto OTHER;
           }
 #endif /* X_TOOLKIT_EDITRES */
 
@@ -14676,6 +14733,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
           if (!FRAME_GARBAGED_P (f))
             {
+#ifdef USE_X_TOOLKIT
+	      if (f->output_data.x->edit_widget)
+		/* The widget's expose proc will be run in this
+		   case.  */
+		goto OTHER;
+#endif
 #ifdef USE_GTK
               /* This seems to be needed for GTK 2.6 and later, see
                  https://debbugs.gnu.org/cgi/bugreport.cgi?bug=15398.  */
@@ -14782,6 +14845,34 @@ handle_one_xevent (struct x_display_info *dpyinfo,
                            the frame was deleted.  */
         {
 	  bool visible = FRAME_VISIBLE_P (f);
+
+#ifdef USE_LUCID
+	  /* Bloodcurdling hack alert: The Lucid menu bar widget's
+	     redisplay procedure is not called when a tip frame over
+	     menu items is unmapped.  Redisplay the menu manually...  */
+	  if (FRAME_TOOLTIP_P (f) && popup_activated ())
+	    {
+	      Widget w;
+	      Lisp_Object tail, frame;
+	      struct frame *f1;
+
+	      FOR_EACH_FRAME (tail, frame)
+		{
+		  if (!FRAME_X_P (XFRAME (frame)))
+		    continue;
+
+		  f1 = XFRAME (frame);
+
+		  if (FRAME_LIVE_P (f1))
+		    {
+		      w = FRAME_X_OUTPUT (f1)->menubar_widget;
+
+		      if (w && !DoesSaveUnders (FRAME_DISPLAY_INFO (f1)->screen))
+			xlwmenu_redisplay (w);
+		    }
+		}
+	    }
+#endif /* USE_LUCID */
 
 	  /* While a frame is unmapped, display generation is
              disabled; you don't want to spend time updating a
@@ -15473,10 +15564,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #else
       f = x_top_window_to_frame (dpyinfo, event->xcrossing.window);
 #endif
-#if defined USE_X_TOOLKIT && defined HAVE_XINPUT2
+#if defined USE_X_TOOLKIT && defined HAVE_XINPUT2 && !defined USE_MOTIF
       /* The XI2 event mask is set on the frame widget, so this event
 	 likely originates from the shell widget, which we aren't
-	 interested in.  */
+	 interested in.  (But don't ignore this on Motif, since we
+	 want to clear the mouse face when a popup is active.)  */
       if (dpyinfo->supports_xi2)
 	f = NULL;
 #endif
@@ -16848,6 +16940,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      double delta, scroll_unit;
 		      int scroll_height;
 		      Lisp_Object window;
+		      struct scroll_bar *bar;
+
+		      bar = NULL;
 
 		      /* See the comment on top of
 			 x_init_master_valuators for more details on how
@@ -16865,9 +16960,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			      if (!f)
 				{
 #if defined USE_MOTIF || !defined USE_TOOLKIT_SCROLL_BARS
-				  struct scroll_bar *bar
-				    = x_window_to_scroll_bar (xi_event->display,
-							      xev->event, 2);
+				  bar = x_window_to_scroll_bar (dpyinfo->display,
+								xev->event, 2);
 
 				  if (bar)
 				    f = WINDOW_XFRAME (XWINDOW (bar->window));
@@ -16884,11 +16978,26 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
 			  if (FRAME_X_WINDOW (f) != xev->event)
-			    XTranslateCoordinates (dpyinfo->display,
-						   xev->event, FRAME_X_WINDOW (f),
-						   lrint (xev->event_x),
-						   lrint (xev->event_y),
-						   &real_x, &real_y, &dummy);
+			    {
+			      if (!bar)
+				bar = x_window_to_scroll_bar (dpyinfo->display, xev->event, 2);
+
+			      /* If this is a scroll bar, compute the
+				 actual position directly to avoid an
+				 extra roundtrip.  */
+
+			      if (bar)
+				{
+				  real_x = lrint (xev->event_x + bar->left);
+				  real_y = lrint (xev->event_y + bar->top);
+				}
+			      else
+				XTranslateCoordinates (dpyinfo->display,
+						       xev->event, FRAME_X_WINDOW (f),
+						       lrint (xev->event_x),
+						       lrint (xev->event_y),
+						       &real_x, &real_y, &dummy);
+			    }
 			  else
 			    {
 			      real_x = lrint (xev->event_x);
