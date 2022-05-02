@@ -290,7 +290,6 @@ enum haiku_font_weight
   {
     NO_WEIGHT	      = -1,
     HAIKU_THIN	      = 0,
-    HAIKU_ULTRALIGHT  = 20,
     HAIKU_EXTRALIGHT  = 40,
     HAIKU_LIGHT	      = 50,
     HAIKU_SEMI_LIGHT  = 75,
@@ -298,7 +297,6 @@ enum haiku_font_weight
     HAIKU_SEMI_BOLD   = 180,
     HAIKU_BOLD	      = 200,
     HAIKU_EXTRA_BOLD  = 205,
-    HAIKU_ULTRA_BOLD  = 210,
     HAIKU_BOOK	      = 400,
     HAIKU_HEAVY	      = 800,
     HAIKU_ULTRA_HEAVY = 900,
@@ -661,7 +659,9 @@ extern bool be_replay_menu_bar_event (void *, struct haiku_menu_bar_click_event 
 extern bool be_select_font (void (*) (void), bool (*) (void),
 			    haiku_font_family_or_style *,
 			    haiku_font_family_or_style *,
-			    int *, bool);
+			    int *, bool, int, int);
+
+extern int be_find_font_indices (struct haiku_font_pattern *, int *, int *);
 #ifdef __cplusplus
 }
 

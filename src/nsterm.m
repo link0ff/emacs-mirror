@@ -6055,6 +6055,63 @@ not_in_argv (NSString *arg)
 
 @end  /* EmacsApp */
 
+static Lisp_Object
+ns_font_desc_to_font_spec (NSFontDescriptor *desc, NSFont *font)
+{
+  NSFontSymbolicTraits traits = [desc symbolicTraits];
+  NSDictionary *dict = [desc objectForKey: NSFontTraitsAttribute];
+  NSString *family = [font familyName];
+  Lisp_Object lwidth, lslant, lweight, lheight;
+  NSNumber *tem;
+
+  lwidth = Qnil;
+  lslant = Qnil;
+  lweight = Qnil;
+  lheight = Qnil;
+
+  if (traits & NSFontBoldTrait)
+    lweight = Qbold;
+
+  if (traits & NSFontItalicTrait)
+    lslant = Qitalic;
+
+  if (traits & NSFontCondensedTrait)
+    lwidth = Qcondensed;
+  else if (traits & NSFontExpandedTrait)
+    lwidth = Qexpanded;
+
+  if (dict != nil)
+    {
+      tem = [dict objectForKey: NSFontSlantTrait];
+
+      if (tem != nil)
+	lslant = ([tem floatValue] > 0
+		  ? Qitalic : ([tem floatValue] < 0
+			       ? Qreverse_italic
+			       : Qnormal));
+
+      tem = [dict objectForKey: NSFontWeightTrait];
+
+      if (tem != nil)
+	lweight = ([tem floatValue] > 0
+		   ? Qbold : ([tem floatValue] < -0.4f
+			      ? Qlight : Qnormal));
+
+      tem = [dict objectForKey: NSFontWidthTrait];
+
+      if (tem != nil)
+	lwidth = ([tem floatValue] > 0
+		  ? Qexpanded : ([tem floatValue] < 0
+				 ? Qnormal : Qcondensed));
+    }
+
+  lheight = make_float ([font pointSize]);
+
+  return CALLN (Ffont_spec,
+		QCwidth, lwidth, QCslant, lslant,
+		QCweight, lweight, QCsize, lheight,
+		QCfamily, [family lispString]);
+}
 
 /* ==========================================================================
 
@@ -6113,9 +6170,19 @@ not_in_argv (NSString *arg)
   if (font_panel_result)
     [font_panel_result retain];
 
+#ifndef NS_IMPL_COCOA
+  font_panel_active = NO;
+  [NSApp stop: self];
+#endif
+}
+
+#ifdef NS_IMPL_COCOA
+- (void) noteUserSelectedFont
+{
   font_panel_active = NO;
   [NSApp stop: self];
 }
+#endif
 
 - (Lisp_Object) showFontPanel
 {
@@ -6123,11 +6190,30 @@ not_in_argv (NSString *arg)
   struct font *font = FRAME_OUTPUT_DATA (emacsframe)->font;
   NSFont *nsfont, *result;
   struct timespec timeout;
+#ifdef NS_IMPL_COCOA
+  NSButton *button;
+  BOOL canceled;
+#endif
 
 #ifdef NS_IMPL_GNUSTEP
   nsfont = ((struct nsfont_info *) font)->nsfont;
 #else
   nsfont = (NSFont *) macfont_get_nsctfont (font);
+#endif
+
+#ifdef NS_IMPL_COCOA
+  /* FIXME: this button could be made a lot prettier, but I don't know
+     how.  */
+  button = [[NSButton alloc] initWithFrame: NSMakeRect (0, 0, 192, 40)];
+  [button setTitle: @"OK"];
+  [button setTarget: self];
+  [button setAction: @selector (noteUserSelectedFont)];
+  [button setButtonType: NSButtonTypeMomentaryPushIn];
+  [button setHidden: NO];
+
+  [[fm fontPanel: YES] setAccessoryView: button];
+  [button release];
+  [[fm fontPanel: YES] setDefaultButtonCell: [button cell]];
 #endif
 
   [fm setSelectedFont: nsfont isMultiple: NO];
@@ -6138,12 +6224,22 @@ not_in_argv (NSString *arg)
 
   block_input ();
   while (font_panel_active
-	 && [[fm fontPanel: YES] isVisible])
+#ifdef NS_IMPL_COCOA
+	 && (canceled = [[fm fontPanel: YES] isVisible])
+#else
+	 && [[fm fontPanel: YES] isVisible]
+#endif
+	 )
     ns_select_1 (0, NULL, NULL, NULL, &timeout, NULL, YES);
   unblock_input ();
 
   if (font_panel_result)
     [font_panel_result autorelease];
+
+#ifdef NS_IMPL_COCOA
+  if (!canceled)
+    font_panel_result = nil;
+#endif
 
   result = font_panel_result;
   font_panel_result = nil;
@@ -6151,9 +6247,9 @@ not_in_argv (NSString *arg)
   [[fm fontPanel: YES] setIsVisible: NO];
   font_panel_active = NO;
 
-  /* TODO: return a font spec instead of a string.  */
   if (result)
-    return [[result familyName] lispString];
+    return ns_font_desc_to_font_spec ([result fontDescriptor],
+				      result);
 
   return Qnil;
 }
@@ -10203,6 +10299,9 @@ This variable is ignored on macOS < 10.7 and GNUstep.  Default is t.  */);
   DEFSYM (QCordinary, ":ordinary");
   DEFSYM (QCfunction, ":function");
   DEFSYM (QCmouse, ":mouse");
+  DEFSYM (Qcondensed, "condensed");
+  DEFSYM (Qreverse_italic, "reverse-italic");
+  DEFSYM (Qexpanded, "reverse-italic");
 
 #ifdef NS_IMPL_COCOA
   Fprovide (Qcocoa, Qnil);

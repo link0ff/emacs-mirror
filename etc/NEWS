@@ -136,6 +136,11 @@ of 'user-emacs-directory'.
 * Incompatible changes in Emacs 29.1
 
 ---
+** 'string-lines' handles trailing newlines differently.
+It no longer returns an empty final string if the string ends with a
+newline.
+
+---
 ** 'TAB' and '<backtab>' are now bound in 'button-map'.
 This means that if you're standing on a button, 'TAB' will take you to
 the next button, even if the mode has bound it to something else.
@@ -174,10 +179,21 @@ files that were compiled with an old EIEIO (Emacs<25).
 ** 'C-x 8 .' has been moved to 'C-x 8 . .'.
 This is to open up the 'C-x 8 .' map to bind further characters there.
 
+** Eshell
+
 ---
-** 'source' and '.' in Eshell no longer accept the '--help' option.
+*** 'source' and '.' no longer accept the '--help' option.
 This is for compatibility with the shell versions of these commands,
 which don't handle options like '--help' in any special way.
+
++++
+*** String delimiters in argument predicates/modifiers are more restricted.
+Previously, some argument predicates/modifiers allowed arbitrary
+characters as string delimiters.  To provide more unified behavior
+across all predicates/modifiers, the list of allowed delimiters has
+been restricted to "...", '...', /.../, |...|, (...), [...], <...>,
+and {...}.  See the "(eshell) Argument Predication and Modification"
+node in the Eshell manual for more details.
 
 ---
 ** The 'delete-forward-char' command now deletes by grapheme clusters.
@@ -426,6 +442,11 @@ command also works for non-Emoji characters.)
 *** New input method 'emoji'.
 
 ** Help
+
++++
+*** New user option 'help-window-keep-selected'.
+If non-nil, commands to show the info manual and the source will reuse
+the same window the *Help* buffer is shown in.
 
 ---
 *** Commands like 'C-h f' have changed how they describe menu bindings.
@@ -685,6 +706,13 @@ script that was used in ancient South Asia.  A new input method,
 
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
+
+** Miscellaneous
+
++++
+*** New command 'scratch-buffer'.
+This switches to the *scratch* buffer.  If it doesn't exist, create it
+first.
 
 ** Debugging
 
@@ -1354,6 +1382,14 @@ Lisp function.  This frees you from having to keep track of whether
 commands are Lisp function or external when supplying absolute file
 name arguments.  See "Electric forward slash" in the Eshell manual.
 
+---
+*** Built-in Eshell commands now follow POSIX/GNU argument syntax conventions.
+Built-in commands in Eshell now accept command-line options with
+values passed as a single token, such as '-oVALUE' or
+'--option=VALUE'.  New commands can take advantage of this with the
+'eshell-eval-using-options' macro.  See "Defining new built-in
+commands" in the "(eshell) Built-ins" node of the Eshell manual.
+
 ** Calc
 
 +++
@@ -1941,11 +1977,6 @@ dimensions.
 ** 'window-text-pixel-size' understands a new meaning of FROM.
 Specifying a cons as the FROM argument allows to start measuring text
 from a specified amount of pixels above or below a position.
-
----
-** 'eshell-eval-using-options' now follows argument syntax conventions.
-Built-in commands in Eshell now accept command-line options with
-values passed as a single token, such as '-oVALUE' or '--option=VALUE'.
 
 ** XDG support
 

@@ -1029,8 +1029,11 @@ final or penultimate step during initialization."))
   (should-not (readablep (list (make-marker)))))
 
 (ert-deftest test-string-lines ()
+  (should (equal (string-lines "") '("")))
+  (should (equal (string-lines "" t) '()))
+
   (should (equal (string-lines "foo") '("foo")))
-  (should (equal (string-lines "foo\n") '("foo" "")))
+  (should (equal (string-lines "foo\n") '("foo")))
   (should (equal (string-lines "foo\nbar") '("foo" "bar")))
 
   (should (equal (string-lines "foo" t) '("foo")))

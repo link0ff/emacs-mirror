@@ -243,18 +243,14 @@ change the list."
 (defmacro when (cond &rest body)
   "If COND yields non-nil, do BODY, else return nil.
 When COND yields non-nil, eval BODY forms sequentially and return
-value of last one, or nil if there are none.
-
-\(fn COND BODY...)"
+value of last one, or nil if there are none."
   (declare (indent 1) (debug t))
   (list 'if cond (cons 'progn body)))
 
 (defmacro unless (cond &rest body)
   "If COND yields nil, do BODY, else return nil.
 When COND yields nil, eval BODY forms sequentially and return
-value of last one, or nil if there are none.
-
-\(fn COND BODY...)"
+value of last one, or nil if there are none."
   (declare (indent 1) (debug t))
   (cons 'if (cons cond (cons nil body))))
 
@@ -6747,34 +6743,33 @@ is inserted before adjusting the number of empty lines."
 If OMIT-NULLS, empty lines will be removed from the results.
 If KEEP-NEWLINES, don't strip trailing newlines from the result
 lines."
-  (let ((lines nil)
-        (start 0))
-    (while (< start (length string))
-      (let ((newline (string-search "\n" string start)))
-        (if newline
-            (progn
-              (when (or (not omit-nulls)
-                        (not (= start newline)))
-                (let ((line (substring string start
-                                       (if keep-newlines
-                                           (1+ newline)
-                                         newline))))
-                  (when (not (and keep-newlines omit-nulls
-                                  (equal line "\n")))
-                    (push line lines))))
-              (setq start (1+ newline))
-              ;; Include the final newline.
-              (when (and (= start (length string))
-                         (not omit-nulls)
-                         (not keep-newlines))
-                (push "" lines)))
-          ;; No newline in the remaining part.
-          (if (zerop start)
-              ;; Avoid a string copy if there are no newlines at all.
-              (push string lines)
-            (push (substring string start) lines))
-          (setq start (length string)))))
-    (nreverse lines)))
+  (if (equal string "")
+      (if omit-nulls
+          nil
+        (list ""))
+    (let ((lines nil)
+          (start 0))
+      (while (< start (length string))
+        (let ((newline (string-search "\n" string start)))
+          (if newline
+              (progn
+                (when (or (not omit-nulls)
+                          (not (= start newline)))
+                  (let ((line (substring string start
+                                         (if keep-newlines
+                                             (1+ newline)
+                                           newline))))
+                    (when (not (and keep-newlines omit-nulls
+                                    (equal line "\n")))
+                      (push line lines))))
+                (setq start (1+ newline)))
+            ;; No newline in the remaining part.
+            (if (zerop start)
+                ;; Avoid a string copy if there are no newlines at all.
+                (push string lines)
+              (push (substring string start) lines))
+            (setq start (length string)))))
+      (nreverse lines))))
 
 (defun buffer-match-p (condition buffer-or-name &optional arg)
   "Return non-nil if BUFFER-OR-NAME matches CONDITION.
