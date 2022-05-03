@@ -3780,6 +3780,7 @@ x_flush (struct frame *f)
   unblock_input ();
 }
 
+#ifdef HAVE_XDBE
 static void
 x_drop_xrender_surfaces (struct frame *f)
 {
@@ -3795,6 +3796,7 @@ x_drop_xrender_surfaces (struct frame *f)
     }
 #endif
 }
+#endif
 
 #ifdef HAVE_XRENDER
 void
@@ -5127,9 +5129,14 @@ x_clear_window (struct frame *f)
   x_end_cr_clip (f);
 #else
 #ifndef USE_GTK
-  if (FRAME_X_DOUBLE_BUFFERED_P (f) || (f->alpha_background != 1.0))
+  if (f->alpha_background != 1.0
+#ifdef HAVE_XDBE
+      || FRAME_X_DOUBLE_BUFFERED_P (f)
 #endif
-    x_clear_area (f, 0, 0, FRAME_PIXEL_WIDTH (f), FRAME_PIXEL_HEIGHT (f));
+      )
+#endif
+    x_clear_area (f, 0, 0, FRAME_PIXEL_WIDTH (f),
+		  FRAME_PIXEL_HEIGHT (f));
 #ifndef USE_GTK
   else
     XClearWindow (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f));
@@ -5456,13 +5463,15 @@ x_draw_window_divider (struct window *w, int x0, int x1, int y0, int y1)
 /* Show the frame back buffer.  If frame is double-buffered,
    atomically publish to the user's screen graphics updates made since
    the last call to show_back_buffer.  */
+
+#ifdef HAVE_XDBE
 static void
 show_back_buffer (struct frame *f)
 {
   block_input ();
+
   if (FRAME_X_DOUBLE_BUFFERED_P (f))
     {
-#ifdef HAVE_XDBE
 #ifdef USE_CAIRO
       cairo_t *cr = FRAME_CR_CONTEXT (f);
       if (cr)
@@ -5473,13 +5482,12 @@ show_back_buffer (struct frame *f)
       swap_info.swap_window = FRAME_X_WINDOW (f);
       swap_info.swap_action = XdbeCopied;
       XdbeSwapBuffers (FRAME_X_DISPLAY (f), &swap_info, 1);
-#else
-      eassert (!"should have back-buffer only with XDBE");
-#endif
     }
   FRAME_X_NEED_BUFFER_FLIP (f) = false;
+
   unblock_input ();
 }
+#endif
 
 /* Updates back buffer and flushes changes to display.  Called from
    minibuf read code.  Note that we display the back buffer even if
@@ -5488,8 +5496,10 @@ static void
 x_flip_and_flush (struct frame *f)
 {
   block_input ();
+#ifdef HAVE_XDBE
   if (FRAME_X_NEED_BUFFER_FLIP (f))
     show_back_buffer (f);
+#endif
   x_flush (f);
   unblock_input ();
 }
@@ -5538,8 +5548,12 @@ XTframe_up_to_date (struct frame *f)
   eassert (FRAME_X_P (f));
   block_input ();
   FRAME_MOUSE_UPDATE (f);
-  if (!buffer_flipping_blocked_p () && FRAME_X_NEED_BUFFER_FLIP (f))
+
+#ifdef HAVE_XDBE
+  if (!buffer_flipping_blocked_p ()
+      && FRAME_X_NEED_BUFFER_FLIP (f))
     show_back_buffer (f);
+#endif
 
 #ifdef HAVE_XSYNC
 #ifndef HAVE_GTK3
@@ -5592,12 +5606,14 @@ XTframe_up_to_date (struct frame *f)
   unblock_input ();
 }
 
+#ifdef HAVE_XDBE
 static void
 XTbuffer_flipping_unblocked_hook (struct frame *f)
 {
   if (FRAME_X_NEED_BUFFER_FLIP (f))
     show_back_buffer (f);
 }
+#endif
 
 /**
  * x_clear_under_internal_border:
@@ -8716,8 +8732,11 @@ x_clear_area (struct frame *f, int x, int y, int width, int height)
   x_end_cr_clip (f);
 #else
 #ifndef USE_GTK
-  if (FRAME_X_DOUBLE_BUFFERED_P (f)
-      || f->alpha_background != 1.0)
+  if (f->alpha_background != 1.0
+#ifdef HAVE_XDBE
+      || FRAME_X_DOUBLE_BUFFERED_P (f)
+#endif
+      )
 #endif
     {
 #if defined HAVE_XRENDER && \
@@ -13124,6 +13143,22 @@ x_scroll_bar_expose (struct scroll_bar *bar, const XEvent *event)
 #else
   Drawable w = bar->x_drawable;
 #endif
+  int x, y, width, height;
+
+  if (event->type == Expose)
+    {
+      x = event->xexpose.x;
+      y = event->xexpose.y;
+      width = event->xexpose.width;
+      height = event->xexpose.height;
+    }
+  else
+    {
+      x = event->xgraphicsexpose.x;
+      y = event->xgraphicsexpose.y;
+      width = event->xgraphicsexpose.width;
+      height = event->xgraphicsexpose.height;
+    }
 
   struct frame *f = XFRAME (WINDOW_FRAME (XWINDOW (bar->window)));
   GC gc = f->output_data.x->normal_gc;
@@ -13142,10 +13177,7 @@ x_scroll_bar_expose (struct scroll_bar *bar, const XEvent *event)
 
       XFillRectangle (FRAME_X_DISPLAY (f),
 		      bar->x_drawable,
-		      gc, event->xexpose.x,
-		      event->xexpose.y,
-		      event->xexpose.width,
-		      event->xexpose.height);
+		      gc, x, y, width, height);
 
       XSetForeground (FRAME_X_DISPLAY (f), gc,
 		      FRAME_FOREGROUND_PIXEL (f));
@@ -13164,8 +13196,11 @@ x_scroll_bar_expose (struct scroll_bar *bar, const XEvent *event)
 		  /* x, y, width, height */
 		  0, 0, bar->width - 1, bar->height - 1);
 
-  XDrawPoint (FRAME_X_DISPLAY (f), w, gc,
-	      bar->width - 1, bar->height - 1);
+  /* XDrawPoint (FRAME_X_DISPLAY (f), w, gc,
+		 bar->width - 1, bar->height - 1);
+
+     This code is no longer required since the normal GC now uses the
+     regular line width.  */
 
   /* Restore the foreground color of the GC if we changed it above.  */
   if (f->output_data.x->scroll_bar_foreground_pixel != -1)
@@ -13738,7 +13773,9 @@ x_net_wm_state (struct frame *f, Window window)
   store_frame_param (f, Qshaded, shaded ? Qt : Qnil);
 }
 
-/* Flip back buffers on FRAME if it has undrawn content.  */
+/* Flip back buffers on F if it has undrawn content.  */
+
+#ifdef HAVE_XDBE
 static void
 flush_dirty_back_buffer_on (struct frame *f)
 {
@@ -13749,6 +13786,7 @@ flush_dirty_back_buffer_on (struct frame *f)
     show_back_buffer (f);
   unblock_input ();
 }
+#endif
 
 #ifdef HAVE_GTK3
 void
@@ -14707,8 +14745,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  SET_FRAME_ICONIFIED (f, false);
 		}
 
+#ifdef HAVE_XDBE
 	      if (FRAME_X_DOUBLE_BUFFERED_P (f))
                 x_drop_xrender_surfaces (f);
+#endif
               f->output_data.x->has_been_visible = true;
               SET_FRAME_GARBAGED (f);
               unblock_input ();
@@ -14753,8 +14793,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
             }
 
+#ifdef HAVE_XDBE
           if (!FRAME_GARBAGED_P (f))
             show_back_buffer (f);
+#endif
         }
       else
         {
@@ -14802,8 +14844,20 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #ifdef USE_GTK
 	  x_clear_under_internal_border (f);
 #endif
+#ifdef HAVE_XDBE
 	  show_back_buffer (f);
+#endif
         }
+#ifndef USE_TOOLKIT_SCROLL_BARS
+      struct scroll_bar *bar
+	= x_window_to_scroll_bar (dpyinfo->display,
+				  /* Hopefully this is just a window,
+				     not the back buffer.  */
+				  event->xgraphicsexpose.drawable, 2);
+
+      if (bar)
+	x_scroll_bar_expose (bar, event);
+#endif
 #ifdef USE_X_TOOLKIT
       else
         goto OTHER;
@@ -16016,8 +16070,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
          for size changes: that's not sufficient.  We miss some
          surface invalidations and flicker.  */
       block_input ();
+#ifdef HAVE_XDBE
       if (f && FRAME_X_DOUBLE_BUFFERED_P (f))
         x_drop_xrender_surfaces (f);
+#endif
       unblock_input ();
 #if defined USE_CAIRO && !defined USE_GTK
       if (f)
@@ -19447,11 +19503,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
      redisplay.  To ensure that these changes become visible, draw
      them here.  */
 
+#ifdef HAVE_XDBE
   if (f)
     flush_dirty_back_buffer_on (f);
 
   if (any && any != f)
     flush_dirty_back_buffer_on (any);
+#endif
   return count;
 }
 
@@ -24309,7 +24367,9 @@ x_create_terminal (struct x_display_info *dpyinfo)
   terminal->update_end_hook = x_update_end;
   terminal->read_socket_hook = XTread_socket;
   terminal->frame_up_to_date_hook = XTframe_up_to_date;
+#ifdef HAVE_XDBE
   terminal->buffer_flipping_unblocked_hook = XTbuffer_flipping_unblocked_hook;
+#endif
   terminal->defined_color_hook = x_defined_color;
   terminal->query_frame_background_color = x_query_frame_background_color;
   terminal->query_colors = x_query_colors;
