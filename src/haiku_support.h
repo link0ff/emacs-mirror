@@ -91,7 +91,6 @@ enum haiku_event_type
     MENU_BAR_OPEN,
     MENU_BAR_SELECT_EVENT,
     MENU_BAR_CLOSE,
-    FILE_PANEL_EVENT,
     MENU_BAR_HELP_EVENT,
     ZOOM_EVENT,
     DRAG_AND_DROP_EVENT,
@@ -219,11 +218,6 @@ struct haiku_wheel_move_event
 struct haiku_menu_bar_select_event
 {
   void *window;
-  void *ptr;
-};
-
-struct haiku_file_panel_event
-{
   void *ptr;
 };
 
@@ -612,12 +606,7 @@ extern int EmacsView_double_buffered_p (void *);
 
 extern char *be_popup_file_dialog (int, const char *, int,
 				   int, void *, const char *,
-				   const char *, void (*) (void),
-				   void (*) (void), void (*) (void));
-
-extern void record_c_unwind_protect_from_cxx (void (*) (void *), void *);
-extern specpdl_ref c_specpdl_idx_from_cxx (void);
-extern void c_unbind_to_nil_from_cxx (specpdl_ref);
+				   const char *, void (*) (void));
 
 #ifdef HAVE_NATIVE_IMAGE_API
 extern int be_can_translate_type_to_bitmap_p (const char *);
@@ -659,7 +648,7 @@ extern bool be_replay_menu_bar_event (void *, struct haiku_menu_bar_click_event 
 extern bool be_select_font (void (*) (void), bool (*) (void),
 			    haiku_font_family_or_style *,
 			    haiku_font_family_or_style *,
-			    int *, bool, int, int);
+			    int *, bool, int, int, int);
 
 extern int be_find_font_indices (struct haiku_font_pattern *, int *, int *);
 #ifdef __cplusplus

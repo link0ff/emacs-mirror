@@ -54,14 +54,6 @@ static void **fringe_bmps;
 static int max_fringe_bmp = 0;
 
 static Lisp_Object rdb;
-
-struct unhandled_event
-{
-  struct unhandled_event *next;
-  enum haiku_event_type type;
-  uint8_t buffer[200];
-};
-
 static bool any_help_event_p;
 
 char *
@@ -1351,14 +1343,14 @@ haiku_draw_composite_glyph_string_foreground (struct glyph_string *s)
 
   /* Draw a rectangle for the composition if the font for the very
      first character of the composition could not be loaded.  */
-
   if (s->font_not_found_p && !s->cmp_from)
     {
       if (s->hl == DRAW_CURSOR)
 	BView_SetHighColor (view, FRAME_OUTPUT_DATA (s->f)->cursor_fg);
       else
 	BView_SetHighColor (view, s->face->foreground);
-      BView_StrokeRectangle (view, s->x, s->y, s->width - 1, s->height - 1);
+      BView_StrokeRectangle (view, s->x, s->y,
+			     s->width, s->height);
     }
   else if (!s->first_glyph->u.cmp.automatic)
     {
@@ -2824,7 +2816,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
   int message_count;
   static void *buf;
   ssize_t b_size;
-  struct unhandled_event *unhandled_events = NULL;
   int button_or_motion_p, do_help;
   enum haiku_event_type type;
   struct input_event inev, inev2;
@@ -3583,19 +3574,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 					  f->menu_bar_vector, b->ptr);
 	    break;
 	  }
-	case FILE_PANEL_EVENT:
-	  {
-	    if (!popup_activated_p)
-	      continue;
-
-	    struct unhandled_event *ev = xmalloc (sizeof *ev);
-	    ev->next = unhandled_events;
-	    ev->type = type;
-	    memcpy (&ev->buffer, buf, 200);
-
-	    unhandled_events = ev;
-	    break;
-	  }
 	case MENU_BAR_HELP_EVENT:
 	  {
 	    struct haiku_menu_bar_help_event *b = buf;
@@ -3676,14 +3654,6 @@ haiku_read_socket (struct terminal *terminal, struct input_event *hold_quit)
 	  kbd_buffer_store_event_hold (&inev2, hold_quit);
 	  ++message_count;
 	}
-    }
-
-  for (struct unhandled_event *ev = unhandled_events; ev;)
-    {
-      haiku_write_without_signal (ev->type, &ev->buffer, false);
-      struct unhandled_event *old = ev;
-      ev = old->next;
-      xfree (old);
     }
 
   if (do_help && !(hold_quit && hold_quit->kind != NO_EVENT))
