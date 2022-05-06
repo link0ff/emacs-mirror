@@ -4543,7 +4543,8 @@ CASE-FOLD non-nil means the search was case-insensitive."
                      (thread-last
                        (regexp-quote string)
                        (replace-regexp-in-string "`" "[`‘]")
-                       (replace-regexp-in-string "'" "['’]")))))
+                       (replace-regexp-in-string "'" "['’]")
+                       (replace-regexp-in-string "\"" "[\"“”]")))))
     (buffer-local-restore-state isearch-fold-quotes-mode--state)))
 
 (provide 'isearch)
