@@ -4530,7 +4530,6 @@ CASE-FOLD non-nil means the search was case-insensitive."
   (isearch-update))
 
 
-
 (defvar isearch-fold-quotes-mode--state)
 (define-minor-mode isearch-fold-quotes-mode
   "Minor mode to aid searching for \\=` characters in help modes."
