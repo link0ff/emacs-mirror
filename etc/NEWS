@@ -248,6 +248,13 @@ removed some time after that.
 
 * Changes in Emacs 29.1
 
+---
+** 'delete-process' is now a command.
+When called interactively, it will kill the process running in the
+current buffer (if any).  This can be useful if you have runaway
+output in the current buffer (from a process or a network connection),
+and want to stop it.
+
 +++
 ** New command 'restart-emacs'.
 This is like 'save-buffers-kill-emacs', but instead of just killing
@@ -460,6 +467,15 @@ This allows you to enter emoji using short strings, eg :face_palm: or
 :scream:.
 
 ** Help
+
++++
+*** New doc string syntax to indicate that symbols shouldn't be links.
+When displaying doc strings in *Help* buffers, strings that are
+"`like-this'" are made into links (if they point to a bound
+function/variable).  This can lead to false positives when talking
+about values that are symbols that happen to have the same names as
+functions/variables.  To inhibit this buttonification, the new
+"\\+`like-this'" syntax can be used.
 
 +++
 *** New user option 'help-window-keep-selected'.
@@ -722,8 +738,24 @@ This language environment supports Brahmi, which is a historical
 script that was used in ancient South Asia.  A new input method,
 'brahmi', is provided to type text in this script.
 
+*** New language environment "Kaithi".
+This language environment supports Kaithi or Kayasthi, which was
+an important writing system of the past mainly used for administrative
+purposes.  A new input method, 'kaithi', is provided to type text in
+this script.
+
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
+
+** dabbrev
+
+---
+*** New function 'dabbrev-capf' for use on 'completion-at-point-functions'
+
++++
+*** New user option 'dabbrev-ignored-buffer-modes'.
+Buffers with major modes in this list will be ignored.  By default,
+this includes "binary" buffers like 'archive-mode' and 'image-mode'.
 
 ** Package
 
@@ -731,6 +763,11 @@ script that was used in ancient South Asia.  A new input method,
 *** New command 'package-update'.
 This command allows you to upgrade packages without using 'M-x
 list-packages'.
+
++++
+*** New DWIM action on 'x'.
+If no packages are marked, 'x' will install the package under point if
+it isn't already, and remove it if it is installed.
 
 ** Miscellaneous
 
@@ -1508,9 +1545,13 @@ Emacs buffers, like indentation and the like.  The new ert function
 * Incompatible Lisp Changes in Emacs 29.1
 
 ---
-** The return value of 'clear-message-function' is not ignored now.
-If the function returns t, then the message is not cleared,
-with an assumption that the function cleared it itself.
+** 'with-silent-modifications' also restores buffer modification ticks.
+'with-silent-modifications' is a macro meant to be used by the font
+locking machinery to allow applying text properties without changing
+the modification status of the buffer.  However, it didn't restore the
+buffer modification ticks, so applying font locking to a modified
+buffer that had already been auto-saved would trigger another
+auto-saving.  This is no longer the case.
 
 ---
 ** 'prin1' doesn't always escape "." and "?" in symbols any more.
@@ -1702,6 +1743,11 @@ string, and a callback is called when the user types 'C-c C-c'.
 ** New function 'read-string-from-buffer'.
 This is a modal version of 'string-edit', and can be used as an
 alternative to 'read-string'.
+
+DELETE THIS
+** The return value of 'clear-message-function' is not ignored now.
+If the function returns t, then the message is not cleared,
+with an assumption that the function cleared it itself.
 
 +++
 ** The return value of 'clear-message-function' is not ignored anymore.
