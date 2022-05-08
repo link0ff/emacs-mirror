@@ -9452,8 +9452,21 @@ x_toggle_visible_pointer (struct frame *f, bool invisible)
   if (dpyinfo->invisible_cursor == None)
     dpyinfo->invisible_cursor = make_invisible_cursor (dpyinfo);
 
+#ifndef HAVE_XFIXES
   if (dpyinfo->invisible_cursor == None)
     invisible = false;
+#else
+  /* But if Xfixes is available, try using it instead.  */
+  if (x_probe_xfixes_extension (dpyinfo))
+    {
+      dpyinfo->fixes_pointer_blanking = true;
+      xfixes_toggle_visible_pointer (f, invisible);
+
+      return;
+    }
+  else
+    invisible = false;
+#endif
 
   if (invisible)
     XDefineCursor (dpyinfo->display, FRAME_X_WINDOW (f),
@@ -16807,7 +16820,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      ev.window = enter->event;
 	      ev.time = enter->time;
 
-	      x_display_set_last_user_time (dpyinfo, xi_event->time);
+	      x_display_set_last_user_time (dpyinfo, enter->time);
 
 #ifdef USE_MOTIF
 	      use_copy = true;
@@ -16955,7 +16968,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 							 leave->deviceid, false);
 #endif
 
-	      x_display_set_last_user_time (dpyinfo, xi_event->time);
+	      x_display_set_last_user_time (dpyinfo, leave->time);
 
 #ifdef HAVE_XWIDGETS
 	      {
@@ -17572,7 +17585,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		{
 #ifndef USE_TOOLKIT_SCROLL_BARS
 		  struct scroll_bar *bar
-		    = x_window_to_scroll_bar (xi_event->display, xev->event, 2);
+		    = x_window_to_scroll_bar (dpyinfo->display, xev->event, 2);
 
 		  if (bar)
 		    x_scroll_bar_note_movement (bar, &ev);
@@ -19149,7 +19162,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      device = xi_device_from_id (dpyinfo, pev->deviceid);
 	      source = xi_device_from_id (dpyinfo, pev->sourceid);
-	      x_display_set_last_user_time (dpyinfo, xi_event->time);
+	      x_display_set_last_user_time (dpyinfo, pev->time);
 
 	      if (!device)
 		goto XI_OTHER;
