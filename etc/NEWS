@@ -1744,11 +1744,6 @@ string, and a callback is called when the user types 'C-c C-c'.
 This is a modal version of 'string-edit', and can be used as an
 alternative to 'read-string'.
 
-DELETE THIS
-** The return value of 'clear-message-function' is not ignored now.
-If the function returns t, then the message is not cleared,
-with an assumption that the function cleared it itself.
-
 +++
 ** The return value of 'clear-message-function' is not ignored anymore.
 If the function returns 'dont-clear-message', then the message is not
