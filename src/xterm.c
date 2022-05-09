@@ -868,6 +868,10 @@ static int x_filter_event (struct x_display_info *, XEvent *);
 /* Flag that indicates if a drag-and-drop operation is in progress.  */
 bool x_dnd_in_progress;
 
+/* Number that indicates the last "generation" of
+   UNSUPPORTED_DROP_EVENTs handled.  */
+unsigned x_dnd_unsupported_event_level;
+
 /* The frame where the drag-and-drop operation originated.  */
 struct frame *x_dnd_frame;
 
@@ -3070,6 +3074,7 @@ x_dnd_send_unsupported_drop (struct x_display_info *dpyinfo, Window target_windo
 
   ie.kind = UNSUPPORTED_DROP_EVENT;
   ie.code = (unsigned) target_window;
+  ie.modifiers = x_dnd_unsupported_event_level;
   ie.arg = list3 (assq_no_quit (QXdndSelection,
 				dpyinfo->terminal->Vselection_alist),
 		  targets, arg);
@@ -5745,7 +5750,8 @@ x_after_update_window_line (struct window *w, struct glyph_row *desired_row)
 }
 
 static void
-x_draw_fringe_bitmap (struct window *w, struct glyph_row *row, struct draw_fringe_bitmap_params *p)
+x_draw_fringe_bitmap (struct window *w, struct glyph_row *row,
+		      struct draw_fringe_bitmap_params *p)
 {
   struct frame *f = XFRAME (WINDOW_FRAME (w));
   Display *display = FRAME_X_DISPLAY (f);
@@ -5767,6 +5773,8 @@ x_draw_fringe_bitmap (struct window *w, struct glyph_row *row, struct draw_fring
 	  x_fill_rectangle (f, face->gc, p->bx, p->by, p->nx, p->ny,
 			    true);
 	  XSetFillStyle (display, face->gc, FillSolid);
+
+	  row->stipple_p = true;
 	}
       else
 	{
@@ -9479,15 +9487,18 @@ x_toggle_visible_pointer (struct frame *f, bool invisible)
     invisible = false;
 #else
   /* But if Xfixes is available, try using it instead.  */
-  if (x_probe_xfixes_extension (dpyinfo))
+  if (dpyinfo->invisible_cursor == None)
     {
-      dpyinfo->fixes_pointer_blanking = true;
-      xfixes_toggle_visible_pointer (f, invisible);
+      if (x_probe_xfixes_extension (dpyinfo))
+	{
+	  dpyinfo->fixes_pointer_blanking = true;
+	  xfixes_toggle_visible_pointer (f, invisible);
 
-      return;
+	  return;
+	}
+      else
+	invisible = false;
     }
-  else
-    invisible = false;
 #endif
 
   if (invisible)
@@ -9864,6 +9875,64 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 #ifndef USE_GTK
   struct x_display_info *event_display;
 #endif
+  union buffered_input_event *events, *event;
+  int n_events;
+  struct frame *event_frame;
+
+  /* Before starting drag-and-drop, walk through the keyboard buffer
+     to see if there are any UNSUPPORTED_DROP_EVENTs, and run them now
+     if they exist, to prevent race conditions from happening due to
+     multiple unsupported drops running at once.  */
+
+  block_input ();
+  events = alloca (sizeof *events * KBD_BUFFER_SIZE);
+  n_events = 0;
+  event = kbd_fetch_ptr;
+
+  while (event != kbd_store_ptr)
+    {
+      if (event->ie.kind == UNSUPPORTED_DROP_EVENT
+	  && event->ie.modifiers < x_dnd_unsupported_event_level)
+	events[n_events++] = *event;
+
+      event = (event == kbd_buffer + KBD_BUFFER_SIZE - 1
+	       ? kbd_buffer : event + 1);
+    }
+
+  x_dnd_unsupported_event_level += 1;
+  unblock_input ();
+
+  for (i = 0; i < n_events; ++i)
+    {
+      maybe_quit ();
+
+      event = &events[i];
+      event_frame = XFRAME (event->ie.frame_or_window);
+
+      if (!FRAME_LIVE_P (event_frame))
+	continue;
+
+      if (!NILP (Vx_dnd_unsupported_drop_function))
+	{
+	  if (!NILP (call7 (Vx_dnd_unsupported_drop_function,
+			    XCAR (XCDR (event->ie.arg)), event->ie.x,
+			    event->ie.y, XCAR (XCDR (XCDR (event->ie.arg))),
+			    make_uint (event->ie.code),
+			    event->ie.frame_or_window,
+			    make_int (event->ie.timestamp))))
+	    continue;
+	}
+
+      x_dnd_do_unsupported_drop (FRAME_DISPLAY_INFO (event_frame),
+				 event->ie.frame_or_window,
+				 XCAR (event->ie.arg),
+				 XCAR (XCDR (event->ie.arg)),
+				 (Window) event->ie.code,
+				 XFIXNUM (event->ie.x),
+				 XFIXNUM (event->ie.y),
+				 event->ie.timestamp);
+      break;
+    }
 
   if (!FRAME_VISIBLE_P (f))
     {
@@ -13987,6 +14056,7 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 		x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
 	      else if (x_dnd_last_seen_window != None
 		       && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+		       && !x_dnd_disable_motif_drag
 		       && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
 		{
 		  if (!x_dnd_motif_setup_p)
@@ -14026,6 +14096,7 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 	    x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
 	  else if (x_dnd_last_seen_window != None
 		   && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+		   && !x_dnd_disable_motif_drag
 		   && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
 	    {
 	      if (!x_dnd_motif_setup_p)
@@ -14051,7 +14122,8 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 	  if (target != None && x_dnd_last_protocol_version != -1)
 	    x_dnd_send_enter (x_dnd_frame, target,
 			      x_dnd_last_protocol_version);
-	  else if (target != None && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style))
+	  else if (target != None && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+		   && !x_dnd_disable_motif_drag)
 	    {
 	      if (!x_dnd_motif_setup_p)
 		xm_setup_drag_info (dpyinfo, x_dnd_frame);
@@ -14082,7 +14154,8 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 			     0
 #endif
 			     );
-      else if (XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style) && target != None)
+      else if (XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style) && target != None
+	       && !x_dnd_disable_motif_drag)
 	{
 	  if (!x_dnd_motif_setup_p)
 	    xm_setup_drag_info (dpyinfo, x_dnd_frame);
@@ -15809,6 +15882,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
 		    else if (x_dnd_last_seen_window != None
 			     && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+			     && !x_dnd_disable_motif_drag
 			     && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
 		      {
 			if (!x_dnd_motif_setup_p)
@@ -15848,6 +15922,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
 		else if (x_dnd_last_seen_window != None
 			 && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+			 && x_dnd_disable_motif_drag
 			 && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
 		  {
 		    if (!x_dnd_motif_setup_p)
@@ -15894,7 +15969,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		if (target != None && x_dnd_last_protocol_version != -1)
 		  x_dnd_send_enter (x_dnd_frame, target,
 				    x_dnd_last_protocol_version);
-		else if (target != None && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style))
+		else if (target != None && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+			 && !x_dnd_disable_motif_drag)
 		  {
 		    if (!x_dnd_motif_setup_p)
 		      xm_setup_drag_info (dpyinfo, x_dnd_frame);
@@ -15921,7 +15997,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 				   x_dnd_selection_timestamp,
 				   x_dnd_wanted_action, 0,
 				   event->xmotion.state);
-	    else if (XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style) && target != None)
+	    else if (XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style) && target != None
+		     && !x_dnd_disable_motif_drag)
 	      {
 		if (!x_dnd_motif_setup_p)
 		  xm_setup_drag_info (dpyinfo, x_dnd_frame);
@@ -17388,6 +17465,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			    x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
 			  else if (x_dnd_last_seen_window != None
 				   && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+				   && !x_dnd_disable_motif_drag
 				   && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
 			    {
 			      if (!x_dnd_motif_setup_p)
@@ -17427,6 +17505,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			x_dnd_send_leave (x_dnd_frame, x_dnd_last_seen_window);
 		      else if (x_dnd_last_seen_window != None
 			       && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+			       && !x_dnd_disable_motif_drag
 			       && x_dnd_last_seen_window != FRAME_OUTER_WINDOW (x_dnd_frame))
 			{
 			  if (!x_dnd_motif_setup_p)
@@ -17475,7 +17554,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      if (target != None && x_dnd_last_protocol_version != -1)
 			x_dnd_send_enter (x_dnd_frame, target,
 					  x_dnd_last_protocol_version);
-		      else if (target != None && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style))
+		      else if (target != None && XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style)
+			       && !x_dnd_disable_motif_drag)
 			{
 			  if (!x_dnd_motif_setup_p)
 			    xm_setup_drag_info (dpyinfo, x_dnd_frame);
@@ -17515,7 +17595,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 					   x_dnd_wanted_action, 0,
 					   dnd_state);
 		    }
-		  else if (XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style) && target != None)
+		  else if (XM_DRAG_STYLE_IS_DYNAMIC (x_dnd_last_motif_style) && target != None
+			   && !x_dnd_disable_motif_drag)
 		    {
 		      if (!x_dnd_motif_setup_p)
 			xm_setup_drag_info (dpyinfo, x_dnd_frame);
@@ -24840,6 +24921,13 @@ during a drag-and-drop session, to work around broken implementations
 of Motif.  */);
   x_dnd_fix_motif_leave = true;
 
+  DEFVAR_BOOL ("x-dnd-disable-motif-drag", x_dnd_disable_motif_drag,
+	       doc: /* Disable the Motif drag protocol during DND.
+This reduces network usage, but also means you can no longer scroll
+around inside the Motif window underneath the cursor during
+drag-and-drop.  */);
+  x_dnd_disable_motif_drag = false;
+
   DEFVAR_LISP ("x-dnd-movement-function", Vx_dnd_movement_function,
     doc: /* Function called upon mouse movement on a frame during drag-and-drop.
 It should either be nil, or accept two arguments FRAME and POSITION,
@@ -24849,16 +24937,16 @@ mouse position list.  */);
 
   DEFVAR_LISP ("x-dnd-unsupported-drop-function", Vx_dnd_unsupported_drop_function,
     doc: /* Function called when trying to drop on an unsupported window.
-This function is called whenever the user tries to drop
-something on a window that does not support either the XDND or
-Motif protocols for drag-and-drop.  It should return a non-nil
-value if the drop was handled by the function, and nil if it was
-not.  It should accept several arguments TARGETS, X, Y, ACTION,
-WINDOW-ID and FRAME, where TARGETS is the list of targets that
-was passed to `x-begin-drag', WINDOW-ID is the numeric XID of
-the window that is being dropped on, X and Y are the root
-window-relative coordinates where the drop happened, ACTION
-is the action that was passed to `x-begin-drag', and FRAME is
-the frame which initiated the drag-and-drop operation.  */);
+This function is called whenever the user tries to drop something on a
+window that does not support either the XDND or Motif protocols for
+drag-and-drop.  It should return a non-nil value if the drop was
+handled by the function, and nil if it was not.  It should accept
+several arguments TARGETS, X, Y, ACTION, WINDOW-ID, FRAME and TIME,
+where TARGETS is the list of targets that was passed to
+`x-begin-drag', WINDOW-ID is the numeric XID of the window that is
+being dropped on, X and Y are the root window-relative coordinates
+where the drop happened, ACTION is the action that was passed to
+`x-begin-drag', FRAME is the frame which initiated the drag-and-drop
+operation, and TIME is the X server time when the drop happened.  */);
   Vx_dnd_unsupported_drop_function = Qnil;
 }

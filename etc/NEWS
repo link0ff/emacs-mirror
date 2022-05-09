@@ -2100,6 +2100,11 @@ dimensions.
 Specifying a cons as the FROM argument allows to start measuring text
 from a specified amount of pixels above or below a position.
 
++++
+** 'set-window-vscroll' now accepts a new argument PRESERVE-VSCROLL-P.
+This means the vscroll will not be reset when set on a window that is
+"frozen" due to a mini-window being resized.
+
 ** XDG support
 
 ---
@@ -2129,6 +2134,12 @@ This holds the value of the previous call to 'set-locale-environment'.
 *** New macro 'with-locale-environment'.
 This macro can be used to change the locale temporarily while
 executing code.
+
+** table.el
+
+---
+*** New user option 'table-latex-environment'.
+This allows switching between "table" and "tabular".
 
 ** Tabulated List Mode
 
