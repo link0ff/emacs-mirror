@@ -2372,6 +2372,63 @@ x_set_scroll_bar_default_height (struct frame *f)
 #endif
 }
 
+static void
+x_set_alpha (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
+{
+  double alpha = 1.0;
+  double newval[2];
+  int i;
+  Lisp_Object item;
+  bool alpha_identical_p;
+
+  alpha_identical_p = true;
+
+  for (i = 0; i < 2; i++)
+    {
+      newval[i] = 1.0;
+      if (CONSP (arg))
+        {
+          item = CAR (arg);
+          arg  = CDR (arg);
+
+	  alpha_identical_p = false;
+        }
+      else
+        item = arg;
+
+      if (NILP (item))
+	alpha = - 1.0;
+      else if (FLOATP (item))
+	{
+	  alpha = XFLOAT_DATA (item);
+	  if (! (0 <= alpha && alpha <= 1.0))
+	    args_out_of_range (make_float (0.0), make_float (1.0));
+	}
+      else if (FIXNUMP (item))
+	{
+	  EMACS_INT ialpha = XFIXNUM (item);
+	  if (! (0 <= ialpha && ialpha <= 100))
+	    args_out_of_range (make_fixnum (0), make_fixnum (100));
+	  alpha = ialpha / 100.0;
+	}
+      else
+	wrong_type_argument (Qnumberp, item);
+      newval[i] = alpha;
+    }
+
+  for (i = 0; i < 2; i++)
+    f->alpha[i] = newval[i];
+
+  FRAME_X_OUTPUT (f)->alpha_identical_p = alpha_identical_p;
+
+  if (FRAME_TERMINAL (f)->set_frame_alpha_hook)
+    {
+      block_input ();
+      FRAME_TERMINAL (f)->set_frame_alpha_hook (f);
+      unblock_input ();
+    }
+}
+
 
 /* Record in frame F the specified or default value according to ALIST
    of the parameter named PROP (a Lisp symbol).  If no value is
@@ -6765,14 +6822,12 @@ mouse buttons are released on top of FRAME.  */)
 {
   struct frame *f = decode_window_system_frame (frame);
   int ntargets = 0, nnames = 0;
-  ptrdiff_t len;
   char *target_names[2048];
   Atom *target_atoms;
   Lisp_Object lval, original, tem, t1, t2;
   Atom xaction;
   Atom action_list[2048];
   char *name_list[2048];
-  char *scratch;
 
   USE_SAFE_ALLOCA;
 
@@ -6786,10 +6841,8 @@ mouse buttons are released on top of FRAME.  */)
 
       if (ntargets < 2048)
 	{
-	  scratch = SSDATA (XCAR (targets));
-	  len = strlen (scratch);
-	  target_names[ntargets] = SAFE_ALLOCA (len + 1);
-	  strncpy (target_names[ntargets], scratch, len + 1);
+	  SAFE_ALLOCA_STRING (target_names[ntargets],
+			      XCAR (targets));
 	  ntargets++;
 	}
       else
@@ -6839,10 +6892,8 @@ mouse buttons are released on top of FRAME.  */)
 	      else
 		signal_error ("Invalid drag-and-drop action", tem);
 
-	      scratch = SSDATA (ENCODE_UTF_8 (t2));
-	      len = strlen (scratch);
-	      name_list[nnames] = SAFE_ALLOCA (len + 1);
-	      strncpy (name_list[nnames], scratch, len + 1);
+	      SAFE_ALLOCA_STRING (name_list[nnames],
+				  ENCODE_SYSTEM (t2));
 
 	      nnames++;
 	    }
@@ -9368,7 +9419,7 @@ frame_parm_handler x_frame_parm_handlers[] =
   x_set_wait_for_wm,
   gui_set_fullscreen,
   gui_set_font_backend,
-  gui_set_alpha,
+  x_set_alpha,
   x_set_sticky,
   x_set_tool_bar_position,
 #ifdef HAVE_XDBE

@@ -5358,9 +5358,16 @@ x_set_frame_alpha (struct frame *f)
 			     &actual, &format, &n, &left,
 			     &data);
 
-    if (rc == Success && actual != None && data)
+    if (rc == Success && actual != None
+	&& n && format == XA_CARDINAL && data)
       {
         unsigned long value = *(unsigned long *) data;
+
+	/* Xlib sign-extends values greater than 0x7fffffff on 64-bit
+	   machines.  Get the low bits by ourself.  */
+
+	value &= 0xffffffff;
+
 	if (value == opac)
 	  {
 	    x_uncatch_errors ();
@@ -7383,20 +7390,62 @@ x_setup_relief_colors (struct glyph_string *s)
     }
 }
 
+#ifndef USE_CAIRO
+static void
+x_fill_triangle (struct frame *f, GC gc, XPoint point1,
+		 XPoint point2, XPoint point3)
+{
+  XPoint abc[3];
+
+  abc[0] = point1;
+  abc[1] = point2;
+  abc[2] = point3;
+
+  XFillPolygon (FRAME_X_DISPLAY (f), FRAME_X_DRAWABLE (f),
+		gc, abc, 3, Convex, CoordModeOrigin);
+}
+
+static XPoint
+x_make_point (int x, int y)
+{
+  XPoint pt;
+
+  pt.x = x;
+  pt.y = y;
+
+  return pt;
+}
+
+static bool
+x_inside_rect_p (XRectangle *rects, int nrects, int x, int y)
+{
+  int i;
+
+  for (i = 0; i < nrects; ++i)
+    {
+      if (x >= rects[i].x && y >= rects[i].y
+	  && x < rects[i].x + rects[i].width
+	  && y < rects[i].y + rects[i].height)
+	return true;
+    }
+
+  return false;
+}
+#endif
 
 /* Draw a relief on frame F inside the rectangle given by LEFT_X,
-   TOP_Y, RIGHT_X, and BOTTOM_Y.  WIDTH is the thickness of the relief
-   to draw, it must be >= 0.  RAISED_P means draw a raised
-   relief.  LEFT_P means draw a relief on the left side of
-   the rectangle.  RIGHT_P means draw a relief on the right
-   side of the rectangle.  CLIP_RECT is the clipping rectangle to use
-   when drawing.  */
+   TOP_Y, RIGHT_X, and BOTTOM_Y.  VWIDTH and HWIDTH are respectively
+   the thickness of the vertical relief (left and right) and
+   horizontal relief (top and bottom) to draw, it must be >= 0.
+   RAISED_P means draw a raised relief.  LEFT_P means draw a relief on
+   the left side of the rectangle.  RIGHT_P means draw a relief on the
+   right side of the rectangle.  CLIP_RECT is the clipping rectangle
+   to use when drawing.  */
 
 static void
-x_draw_relief_rect (struct frame *f,
-		    int left_x, int top_y, int right_x, int bottom_y,
-		    int hwidth, int vwidth, bool raised_p, bool top_p, bool bot_p,
-		    bool left_p, bool right_p,
+x_draw_relief_rect (struct frame *f, int left_x, int top_y, int right_x,
+		    int bottom_y, int hwidth, int vwidth, bool raised_p,
+		    bool top_p, bool bot_p, bool left_p, bool right_p,
 		    XRectangle *clip_rect)
 {
 #ifdef USE_CAIRO
@@ -7472,90 +7521,122 @@ x_draw_relief_rect (struct frame *f,
   x_reset_clip_rectangles (f, top_left_gc);
   x_reset_clip_rectangles (f, bottom_right_gc);
 #else
-  Display *dpy = FRAME_X_DISPLAY (f);
-  Drawable drawable = FRAME_X_DRAWABLE (f);
-  int i;
-  GC gc;
-
-  if (raised_p)
-    gc = f->output_data.x->white_relief.gc;
-  else
-    gc = f->output_data.x->black_relief.gc;
-  XSetClipRectangles (dpy, gc, 0, 0, clip_rect, 1, Unsorted);
+  GC gc, white_gc, black_gc, normal_gc;
+  Drawable drawable;
+  Display *dpy;
 
   /* This code is more complicated than it has to be, because of two
      minor hacks to make the boxes look nicer: (i) if width > 1, draw
      the outermost line using the black relief.  (ii) Omit the four
      corner pixels.  */
 
-  /* Top.  */
-  if (top_p)
-    {
-      if (hwidth == 1)
-        XDrawLine (dpy, drawable, gc,
-		   left_x + left_p, top_y,
-		   right_x + !right_p, top_y);
+  white_gc = f->output_data.x->white_relief.gc;
+  black_gc = f->output_data.x->black_relief.gc;
+  normal_gc = f->output_data.x->normal_gc;
 
-      for (i = 1; i < hwidth; ++i)
-        XDrawLine (dpy, drawable, gc,
-		   left_x  + i * left_p, top_y + i,
-		   right_x + 1 - i * right_p, top_y + i);
-    }
+  drawable = FRAME_X_DRAWABLE (f);
+  dpy = FRAME_X_DISPLAY (f);
 
-  /* Left.  */
-  if (left_p)
-    {
-      if (vwidth == 1)
-        XDrawLine (dpy, drawable, gc, left_x, top_y + 1, left_x, bottom_y);
+  x_set_clip_rectangles (f, white_gc, clip_rect, 1);
+  x_set_clip_rectangles (f, black_gc, clip_rect, 1);
 
-      for (i = 1; i < vwidth; ++i)
-        XDrawLine (dpy, drawable, gc,
-		   left_x + i, top_y + (i + 1) * top_p,
-		   left_x + i, bottom_y + 1 - (i + 1) * bot_p);
-    }
-
-  XSetClipMask (dpy, gc, None);
   if (raised_p)
-    gc = f->output_data.x->black_relief.gc;
+    gc = white_gc;
   else
-    gc = f->output_data.x->white_relief.gc;
-  XSetClipRectangles (dpy, gc, 0, 0, clip_rect, 1, Unsorted);
+    gc = black_gc;
 
-  /* Outermost top line.  */
-  if (top_p && hwidth > 1)
-    XDrawLine (dpy, drawable, gc,
-	       left_x  + left_p, top_y,
-	       right_x + !right_p, top_y);
+  /* Draw lines.  */
 
-  /* Outermost left line.  */
-  if (left_p && vwidth > 1)
-    XDrawLine (dpy, drawable, gc, left_x, top_y + 1, left_x, bottom_y);
+  if (top_p)
+    x_fill_rectangle (f, gc, left_x, top_y,
+		      right_x - left_x + 1, hwidth,
+		      false);
 
-  /* Bottom.  */
+  if (left_p)
+    x_fill_rectangle (f, gc, left_x, top_y, vwidth,
+		      bottom_y - top_y + 1, false);
+
+  if (raised_p)
+    gc = black_gc;
+  else
+    gc = white_gc;
+
   if (bot_p)
-    {
-      if (hwidth >= 1)
-        XDrawLine (dpy, drawable, gc,
-		   left_x + left_p, bottom_y,
-		   right_x + !right_p, bottom_y);
+    x_fill_rectangle (f, gc, left_x, bottom_y - hwidth + 1,
+		      right_x - left_x + 1, hwidth, false);
 
-      for (i = 1; i < hwidth; ++i)
-        XDrawLine (dpy, drawable, gc,
-		   left_x  + i * left_p, bottom_y - i,
-		   right_x + 1 - i * right_p, bottom_y - i);
-    }
-
-  /* Right.  */
   if (right_p)
+    x_fill_rectangle (f, gc, right_x - vwidth + 1, top_y,
+		      vwidth, bottom_y - top_y + 1, false);
+
+  /* Draw corners.  */
+
+  if (bot_p && left_p)
+    x_fill_triangle (f, raised_p ? white_gc : black_gc,
+		     x_make_point (left_x, bottom_y - hwidth),
+		     x_make_point (left_x + vwidth, bottom_y - hwidth),
+		     x_make_point (left_x, bottom_y));
+
+  if (top_p && right_p)
+    x_fill_triangle (f, raised_p ? white_gc : black_gc,
+		     x_make_point (right_x - vwidth, top_y),
+		     x_make_point (right_x, top_y),
+		     x_make_point (right_x - vwidth, top_y + hwidth));
+
+  /* Draw outer line.  */
+
+  if (top_p && left_p && bot_p && right_p
+      && hwidth > 1 && vwidth > 1)
+    x_draw_rectangle (f, black_gc, left_x, top_y,
+		      right_x - left_x, bottom_y - top_y);
+  else
     {
-      for (i = 0; i < vwidth; ++i)
-        XDrawLine (dpy, drawable, gc,
-		   right_x - i, top_y + (i + 1) * top_p,
-		   right_x - i, bottom_y + 1 - (i + 1) * bot_p);
+      if (top_p && hwidth > 1)
+	XDrawLine (dpy, drawable, black_gc, left_x, top_y,
+		   right_x + 1, top_y);
+
+      if (bot_p && hwidth > 1)
+	XDrawLine (dpy, drawable, black_gc, left_x, bottom_y,
+		   right_x + 1, bottom_y);
+
+      if (left_p && vwidth > 1)
+	XDrawLine (dpy, drawable, black_gc, left_x, top_y,
+		   left_x, bottom_y + 1);
+
+      if (right_p && vwidth > 1)
+	XDrawLine (dpy, drawable, black_gc, right_x, top_y,
+		   right_x, bottom_y + 1);
     }
 
-  x_reset_clip_rectangles (f, gc);
+  /* Erase corners.  */
 
+  if (hwidth > 1 && vwidth > 1)
+    {
+      if (left_p && top_p && x_inside_rect_p (clip_rect, 1,
+					      left_x, top_y))
+	/* This should respect `alpha-backgroun' since it's being
+	   cleared with the background color of the frame.  */
+	x_clear_rectangle (f, normal_gc, left_x, top_y, 1, 1,
+			   true);
+
+      if (left_p && bot_p && x_inside_rect_p (clip_rect, 1,
+					      left_x, bottom_y))
+	x_clear_rectangle (f, normal_gc, left_x, bottom_y, 1, 1,
+			   true);
+
+      if (right_p && top_p && x_inside_rect_p (clip_rect, 1,
+					       right_x, top_y))
+	x_clear_rectangle (f, normal_gc, right_x, top_y, 1, 1,
+			   true);
+
+      if (right_p && bot_p && x_inside_rect_p (clip_rect, 1,
+					       right_x, bottom_y))
+	x_clear_rectangle (f, normal_gc, right_x, bottom_y, 1, 1,
+			   true);
+    }
+
+  x_reset_clip_rectangles (f, white_gc);
+  x_reset_clip_rectangles (f, black_gc);
 #endif
 }
 
@@ -14746,7 +14827,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  unsigned long nitems, bytesafter;
 		  unsigned char *data = NULL;
 
-
 		  if (event->xproperty.state == PropertyDelete)
 		    {
 		      if (!last)
@@ -14833,6 +14913,58 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      inev.ie.kind = ICONIFY_EVENT;
 	      XSETFRAME (inev.ie.frame_or_window, f);
 	    }
+	}
+
+      if (f && FRAME_X_OUTPUT (f)->alpha_identical_p
+	  && (event->xproperty.atom
+	      == dpyinfo->Xatom_net_wm_window_opacity))
+	{
+	  int rc, actual_format;
+	  Atom actual;
+	  unsigned char *tmp_data;
+	  unsigned long n, left, opacity;
+
+	  tmp_data = NULL;
+
+	  if (event->xproperty.state == PropertyDelete)
+	    {
+	      f->alpha[0] = 1.0;
+	      f->alpha[1] = 1.0;
+
+	      store_frame_param (f, Qalpha, Qnil);
+	    }
+	  else
+	    {
+	      rc = XGetWindowProperty (dpyinfo->display, FRAME_OUTER_WINDOW (f),
+				       dpyinfo->Xatom_net_wm_window_opacity,
+				       0, 1, False, AnyPropertyType, &actual,
+				       &actual_format, &n, &left, &tmp_data);
+
+	      if (rc == Success && actual_format == 32
+		  && (actual == XA_CARDINAL
+		      /* Some broken programs set the opacity property
+			 to those types, but window managers accept
+			 them anyway.  */
+		      || actual == XA_ATOM
+		      || actual == XA_WINDOW) && n)
+		{
+		  opacity = *(unsigned long *) tmp_data & OPAQUE;
+		  f->alpha[0] = (double) opacity / (double) OPAQUE;
+		  f->alpha[1] = (double) opacity / (double) OPAQUE;
+
+		  store_frame_param (f, Qalpha, make_float (f->alpha[0]));
+		}
+	      else
+		{
+		  f->alpha[0] = 1.0;
+		  f->alpha[1] = 1.0;
+
+		  store_frame_param (f, Qalpha, Qnil);
+		}
+	    }
+
+	  if (tmp_data)
+	    XFree (tmp_data);
 	}
 
       if (event->xproperty.window == dpyinfo->root_window

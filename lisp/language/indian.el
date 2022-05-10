@@ -158,6 +158,17 @@ Maithili language and its script Tirhuta is supported in this
 language environment."))
  '("Indian"))
 
+(set-language-info-alist
+ "Sharada" '((charset unicode)
+             (coding-system utf-8)
+             (coding-priority utf-8)
+             (input-method . "sharada")
+             (sample-text . "Sharada (𑆯𑆳𑆫𑆢𑆳)        𑆤𑆩𑆱𑇀𑆑𑆳𑆫")
+             (documentation . "\
+Kashmiri language and its script Sharada is supported in this
+language environment."))
+ '("Indian"))
+
 
 ;; Replace mnemonic characters in REGEXP according to TABLE.  TABLE is
 ;; an alist of (MNEMONIC-STRING . REPLACEMENT-STRING).
@@ -451,8 +462,9 @@ language environment."))
 ;; Kaithi composition rules
 (let ((consonant            "[\x1108D-\x110AF]")
       (nukta                "\x110BA")
+      (independent-vowel    "[\x11083-\x1108C]")
       (vowel                "[\x1108D-\x110C2]")
-      (anusvara-candrabindu "[\x11080\x11081]")
+      (nasal                "[\x11080\x11081]")
       (virama               "\x110B9")
       (number-sign          "\x110BD")
       (number-sign-above    "\x110CD")
@@ -461,33 +473,75 @@ language environment."))
   (set-char-table-range composition-function-table
                         '(#x110B0 . #x110BA)
                         (list (vector
+                               ;; Consonant based syllables
                                (concat consonant nukta "?\\(?:" virama zwj "?" consonant nukta "?\\)*\\(?:"
-                                       virama zwj "?\\|" vowel "*" nukta "?" anusvara-candrabindu "?\\)")
+                                       virama zwj "?\\|" vowel "*" nukta "?" nasal "?\\)")
+                               1 'font-shape-gstring)
+                              (vector
+                               ;; Nasal vowels
+                               (concat independent-vowel nasal "?")
                                1 'font-shape-gstring)))
   (set-char-table-range composition-function-table
                         '(#x110BD . #x110BD)
                         (list (vector
+                               ;; Number sign
                                (concat number-sign numerals)
                                0 'font-shape-gstring)))
   (set-char-table-range composition-function-table
                         '(#x110CD . #x110CD)
                         (list (vector
+                               ;; Number sign above
                                (concat number-sign-above numerals)
                                0 'font-shape-gstring))))
-
-(provide 'indian)
 
 ;; Tirhuta composition rules
 (let ((consonant            "[\x1148F-\x114AF]")
       (nukta                "\x114C3")
+      (independent-vowel    "[\x11481-\x1148E]")
       (vowel                "[\x114B0-\x114BE]")
-      (anusvara-candrabindu "[\x114BF\x114C0]")
+      (nasal                "[\x114BF\x114C0]")
       (virama               "\x114C2"))
   (set-char-table-range composition-function-table
                         '(#x114B0 . #x114C3)
                         (list (vector
+                               ;; Consonant based syllables
                                (concat consonant nukta "?\\(?:" virama consonant nukta "?\\)*\\(?:"
-                                       virama "\\|" vowel "*" nukta "?" anusvara-candrabindu "?\\)")
+                                       virama "\\|" vowel "*" nukta "?" nasal "?\\)")
+                               1 'font-shape-gstring)
+                              (vector
+                               ;; Nasal vowels
+                               (concat independent-vowel nasal "?")
                                1 'font-shape-gstring))))
 
+;; Sharada composition rules
+(let ((consonant              "[\x11191-\x111B2]")
+      (nukta                  "\x111CA")
+      (independent-vowel      "[\x11183-\x11190]")
+      (vowel                  "[\x111B3-\x111BF\x111CE]")
+      (vowel-modifier         "\x111CB")
+      (extra-short-vowel-mark "\x111CC")
+      (nasal                  "[\x11181\x11180\x111CF]")
+      (virama                 "\x111C0")
+      (fricatives             "[\x111C2\x111C3]")
+      (sandhi-mark            "\x111C9")
+      (misc                   "[^\x11180-\x111C0\x111C2\x111C3\x111C9-\x111CC\x111CE-\x111CF]"))
+  (set-char-table-range composition-function-table
+                        '(#x111B3 . #x111CF)
+                        (list (vector
+                               ;; Consonant based syllables
+                               (concat consonant nukta "?" vowel-modifier "?\\(?:" virama
+                                       consonant nukta "?" vowel-modifier "?\\)*\\(?:" virama
+                                       "\\|" vowel "*" nukta "?" nasal "?" extra-short-vowel-mark
+                                       "?" vowel-modifier "?" sandhi-mark "?+" misc "?\\)")
+                               1 'font-shape-gstring)
+                              (vector
+                               ;; Nasal vowels
+                               (concat independent-vowel nasal "?")
+                               1 'font-shape-gstring)
+                              (vector
+                               ;; Fricatives with Consonants
+                               (concat fricatives "?" consonant vowel "?")
+                               0 'font-shape-gstring))))
+
+(provide 'indian)
 ;;; indian.el ends here
