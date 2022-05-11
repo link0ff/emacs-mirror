@@ -1619,15 +1619,16 @@ public:
 	copy_bitmap = NULL;
       }
     if (!copy_bitmap)
-      copy_bitmap = new BBitmap (offscreen_draw_bitmap_1);
+      {
+	copy_bitmap = new BBitmap (offscreen_draw_bitmap_1);
+	SetViewBitmap (copy_bitmap, Frame (),
+		       Frame (), B_FOLLOW_NONE, 0);
+      }
     else
       copy_bitmap->ImportBits (offscreen_draw_bitmap_1);
 
     if (copy_bitmap->InitCheck () != B_OK)
       gui_abort ("Failed to init copy bitmap during buffer flip");
-
-    SetViewBitmap (copy_bitmap,
-		   Frame (), Frame (), B_FOLLOW_NONE, 0);
 
     Invalidate (&invalid_region);
     invalid_region.MakeEmpty ();
@@ -2619,13 +2620,22 @@ class EmacsFontSelectionDialog : public BWindow
   void
   UpdateStylesForIndex (int idx)
   {
-    int n, i;
+    int n, i, previous_selection;
     uint32 flags;
     font_family family;
     font_style style;
     BStringItem *item;
+    char *current_style;
 
     n = all_styles.CountItems ();
+    current_style = NULL;
+    previous_selection = font_style_pane.CurrentSelection ();
+
+    if (previous_selection >= 0)
+      {
+	item = all_styles.ItemAt (previous_selection);
+	current_style = strdup (item->Text ());
+      }
 
     font_style_pane.MakeEmpty ();
     all_styles.MakeEmpty ();
@@ -2641,6 +2651,10 @@ class EmacsFontSelectionDialog : public BWindow
 	    else
 	      item = new BStringItem ("<error>");
 
+	    if (current_style && pending_selection_idx < 0
+		&& !strcmp (current_style, style))
+	      pending_selection_idx = i;
+
 	    font_style_pane.AddItem (item);
 	    all_styles.AddItem (item);
 	  }
@@ -2654,6 +2668,9 @@ class EmacsFontSelectionDialog : public BWindow
 
     pending_selection_idx = -1;
     UpdateForSelectedStyle ();
+
+    if (current_style)
+      free (current_style);
   }
 
   bool

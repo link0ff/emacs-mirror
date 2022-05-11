@@ -261,7 +261,7 @@ startup.  Previously, these functions ignored
 ---
 *** The entries following the buffers in the "Buffers" menu can now be altered.
 Change the 'menu-bar-buffers-menu-command-entries' variable to alter
-the remaining entries.
+the entries that follow the buffer list.
 
 ---
 ** 'delete-process' is now a command.
@@ -772,6 +772,12 @@ This language environment supports the Sharada script.  Named after the
 goddess of learning, this script is used to write the Kashmiri language.
 A new input method, 'sharada', is provided to type text in this script.
 
+*** New language environment "Siddham".
+This language environment supports the Siddham script for the Sanskrit
+language.  Nowadays it is mostly used by the Buddhist monks in Japan for
+religious writings.  A new input method, 'siddham', is provided to type
+text in this script.
+
 ---
 *** New Greek translation of the Emacs tutorial.
 Type 'C-u C-h t' to select it in case your language setup does not do
@@ -780,13 +786,20 @@ so automatically.
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
 
+** Customize
+
+---
+*** New command 'custom-toggle-hide-all-variables'.
+This is bound to 'H' and toggles whether to hide or show the widget
+contents.
+
 ** ispell
 
 ---
 *** 'ispell-region' and 'ispell-buffer' now push the mark.
-The location of the last word the user was queried about is pushed to
-the mark ring, so that the user can skip back to the location with
-'C-x C-x'.
+These commands push onto the mark ring the location of the last
+misspelled word where corrections were offered, so that you can then
+skip back to that location with 'C-x C-x'.
 
 ** dabbrev
 
@@ -1059,6 +1072,12 @@ old default will be produced.  When set to a function, that function
 is called, and the returned values are used to populate the phrase and
 comment parts (see RFC 5322 for definitions).  In both cases, the
 phrase part will be automatically quoted if necessary.
+
++++
+*** New function 'eudc-capf-complete' with message-mode integration
+EUDC can now contribute email addresses to 'completion-at-point' by
+adding the new function 'eudc-capf-complete' to
+'completion-at-point-functions' in message-mode.
 
 ** eww/shr
 
