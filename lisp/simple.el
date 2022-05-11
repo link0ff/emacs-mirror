@@ -6054,6 +6054,14 @@ and KILLP is t if a prefix arg was specified."
     ;; Avoid warning about delete-backward-char
     (with-no-warnings (delete-backward-char n killp))))
 
+(defun char-uppercase-p (char)
+  "Return non-nil if CHAR is an upper-case character.
+If the Unicode tables are not yet available, e.g. during bootstrap,
+then gives correct answers only for ASCII characters."
+  (cond ((unicode-property-table-internal 'lowercase)
+         (characterp (get-char-code-property char 'lowercase)))
+        ((and (>= char ?A) (<= char ?Z)))))
+
 (defun zap-to-char (arg char)
   "Kill up to and including ARGth occurrence of CHAR.
 Case is ignored if `case-fold-search' is non-nil in the current buffer.
@@ -10215,7 +10223,7 @@ the number of seconds east of Greenwich.")
   )
 
 (defun get-scratch-buffer-create ()
-  "Return the \*scratch\* buffer, creating a new one if needed."
+  "Return the *scratch* buffer, creating a new one if needed."
   (or (get-buffer "*scratch*")
       (let ((scratch (get-buffer-create "*scratch*")))
         ;; Don't touch the buffer contents or mode unless we know that
@@ -10228,7 +10236,7 @@ the number of seconds east of Greenwich.")
         scratch)))
 
 (defun scratch-buffer ()
-  "Switch to the \*scratch\* buffer.
+  "Switch to the *scratch* buffer.
 If the buffer doesn't exist, create it first."
   (interactive)
   (pop-to-buffer-same-window (get-scratch-buffer-create)))

@@ -2841,7 +2841,14 @@ try matching its doc string against `custom-guess-doc-alist'."
 (defvar custom--hidden-state)
 
 (defun custom-toggle-hide-all-variables ()
-  "Toggle whether to show contents of the widgets in the current buffer."
+  "Hide or show details of all customizable settings in a Custom buffer.
+This command is for use in a Custom buffer that shows many
+customizable settings, like \"*Customize Group*\" or \"*Customize Faces*\".
+It toggles the display of each of the customizable settings in the buffer
+between the expanded view, where the values of the settings and the value
+menus to change them are visible; and the concise view, where only the
+minimal details are shown, usually the name, the doc string and little
+else."
   (interactive)
   (save-excursion
     (goto-char (point-min))
@@ -2851,7 +2858,10 @@ try matching its doc string against `custom-guess-doc-alist'."
       (when-let* ((widget (widget-at (point)))
                   (parent (widget-get widget :parent))
                   (state (widget-get parent :custom-state)))
-        (when (eq state custom--hidden-state)
+        (when (eq state 'changed)
+          (setq state 'standard))
+        (when (and (eq (widget-type widget) 'custom-visibility)
+                   (eq state custom--hidden-state))
           (custom-toggle-hide-variable widget)))
       (forward-line 1)))
   (setq custom--hidden-state (if (eq custom--hidden-state 'hidden)
