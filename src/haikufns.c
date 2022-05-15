@@ -1119,6 +1119,23 @@ haiku_create_tip_frame (Lisp_Object parms)
   /* FIXME - can this be done in a similar way to normal frames?
      https://lists.gnu.org/r/emacs-devel/2007-10/msg00641.html */
 
+  {
+    Lisp_Object disptype;
+
+    if (be_get_display_planes () == 1)
+      disptype = Qmono;
+    else if (be_is_display_grayscale ())
+      disptype = Qgrayscale;
+    else
+      disptype = Qcolor;
+
+    if (NILP (Fframe_parameter (frame, Qdisplay_type)))
+      {
+	AUTO_FRAME_ARG (arg, Qdisplay_type, disptype);
+	Fmodify_frame_parameters (frame, arg);
+      }
+  }
+
   /* Set up faces after all frame parameters are known.  This call
      also merges in face attributes specified for new frames.
 
@@ -1839,10 +1856,10 @@ struct user_cursor_bitmap_info cursor_bitmaps[] =
     { ibeam_ptr_bits, ibeam_ptrmask_bits, 15, 15, 7, 7 },	/* text_cursor */
     { left_ptr_bits, left_ptrmsk_bits, 16, 16, 3, 1 },		/* nontext_cursor */
     { left_ptr_bits, left_ptrmsk_bits, 16, 16, 3, 1 },		/* modeline_cursor */
-    { NULL, NULL, 0, 0, 0, 0 },					/* hand_cursor */
-    { NULL, NULL, 0, 0, 0, 0 },					/* hourglass_cursor */
-    { NULL, NULL, 0, 0, 0, 0 },					/* horizontal_drag_cursor */
-    { NULL, NULL, 0, 0, 0, 0 },					/* vertical_drag_cursor */
+    { hand_ptr_bits, hand_ptrmask_bits, 15, 15, 4, 3 },		/* hand_cursor */
+    { hourglass_bits, hourglass_mask_bits, 15, 15, 7, 7 },	/* hourglass_cursor */
+    { horizd_ptr_bits, horizd_ptrmask_bits, 15, 15, 7, 7 },	/* horizontal_drag_cursor */
+    { vertd_ptr_bits, vertd_ptrmask_bits, 15, 15, 7, 7 },	/* vertical_drag_cursor */
     { NULL, NULL, 0, 0, 0, 0 },					/* left_edge_cursor */
     { NULL, NULL, 0, 0, 0, 0 },					/* top_left_corner_cursor */
     { NULL, NULL, 0, 0, 0, 0 },					/* top_edge_cursor */
@@ -1958,7 +1975,7 @@ haiku_free_custom_cursors (struct frame *f)
 	  if (output->current_cursor == *frame_cursor)
 	    output->current_cursor = *display_cursor;
 
-	  BCursor_delete (*frame_cursor);
+	  be_delete_cursor (*frame_cursor);
 	}
 
       *frame_cursor = *display_cursor;
@@ -2022,7 +2039,7 @@ haiku_set_mouse_color (struct frame *f, Lisp_Object arg, Lisp_Object oldval)
 	    }
 
 	  /* Create and set the custom cursor.  */
-	  *frame_cursor = BCursor_from_id (n);
+	  *frame_cursor = be_create_cursor_from_id (n);
 	}
       else if (color_specified_p && cursor_bitmaps[i].bits)
 	{
@@ -3006,6 +3023,9 @@ syms_of_haikufns (void)
   DEFSYM (Qstatic_color, "static-color");
   DEFSYM (Qstatic_gray, "static-gray");
   DEFSYM (Qtrue_color, "true-color");
+  DEFSYM (Qmono, "mono");
+  DEFSYM (Qgrayscale, "grayscale");
+  DEFSYM (Qcolor, "color");
 
   defsubr (&Sx_hide_tip);
   defsubr (&Sxw_display_color_p);

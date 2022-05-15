@@ -230,6 +230,29 @@ static GSettings *gsettings_client;
 /* The cairo font_options as obtained using gsettings.  */
 static cairo_font_options_t *font_options;
 
+static bool
+xg_settings_key_valid_p (GSettings *settings, const char *key)
+{
+#ifdef GLIB_VERSION_2_32
+  GSettingsSchema *schema;
+  bool rc;
+
+  g_object_get (G_OBJECT (settings),
+		"settings-schema", &schema,
+		NULL);
+
+  if (!schema)
+    return false;
+
+  rc = g_settings_schema_has_key (schema, key);
+  g_settings_schema_unref (schema);
+
+  return rc;
+#else
+  return false;
+#endif
+}
+
 /* Store an event for re-rendering of the fonts.  */
 static void
 store_font_options_changed (void)
@@ -243,13 +266,21 @@ store_font_options_changed (void)
 static void
 apply_gsettings_font_hinting (GSettings *settings)
 {
-  GVariant *val = g_settings_get_value (settings, GSETTINGS_FONT_HINTING);
+  GVariant *val;
+  const char *hinting;
+
+  if (!xg_settings_key_valid_p (settings, GSETTINGS_FONT_HINTING))
+    return;
+
+  val = g_settings_get_value (settings, GSETTINGS_FONT_HINTING);
+
   if (val)
     {
       g_variant_ref_sink (val);
+
       if (g_variant_is_of_type (val, G_VARIANT_TYPE_STRING))
 	{
-	  const char *hinting = g_variant_get_string (val, NULL);
+	  hinting = g_variant_get_string (val, NULL);
 
 	  if (!strcmp (hinting, "full"))
 	    cairo_font_options_set_hint_style (font_options,
@@ -272,13 +303,20 @@ apply_gsettings_font_hinting (GSettings *settings)
 static void
 apply_gsettings_font_antialias (GSettings *settings)
 {
-  GVariant *val = g_settings_get_value (settings, GSETTINGS_FONT_ANTIALIASING);
+  GVariant *val;
+  const char *antialias;
+
+  if (!xg_settings_key_valid_p (settings, GSETTINGS_FONT_ANTIALIASING))
+    return;
+
+  val = g_settings_get_value (settings, GSETTINGS_FONT_ANTIALIASING);
+
   if (val)
     {
       g_variant_ref_sink (val);
       if (g_variant_is_of_type (val, G_VARIANT_TYPE_STRING))
 	{
-	  const char *antialias = g_variant_get_string (val, NULL);
+	  antialias = g_variant_get_string (val, NULL);
 
 	  if (!strcmp (antialias, "none"))
 	    cairo_font_options_set_antialias (font_options,
@@ -298,14 +336,22 @@ apply_gsettings_font_antialias (GSettings *settings)
 static void
 apply_gsettings_font_rgba_order (GSettings *settings)
 {
-  GVariant *val = g_settings_get_value (settings,
-					GSETTINGS_FONT_RGBA_ORDER);
+  GVariant *val;
+  const char *rgba_order;
+
+  if (!xg_settings_key_valid_p (settings, GSETTINGS_FONT_RGBA_ORDER))
+    return;
+
+  val = g_settings_get_value (settings,
+			      GSETTINGS_FONT_RGBA_ORDER);
+
   if (val)
     {
       g_variant_ref_sink (val);
+
       if (g_variant_is_of_type (val, G_VARIANT_TYPE_STRING))
 	{
-	  const char *rgba_order = g_variant_get_string (val, NULL);
+	  rgba_order = g_variant_get_string (val, NULL);
 
 	  if (!strcmp (rgba_order, "rgb"))
 	    cairo_font_options_set_subpixel_order (font_options,

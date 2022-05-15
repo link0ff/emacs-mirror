@@ -78,7 +78,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
    INPUT FOCUS
 
    Under X, the window where keyboard input is sent is not always
-   explictly defined.  When there is a focus window, it receives what
+   explicitly defined.  When there is a focus window, it receives what
    is referred to as "explicit focus", but when there is none, it
    receives "implicit focus" whenever the pointer enters it, and loses
    that focus when the pointer leaves.  When the toplevel window of a
@@ -2106,27 +2106,29 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
   toplevels = (Window *) data;
 
 #ifdef USE_XCB
+  USE_SAFE_ALLOCA;
+
   window_attribute_cookies
-    = alloca (sizeof *window_attribute_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *window_attribute_cookies * nitems);
   translate_coordinate_cookies
-    = alloca (sizeof *translate_coordinate_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *translate_coordinate_cookies * nitems);
   get_property_cookies
-    = alloca (sizeof *get_property_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *get_property_cookies * nitems);
   xm_property_cookies
-    = alloca (sizeof *xm_property_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *xm_property_cookies * nitems);
   extent_property_cookies
-    = alloca (sizeof *extent_property_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *extent_property_cookies * nitems);
   get_geometry_cookies
-    = alloca (sizeof *get_geometry_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *get_geometry_cookies * nitems);
 
 #ifdef HAVE_XCB_SHAPE
   bounding_rect_cookies
-    = alloca (sizeof *bounding_rect_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *bounding_rect_cookies * nitems);
 #endif
 
 #ifdef HAVE_XCB_SHAPE_INPUT_RECTS
   input_rect_cookies
-    = alloca (sizeof *input_rect_cookies * nitems);
+    = SAFE_ALLOCA (sizeof *input_rect_cookies * nitems);
 #endif
 
   for (i = 0; i < nitems; ++i)
@@ -2513,7 +2515,7 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 	    }
 
 	  /* And the common case where there is no input rect and the
-	     bouding rect equals the window dimensions.  */
+	     bounding rect equals the window dimensions.  */
 
 	  if (tem->n_input_rects == -1
 	      && tem->n_bounding_rects == 1
@@ -2605,6 +2607,10 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 	}
 #endif
     }
+
+#ifdef USE_XCB
+  SAFE_FREE ();
+#endif
 
   return 0;
 }
@@ -4067,27 +4073,48 @@ x_free_xi_devices (struct x_display_info *dpyinfo)
   unblock_input ();
 }
 
+#ifdef HAVE_XINPUT2_1
+struct xi_known_valuator
+{
+  /* The current value of this valuator.  */
+  double current_value;
+
+  /* The number of the valuator.  */
+  int number;
+
+  /* The next valuator whose value we already know.  */
+  struct xi_known_valuator *next;
+};
+#endif
+
 static void
 xi_populate_device_from_info (struct xi_device_t *xi_device,
 			      XIDeviceInfo *device)
 {
 #ifdef HAVE_XINPUT2_1
   struct xi_scroll_valuator_t *valuator;
+  struct xi_known_valuator *values, *tem;
   int actual_valuator_count;
   XIScrollClassInfo *info;
+  XIValuatorClassInfo *val_info;
 #endif
+  int c;
 #ifdef HAVE_XINPUT2_2
   XITouchClassInfo *touch_info;
 #endif
-  int c;
+
+#ifdef HAVE_XINPUT2_1
+  USE_SAFE_ALLOCA;
+#endif
 
   xi_device->device_id = device->deviceid;
   xi_device->grab = 0;
 
 #ifdef HAVE_XINPUT2_1
   actual_valuator_count = 0;
-  xi_device->valuators =
-    xmalloc (sizeof *xi_device->valuators * device->num_classes);
+  xi_device->valuators = xmalloc (sizeof *xi_device->valuators
+				  * device->num_classes);
+  values = NULL;
 #endif
 #ifdef HAVE_XINPUT2_2
   xi_device->touchpoints = NULL;
@@ -4119,7 +4146,21 @@ xi_populate_device_from_info (struct xi_device_t *xi_device,
 
 	    break;
 	  }
+
+	case XIValuatorClass:
+	  {
+	    val_info = (XIValuatorClassInfo *) device->classes[c];
+	    tem = SAFE_ALLOCA (sizeof *tem);
+
+	    tem->next = values;
+	    tem->number = val_info->number;
+	    tem->current_value = val_info->value;
+
+	    values = tem;
+	    break;
+	  }
 #endif
+
 #ifdef HAVE_XINPUT2_2
 	case XITouchClass:
 	  {
@@ -4134,6 +4175,25 @@ xi_populate_device_from_info (struct xi_device_t *xi_device,
 
 #ifdef HAVE_XINPUT2_1
   xi_device->scroll_valuator_count = actual_valuator_count;
+
+  /* Now look through all the valuators whose values are already known
+     and populate our client-side records with their current
+     values.  */
+
+  for (tem = values; values; values = values->next)
+    {
+      for (c = 0; c < xi_device->scroll_valuator_count; ++c)
+	{
+	  if (xi_device->valuators[c].number == tem->number)
+	    {
+	      xi_device->valuators[c].invalid_p = false;
+	      xi_device->valuators[c].current_value = tem->current_value;
+	      xi_device->valuators[c].pending_enter_reset = true;
+	    }
+	}
+    }
+
+  SAFE_FREE ();
 #endif
 }
 
@@ -8721,7 +8781,7 @@ x_draw_glyph_string (struct glyph_string *s)
                     }
 
 		  /* Ignore minimum_offset if the amount of pixels was
-		     explictly specified.  */
+		     explicitly specified.  */
 		  if (!s->face->underline_pixels_above_descent_line)
 		    position = max (position, minimum_offset);
                 }
@@ -14476,6 +14536,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
   GdkEvent *copy = NULL;
   GdkDisplay *gdpy = gdk_x11_lookup_xdisplay (dpyinfo->display);
 #endif
+  USE_SAFE_ALLOCA;
 
   *finish = X_EVENT_NORMAL;
 
@@ -14765,17 +14826,21 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    *finish = X_EVENT_DROP;
 #else
 		    widget = FRAME_GTK_OUTER_WIDGET (f);
+		    window = gtk_widget_get_window (widget);
+		    eassert (window);
+
+		    /* This could be a (former) child frame for which
+		       frame synchronization was disabled.  Enable it
+		       now.  */
+		    gdk_x11_window_set_frame_sync_enabled (window, TRUE);
 
 		    if (widget && !FRAME_X_OUTPUT (f)->xg_sync_end_pending_p)
 		      {
-			window = gtk_widget_get_window (widget);
-			eassert (window);
 			frame_clock = gdk_window_get_frame_clock (window);
 			eassert (frame_clock);
 
 			gdk_frame_clock_request_phase (frame_clock,
 						       GDK_FRAME_CLOCK_PHASE_BEFORE_PAINT);
-
 			FRAME_X_OUTPUT (f)->xg_sync_end_pending_p = true;
 		      }
 #endif
@@ -15689,7 +15754,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
               if (status_return == XBufferOverflow)
                 {
                   copy_bufsiz = nbytes + 1;
-                  copy_bufptr = alloca (copy_bufsiz);
+                  copy_bufptr = SAFE_ALLOCA (copy_bufsiz);
                   nbytes = XmbLookupString (FRAME_XIC (f),
                                             &xkey, (char *) copy_bufptr,
                                             copy_bufsiz, &keysym,
@@ -16917,7 +16982,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    f = x_any_window_to_frame (dpyinfo, event->xbutton.window);
 
 	    if (event->xbutton.button > 3
-		&& event->xbutton.button < 9
+		&& event->xbutton.button < 8
 		&& f)
 	      {
 		if (ignore_next_mouse_click_timeout
@@ -18338,7 +18403,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 		  f = x_any_window_to_frame (dpyinfo, xev->event);
 
-		  if (xev->detail > 3 && xev->detail < 9 && f)
+		  if (xev->detail > 3 && xev->detail < 8 && f)
 		    {
 		      if (xev->evtype == XI_ButtonRelease)
 			{
@@ -18381,7 +18446,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      if (f)
 		{
-		  if (xev->detail >= 4 && xev->detail <= 8)
+		  if (xev->detail >= 4 && xev->detail < 8)
 		    {
 		      if (xev->evtype == XI_ButtonRelease)
 			{
@@ -18794,7 +18859,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      if (status_return == XBufferOverflow)
 			{
 			  copy_bufsiz = nbytes + 1;
-			  copy_bufptr = alloca (copy_bufsiz);
+			  copy_bufptr = SAFE_ALLOCA (copy_bufsiz);
 			  nbytes = XmbLookupString (FRAME_XIC (f),
 						    &xkey, (char *) copy_bufptr,
 						    copy_bufsiz, &keysym,
@@ -18826,8 +18891,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 						       copy_bufsiz, &overflow);
 			  if (overflow)
 			    {
-			      copy_bufptr = alloca ((copy_bufsiz += overflow)
-						    * sizeof *copy_bufptr);
+			      copy_bufptr = SAFE_ALLOCA ((copy_bufsiz += overflow)
+							 * sizeof *copy_bufptr);
 			      overflow = 0;
 			      nbytes = XkbTranslateKeySym (dpyinfo->display, &sym,
 							   state & ~mods_rtrn, copy_bufptr,
@@ -19138,7 +19203,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      struct xi_touch_point_t *tem, *last;
 #endif
 
-	      disabled = alloca (sizeof *disabled * hev->num_info);
+	      disabled = SAFE_ALLOCA (sizeof *disabled * hev->num_info);
 	      n_disabled = 0;
 
 	      for (i = 0; i < hev->num_info; ++i)
@@ -19908,7 +19973,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    }
 
 		  /* And the common case where there is no input rect and the
-		     bouding rect equals the window dimensions.  */
+		     bounding rect equals the window dimensions.  */
 
 		  if (tem->n_input_rects == -1
 		      && tem->n_bounding_rects == 1
@@ -20008,6 +20073,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
   if (any && any != f)
     flush_dirty_back_buffer_on (any);
 #endif
+
+  SAFE_FREE ();
   return count;
 }
 

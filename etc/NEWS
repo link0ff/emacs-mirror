@@ -562,6 +562,11 @@ minor modes are listed after the major mode.
 The apropos commands will now select the apropos window if
 'help-window-select' is non-nil.
 
+---
+*** 'describe-keymap' now considers the symbol at point.
+If the symbol at point is a keymap, 'describe-keymap' suggests it as
+the default candidate.
+
 ** Outline Mode
 
 +++
@@ -790,6 +795,11 @@ This language environment supports the Siddham script for the Sanskrit
 language.  Nowadays it is mostly used by the Buddhist monks in Japan for
 religious writings.  A new input method, 'siddham', is provided to type
 text in this script.
+
+*** New language environment "Syloti Nagri"
+This language environment supports the Syloti Nagri script for the Sylheti
+language, which is spoke in parts of Bangladesh, Assam and Tripura.  A new
+input method, 'syloti-nagri', is provided to type text in this script.
 
 ---
 *** New Greek translation of the Emacs tutorial.
@@ -1806,6 +1816,16 @@ functions.
 
 
 * Lisp Changes in Emacs 29.1
+
++++
+** 'prin1' and 'prin1-to-string' now takes an OVERRIDES parameter.
+This parameter can be used to override printer settings.
+
++++
+** New minor mode 'header-line-indent-mode'.
+This is meant to be used in modes that have a header line that should
+be kept aligned with the buffer contents when the user switches
+'display-line-numbers-mode' on or off.
 
 +++
 ** New predicate 'char-uppercase-p'.
