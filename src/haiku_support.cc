@@ -106,6 +106,7 @@ enum
     SET_FONT_INDICES	  = 3012,
     SET_PREVIEW_DIALOG	  = 3013,
     UPDATE_PREVIEW_DIALOG = 3014,
+    SEND_MOVE_FRAME_EVENT = 3015,
   };
 
 /* X11 keysyms that we use.  */
@@ -796,11 +797,23 @@ public:
   }
 
   void
+  MoveToIncludingFrame (int x, int y)
+  {
+    BRect decorator, frame;
+
+    decorator = DecoratorFrame ();
+    frame = Frame ();
+
+    MoveTo (x + frame.left - decorator.left,
+	    y + frame.top - decorator.top);
+  }
+
+  void
   DoMove (struct child_frame *f)
   {
     BRect frame = this->Frame ();
-    f->window->MoveTo (frame.left + f->xoff,
-		       frame.top + f->yoff);
+    f->window->MoveToIncludingFrame (frame.left + f->xoff,
+				     frame.top + f->yoff);
   }
 
   void
@@ -981,6 +994,8 @@ public:
 	    haiku_write (WHEEL_MOVE_EVENT, &rq);
 	  };
       }
+    else if (msg->what == SEND_MOVE_FRAME_EVENT)
+      FrameMoved (Frame ().LeftTop ());
     else
       BWindow::DispatchMessage (msg, handler);
   }
@@ -1022,33 +1037,44 @@ public:
   }
 
   void
-  FrameMoved (BPoint newPosition)
+  FrameMoved (BPoint new_position)
   {
     struct haiku_move_event rq;
+    BRect frame, decorator_frame;
+    struct child_frame *f;
+
     rq.window = this;
-    rq.x = std::lrint (newPosition.x);
-    rq.y = std::lrint (newPosition.y);
+    rq.x = std::lrint (new_position.x);
+    rq.y = std::lrint (new_position.y);
+
+    frame = Frame ();
+    decorator_frame = DecoratorFrame ();
+
+    rq.decorator_width
+      = std::lrint (frame.left - decorator_frame.left);
+    rq.decorator_height
+      = std::lrint (frame.top - decorator_frame.top);
 
     haiku_write (MOVE_EVENT, &rq);
 
     CHILD_FRAME_LOCK_INSIDE_LOOPER_CALLBACK
       {
-	for (struct child_frame *f = subset_windows;
-	     f; f = f->next)
+	for (f = subset_windows; f; f = f->next)
 	  DoMove (f);
 	child_frame_lock.Unlock ();
 
-	BWindow::FrameMoved (newPosition);
+	BWindow::FrameMoved (new_position);
       }
   }
 
   void
   WorkspacesChanged (uint32_t old, uint32_t n)
   {
+    struct child_frame *f;
+
     CHILD_FRAME_LOCK_INSIDE_LOOPER_CALLBACK
       {
-	for (struct child_frame *f = subset_windows;
-	     f; f = f->next)
+	for (f = subset_windows; f; f = f->next)
 	  DoUpdateWorkspace (f);
 
 	child_frame_lock.Unlock ();
@@ -1062,7 +1088,7 @@ public:
       gui_abort ("Failed to lock child frame state lock");
 
     if (!this->parent)
-      this->MoveTo (x, y);
+      this->MoveToIncludingFrame (x, y);
     else
       this->parent->MoveChild (this, x, y, 0);
     child_frame_lock.Unlock ();
@@ -1173,30 +1199,6 @@ public:
   }
 
   void
-  GetParentWidthHeight (int *width, int *height)
-  {
-    if (!child_frame_lock.Lock ())
-      gui_abort ("Failed to lock child frame state lock");
-
-    if (parent)
-      {
-	BRect frame = parent->Frame ();
-	*width = BE_RECT_WIDTH (frame);
-	*height = BE_RECT_HEIGHT (frame);
-      }
-    else
-      {
-	BScreen s (this);
-	BRect frame = s.Frame ();
-
-	*width = BE_RECT_WIDTH (frame);
-	*height = BE_RECT_HEIGHT (frame);
-      }
-
-    child_frame_lock.Unlock ();
-  }
-
-  void
   OffsetChildRect (BRect *r, EmacsWindow *c)
   {
     if (!child_frame_lock.Lock ())
@@ -1221,17 +1223,21 @@ public:
   MakeFullscreen (int make_fullscreen_p)
   {
     BScreen screen (this);
+    uint32 flags;
+    BRect screen_frame;
 
     if (!screen.IsValid ())
       gui_abort ("Trying to make a window fullscreen without a screen");
 
+    screen_frame = screen.Frame ();
     UnZoom ();
 
     if (make_fullscreen_p == fullscreen_p)
       return;
 
     fullscreen_p = make_fullscreen_p;
-    uint32 flags = Flags ();
+    flags = Flags ();
+
     if (fullscreen_p)
       {
 	if (zoomed_p)
@@ -1240,24 +1246,18 @@ public:
 	flags |= B_NOT_MOVABLE | B_NOT_ZOOMABLE;
 	pre_fullscreen_rect = Frame ();
 
-	if (!child_frame_lock.Lock ())
-	  gui_abort ("Failed to lock child frame state lock");
-
-	if (parent)
-	  parent->OffsetChildRect (&pre_fullscreen_rect, this);
-
-	child_frame_lock.Unlock ();
-
-	int w, h;
-	EmacsMoveTo (0, 0);
-	GetParentWidthHeight (&w, &h);
-	ResizeTo (w - 1, h - 1);
+	MoveTo (0, 0);
+	ResizeTo (BE_RECT_WIDTH (screen_frame) - 1,
+		  BE_RECT_HEIGHT (screen_frame) - 1);
       }
     else
       {
 	flags &= ~(B_NOT_MOVABLE | B_NOT_ZOOMABLE);
-	EmacsMoveTo (pre_fullscreen_rect.left,
-		     pre_fullscreen_rect.top);
+
+	/* Use MoveTo directly since pre_fullscreen_rect isn't
+	   adjusted for decorator sizes.  */
+	MoveTo (pre_fullscreen_rect.left,
+		pre_fullscreen_rect.top);
 	ResizeTo (BE_RECT_WIDTH (pre_fullscreen_rect) - 1,
 		  BE_RECT_HEIGHT (pre_fullscreen_rect) - 1);
       }
@@ -2380,22 +2380,6 @@ public:
       }
 
     BMenuItem::Highlight (highlight_p);
-  }
-};
-
-class EmacsPopUpMenu : public BPopUpMenu
-{
-public:
-  EmacsPopUpMenu (const char *name) : BPopUpMenu (name, 0)
-  {
-
-  }
-
-  void
-  FrameResized (float w, float h)
-  {
-    Invalidate ();
-    BPopUpMenu::FrameResized (w, h);
   }
 };
 
@@ -3745,7 +3729,8 @@ BView_emacs_delete (void *view)
 void *
 BPopUpMenu_new (const char *name)
 {
-  BPopUpMenu *menu = new EmacsPopUpMenu (name);
+  BPopUpMenu *menu = new BPopUpMenu (name);
+
   menu->SetRadioMode (0);
   return menu;
 }
@@ -3755,9 +3740,11 @@ BPopUpMenu_new (const char *name)
 void
 BMenu_add_title (void *menu, const char *text)
 {
-  EmacsTitleMenuItem *it = new EmacsTitleMenuItem (text);
-  BMenu *mn = (BMenu *) menu;
-  mn->AddItem (it);
+  BMenu *be_menu = (BMenu *) menu;
+  EmacsTitleMenuItem *it;
+
+  it = new EmacsTitleMenuItem (text);
+  be_menu->AddItem (it);
 }
 
 /* Add an item to the menu MENU.  */
@@ -5109,4 +5096,70 @@ be_create_pixmap_cursor (void *bitmap, int x, int y)
     }
 
   return cursor;
+}
+
+void
+be_get_window_decorator_dimensions (void *window, int *left, int *top,
+				    int *right, int *bottom)
+{
+  BWindow *wnd;
+  BRect frame, window_frame;
+
+  wnd = (BWindow *) window;
+
+  if (!wnd->LockLooper ())
+    gui_abort ("Failed to lock window looper frame");
+
+  frame = wnd->DecoratorFrame ();
+  window_frame = wnd->Frame ();
+
+  if (left)
+    *left = window_frame.left - frame.left;
+
+  if (top)
+    *top = window_frame.top - frame.top;
+
+  if (right)
+    *right = frame.right - window_frame.right;
+
+  if (bottom)
+    *bottom = frame.bottom - window_frame.bottom;
+
+  wnd->UnlockLooper ();
+}
+
+void
+be_get_window_decorator_frame (void *window, int *left, int *top,
+			       int *width, int *height)
+{
+  BWindow *wnd;
+  BRect frame;
+
+  wnd = (BWindow *) window;
+
+  if (!wnd->LockLooper ())
+    gui_abort ("Failed to lock window looper frame");
+
+  frame = wnd->DecoratorFrame ();
+
+  *left = frame.left;
+  *top = frame.top;
+  *width = BE_RECT_WIDTH (frame);
+  *height = BE_RECT_HEIGHT (frame);
+
+  wnd->UnlockLooper ();
+}
+
+/* Request that a MOVE_EVENT be sent for WINDOW.  This is so that
+   frame offsets can be updated after a frame parameter affecting
+   decorators changes.  Sending an event instead of updating the
+   offsets directly avoids race conditions where events with older
+   information are received after the update happens.  */
+void
+be_send_move_frame_event (void *window)
+{
+  BWindow *wnd = (BWindow *) window;
+  BMessenger msg (wnd);
+
+  msg.SendMessage (SEND_MOVE_FRAME_EVENT);
 }
