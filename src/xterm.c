@@ -5618,6 +5618,12 @@ show_back_buffer (struct frame *f)
 static void
 x_flip_and_flush (struct frame *f)
 {
+  /* Flipping buffers requires a working connection to the X server,
+     which isn't always present if `inhibit-redisplay' is t, since
+     this can be called from the IO error handler.  */
+  if (!NILP (Vinhibit_redisplay))
+    return;
+
   block_input ();
 #ifdef HAVE_XDBE
   if (FRAME_X_NEED_BUFFER_FLIP (f))
@@ -18322,9 +18328,17 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      g_object_ref (copy->button.window);
 
-	      if (popup_activated ()
-		  && xev->evtype == XI_ButtonRelease)
-		goto XI_OTHER;
+	      if (popup_activated ())
+		{
+		  /* GTK+ popup menus don't respond to core buttons
+		     after Button3, so don't dismiss popup menus upon
+		     wheel movement here either.  */
+		  if (xev->detail > 3)
+		    *finish = X_EVENT_DROP;
+
+		  if (xev->evtype == XI_ButtonRelease)
+		    goto XI_OTHER;
+		}
 #endif
 
 #ifdef HAVE_XINPUT2_1
