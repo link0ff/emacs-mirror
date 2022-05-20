@@ -816,6 +816,13 @@ so automatically.
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
 
+** Enriched Mode
+
+---
+*** New command 'enriched-toggle-markup'.
+This allows you to see the markup in 'enriched-mode' buffers (e.g.,
+the HELLO file).
+
 ** Shell Script Mode
 
 ---
@@ -2189,6 +2196,14 @@ platforms.
 ** New command 'yank-media-types'.
 This command lets you examine all data in the current selection and
 the clipboard, and insert it into the buffer.
+
++++
+** New user option 'yank-transform-functions'.
+This function allows the user to alter the string to be inserted.
+
+---
+** New command 'yank-in-context'.
+This command tries to preserve string/comment syntax when yanking.
 
 ---
 ** New function 'minibuffer-lazy-highlight-setup'.
