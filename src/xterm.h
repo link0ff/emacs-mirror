@@ -602,8 +602,15 @@ struct x_display_info
   XModifierKeymap *modmap;
 
 #ifdef HAVE_XRANDR
+  bool xrandr_supported_p;
+  int xrandr_event_base;
+  int xrandr_error_base;
   int xrandr_major_version;
   int xrandr_minor_version;
+
+  /* This is used to determine if the monitor configuration really
+     changed upon receiving a monitor change event.  */
+  Lisp_Object last_monitor_attributes_list;
 #endif
 
 #if defined USE_CAIRO || defined HAVE_XRENDER

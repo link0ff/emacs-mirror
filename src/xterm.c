@@ -16613,6 +16613,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
       if (configureEvent.xconfigure.window == dpyinfo->root_window)
 	{
+#ifdef HAVE_XRANDR
+	  /* This function is OK to call even if the X server doesn't
+	     support RandR.  */
+	  XRRUpdateConfiguration (&configureEvent);
+#endif
+
 	  dpyinfo->screen_width = configureEvent.xconfigure.width;
 	  dpyinfo->screen_height = configureEvent.xconfigure.height;
 	}
@@ -20104,6 +20110,62 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    }
 	}
 #endif
+#ifdef HAVE_XRANDR
+      if (dpyinfo->xrandr_supported_p
+	  && (event->type == (dpyinfo->xrandr_event_base
+			      + RRScreenChangeNotify)
+	      || event->type == (dpyinfo->xrandr_event_base
+				 + RRNotify)))
+	{
+	  union buffered_input_event *ev;
+	  Time timestamp;
+	  Lisp_Object current_monitors;
+	  XRRScreenChangeNotifyEvent *notify;
+
+	  if (event->type == (dpyinfo->xrandr_event_base
+			      + RRScreenChangeNotify))
+	    XRRUpdateConfiguration (event);
+
+	  if (event->type == (dpyinfo->xrandr_event_base
+			      + RRScreenChangeNotify))
+	    {
+	      notify = ((XRRScreenChangeNotifyEvent *) event);
+	      timestamp = notify->timestamp;
+
+	      dpyinfo->screen_width = notify->width;
+	      dpyinfo->screen_height = notify->height;
+	    }
+	  else
+	    timestamp = 0;
+
+	  ev = (kbd_store_ptr == kbd_buffer
+		? kbd_buffer + KBD_BUFFER_SIZE - 1
+		: kbd_store_ptr - 1);
+
+	  if (kbd_store_ptr != kbd_fetch_ptr
+	      && ev->ie.kind == MONITORS_CHANGED_EVENT
+	      && XTERMINAL (ev->ie.arg) == dpyinfo->terminal)
+	    /* Don't store a MONITORS_CHANGED_EVENT if there is
+	       already an undelivered event on the queue.  */
+	    goto OTHER;
+
+	  inev.ie.kind = MONITORS_CHANGED_EVENT;
+	  inev.ie.timestamp = timestamp;
+	  XSETTERMINAL (inev.ie.arg, dpyinfo->terminal);
+
+	  /* Also don't do anything if the monitor configuration
+	     didn't really change.  */
+
+	  current_monitors
+	    = Fx_display_monitor_attributes_list (inev.ie.arg);
+
+	  if (!NILP (Fequal (current_monitors,
+			     dpyinfo->last_monitor_attributes_list)))
+	    inev.ie.kind = NO_EVENT;
+
+	  dpyinfo->last_monitor_attributes_list = current_monitors;
+	}
+#endif
     OTHER:
 #ifdef USE_X_TOOLKIT
       block_input ();
@@ -23335,7 +23397,6 @@ x_destroy_window (struct frame *f)
     x_free_frame_resources (f);
 
   xfree (f->output_data.x->saved_menu_event);
-  xfree (f->output_data.x);
 
 #ifdef HAVE_X_I18N
   if (f->output_data.x->preedit_chars)
@@ -23347,6 +23408,7 @@ x_destroy_window (struct frame *f)
     XFree (f->output_data.x->xi_masks);
 #endif
 
+  xfree (f->output_data.x);
   f->output_data.x = NULL;
 
   dpyinfo->reference_count--;
@@ -24405,13 +24467,36 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 #endif
 
 #ifdef HAVE_XRANDR
-  int xrr_event_base, xrr_error_base;
-  bool xrr_ok = false;
-  xrr_ok = XRRQueryExtension (dpy, &xrr_event_base, &xrr_error_base);
-  if (xrr_ok)
+  Lisp_Object term;
+
+  dpyinfo->last_monitor_attributes_list = Qnil;
+  dpyinfo->xrandr_supported_p
+    = XRRQueryExtension (dpy, &dpyinfo->xrandr_event_base,
+			 &dpyinfo->xrandr_error_base);
+
+  XSETTERMINAL (term, terminal);
+
+  if (dpyinfo->xrandr_supported_p)
     {
       XRRQueryVersion (dpy, &dpyinfo->xrandr_major_version,
 		       &dpyinfo->xrandr_minor_version);
+
+      if (dpyinfo->xrandr_major_version == 1
+	  && dpyinfo->xrandr_minor_version >= 2)
+	{
+	  dpyinfo->last_monitor_attributes_list
+	    = Fx_display_monitor_attributes_list (term);
+
+	  XRRSelectInput (dpyinfo->display,
+			  dpyinfo->root_window,
+			  (RRScreenChangeNotifyMask
+			   | RRCrtcChangeNotifyMask
+			   | RROutputChangeNotifyMask
+			   /* Emacs doesn't actually need this, but GTK
+			      selects for it when the display is
+			      initialized.  */
+			   | RROutputPropertyNotifyMask));
+	}
     }
 #endif
 
@@ -25220,7 +25305,7 @@ mark_xterm (void)
       mark_object (val);
     }
 
-#if defined HAVE_XINPUT2 || defined USE_TOOLKIT_SCROLL_BARS
+#if defined HAVE_XINPUT2 || defined USE_TOOLKIT_SCROLL_BARS || defined HAVE_XRANDR
   for (dpyinfo = x_display_list; dpyinfo; dpyinfo = dpyinfo->next)
     {
 #ifdef HAVE_XINPUT2
@@ -25230,6 +25315,9 @@ mark_xterm (void)
 #ifdef USE_TOOLKIT_SCROLL_BARS
       for (i = 0; i < dpyinfo->n_protected_windows; ++i)
 	mark_object (dpyinfo->protected_windows[i]);
+#endif
+#ifdef HAVE_XRANDR
+      mark_object (dpyinfo->last_monitor_attributes_list);
 #endif
     }
 #endif
