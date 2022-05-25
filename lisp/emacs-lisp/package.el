@@ -2164,11 +2164,12 @@ to install it but still mark it as selected."
               (package-desc-priority-version (cadr available))))))
     package-alist)))
 
+;;;###autoload
 (defun package-update-all (&optional query)
   "Upgrade all packages.
 If QUERY, ask the user before updating packages.  When called
 interactively, QUERY is always true."
-  (interactive (list t))
+  (interactive (list (not noninteractive)))
   (let ((updateable (package--updateable-packages)))
     (if (not updateable)
         (message "No packages to update")
@@ -4284,7 +4285,7 @@ activations need to be changed, such as when `package-load-list' is modified."
                   (locate-library (package--autoloads-file-name pkg))))
                (pfile (prin1-to-string file)))
           (insert "(let ((load-true-file-name " pfile ")\
-(load-file-name " pfile "))\n")
+\(load-file-name " pfile "))\n")
           (insert-file-contents file)
           ;; Fixup the special #$ reader form and throw away comments.
           (while (re-search-forward "#\\$\\|^;\\(.*\n\\)" nil 'move)
