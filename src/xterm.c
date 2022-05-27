@@ -784,6 +784,11 @@ static int current_finish;
 static struct input_event *current_hold_quit;
 #endif
 
+/* Compare two request serials A and B with OP, handling
+   wraparound.  */
+#define X_COMPARE_SERIALS(a, op ,b) \
+  (((long) (a) - (long) (b)) op 0)
+
 struct x_atom_ref
 {
   /* Atom name.  */
@@ -1114,6 +1119,14 @@ static Atom x_dnd_action;
    in `x_dnd_action' upon completion of a drop.  */
 static Atom x_dnd_wanted_action;
 
+/* The set of optional actions available to a Motif drop target
+   computed at the start of the drag-and-drop operation.  */
+static uint8_t x_dnd_motif_operations;
+
+/* The preferred optional action out of that set.  Only takes effect
+   if `x_dnd_action' is XdndAsk.  */
+static uint8_t x_dnd_first_motif_operation;
+
 /* Array of selection targets available to the drop target.  */
 static Atom *x_dnd_targets = NULL;
 
@@ -1144,7 +1157,7 @@ static unsigned int x_dnd_keyboard_state;
 
 /* jmp_buf that gets us out of the IO error handler if an error occurs
    terminating DND as part of the display disconnect handler.  */
-static jmp_buf x_dnd_disconnect_handler;
+static sigjmp_buf x_dnd_disconnect_handler;
 
 /* Structure describing a single window that can be the target of
    drag-and-drop operations.  */
@@ -1400,8 +1413,32 @@ xm_side_effect_from_action (struct x_display_info *dpyinfo, Atom action)
     return XM_DRAG_MOVE;
   else if (action == dpyinfo->Xatom_XdndActionLink)
     return XM_DRAG_LINK;
+  else if (action == dpyinfo->Xatom_XdndActionAsk)
+    return x_dnd_first_motif_operation;
 
   return XM_DRAG_NOOP;
+}
+
+static uint8_t
+xm_operations_from_actions (struct x_display_info *dpyinfo,
+			    Atom *ask_actions, int n_ask_actions)
+{
+  int i;
+  uint8_t flags;
+
+  flags = 0;
+
+  for (i = 0; i < n_ask_actions; ++i)
+    {
+      if (ask_actions[i] == dpyinfo->Xatom_XdndActionCopy)
+	flags |= XM_DRAG_COPY;
+      else if (ask_actions[i] == dpyinfo->Xatom_XdndActionMove)
+	flags |= XM_DRAG_MOVE;
+      else if (ask_actions[i] == dpyinfo->Xatom_XdndActionLink)
+	flags |= XM_DRAG_LINK;
+    }
+
+  return flags;
 }
 
 static int
@@ -1575,7 +1612,7 @@ xm_drag_window_io_error_handler (Display *dpy)
 {
   /* DPY isn't created through GDK, so it doesn't matter if we don't
      crash here.  */
-  longjmp (x_dnd_disconnect_handler, 1);
+  siglongjmp (x_dnd_disconnect_handler, 1);
 }
 
 static Window
@@ -2033,7 +2070,7 @@ xm_send_top_level_leave_message (struct x_display_info *dpyinfo, Window source,
       mmsg.byteorder = XM_BYTE_ORDER_CUR_FIRST;
       mmsg.side_effects = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 									   x_dnd_wanted_action),
-					       XM_DROP_SITE_NONE, XM_DRAG_NOOP,
+					       XM_DROP_SITE_NONE, x_dnd_motif_operations,
 					       XM_DROP_ACTION_DROP_CANCEL);
       mmsg.timestamp = dmsg->timestamp;
       mmsg.x = 65535;
@@ -2793,7 +2830,7 @@ x_dnd_io_error_handler (Display *display)
 #ifdef USE_GTK
   emacs_abort ();
 #else
-  longjmp (x_dnd_disconnect_handler, 1);
+  siglongjmp (x_dnd_disconnect_handler, 1);
 #endif
 }
 
@@ -3239,13 +3276,13 @@ x_dnd_send_unsupported_drop (struct x_display_info *dpyinfo, Window target_windo
       XFree (atom_names[i - 1]);
     }
 
-  name = XGetAtomName (dpyinfo->display,
-		       x_dnd_wanted_action);
+  name = x_get_atom_name (dpyinfo, x_dnd_wanted_action,
+			  false);
 
   if (name)
     {
       arg = intern (name);
-      XFree (name);
+      xfree (name);
     }
   else
     arg = Qnil;
@@ -3805,12 +3842,12 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 
 	  lval = Qnil;
 	  atom_names = alloca (x_dnd_n_targets * sizeof *atom_names);
-	  name = XGetAtomName (dpyinfo->display, x_dnd_wanted_action);
+	  name = x_get_atom_name (dpyinfo, x_dnd_wanted_action, false);
 
 	  if (!XGetAtomNames (dpyinfo->display, x_dnd_targets,
 			      x_dnd_n_targets, atom_names))
 	    {
-	      XFree (name);
+	      xfree (name);
 	      return false;
 	    }
 
@@ -3828,7 +3865,7 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 	  XSETINT (ie.x, win_x);
 	  XSETINT (ie.y, win_y);
 
-	  XFree (name);
+	  xfree (name);
 	  kbd_buffer_store_event (&ie);
 
 	  return false;
@@ -3899,9 +3936,7 @@ x_dnd_cleanup_drag_and_drop (void *frame)
 	  dmsg.side_effects
 	    = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
 							       x_dnd_wanted_action),
-				   XM_DROP_SITE_VALID,
-				   xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
-							       x_dnd_wanted_action),
+				   XM_DROP_SITE_VALID, x_dnd_motif_operations,
 				   XM_DROP_ACTION_DROP_CANCEL);
 	  dmsg.x = 0;
 	  dmsg.y = 0;
@@ -7242,9 +7277,10 @@ x_parse_color (struct frame *f, const char *color_name,
   Display *dpy;
   Colormap cmap;
   struct x_display_info *dpyinfo;
-  struct color_name_cache_entry *cache_entry;
+  struct color_name_cache_entry *cache_entry, *last;
+  struct color_name_cache_entry *next, *color_entry;
   unsigned int hash, idx;
-  int rc;
+  int rc, i;
 
   /* Don't pass #RGB strings directly to XParseColor, because that
      follows the X convention of zero-extending each channel
@@ -7271,16 +7307,31 @@ x_parse_color (struct frame *f, const char *color_name,
   hash = x_hash_string_ignore_case (color_name);
   idx = hash % dpyinfo->color_names_size;
 
+  last = NULL;
+
   for (cache_entry = dpyinfo->color_names[idx];
        cache_entry; cache_entry = cache_entry->next)
     {
       if (!xstrcasecmp (cache_entry->name, color_name))
 	{
+	  /* Move recently used entries to the start of the color
+	     cache.  */
+
+	  if (last)
+	    {
+	      last->next = cache_entry->next;
+	      cache_entry->next = dpyinfo->color_names[idx];
+
+	      dpyinfo->color_names[idx] = cache_entry;
+	    }
+
 	  if (cache_entry->valid)
 	    *color = cache_entry->rgb;
 
 	  return cache_entry->valid;
 	}
+
+      last = cache_entry;
     }
 
   block_input ();
@@ -7288,6 +7339,7 @@ x_parse_color (struct frame *f, const char *color_name,
   unblock_input ();
 
   cache_entry = xzalloc (sizeof *cache_entry);
+  dpyinfo->color_names_length[idx] += 1;
 
   if (rc)
     cache_entry->rgb = *color;
@@ -7297,6 +7349,33 @@ x_parse_color (struct frame *f, const char *color_name,
   cache_entry->next = dpyinfo->color_names[idx];
 
   dpyinfo->color_names[idx] = cache_entry;
+
+  /* Don't let the color cache become too big.  */
+  if (dpyinfo->color_names_length[idx] > 128)
+    {
+      i = 0;
+
+      for (last = dpyinfo->color_names[idx]; last; last = last->next)
+	{
+	  if (++i == 128)
+	    {
+	      next = last->next;
+	      last->next = NULL;
+
+	      for (color_entry = next; color_entry; color_entry = last)
+		{
+		  last = color_entry->next;
+
+		  xfree (color_entry->name);
+		  xfree (color_entry);
+
+		  dpyinfo->color_names_length[idx] -= 1;
+		}
+
+	      return rc;
+	    }
+	}
+    }
 
   return rc;
 }
@@ -10356,8 +10435,21 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   else
     x_dnd_selection_timestamp = XFIXNUM (ltimestamp);
 
+  x_dnd_motif_operations
+    = xm_side_effect_from_action (FRAME_DISPLAY_INFO (f), xaction);
+
+  x_dnd_first_motif_operation = XM_DRAG_NOOP;
+
   if (n_ask_actions)
     {
+      x_dnd_motif_operations
+	= xm_operations_from_actions (FRAME_DISPLAY_INFO (f),
+				      ask_action_list,
+				      n_ask_actions);
+      x_dnd_first_motif_operation
+	= xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
+				      ask_action_list[0]);
+
       ask_actions = NULL;
       end = 0;
       count = SPECPDL_INDEX ();
@@ -10604,9 +10696,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 		      dmsg.side_effects
 			= XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
 									   x_dnd_wanted_action),
-					       XM_DROP_SITE_VALID,
-					       xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
-									   x_dnd_wanted_action),
+					       XM_DROP_SITE_VALID, x_dnd_motif_operations,
 					       XM_DROP_ACTION_DROP_CANCEL);
 		      dmsg.x = 0;
 		      dmsg.y = 0;
@@ -10678,9 +10768,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 		      dmsg.side_effects
 			= XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
 									   x_dnd_wanted_action),
-					       XM_DROP_SITE_VALID,
-					       xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
-									   x_dnd_wanted_action),
+					       XM_DROP_SITE_VALID, x_dnd_motif_operations,
 					       XM_DROP_ACTION_DROP_CANCEL);
 		      dmsg.x = 0;
 		      dmsg.y = 0;
@@ -14638,9 +14726,7 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 	  dmsg.side_effects
 	    = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 							       x_dnd_wanted_action),
-				   XM_DROP_SITE_VALID,
-				   xm_side_effect_from_action (dpyinfo,
-							       x_dnd_wanted_action),
+				   XM_DROP_SITE_VALID, x_dnd_motif_operations,
 				   (!x_dnd_xm_use_help
 				    ? XM_DROP_ACTION_DROP
 				    : XM_DROP_ACTION_DROP_HELP));
@@ -14672,9 +14758,7 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 	  dsmsg.side_effects
 	    = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 							       x_dnd_wanted_action),
-				   XM_DROP_SITE_VALID,
-				   xm_side_effect_from_action (dpyinfo,
-							       x_dnd_wanted_action),
+				   XM_DROP_SITE_VALID, x_dnd_motif_operations,
 				   XM_DROP_ACTION_DROP_CANCEL);
 	  dsmsg.x = 0;
 	  dsmsg.y = 0;
@@ -16574,7 +16658,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    dmsg.byteorder = XM_BYTE_ORDER_CUR_FIRST;
 		    dmsg.side_effects = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 											 x_dnd_wanted_action),
-							     XM_DROP_SITE_NONE, XM_DRAG_NOOP,
+							     XM_DROP_SITE_NONE, x_dnd_motif_operations,
 							     XM_DROP_ACTION_DROP_CANCEL);
 		    dmsg.timestamp = event->xmotion.time;
 		    dmsg.x = event->xmotion.x_root;
@@ -16643,9 +16727,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		dmsg.byteorder = XM_BYTE_ORDER_CUR_FIRST;
 		dmsg.side_effects = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 										     x_dnd_wanted_action),
-							 XM_DROP_SITE_VALID,
-							 xm_side_effect_from_action (dpyinfo,
-										     x_dnd_wanted_action),
+							 XM_DROP_SITE_VALID, x_dnd_motif_operations,
 							 (!x_dnd_xm_use_help
 							  ? XM_DROP_ACTION_DROP
 							  : XM_DROP_ACTION_DROP_HELP));
@@ -17177,9 +17259,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 				dmsg.side_effects
 				  = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 										     x_dnd_wanted_action),
-							 XM_DROP_SITE_VALID,
-							 xm_side_effect_from_action (dpyinfo,
-										     x_dnd_wanted_action),
+							 XM_DROP_SITE_VALID, x_dnd_motif_operations,
 							 (!x_dnd_xm_use_help
 							  ? XM_DROP_ACTION_DROP
 							  : XM_DROP_ACTION_DROP_HELP));
@@ -17761,6 +17841,16 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		 masks are set on the frame widget's window.  */
 	      f = x_window_to_frame (dpyinfo, leave->event);
 
+	      /* Also do this again here, since the test for `any'
+		 above may not have found a frame, as that usually
+		 just looks up a top window on Xt builds.  */
+
+#ifdef HAVE_XINPUT2_1
+	      if (leave->detail != XINotifyInferior && f)
+		xi_reset_scroll_valuators_for_device_id (dpyinfo,
+							 leave->deviceid, false);
+#endif
+
 	      if (!f)
 		f = x_top_window_to_frame (dpyinfo, leave->event);
 #endif
@@ -18199,7 +18289,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  dmsg.side_effects
 			    = XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 									       x_dnd_wanted_action),
-						   XM_DROP_SITE_NONE, XM_DRAG_NOOP,
+						   XM_DROP_SITE_NONE, x_dnd_motif_operations,
 						   XM_DROP_ACTION_DROP_CANCEL);
 			  dmsg.timestamp = xev->time;
 			  dmsg.x = lrint (xev->root_x);
@@ -18282,9 +18372,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      dmsg.side_effects
 			= XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 									   x_dnd_wanted_action),
-					       XM_DROP_SITE_VALID,
-					       xm_side_effect_from_action (dpyinfo,
-									   x_dnd_wanted_action),
+					       XM_DROP_SITE_VALID, x_dnd_motif_operations,
 					       (!x_dnd_xm_use_help
 						? XM_DROP_ACTION_DROP
 						: XM_DROP_ACTION_DROP_HELP));
@@ -18475,9 +18563,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 				      dmsg.side_effects
 					= XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (dpyinfo,
 											   x_dnd_wanted_action),
-							       XM_DROP_SITE_VALID,
-							       xm_side_effect_from_action (dpyinfo,
-											   x_dnd_wanted_action),
+							       XM_DROP_SITE_VALID, x_dnd_motif_operations,
 							       (!x_dnd_xm_use_help
 								? XM_DROP_ACTION_DROP
 								: XM_DROP_ACTION_DROP_HELP));
@@ -21011,52 +21097,78 @@ x_text_icon (struct frame *f, const char *icon_name)
 
 #define X_ERROR_MESSAGE_SIZE 200
 
-/* If non-nil, this should be a string.
-   It means catch X errors  and store the error message in this string.
+/* If non-nil, this should be a string.  It means catch X errors and
+   store the error message in this string.
 
    The reason we use a stack is that x_catch_error/x_uncatch_error can
-   be called from a signal handler.
-*/
+   be called from a signal handler.  */
 
-struct x_error_message_stack {
+struct x_error_message_stack
+{
   char string[X_ERROR_MESSAGE_SIZE];
   Display *dpy;
   x_special_error_handler handler;
   void *handler_data;
   struct x_error_message_stack *prev;
+
+  /* The first request that this error handler applies to.  Keeping
+     track of this allows us to avoid an XSync yet still have errors
+     for previously made requests be handled correctly.  */
+  unsigned long first_request;
 };
+
 static struct x_error_message_stack *x_error_message;
+
+static struct x_error_message_stack *
+x_find_error_handler (Display *dpy, XErrorEvent *event)
+{
+  struct x_error_message_stack *stack;
+
+  stack = x_error_message;
+
+  while (stack)
+    {
+      if (X_COMPARE_SERIALS (event->serial, >=,
+			     stack->first_request)
+	  && dpy == stack->dpy)
+	return stack;
+
+      stack = stack->prev;
+    }
+
+  return NULL;
+}
 
 /* An X error handler which stores the error message in
    *x_error_message.  This is called from x_error_handler if
    x_catch_errors is in effect.  */
 
 static void
-x_error_catcher (Display *display, XErrorEvent *event)
+x_error_catcher (Display *display, XErrorEvent *event,
+		 struct x_error_message_stack *stack)
 {
   XGetErrorText (display, event->error_code,
-		 x_error_message->string,
-		 X_ERROR_MESSAGE_SIZE);
-  if (x_error_message->handler)
-    x_error_message->handler (display, event, x_error_message->string,
-			      x_error_message->handler_data);
+		 stack->string, X_ERROR_MESSAGE_SIZE);
+
+  if (stack->handler)
+    stack->handler (display, event, stack->string,
+		    stack->handler_data);
 }
 
-/* Begin trapping X errors for display DPY.  Actually we trap X errors
-   for all displays, but DPY should be the display you are actually
-   operating on.
+/* Begin trapping X errors for display DPY.
 
-   After calling this function, X protocol errors no longer cause
-   Emacs to exit; instead, they are recorded in the string
-   stored in *x_error_message.
+   After calling this function, X protocol errors generated on DPY no
+   longer cause Emacs to exit; instead, they are recorded in the
+   string stored in *x_error_message.
 
    Calling x_check_errors signals an Emacs error if an X error has
    occurred since the last call to x_catch_errors or x_check_errors.
 
-   Calling x_uncatch_errors resumes the normal error handling.
-   Calling x_uncatch_errors_after_check is similar, but skips an XSync
-   to the server, and should be used only immediately after
-   x_had_errors_p or x_check_errors.  */
+   Calling x_uncatch_errors resumes the normal error handling,
+   skipping an XSync if the last request made is known to have been
+   processed.  Calling x_uncatch_errors_after_check is similar, but
+   skips an XSync to the server, and should be used only immediately
+   after x_had_errors_p or x_check_errors.  */
 
 void
 x_catch_errors_with_handler (Display *dpy, x_special_error_handler handler,
@@ -21064,14 +21176,12 @@ x_catch_errors_with_handler (Display *dpy, x_special_error_handler handler,
 {
   struct x_error_message_stack *data = xmalloc (sizeof *data);
 
-  /* Make sure any errors from previous requests have been dealt with.  */
-  XSync (dpy, False);
-
   data->dpy = dpy;
   data->string[0] = 0;
   data->handler = handler;
   data->handler_data = handler_data;
   data->prev = x_error_message;
+  data->first_request = NextRequest (dpy);
   x_error_message = data;
 }
 
@@ -21100,8 +21210,7 @@ x_uncatch_errors_after_check (void)
   unblock_input ();
 }
 
-/* Undo the last x_catch_errors call.
-   DPY should be the display that was passed to x_catch_errors.  */
+/* Undo the last x_catch_errors call.  */
 
 void
 x_uncatch_errors (void)
@@ -21119,7 +21228,11 @@ x_uncatch_errors (void)
 
   /* The display may have been closed before this function is called.
      Check if it is still open before calling XSync.  */
-  if (x_display_info_for_display (x_error_message->dpy) != 0)
+  if (x_display_info_for_display (x_error_message->dpy) != 0
+      /* There is no point in making this extra sync if all requests
+	 are known to have been fully processed.  */
+      && (LastKnownRequestProcessed (x_error_message->dpy)
+	  != NextRequest (x_error_message->dpy) - 1))
     XSync (x_error_message->dpy, False);
 
   tmp = x_error_message;
@@ -21135,13 +21248,23 @@ x_uncatch_errors (void)
 void
 x_check_errors (Display *dpy, const char *format)
 {
-  /* Make sure to catch any errors incurred so far.  */
-  XSync (dpy, False);
+  char string[X_ERROR_MESSAGE_SIZE];
+
+  /* This shouldn't happen, since x_check_errors should be called
+     immediately inside an x_catch_errors block.  */
+  if (dpy != x_error_message->dpy)
+    emacs_abort ();
+
+  /* There is no point in making this extra sync if all requests
+     are known to have been fully processed.  */
+  if (LastKnownRequestProcessed (dpy)
+      != NextRequest (dpy) - 1)
+    XSync (dpy, False);
 
   if (x_error_message->string[0])
     {
-      char string[X_ERROR_MESSAGE_SIZE];
-      memcpy (string, x_error_message->string, X_ERROR_MESSAGE_SIZE);
+      memcpy (string, x_error_message->string,
+	      X_ERROR_MESSAGE_SIZE);
       x_uncatch_errors ();
       error (format, string);
     }
@@ -21153,8 +21276,15 @@ x_check_errors (Display *dpy, const char *format)
 bool
 x_had_errors_p (Display *dpy)
 {
+  /* This shouldn't happen, since x_check_errors should be called
+     immediately inside an x_catch_errors block.  */
+  if (dpy != x_error_message->dpy)
+    emacs_abort ();
+
   /* Make sure to catch any errors incurred so far.  */
-  XSync (dpy, False);
+  if (LastKnownRequestProcessed (dpy)
+      != NextRequest (dpy) - 1)
+    XSync (dpy, False);
 
   return x_error_message->string[0] != 0;
 }
@@ -21164,6 +21294,11 @@ x_had_errors_p (Display *dpy)
 void
 x_clear_errors (Display *dpy)
 {
+  /* This shouldn't happen, since x_check_errors should be called
+     immediately inside an x_catch_errors block.  */
+  if (dpy != x_error_message->dpy)
+    emacs_abort ();
+
   x_error_message->string[0] = 0;
 }
 
@@ -21182,9 +21317,12 @@ x_fully_uncatch_errors (void)
 
 #if false
 static unsigned int x_wire_count;
-x_trace_wire (void)
+
+static int
+x_trace_wire (Display *dpy)
 {
-  fprintf (stderr, "Lib call: %d\n", ++x_wire_count);
+  fprintf (stderr, "Lib call: %u\n", ++x_wire_count);
+  return 0;
 }
 #endif
 
@@ -21254,9 +21392,7 @@ x_connection_closed (Display *dpy, const char *error_message, bool ioerror)
 	      dmsg.side_effects
 		= XM_DRAG_SIDE_EFFECT (xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
 								   x_dnd_wanted_action),
-				       XM_DROP_SITE_VALID,
-				       xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
-								   x_dnd_wanted_action),
+				       XM_DROP_SITE_VALID, x_dnd_motif_operations,
 				       XM_DROP_ACTION_DROP_CANCEL);
 	      dmsg.x = 0;
 	      dmsg.y = 0;
@@ -21386,6 +21522,7 @@ static void x_error_quitter (Display *, XErrorEvent *);
 static int
 x_error_handler (Display *display, XErrorEvent *event)
 {
+  struct x_error_message_stack *stack;
 #ifdef HAVE_XINPUT2
   struct x_display_info *dpyinfo;
 #endif
@@ -21416,8 +21553,10 @@ x_error_handler (Display *display, XErrorEvent *event)
     return 0;
 #endif
 
-  if (x_error_message)
-    x_error_catcher (display, event);
+  stack = x_find_error_handler (display, event);
+
+  if (stack)
+    x_error_catcher (display, event, stack);
   else
     x_error_quitter (display, event);
   return 0;
@@ -23674,19 +23813,21 @@ x_intern_cached_atom (struct x_display_info *dpyinfo,
   return XInternAtom (dpyinfo->display, name, False);
 }
 
-/* Whether or not a request to the X server happened is placed in
-   NEED_SYNC.  */
+/* Get the name of ATOM, but try not to make a request to the X
+   server.  Whether or not a request to the X server happened is
+   placed in NEED_SYNC.  */
 char *
 x_get_atom_name (struct x_display_info *dpyinfo, Atom atom,
 		 bool *need_sync)
 {
-  char *dpyinfo_pointer, *name, *value;
+  char *dpyinfo_pointer, *name, *value, *buffer;
   int i;
   Atom ref_atom;
 
   dpyinfo_pointer = (char *) dpyinfo;
   value = NULL;
   *need_sync = false;
+  buffer = alloca (45 + INT_STRLEN_BOUND (int));
 
   switch (atom)
     {
@@ -23709,6 +23850,20 @@ x_get_atom_name (struct x_display_info *dpyinfo, Atom atom,
       return xstrdup ("WINDOW");
 
     default:
+      if (atom == dpyinfo->Xatom_xsettings_sel)
+	{
+	  sprintf (buffer, "_XSETTINGS_S%d",
+		   XScreenNumberOfScreen (dpyinfo->screen));
+	  return xstrdup (buffer);
+	}
+
+      if (atom == dpyinfo->Xatom_NET_WM_CM_Sn)
+	{
+	  sprintf (buffer, "_NET_WM_CM_S%d",
+		   XScreenNumberOfScreen (dpyinfo->screen));
+	  return xstrdup (buffer);
+	}
+
       for (i = 0; i < ARRAYELTS (x_atom_refs); ++i)
 	{
 	  ref_atom = *(Atom *) (dpyinfo_pointer
@@ -24410,12 +24565,14 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
   dpyinfo->color_names_size = 256;
   dpyinfo->color_names = xzalloc (dpyinfo->color_names_size
 				  * sizeof *dpyinfo->color_names);
+  dpyinfo->color_names_length = xzalloc (dpyinfo->color_names_size
+					 * sizeof *dpyinfo->color_names_length);
 
   /* Set the name of the terminal. */
   terminal->name = xlispstrdup (display_name);
 
 #if false
-  XSetAfterFunction (x_current_display, x_trace_wire);
+  XSetAfterFunction (dpyinfo->display, x_trace_wire);
 #endif
 
   Lisp_Object system_name = Fsystem_name ();
@@ -25147,6 +25304,7 @@ x_delete_display (struct x_display_info *dpyinfo)
     }
 
   xfree (dpyinfo->color_names);
+  xfree (dpyinfo->color_names_length);
   xfree (dpyinfo->x_id_name);
   xfree (dpyinfo->x_dnd_atoms);
   xfree (dpyinfo->color_cells);

@@ -822,6 +822,8 @@ corresponding language environments are:
 **** Hanunoo script and language environment
 **** Buhid script and language environment
 **** Tagbanwa script and language environment
+**** Limbu script and language environment
+**** Balinese script and language environment
 
 ---
 *** The "Oriya" language environment was renamed to "Odia".
@@ -1872,6 +1874,8 @@ functions.
 
 ---
 ** New eldoc function: 'elisp-eldoc-var-docstring-with-value'.
+This function includes the current value of the variable in eldoc display
+and can be used as a more detailed alternative to 'elisp-eldoc-var-docstring'.
 
 ** 'save-some-buffers' can now be extended to save other things.
 Traditionally, 'save-some-buffers' saved buffers, and also saved

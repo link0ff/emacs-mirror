@@ -1181,39 +1181,34 @@ message buffer `default-directory'."
     (if (< (length f2) (length f1)) f2 f1)))
 
 (defun byte-compile--first-symbol-with-pos (form)
-  "Return the \"first\" symbol with position found in form, or 0 if none.
-Here, \"first\" is by a depth first search."
-  (let (sym)
-    (cond
-     ((symbol-with-pos-p form) form)
-     ((consp form)
-      (or (and (symbol-with-pos-p (setq sym (byte-compile--first-symbol-with-pos (car form))))
-               sym)
-          (and (symbolp (setq sym (byte-compile--first-symbol-with-pos (cdr form))))
-               sym)
-          0))
-     ((and (or (vectorp form) (recordp form))
-           (> (length form) 0))
-      (let ((i 0)
-            (len (length form))
-            elt)
-        (catch 'sym
-          (while (< i len)
-            (when (symbol-with-pos-p
-                   (setq elt (byte-compile--first-symbol-with-pos (aref form i))))
-              (throw 'sym elt))
-            (setq i (1+ i)))
-          0)))
-     (t 0))))
+  "Return the first symbol with position in form, or nil if none.
+Order is by depth-first search."
+  (cond
+   ((symbol-with-pos-p form) form)
+   ((consp form)
+    (or (byte-compile--first-symbol-with-pos (car form))
+        (let ((sym nil))
+          (setq form (cdr form))
+          (while (and (consp form)
+                      (not (setq sym (byte-compile--first-symbol-with-pos
+                                      (car form)))))
+            (setq form (cdr form)))
+          (or sym
+              (and form (byte-compile--first-symbol-with-pos form))))))
+   ((vectorp form)
+    (let ((len (length form))
+          (i 0)
+          (sym nil))
+      (while (and (< i len)
+                  (not (setq sym (byte-compile--first-symbol-with-pos
+                                  (aref form i)))))
+        (setq i (1+ i)))
+      sym))))
 
 (defun byte-compile--warning-source-offset ()
-  "Return a source offset from `byte-compile-form-stack'.
-Return nil if such is not found."
-  (catch 'offset
-    (dolist (form byte-compile-form-stack)
-      (let ((s (byte-compile--first-symbol-with-pos form)))
-        (if (symbol-with-pos-p s)
-            (throw 'offset (symbol-with-pos-pos s)))))))
+  "Return a source offset from `byte-compile-form-stack' or nil if none."
+  (let ((sym (byte-compile--first-symbol-with-pos byte-compile-form-stack)))
+    (and sym (symbol-with-pos-pos sym))))
 
 ;; This is used as warning-prefix for the compiler.
 ;; It is always called with the warnings buffer current.
@@ -4948,8 +4943,6 @@ binding slots have been popped."
     (push (nth 1 (nth 1 form)) byte-compile-global-not-obsolete-vars))
   (byte-compile-normal-call form))
 
-(defconst byte-compile-tmp-var (make-symbol "def-tmp-var"))
-
 (defun byte-compile-defvar (form)
   ;; This is not used for file-level defvar/consts.
   (when (and (symbolp (nth 1 form))
@@ -4982,18 +4975,17 @@ binding slots have been popped."
        string
        "third arg to `%s %s' is not a string: %s"
        fun var string))
+    ;; Delegate the actual work to the function version of the
+    ;; special form, named with a "-1" suffix.
     (byte-compile-form-do-effect
-     (if (cddr form)  ; `value' provided
-         ;; Quote with `quote' to prevent byte-compiling the body,
-         ;; which would lead to an inf-loop.
-         `(funcall '(lambda (,byte-compile-tmp-var)
-                      (,fun ,var ,byte-compile-tmp-var ,@(nthcdr 3 form)))
-                   ,value)
-        (if (eq fun 'defconst)
-            ;; This will signal an appropriate error at runtime.
-            `(eval ',form)
-          ;; A simple (defvar foo) just returns foo.
-          `',var)))))
+     (cond
+      ((eq fun 'defconst) `(defconst-1 ',var ,@(nthcdr 2 form)))
+      ((not (cddr form)) `',var) ; A simple (defvar foo) just returns foo.
+      (t `(defvar-1 ',var
+                    ;; Don't eval `value' if `defvar' wouldn't eval it either.
+                    ,(if (macroexp-const-p value) value
+                       `(if (boundp ',var) nil ,value))
+                    ,@(nthcdr 3 form)))))))
 
 (defun byte-compile-autoload (form)
   (and (macroexp-const-p (nth 1 form))
