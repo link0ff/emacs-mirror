@@ -1011,11 +1011,16 @@ unsigned x_dnd_unsupported_event_level;
 /* The frame where the drag-and-drop operation originated.  */
 struct frame *x_dnd_frame;
 
+/* That frame, but set when x_dnd_waiting_for_finish is true.  Used to
+   prevent the frame from being deleted inside selection handlers and
+   other callbacks.  */
+struct frame *x_dnd_finish_frame;
+
 /* Flag that indicates if a drag-and-drop operation is no longer in
    progress, but the nested event loop should continue to run, because
    handle_one_xevent is waiting for the drop target to return some
    important information.  */
-static bool x_dnd_waiting_for_finish;
+bool x_dnd_waiting_for_finish;
 
 /* The display the drop target that is supposed to send information is
    on.  */
@@ -3277,7 +3282,7 @@ x_dnd_send_unsupported_drop (struct x_display_info *dpyinfo, Window target_windo
     }
 
   name = x_get_atom_name (dpyinfo, x_dnd_wanted_action,
-			  false);
+			  NULL);
 
   if (name)
     {
@@ -3842,7 +3847,7 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
 
 	  lval = Qnil;
 	  atom_names = alloca (x_dnd_n_targets * sizeof *atom_names);
-	  name = x_get_atom_name (dpyinfo, x_dnd_wanted_action, false);
+	  name = x_get_atom_name (dpyinfo, x_dnd_wanted_action, NULL);
 
 	  if (!XGetAtomNames (dpyinfo->display, x_dnd_targets,
 			      x_dnd_n_targets, atom_names))
@@ -3896,7 +3901,7 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
   return true;
 }
 
-void
+static void
 x_set_dnd_targets (Atom *targets, int ntargets)
 {
   if (x_dnd_targets)
@@ -10287,13 +10292,6 @@ x_next_event_from_any_display (XEvent *event)
 
 #endif /* USE_X_TOOLKIT || USE_GTK */
 
-static void
-x_clear_dnd_targets (void)
-{
-  if (x_dnd_unwind_flag)
-    x_set_dnd_targets (NULL, 0);
-}
-
 /* This function is defined far away from the rest of the XDND code so
    it can utilize `x_any_window_to_frame'.  */
 
@@ -10301,7 +10299,8 @@ Lisp_Object
 x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			   Lisp_Object return_frame, Atom *ask_action_list,
 			   const char **ask_action_names, size_t n_ask_actions,
-			   bool allow_current_frame)
+			   bool allow_current_frame, Atom *target_atoms,
+			   int ntargets)
 {
 #ifndef USE_GTK
   XEvent next_event;
@@ -10389,43 +10388,25 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
     }
 
   if (!FRAME_VISIBLE_P (f))
-    {
-      x_set_dnd_targets (NULL, 0);
-      error ("Frame is invisible");
-    }
+    error ("Frame must be visible");
 
   XSETFRAME (frame, f);
   local_value = assq_no_quit (QXdndSelection,
 			      FRAME_TERMINAL (f)->Vselection_alist);
 
   if (x_dnd_in_progress || x_dnd_waiting_for_finish)
-    {
-      x_set_dnd_targets (NULL, 0);
-      error ("A drag-and-drop session is already in progress");
-    }
+    error ("A drag-and-drop session is already in progress");
 
   if (CONSP (local_value))
-    {
-      ref = SPECPDL_INDEX ();
-
-      record_unwind_protect_void (x_clear_dnd_targets);
-      x_dnd_unwind_flag = true;
-      x_own_selection (QXdndSelection,
-		       Fnth (make_fixnum (1), local_value), frame);
-      x_dnd_unwind_flag = false;
-      unbind_to (ref, Qnil);
-    }
+    x_own_selection (QXdndSelection,
+		     Fnth (make_fixnum (1), local_value), frame);
   else
-    {
-      x_set_dnd_targets (NULL, 0);
-      error ("No local value for XdndSelection");
-    }
+    error ("No local value for XdndSelection");
 
   if (popup_activated ())
-    {
-      x_set_dnd_targets (NULL, 0);
-      error ("Trying to drag-and-drop from within a menu-entry");
-    }
+    error ("Trying to drag-and-drop from within a menu-entry");
+
+  x_set_dnd_targets (target_atoms, ntargets);
 
   ltimestamp = x_timestamp_for_selection (FRAME_DISPLAY_INFO (f),
 					  QXdndSelection);
@@ -10637,7 +10618,16 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
       if (event_display == FRAME_DISPLAY_INFO (f))
 	{
 #endif
-	  if (x_dnd_movement_frame)
+	  if (x_dnd_movement_frame
+	      /* FIXME: how come this can end up with movement frames
+		 from other displays on GTK builds?  */
+	      && (FRAME_X_DISPLAY (x_dnd_movement_frame)
+		  == FRAME_X_DISPLAY (f))
+	      /* If both those variables are false, then F is no
+		 longer protected from deletion by Lisp code.  This
+		 can only happen during the final iteration of the DND
+		 event loop.  */
+	      && (x_dnd_in_progress || x_dnd_waiting_for_finish))
 	    {
 	      XSETFRAME (frame_object, x_dnd_movement_frame);
 	      XSETINT (x, x_dnd_movement_x);
@@ -10668,14 +10658,24 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 	    {
 	      if (hold_quit.kind == SELECTION_REQUEST_EVENT)
 		{
-		  x_dnd_old_window_attrs = root_window_attrs;
-		  x_dnd_unwind_flag = true;
+		  /* It's not safe to run Lisp inside this function if
+		     x_dnd_in_progress and x_dnd_waiting_for_finish
+		     are unset, so push it back into the event queue.  */
 
-		  ref = SPECPDL_INDEX ();
-		  record_unwind_protect_ptr (x_dnd_cleanup_drag_and_drop, f);
-		  x_handle_selection_event ((struct selection_input_event *) &hold_quit);
-		  x_dnd_unwind_flag = false;
-		  unbind_to (ref, Qnil);
+		  if (!x_dnd_in_progress && !x_dnd_waiting_for_finish)
+		    kbd_buffer_store_event (&hold_quit);
+		  else
+		    {
+		      x_dnd_old_window_attrs = root_window_attrs;
+		      x_dnd_unwind_flag = true;
+
+		      ref = SPECPDL_INDEX ();
+		      record_unwind_protect_ptr (x_dnd_cleanup_drag_and_drop, f);
+		      x_handle_selection_event ((struct selection_input_event *) &hold_quit);
+		      x_dnd_unwind_flag = false;
+		      unbind_to (ref, Qnil);
+		    }
+
 		  continue;
 		}
 
@@ -17222,6 +17222,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  {
 		    x_dnd_end_window = x_dnd_last_seen_window;
 		    x_dnd_in_progress = false;
+		    x_dnd_finish_frame = x_dnd_frame;
 
 		    if (x_dnd_last_seen_window != None
 			&& x_dnd_last_protocol_version != -1)
@@ -18526,6 +18527,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			{
 			  x_dnd_end_window = x_dnd_last_seen_window;
 			  x_dnd_in_progress = false;
+
+			  /* This doesn't have to be marked since it
+			     is only accessed if
+			     x_dnd_waiting_for_finish is true, which
+			     is only possible inside the DND event
+			     loop where that frame is on the
+			     stack.  */
+			  x_dnd_finish_frame = x_dnd_frame;
 
 			  if (x_dnd_last_seen_window != None
 			      && x_dnd_last_protocol_version != -1)
@@ -20408,8 +20417,15 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      notify = ((XRRScreenChangeNotifyEvent *) event);
 	      timestamp = notify->timestamp;
 
-	      dpyinfo->screen_width = notify->width;
-	      dpyinfo->screen_height = notify->height;
+	      /* Don't set screen dimensions if the notification is
+		 for a different screen.  */
+	      if (notify->root == dpyinfo->root_window)
+		{
+		  dpyinfo->screen_width = notify->width;
+		  dpyinfo->screen_height = notify->height;
+		  dpyinfo->screen_mm_width = notify->mwidth;
+		  dpyinfo->screen_mm_height = notify->mheight;
+		}
 	    }
 	  else
 	    timestamp = 0;
@@ -21232,7 +21248,11 @@ x_uncatch_errors (void)
       /* There is no point in making this extra sync if all requests
 	 are known to have been fully processed.  */
       && (LastKnownRequestProcessed (x_error_message->dpy)
-	  != NextRequest (x_error_message->dpy) - 1))
+	  != NextRequest (x_error_message->dpy) - 1)
+      /* Likewise if no request was made since the trap was
+	 installed.  */
+      && (NextRequest (x_error_message->dpy)
+	  > x_error_message->first_request))
     XSync (x_error_message->dpy, False);
 
   tmp = x_error_message;
@@ -21282,8 +21302,10 @@ x_had_errors_p (Display *dpy)
     emacs_abort ();
 
   /* Make sure to catch any errors incurred so far.  */
-  if (LastKnownRequestProcessed (dpy)
-      != NextRequest (dpy) - 1)
+  if ((LastKnownRequestProcessed (dpy)
+       != NextRequest (dpy) - 1)
+      && (NextRequest (dpy)
+	  > x_error_message->first_request))
     XSync (dpy, False);
 
   return x_error_message->string[0] != 0;
@@ -23826,7 +23848,10 @@ x_get_atom_name (struct x_display_info *dpyinfo, Atom atom,
 
   dpyinfo_pointer = (char *) dpyinfo;
   value = NULL;
-  *need_sync = false;
+
+  if (need_sync)
+    *need_sync = false;
+
   buffer = alloca (45 + INT_STRLEN_BOUND (int));
 
   switch (atom)
@@ -23874,7 +23899,9 @@ x_get_atom_name (struct x_display_info *dpyinfo, Atom atom,
 	}
 
       name = XGetAtomName (dpyinfo->display, atom);
-      *need_sync = true;
+
+      if (need_sync)
+	*need_sync = true;
 
       if (name)
 	{
@@ -25943,7 +25970,7 @@ operation, and TIME is the X server time when the drop happened.  */);
   Vx_dnd_unsupported_drop_function = Qnil;
 
   DEFVAR_INT ("x-color-cache-bucket-size", x_color_cache_bucket_size,
-    doc: /* Most buckets allowed per display in the internal color cache.
+    doc: /* Max number of buckets allowed per display in the internal color cache.
 Values less than 1 mean 128.  This option is for debugging only.  */);
   x_color_cache_bucket_size = 128;
 }

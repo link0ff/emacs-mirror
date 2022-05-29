@@ -1576,8 +1576,14 @@ do_switch_frame (Lisp_Object frame, int track, int for_deletion, Lisp_Object nor
      to a different window, the most recently used one, unless there is a
      valid active minibuffer in the mini-window.  */
   if (EQ (f->selected_window, f->minibuffer_window)
+      /* The following test might fail if the mini-window contains a
+	 non-active minibuffer.  */
       && NILP (Fminibufferp (XWINDOW (f->minibuffer_window)->contents, Qt)))
-    Fset_frame_selected_window (frame, call1 (Qget_mru_window, frame), Qnil);
+    {
+      Lisp_Object w = call1 (Qget_mru_window, frame);
+      if (WINDOW_LIVE_P (w)) /* W can be nil in minibuffer-only frames.  */
+        Fset_frame_selected_window (frame, w, Qnil);
+    }
 
   Fselect_window (f->selected_window, norecord);
 
@@ -1995,7 +2001,8 @@ delete_frame (Lisp_Object frame, Lisp_Object force)
 	error ("Attempt to delete the only frame");
     }
 #ifdef HAVE_X_WINDOWS
-  else if (x_dnd_in_progress && f == x_dnd_frame)
+  else if ((x_dnd_in_progress && f == x_dnd_frame)
+	   || (x_dnd_waiting_for_finish && f == x_dnd_finish_frame))
     error ("Attempt to delete the drop source frame");
 #endif
 #ifdef HAVE_HAIKU

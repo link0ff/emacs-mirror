@@ -5434,6 +5434,9 @@ for each physical monitor, use `display-monitor-attributes-list'.  */)
 {
   struct x_display_info *dpyinfo = check_x_display_info (terminal);
 
+  if (dpyinfo->screen_mm_height)
+    return make_fixnum (dpyinfo->screen_mm_height);
+
   return make_fixnum (HeightMMOfScreen (dpyinfo->screen));
 }
 
@@ -5450,6 +5453,9 @@ for each physical monitor, use `display-monitor-attributes-list'.  */)
   (Lisp_Object terminal)
 {
   struct x_display_info *dpyinfo = check_x_display_info (terminal);
+
+  if (dpyinfo->screen_mm_width)
+    return make_fixnum (dpyinfo->screen_mm_width);
 
   return make_fixnum (WidthMMOfScreen (dpyinfo->screen));
 }
@@ -6792,8 +6798,9 @@ buttons are released, then return the action chosen by the target, or
 starts when the mouse is pressed on FRAME, and the contents of the
 selection `XdndSelection' will be sent to the X window underneath the
 mouse pointer (the drop target) when the mouse button is released.
-ACTION is a symbol which tells the target what the source will do, and
-can be one of the following:
+
+ACTION is a symbol which tells the target what it should do, and can
+be one of the following:
 
  - `XdndActionCopy', which means to copy the contents from the drag
    source (FRAME) to the drop target.
@@ -6804,6 +6811,10 @@ can be one of the following:
 
 `XdndActionPrivate' is also a valid return value, and means that the
 drop target chose to perform an unspecified or unknown action.
+
+The source is also expected to cooperate with the target to perform
+the action chosen by the target.  For example, callers should delete
+the buffer text that was dragged if `XdndActionMove' is returned.
 
 There are also some other valid values of ACTION that depend on
 details of both the drop target's implementation details and that of
@@ -6827,7 +6838,12 @@ instead.
 
 If ALLOW-CURRENT-FRAME is not specified or nil, then the drop target
 is allowed to be FRAME.  Otherwise, no action will be taken if the
-mouse buttons are released on top of FRAME.  */)
+mouse buttons are released on top of FRAME.
+
+This function will sometimes return immediately if no mouse buttons
+are currently held down.  It should only be called when it is known
+that mouse buttons are being held down, such as immediately after a
+`down-mouse-1' (or similar) event.  */)
   (Lisp_Object targets, Lisp_Object action, Lisp_Object frame,
    Lisp_Object return_frame, Lisp_Object allow_current_frame)
 {
@@ -6923,11 +6939,11 @@ mouse buttons are released on top of FRAME.  */)
 		ntargets, False, target_atoms);
   unblock_input ();
 
-  x_set_dnd_targets (target_atoms, ntargets);
   lval = x_dnd_begin_drag_and_drop (f, FRAME_DISPLAY_INFO (f)->last_user_time,
 				    xaction, return_frame, action_list,
 				    (const char **) &name_list, nnames,
-				    !NILP (allow_current_frame));
+				    !NILP (allow_current_frame), target_atoms,
+				    ntargets);
 
   SAFE_FREE ();
   return lval;

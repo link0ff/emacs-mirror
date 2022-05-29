@@ -330,6 +330,9 @@ a convenient method of making commands disabled in this way.
 ---
 ** 'count-lines' will now report buffer totals if given a prefix.
 
++++
+** 'count-words' will now report sentence count when used interactively.
+
 ---
 ** New user option 'find-library-include-other-files'.
 If set to nil, commands like 'find-library' will only include library
@@ -832,6 +835,7 @@ corresponding language environments are:
 **** Limbu script and language environment
 **** Balinese script and language environment
 **** Javanese script and language environment
+**** Sundanese script and language environment
 
 ---
 *** The "Oriya" language environment was renamed to "Odia".

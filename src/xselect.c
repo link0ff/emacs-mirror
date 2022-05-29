@@ -2454,32 +2454,29 @@ If the value is 0 or the atom is not known, return the empty string.  */)
   (Lisp_Object value, Lisp_Object frame)
 {
   struct frame *f = decode_window_system_frame (frame);
-  char *name = 0;
-  char empty[] = "";
-  Lisp_Object ret = Qnil;
   Display *dpy = FRAME_X_DISPLAY (f);
   struct x_display_info *dpyinfo;
   Atom atom;
   bool had_errors_p, need_sync;
+  char *name;
+  Lisp_Object ret;
 
   dpyinfo = FRAME_DISPLAY_INFO (f);
-
   CONS_TO_INTEGER (value, Atom, atom);
 
-  block_input ();
   x_catch_errors (dpy);
-  name = (atom ? x_get_atom_name (dpyinfo, atom,
-				  &need_sync) : empty);
+  name = x_get_atom_name (dpyinfo, atom, &need_sync);
   had_errors_p = need_sync && x_had_errors_p (dpy);
   x_uncatch_errors_after_check ();
 
-  if (!had_errors_p)
-    ret = build_string (name);
+  ret = empty_unibyte_string;
 
-  if (atom && name) xfree (name);
-  if (NILP (ret)) ret = empty_unibyte_string;
-
-  unblock_input ();
+  if (name)
+    {
+      if (!had_errors_p)
+	ret = build_string (name);
+      xfree (name);
+    }
 
   return ret;
 }
