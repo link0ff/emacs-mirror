@@ -3907,8 +3907,24 @@ x_set_dnd_targets (Atom *targets, int ntargets)
   if (x_dnd_targets)
     xfree (x_dnd_targets);
 
-  x_dnd_targets = targets;
+  block_input ();
+  x_dnd_targets = xmalloc (sizeof *targets * ntargets);
   x_dnd_n_targets = ntargets;
+
+  memcpy (x_dnd_targets, targets,
+	  sizeof *targets * ntargets);
+  unblock_input ();
+}
+
+static void
+x_free_dnd_targets (void)
+{
+  if (!x_dnd_targets)
+    return;
+
+  xfree (x_dnd_targets);
+  x_dnd_targets = NULL;
+  x_dnd_n_targets = 0;
 }
 
 static void
@@ -3962,7 +3978,6 @@ x_dnd_cleanup_drag_and_drop (void *frame)
       x_dnd_in_progress = false;
     }
 
-  x_set_dnd_targets (NULL, 0);
   x_dnd_waiting_for_finish = false;
 
   if (x_dnd_use_toplevels)
@@ -6573,6 +6588,31 @@ x_clear_glyph_string_rect (struct glyph_string *s, int x, int y, int w, int h)
   x_clear_rectangle (s->f, s->gc, x, y, w, h, s->hl != DRAW_CURSOR);
 }
 
+#ifndef USE_CAIRO
+
+static void
+x_clear_point (struct frame *f, GC gc, int x, int y,
+	       bool respect_alpha_background)
+{
+  XGCValues xgcv;
+  Display *dpy;
+
+  dpy = FRAME_X_DISPLAY (f);
+
+  if (f->alpha_background != 1.0
+      && respect_alpha_background)
+    {
+      x_clear_rectangle (f, gc, x, y, 1, 1, true);
+      return;
+    }
+
+  XGetGCValues (dpy, gc, GCBackground | GCForeground, &xgcv);
+  XSetForeground (dpy, gc, xgcv.background);
+  XDrawPoint (dpy, FRAME_X_DRAWABLE (f), gc, x, y);
+  XSetForeground (dpy, gc, xgcv.foreground);
+}
+
+#endif
 
 /* Draw the background of glyph_string S.  If S->background_filled_p
    is non-zero don't draw it.  FORCE_P non-zero means draw the
@@ -7985,25 +8025,21 @@ x_draw_relief_rect (struct frame *f, int left_x, int top_y, int right_x,
     {
       if (left_p && top_p && x_inside_rect_p (clip_rect, 1,
 					      left_x, top_y))
-	/* This should respect `alpha-backgroun' since it's being
+	/* This should respect `alpha-background' since it's being
 	   cleared with the background color of the frame.  */
-	x_clear_rectangle (f, normal_gc, left_x, top_y, 1, 1,
-			   true);
+	x_clear_point (f, normal_gc, left_x, top_y, true);
 
       if (left_p && bot_p && x_inside_rect_p (clip_rect, 1,
 					      left_x, bottom_y))
-	x_clear_rectangle (f, normal_gc, left_x, bottom_y, 1, 1,
-			   true);
+	x_clear_point (f, normal_gc, left_x, bottom_y, true);
 
       if (right_p && top_p && x_inside_rect_p (clip_rect, 1,
 					       right_x, top_y))
-	x_clear_rectangle (f, normal_gc, right_x, top_y, 1, 1,
-			   true);
+	x_clear_point (f, normal_gc, right_x, top_y, true);
 
       if (right_p && bot_p && x_inside_rect_p (clip_rect, 1,
 					       right_x, bottom_y))
-	x_clear_rectangle (f, normal_gc, right_x, bottom_y, 1, 1,
-			   true);
+	x_clear_point (f, normal_gc, right_x, bottom_y, true);
     }
 
   x_reset_clip_rectangles (f, white_gc);
@@ -10311,7 +10347,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   struct frame *any;
   char *atom_name, *ask_actions;
   Lisp_Object action, ltimestamp;
-  specpdl_ref ref, count;
+  specpdl_ref ref, count, base;
   ptrdiff_t i, end, fill;
   XTextProperty prop;
   xm_drop_start_message dmsg;
@@ -10326,6 +10362,8 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   union buffered_input_event *events, *event;
   int n_events;
   struct frame *event_frame;
+
+  base = SPECPDL_INDEX ();
 
   /* Before starting drag-and-drop, walk through the keyboard buffer
      to see if there are any UNSUPPORTED_DROP_EVENTs, and run them now
@@ -10406,6 +10444,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   if (popup_activated ())
     error ("Trying to drag-and-drop from within a menu-entry");
 
+  record_unwind_protect_void (x_free_dnd_targets);
   x_set_dnd_targets (target_atoms, ntargets);
 
   ltimestamp = x_timestamp_for_selection (FRAME_DISPLAY_INFO (f),
@@ -10717,7 +10756,6 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 		  x_dnd_frame = NULL;
 		}
 
-	      x_set_dnd_targets (NULL, 0);
 	      x_dnd_waiting_for_finish = false;
 
 	      if (x_dnd_use_toplevels)
@@ -10789,7 +10827,6 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 		  x_dnd_frame = NULL;
 		}
 
-	      x_set_dnd_targets (NULL, 0);
 	      x_dnd_waiting_for_finish = false;
 
 	      if (x_dnd_use_toplevels)
@@ -10829,7 +10866,6 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 #endif
     }
 
-  x_set_dnd_targets (NULL, 0);
   x_dnd_waiting_for_finish = false;
 
 #ifdef USE_GTK
@@ -10866,7 +10902,8 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 
       XSETFRAME (action, x_dnd_return_frame_object);
       x_dnd_return_frame_object = NULL;
-      return action;
+
+      return unbind_to (base, action);
     }
 
   x_dnd_return_frame_object = NULL;
@@ -10882,7 +10919,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
       && (any = x_any_window_to_frame (FRAME_DISPLAY_INFO (f),
 				       x_dnd_end_window))
       && (allow_current_frame || any != f))
-    return QXdndActionPrivate;
+    return unbind_to (base, QXdndActionPrivate);
 
   if (x_dnd_action != None)
     {
@@ -10907,10 +10944,10 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 	action = Qnil;
       unblock_input ();
 
-      return action;
+      return unbind_to (base, action);
     }
 
-  return Qnil;
+  return unbind_to (base, Qnil);
 }
 
 /* The focus may have changed.  Figure out if it is a real focus change,
@@ -14799,6 +14836,70 @@ x_display_pixel_width (struct x_display_info *dpyinfo)
   return WidthOfScreen (dpyinfo->screen);
 }
 
+/* Handle events from each display until CELL's car becomes non-nil,
+   or TIMEOUT elapses.  */
+void
+x_wait_for_cell_change (Lisp_Object cell, struct timespec timeout)
+{
+  struct x_display_info *dpyinfo;
+  fd_set fds;
+  int fd, maxfd, finish;
+  XEvent event;
+  struct input_event hold_quit;
+  struct timespec current, at;
+
+  at = timespec_add (current_timespec (), timeout);
+
+  while (true)
+    {
+      FD_ZERO (&fds);
+      maxfd = -1;
+
+      for (dpyinfo = x_display_list; dpyinfo;
+	   dpyinfo = dpyinfo->next)
+	{
+	  if (XPending (dpyinfo->display))
+	    {
+	      EVENT_INIT (hold_quit);
+
+	      XNextEvent (dpyinfo->display, &event);
+	      handle_one_xevent (dpyinfo, &event,
+				 &finish, &hold_quit);
+
+	      /* Make us quit now.  */
+	      if (hold_quit.kind != NO_EVENT)
+		kbd_buffer_store_event (&hold_quit);
+
+	      if (!NILP (XCAR (cell)))
+		return;
+	    }
+
+	  fd = XConnectionNumber (dpyinfo->display);
+
+	  if (fd > maxfd)
+	    maxfd = fd;
+
+	  eassert (fd < FD_SETSIZE);
+	  FD_SET (XConnectionNumber (dpyinfo->display), &fds);
+	}
+
+      eassert (maxfd >= 0);
+
+      current = current_timespec ();
+
+      if (timespec_cmp (at, current) < 0
+	  || !NILP (XCAR (cell)))
+	return;
+
+      timeout = timespec_sub (at, current);
+
+      /* We don't have to check the return of pselect, because if an
+	 error occurs XPending will call the IO error handler, which
+	 then brings us out of this loop.  */
+      pselect (maxfd, &fds, NULL, NULL, &timeout, NULL);
+    }
+}
+
 #ifdef USE_GTK
 static void
 x_monitors_changed_cb (GdkScreen *gscr, gpointer user_data)
@@ -15239,7 +15340,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      goto OTHER;
 #ifndef USE_CAIRO
             Pixmap pixmap = (Pixmap) event->xclient.data.l[1];
+	    /* FIXME: why does this sometimes generate a BadMatch
+	       error?  */
+	    x_catch_errors (dpyinfo->display);
             x_kill_gs_process (pixmap, f);
+	    x_uncatch_errors ();
             expose_frame (f, 0, 0, 0, 0);
 #endif	/* !USE_CAIRO */
 	    goto done;
@@ -17309,7 +17414,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    x_dnd_last_seen_window = None;
 		    x_dnd_last_seen_toplevel = None;
 		    x_dnd_frame = NULL;
-		    x_set_dnd_targets (NULL, 0);
 		  }
 	      }
 
@@ -18628,7 +18732,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  x_dnd_last_seen_window = None;
 			  x_dnd_last_seen_toplevel = None;
 			  x_dnd_frame = NULL;
-			  x_set_dnd_targets (NULL, 0);
 
 			  goto XI_OTHER;
 			}
@@ -21434,7 +21537,6 @@ x_connection_closed (Display *dpy, const char *error_message, bool ioerror)
       x_dnd_last_seen_window = None;
       x_dnd_last_seen_toplevel = None;
       x_dnd_in_progress = false;
-      x_set_dnd_targets (NULL, 0);
       x_dnd_waiting_for_finish = false;
 
       if (x_dnd_use_toplevels)
@@ -25468,7 +25570,6 @@ x_delete_terminal (struct terminal *terminal)
 	  x_dnd_last_seen_window = None;
 	  x_dnd_last_seen_toplevel = None;
 	  x_dnd_in_progress = false;
-	  x_set_dnd_targets (NULL, 0);
 	  x_dnd_waiting_for_finish = false;
 
 	  if (x_dnd_use_toplevels)
