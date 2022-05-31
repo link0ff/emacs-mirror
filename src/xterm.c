@@ -10597,7 +10597,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 
   while (x_dnd_in_progress || x_dnd_waiting_for_finish)
     {
-      hold_quit.kind = NO_EVENT;
+      EVENT_INIT (hold_quit);
 #ifdef USE_GTK
       current_finish = X_EVENT_NORMAL;
       current_hold_quit = &hold_quit;
@@ -10642,6 +10642,10 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			     &next_event, &finish, &hold_quit);
 #endif
 	}
+#else
+      /* Clear these before the read_socket_hook can be called.  */
+      current_count = -1;
+      current_hold_quit = NULL;
 #endif
 
       /* The unblock_input below might try to read input, but
@@ -14843,8 +14847,11 @@ x_wait_for_cell_change (Lisp_Object cell, struct timespec timeout)
 {
   struct x_display_info *dpyinfo;
   fd_set fds;
-  int fd, maxfd, finish;
+  int fd, maxfd;
+#ifndef USE_GTK
+  int finish;
   XEvent event;
+#endif
   struct input_event hold_quit;
   struct timespec current, at;
 
@@ -14858,6 +14865,7 @@ x_wait_for_cell_change (Lisp_Object cell, struct timespec timeout)
       for (dpyinfo = x_display_list; dpyinfo;
 	   dpyinfo = dpyinfo->next)
 	{
+#ifndef USE_GTK
 	  if (XPending (dpyinfo->display))
 	    {
 	      EVENT_INIT (hold_quit);
@@ -14873,6 +14881,7 @@ x_wait_for_cell_change (Lisp_Object cell, struct timespec timeout)
 	      if (!NILP (XCAR (cell)))
 		return;
 	    }
+#endif
 
 	  fd = XConnectionNumber (dpyinfo->display);
 
@@ -14882,6 +14891,33 @@ x_wait_for_cell_change (Lisp_Object cell, struct timespec timeout)
 	  eassert (fd < FD_SETSIZE);
 	  FD_SET (XConnectionNumber (dpyinfo->display), &fds);
 	}
+
+      /* Prevent events from being lost (from GTK's point of view) by
+	 using GDK to run the event loop.  */
+#ifdef USE_GTK
+      while (gtk_events_pending ())
+	{
+	  EVENT_INIT (hold_quit);
+	  current_count = 0;
+	  current_hold_quit = &hold_quit;
+	  current_finish = X_EVENT_NORMAL;
+
+	  gtk_main_iteration ();
+
+	  current_count = -1;
+	  current_hold_quit = NULL;
+
+	  /* Make us quit now.  */
+	  if (hold_quit.kind != NO_EVENT)
+	    kbd_buffer_store_event (&hold_quit);
+
+	  if (!NILP (XCAR (cell)))
+	    return;
+
+	  if (current_finish == X_EVENT_GOTO_OUT)
+	    break;
+	}
+#endif
 
       eassert (maxfd >= 0);
 
