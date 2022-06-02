@@ -1367,34 +1367,50 @@ typedef struct xm_top_level_leave_message
 /* #define XM_DRAG_SIDE_EFFECT_OPERATIONS(effect)	(((effect) & 0xf00) >> 8) */
 #define XM_DRAG_SIDE_EFFECT_DROP_ACTION(effect)	(((effect) & 0xf000) >> 12)
 
-#define XM_DRAG_NOOP 0
-#define XM_DRAG_MOVE (1L << 0)
-#define XM_DRAG_COPY (1L << 1)
-#define XM_DRAG_LINK (1L << 2)
+enum xm_drag_operation
+  {
+    XM_DRAG_NOOP = 0,
+    XM_DRAG_MOVE = (1L << 0),
+    XM_DRAG_COPY = (1L << 1),
+    XM_DRAG_LINK = (1L << 2),
+  };
 
-#define XM_DROP_ACTION_DROP		0
-#define XM_DROP_ACTION_DROP_HELP	1
-#define XM_DROP_ACTION_DROP_CANCEL	2
+enum xm_drag_action
+  {
+    XM_DROP_ACTION_DROP	       = 0,
+    XM_DROP_ACTION_DROP_HELP   = 1,
+    XM_DROP_ACTION_DROP_CANCEL = 2,
+  };
 
 #define XM_DRAG_REASON(originator, code)	((code) | ((originator) << 7))
 #define XM_DRAG_REASON_ORIGINATOR(reason)	(((reason) & 0x80) ? 1 : 0)
 #define XM_DRAG_REASON_CODE(reason)		((reason) & 0x7f)
 
-#define XM_DRAG_REASON_DROP_START	5
-#define XM_DRAG_REASON_TOP_LEVEL_ENTER	0
-#define XM_DRAG_REASON_TOP_LEVEL_LEAVE	1
-#define XM_DRAG_REASON_DRAG_MOTION	2
-#define XM_DRAG_ORIGINATOR_INITIATOR	0
-#define XM_DRAG_ORIGINATOR_RECEIVER	1
+enum xm_drag_reason
+  {
+    XM_DRAG_REASON_DROP_START	   = 5,
+    XM_DRAG_REASON_TOP_LEVEL_ENTER = 0,
+    XM_DRAG_REASON_TOP_LEVEL_LEAVE = 1,
+    XM_DRAG_REASON_DRAG_MOTION	   = 2,
+  };
 
-#define XM_DRAG_STYLE_NONE		0
+enum xm_drag_originator
+  {
+    XM_DRAG_ORIGINATOR_INITIATOR = 0,
+    XM_DRAG_ORIGINATOR_RECEIVER	 = 1,
+  };
 
-#define XM_DRAG_STYLE_DROP_ONLY		1
-#define XM_DRAG_STYLE_DROP_ONLY_REC	3
-
-#define XM_DRAG_STYLE_DYNAMIC		5
-#define XM_DRAG_STYLE_DYNAMIC_REC	2
-#define XM_DRAG_STYLE_DYNAMIC_REC1	4
+enum xm_drag_style
+  {
+    /* The values ending with _REC should be treated as equivalent to
+       the ones without in messages from the receiver.  */
+    XM_DRAG_STYLE_NONE		= 0,
+    XM_DRAG_STYLE_DROP_ONLY	= 1,
+    XM_DRAG_STYLE_DROP_ONLY_REC = 3,
+    XM_DRAG_STYLE_DYNAMIC	= 5,
+    XM_DRAG_STYLE_DYNAMIC_REC	= 2,
+    XM_DRAG_STYLE_DYNAMIC_REC1	= 4,
+  };
 
 #define XM_DRAG_STYLE_IS_DROP_ONLY(n)	((n) == XM_DRAG_STYLE_DROP_ONLY	\
 					 || (n) == XM_DRAG_STYLE_DROP_ONLY_REC)
@@ -1402,9 +1418,12 @@ typedef struct xm_top_level_leave_message
 					 || (n) == XM_DRAG_STYLE_DYNAMIC_REC \
 					 || (n) == XM_DRAG_STYLE_DYNAMIC_REC1)
 
-#define XM_DROP_SITE_VALID	3
-/* #define XM_DROP_SITE_INVALID	2 */
-#define XM_DROP_SITE_NONE	1
+enum xm_drop_site_status
+  {
+    XM_DROP_SITE_VALID	 = 3,
+    XM_DROP_SITE_INVALID = 2,
+    XM_DROP_SITE_NONE	 = 1,
+  };
 
 /* The version of the Motif drag-and-drop protocols that Emacs
    supports.  */
@@ -10295,7 +10314,7 @@ x_next_event_from_any_display (XEvent *event)
   fd_set fds, rfds;
   int fd, maxfd, rc;
 
-  rc = 0;
+  rc = -1;
   FD_ZERO (&rfds);
 
   while (true)
@@ -11499,6 +11518,80 @@ x_note_mouse_movement (struct frame *frame, const XMotionEvent *event,
   return false;
 }
 
+/* Get a sibling of DPY below WINDOW at PARENT_X and PARENT_Y.  */
+static Window
+x_get_window_below (Display *dpy, Window window,
+		    int parent_x, int parent_y,
+		    int *inner_x, int *inner_y)
+{
+  int rc, i, cx, cy;
+  XWindowAttributes attrs;
+  unsigned int nchildren;
+  Window root, parent, *children, value;
+  bool window_seen;
+
+  /* TODO: rewrite to have less dependencies.  */
+
+  children = NULL;
+  window_seen = false;
+  value = None;
+
+  rc = XQueryTree (dpy, window, &root, &parent,
+		   &children, &nchildren);
+
+  if (rc)
+    {
+      if (children)
+	XFree (children);
+
+      rc = XQueryTree (dpy, parent, &root,
+		       &parent, &children, &nchildren);
+    }
+
+  if (rc)
+    {
+      for (i = nchildren - 1; i >= 0; --i)
+	{
+	  if (children[i] == window)
+	    {
+	      window_seen = true;
+	      continue;
+	    }
+
+	  if (!window_seen)
+	    continue;
+
+	  rc = XGetWindowAttributes (dpy, children[i], &attrs);
+
+	  if (rc && attrs.map_state != IsViewable)
+	    continue;
+
+	  if (rc && parent_x >= attrs.x
+	      && parent_y >= attrs.y
+	      && parent_x < attrs.x + attrs.width
+	      && parent_y < attrs.y + attrs.height)
+	    {
+	      value = children[i];
+	      cx = parent_x - attrs.x;
+	      cy = parent_y - attrs.y;
+
+	      break;
+	    }
+	}
+    }
+
+  if (children)
+    XFree (children);
+
+  if (value)
+    {
+      *inner_x = cx;
+      *inner_y = cy;
+    }
+
+  return value;
+}
+
 /* Return the current position of the mouse.
    *FP should be a frame which indicates which display to ask about.
 
@@ -11524,7 +11617,7 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 		  enum scroll_bar_part *part, Lisp_Object *x, Lisp_Object *y,
 		  Time *timestamp)
 {
-  struct frame *f1;
+  struct frame *f1, *maybe_tooltip;
   struct x_display_info *dpyinfo = FRAME_DISPLAY_INFO (*fp);
 
   block_input ();
@@ -11580,9 +11673,11 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 	Window first_win = 0;
 #endif
 	int win_x, win_y;
-	int parent_x = 0, parent_y = 0;
+	int parent_x, parent_y;
 
 	win = root;
+	parent_x = root_x;
+	parent_y = root_y;
 
 	/* XTranslateCoordinates can get errors if the window
 	   structure is changing at the same time this function
@@ -11617,6 +11712,19 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 				       root_x, root_y, &win_x, &win_y,
 				       /* Child of win.  */
 				       &child);
+
+		/* If CHILD is a tooltip frame, look below it if
+		   track-mouse is drag-source.  */
+		if (child != None)
+		  {
+		    maybe_tooltip = x_any_window_to_frame (dpyinfo, child);
+
+		    if (maybe_tooltip && FRAME_TOOLTIP_P (maybe_tooltip))
+		      child = x_get_window_below (dpyinfo->display, child,
+						  parent_x, parent_y, &win_x,
+						  &win_y);
+		  }
+
 		if (child == None || child == win)
 		  {
 #ifdef USE_GTK
@@ -15077,6 +15185,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    && event->xclient.message_type == dpyinfo->Xatom_XdndStatus)
 	  {
 	    Window target;
+	    unsigned long r1, r2;
 
 	    target = event->xclient.data.l[0];
 
@@ -15084,11 +15193,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		&& target == x_dnd_last_seen_window
 		&& event->xclient.data.l[1] & 2)
 	      {
+		r1 = event->xclient.data.l[2];
+		r2 = event->xclient.data.l[2];
+
 		x_dnd_mouse_rect_target = target;
-		x_dnd_mouse_rect.x = (event->xclient.data.l[2] & 0xffff0000) >> 16;
-		x_dnd_mouse_rect.y = (event->xclient.data.l[2] & 0xffff);
-		x_dnd_mouse_rect.width = (event->xclient.data.l[3] & 0xffff0000) >> 16;
-		x_dnd_mouse_rect.height = (event->xclient.data.l[3] & 0xffff);
+		x_dnd_mouse_rect.x = (r1 & 0xffff0000) >> 16;
+		x_dnd_mouse_rect.y = (r1 & 0xffff);
+		x_dnd_mouse_rect.width = (r2 & 0xffff0000) >> 16;
+		x_dnd_mouse_rect.height = (r2 & 0xffff);
 	      }
 	    else
 	      x_dnd_mouse_rect_target = None;
@@ -16706,7 +16818,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
              Do it only if there's something to cancel.
              Otherwise, the startup message is cleared when
              the mouse leaves the frame.  */
-          if (any_help_event_p)
+          if (any_help_event_p
+	      /* But never if `mouse-drag-and-drop-region' is in
+		 progress, since that results in the tooltip being
+		 dismissed when the mouse moves on top.  */
+	      && !(EQ (track_mouse, Qdrag_source)
+		   && gui_mouse_grabbed (dpyinfo)))
 	    do_help = -1;
         }
 #ifdef USE_GTK
@@ -18041,7 +18158,13 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		     Do it only if there's something to cancel.
 		     Otherwise, the startup message is cleared when
 		     the mouse leaves the frame.  */
-		  if (any_help_event_p)
+		  if (any_help_event_p
+		      /* But never if `mouse-drag-and-drop-region' is
+			 in progress, since that results in the
+			 tooltip being dismissed when the mouse moves
+			 on top.  */
+		      && !(EQ (track_mouse, Qdrag_source)
+			   && gui_mouse_grabbed (dpyinfo)))
 		    do_help = -1;
 		}
 #ifdef USE_GTK
