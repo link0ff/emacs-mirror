@@ -437,7 +437,7 @@ This will generate compile-time constants from BINDINGS."
         ;; Emacs Lisp autoload cookies.  Supports the slightly different
         ;; forms used by mh-e, calendar, etc.
         (,lisp-mode-autoload-regexp (3 font-lock-warning-face prepend)
-                                    (2 font-lock-function-name-face prepend)))
+                                    (2 font-lock-function-name-face prepend t)))
       "Subdued level highlighting for Emacs Lisp mode.")
 
     (defconst lisp-cl-font-lock-keywords-1
@@ -485,6 +485,9 @@ This will generate compile-time constants from BINDINGS."
          ;; Words inside ‘’, '' and `' tend to be symbol names.
          (,(concat "[`‘']\\(" lisp-mode-symbol-regexp "\\)['’]")
           (1 font-lock-constant-face prepend))
+         ;; \\= tends to be an escape in doc strings.
+         ("\\\\\\\\="
+          (0 font-lock-builtin-face prepend))
          ;; Constant values.
          (,(concat "\\_<:" lisp-mode-symbol-regexp "\\_>")
           (0 font-lock-builtin-face))

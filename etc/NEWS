@@ -136,6 +136,11 @@ of 'user-emacs-directory'.
 
 * Incompatible changes in Emacs 29.1
 
++++
+** Setting the goal columns now also affects '<prior>' and '<next>'.
+Previously, 'C-x C-n' only affected 'next-line' and 'previous-line',
+but it now also affects 'scroll-up-command' and 'scroll-down-command'.
+
 ---
 ** The 'd' command in Dired now more consistently skip dot files.
 In previous Emacs versions, commands like `C-u 10 d' would put the "D"
@@ -272,6 +277,11 @@ startup.  Previously, these functions ignored
 * Changes in Emacs 29.1
 
 +++
+** New command 'find-sibling-file'.
+This command jumps to a file considered a "sibling file", which is
+determined according to the new user option 'find-sibling-rules'.
+
++++
 ** New user option 'delete-selection-temporary-region'.
 When non-nil, 'delete-selection-mode' will only delete the temporary
 regions (usually set by mouse-dragging or shift-selection).
@@ -305,9 +315,11 @@ the current Emacs process at the end, it starts a new Emacs process
 optional parameters to restart instead of just killing the current
 process.
 
++++
 ** New user option 'mouse-drag-mode-line-buffer'.
 If non-nil, dragging on the buffer name part of the mode-line will
-drag the buffer's associated file to other programs.
+drag the buffer's associated file to other programs.  This option is
+currently only available on X, Haiku and Nextstep (GNUstep or macOS).
 
 +++
 ** New user option 'mouse-drag-and-drop-region-cross-program'.
@@ -850,6 +862,7 @@ corresponding language environments are:
 **** Makasar script and language environment
 **** Lontara script and language environment
 **** Hanifi Rohingya script and language environment
+**** Grantha script and language environment
 
 ---
 *** The "Oriya" language environment was renamed to "Odia".
@@ -1717,6 +1730,11 @@ Enabling this minor mode turns on hiding header material, like
 'elide-head' does; disabling it shows the header.  The commands
 'elide-head' and 'elide-head-show' are now obsolete.
 
++++
+*** New user option 'project-vc-include-untracked'.
+If non-nil, files untracked by a VCS are considered to be part of
+the project by a VC project based on that VCS.
+
 ---
 ** The autoarg.el library is now marked obsolete.
 This library provides the 'autoarg-mode' and 'autoarg-kp-mode' minor
@@ -1927,6 +1945,12 @@ functions.
 Previously it produced a nonsense value, -1, that was never intended.
 
 * Lisp Changes in Emacs 29.1
+
++++
+** 'file-expand-wildcards' can now also take a regexp as PATTERN argument.
+
+---
+** vc-mtn (the backend for Monotone) has been made obsolete.
 
 +++
 ** 'gui-set-selection' can now specify different values for different data types.

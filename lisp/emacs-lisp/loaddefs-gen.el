@@ -40,6 +40,7 @@
 
 (require 'radix-tree)
 (require 'lisp-mnt)
+(require 'generate-lisp-file)
 
 (defvar autoload-compute-prefixes t
   "If non-nil, autoload will add code to register the prefixes used in a file.
@@ -63,6 +64,31 @@ be included.")
   "List of strings naming definitions to ignore for prefixes.
 More specifically those definitions will not be considered for the
 `register-definition-prefixes' call.")
+
+(defvar generated-autoload-file nil
+  "File into which to write autoload definitions.
+A Lisp file can set this in its local variables section to make
+its autoloads go somewhere else.
+
+If this is a relative file name, the directory is determined as
+follows:
+ - If a Lisp file defined `generated-autoload-file' as a
+   file-local variable, use its containing directory.
+ - Otherwise use the \"lisp\" subdirectory of `source-directory'.
+
+The autoload file is assumed to contain a trailer starting with a
+FormFeed character.")
+;;;###autoload
+(put 'generated-autoload-file 'safe-local-variable 'stringp)
+
+(defvar generated-autoload-load-name nil
+  "Load name for `autoload' statements generated from autoload cookies.
+If nil, this defaults to the file name, sans extension.
+Typically, you need to set this when the directory containing the file
+is not in `load-path'.
+This also affects the generated cus-load.el file.")
+;;;###autoload
+(put 'generated-autoload-load-name 'safe-local-variable 'stringp)
 
 (defun loaddefs-generate--file-load-name (file outfile)
   "Compute the name that will be used to load FILE.
@@ -359,42 +385,49 @@ don't include."
         (goto-char (point-min))
         ;; The cookie might be like ;;;###tramp-autoload...
         (while (re-search-forward lisp-mode-autoload-regexp nil t)
-          ;; ... and if we have one of these names, then alter outfile.
-          (let* ((aname (match-string 2))
-                 (to-file (if aname
-                              (expand-file-name
-                               (concat aname "-loaddefs.el")
-                               (file-name-directory file))
-                            (or local-outfile main-outfile))))
-            (if (eolp)
-                ;; We have a form following.
-                (let* ((form (prog1
-                                 (read (current-buffer))
-                               (unless (bolp)
-                                 (forward-line 1))))
-                       (autoload (or (loaddefs-generate--make-autoload
-                                      form load-name)
-                                     form)))
-                  ;; We get back either an autoload form, or a tree
-                  ;; structure of `(progn ...)' things, so unravel that.
-                  (let ((forms (if (eq (car autoload) 'progn)
-                                   (cdr autoload)
-                                 (list autoload))))
-                    (while forms
-                      (let ((elem (pop forms)))
-                        (if (eq (car elem) 'progn)
-                            ;; More recursion; add it to the start.
-                            (setq forms (nconc (cdr elem) forms))
-                          ;; We have something to add to the defs; do it.
-                          (push (list to-file file elem) defs))))))
-              ;; Just put the rest of the line into the loaddefs.
-              ;; FIXME: We skip the first space if there's more
-              ;; whitespace after.
-              (when (looking-at-p " [\t ]")
-                (forward-char 1))
-              (push (list to-file file
-                          (buffer-substring (point) (line-end-position)))
-                    defs))))
+          (when (or package-data
+                    ;; Outside of the main Emacs build (`package-data'
+                    ;; is set in the Emacs build), check that we don't
+                    ;; have an autoload cookie on the first column of a
+                    ;; doc string or the like.  (The Emacs tree
+                    ;; shouldn't contain any such instances.)
+                    (not (ppss-string-terminator (syntax-ppss))))
+            ;; ... and if we have one of these names, then alter outfile.
+            (let* ((aname (match-string 2))
+                   (to-file (if aname
+                                (expand-file-name
+                                 (concat aname "-loaddefs.el")
+                                 (file-name-directory file))
+                              (or local-outfile main-outfile))))
+              (if (eolp)
+                  ;; We have a form following.
+                  (let* ((form (prog1
+                                   (read (current-buffer))
+                                 (unless (bolp)
+                                   (forward-line 1))))
+                         (autoload (or (loaddefs-generate--make-autoload
+                                        form load-name)
+                                       form)))
+                    ;; We get back either an autoload form, or a tree
+                    ;; structure of `(progn ...)' things, so unravel that.
+                    (let ((forms (if (eq (car autoload) 'progn)
+                                     (cdr autoload)
+                                   (list autoload))))
+                      (while forms
+                        (let ((elem (pop forms)))
+                          (if (eq (car elem) 'progn)
+                              ;; More recursion; add it to the start.
+                              (setq forms (nconc (cdr elem) forms))
+                            ;; We have something to add to the defs; do it.
+                            (push (list to-file file elem) defs))))))
+                ;; Just put the rest of the line into the loaddefs.
+                ;; FIXME: We skip the first space if there's more
+                ;; whitespace after.
+                (when (looking-at-p " [\t ]")
+                  (forward-char 1))
+                (push (list to-file file
+                            (buffer-substring (point) (line-end-position)))
+                      defs)))))
 
         (when (and autoload-compute-prefixes
                    compute-prefixes)
@@ -430,32 +463,21 @@ but adds an extra line to the output to modify `load-path'.
 If FEATURE is non-nil, FILE will provide a feature.  FEATURE may
 be a string naming the feature, otherwise it will be based on
 FILE's name."
-  (let ((basename (file-name-nondirectory file))
-	(lp (if (equal type "package") (setq type "autoloads"))))
-    (concat ";;; " basename
-            " --- automatically extracted " (or type "autoloads")
-            "  -*- lexical-binding: t -*-\n"
-            (when (string-match "/lisp/loaddefs\\.el\\'" file)
-              ";; This file will be copied to ldefs-boot.el and checked in periodically.\n")
-	    ";;\n"
-	    ";;; Code:\n\n"
-	    (if lp
-		"(add-to-list 'load-path (directory-file-name
-                         (or (file-name-directory #$) (car load-path))))\n\n")
-	    "\n;;; End of scraped data\n\n"
-	    ;; This is used outside of autoload.el, eg cus-dep, finder.
-	    (if feature
-		(format "(provide '%s)\n"
-			(if (stringp feature) feature
-			  (file-name-sans-extension basename))))
-	    ";; Local Variables:\n"
-	    ";; version-control: never\n"
-            ";; no-byte-compile: t\n" ;; #$ is byte-compiled into nil.
-	    ";; no-update-autoloads: t\n"
-	    ";; coding: utf-8-emacs-unix\n"
-	    ";; End:\n"
-	    ";;; " basename
-	    " ends here\n")))
+  (let ((lp (and (equal type "package") (setq type "autoloads"))))
+    (with-temp-buffer
+      (generate-lisp-file-heading
+       file 'loaddefs-generate--rubric
+       :title (concat "automatically extracted " (or type "autoloads"))
+       :commentary (and (string-match "/lisp/loaddefs\\.el\\'" file)
+                        "This file will be copied to ldefs-boot.el and checked in periodically."))
+      (when lp
+        (insert "(add-to-list 'load-path (directory-file-name
+                         (or (file-name-directory #$) (car load-path))))\n\n"))
+      (insert "\n;;; End of scraped data\n\n")
+      (generate-lisp-file-trailer
+       file :provide (and (stringp feature) feature)
+       :inhibit-provide (not feature))
+      (buffer-string))))
 
 (defun loaddefs-generate--insert-section-header (outbuf autoloads
                                                         load-name file time)
