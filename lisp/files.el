@@ -2102,8 +2102,11 @@ started Emacs, set `abbreviated-home-dir' to nil so it will be recalculated)."
   "Return the buffer visiting file FILENAME (a string).
 This is like `get-file-buffer', except that it checks for any buffer
 visiting the same file, possibly under a different name.
+
 If PREDICATE is non-nil, only buffers satisfying it are eligible,
-and others are ignored.
+and others are ignored.  PREDICATE is called with the buffer as
+the only argument, but not with the buffer as the current buffer.
+
 If there is no such live buffer, return nil."
   (let ((predicate (or predicate #'identity))
         (truename (abbreviate-file-name (file-truename filename))))
@@ -2324,7 +2327,16 @@ the various files."
 	     (attributes (file-attributes truename))
 	     (number (nthcdr 10 attributes))
 	     ;; Find any buffer for a file that has same truename.
-	     (other (and (not buf) (find-buffer-visiting filename))))
+	     (other (and (not buf)
+                         (find-buffer-visiting
+                          filename
+                          ;; We want to filter out buffers that we've
+                          ;; visited via symlinks and the like, where
+                          ;; the symlink no longer exists.
+                          (lambda (buffer)
+                            (let ((file (buffer-local-value
+                                         'buffer-file-name buffer)))
+                              (and file (file-exists-p file))))))))
 	;; Let user know if there is a buffer with the same truename.
 	(if other
 	    (progn
@@ -7303,16 +7315,22 @@ The \"sibling\" file is defined by the `find-sibling-rules' variable."
                  (unless buffer-file-name
                    (user-error "Not visiting a file"))
                  (list buffer-file-name)))
+  (unless find-sibling-rules
+    (user-error "The `find-sibling-rules' variable has not been configured"))
   (let ((siblings (find-sibling-file--search (expand-file-name file))))
-    (if (length= siblings 1)
-        (find-file (car siblings))
+    (cond
+     ((null siblings)
+      (user-error "Couldn't find any sibling files"))
+     ((length= siblings 1)
+      (find-file (car siblings)))
+     (t
       (let ((relatives (mapcar (lambda (sibling)
                                  (file-relative-name
                                   sibling (file-name-directory file)))
                                siblings)))
         (find-file
          (completing-read (format-prompt "Find file" (car relatives))
-                          relatives nil t nil nil (car relatives)))))))
+                          relatives nil t nil nil (car relatives))))))))
 
 (defun find-sibling-file--search (file)
   (let ((results nil))

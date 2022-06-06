@@ -15676,8 +15676,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		   mask specified by the EWMH.  To avoid an infinite
 		   loop, make sure the client message's window is not
 		   the root window if DND is in progress.  */
-		&& (!x_dnd_in_progress
-		    || !x_dnd_waiting_for_finish
+		&& (!(x_dnd_in_progress
+		      || x_dnd_waiting_for_finish)
 		    || event->xclient.window != dpyinfo->root_window)
 		&& event->xclient.format == 32)
 	      {
@@ -17160,6 +17160,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    xm_top_level_leave_message lmsg;
 	    xm_top_level_enter_message emsg;
 	    xm_drag_motion_message dmsg;
+	    XRectangle *r;
 
 	    /* Always clear mouse face.  */
 	    clear_mouse_face (hlinfo);
@@ -17171,7 +17172,28 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	       visible manually.  */
 
 	    if (f)
-	      XTtoggle_invisible_pointer (f, false);
+	      {
+		XTtoggle_invisible_pointer (f, false);
+
+		r = &dpyinfo->last_mouse_glyph;
+
+		/* Also remember the mouse glyph and set
+		   mouse_moved.  */
+		if (f != dpyinfo->last_mouse_glyph_frame
+		    || event->xmotion.x < r->x
+		    || event->xmotion.x >= r->x + r->width
+		    || event->xmotion.y < r->y
+		    || event->xmotion.y >= r->y + r->height)
+		  {
+		    f->mouse_moved = true;
+		    f->last_mouse_device = Qnil;
+		    dpyinfo->last_mouse_scroll_bar = NULL;
+
+		    remember_mouse_glyph (f, event->xmotion.x,
+					  event->xmotion.y, r);
+		    dpyinfo->last_mouse_glyph_frame = f;
+		  }
+	      }
 
 	    target = x_dnd_get_target_window (dpyinfo,
 					      event->xmotion.x_root,
@@ -18814,6 +18836,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		{
 		  Window target, toplevel;
 		  int target_proto, motif_style;
+		  XRectangle *r;
 
 		  /* Always clear mouse face.  */
 		  clear_mouse_face (hlinfo);
@@ -18825,7 +18848,29 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		     visible manually.  */
 
 		  if (f)
-		    XTtoggle_invisible_pointer (f, false);
+		    {
+		      XTtoggle_invisible_pointer (f, false);
+
+		      r = &dpyinfo->last_mouse_glyph;
+
+		      /* Also remember the mouse glyph and set
+			 mouse_moved.  */
+		      if (f != dpyinfo->last_mouse_glyph_frame
+			  || xev->event_x < r->x
+			  || xev->event_x >= r->x + r->width
+			  || xev->event_y < r->y
+			  || xev->event_y >= r->y + r->height)
+			{
+			  f->mouse_moved = true;
+			  f->last_mouse_device = (source ? source->name
+						  : Qnil);
+			  dpyinfo->last_mouse_scroll_bar = NULL;
+
+			  remember_mouse_glyph (f, xev->event_x,
+						xev->event_y, r);
+			  dpyinfo->last_mouse_glyph_frame = f;
+			}
+		    }
 
 		  target = x_dnd_get_target_window (dpyinfo,
 						    xev->root_x,
@@ -21738,18 +21783,22 @@ x_text_icon (struct frame *f, const char *icon_name)
 
 #define X_ERROR_MESSAGE_SIZE 200
 
-/* If non-nil, this should be a string.  It means catch X errors and
-   store the error message in this string.
-
-   The reason we use a stack is that x_catch_error/x_uncatch_error can
-   be called from a signal handler.  */
-
 struct x_error_message_stack
 {
+  /* Buffer containing the error message of any error that was
+     generated.  */
   char string[X_ERROR_MESSAGE_SIZE];
+
+  /* The display this error handler applies to.  */
   Display *dpy;
+
+  /* A function to call upon an error if non-NULL.  */
   x_special_error_handler handler;
+
+  /* Some data to pass to that handler function.  */
   void *handler_data;
+
+  /* The previous handler in this stack.  */
   struct x_error_message_stack *prev;
 
   /* The first request that this error handler applies to.  Keeping
@@ -21758,6 +21807,14 @@ struct x_error_message_stack
   unsigned long first_request;
 };
 
+/* Stack of X error message handlers.  Whenever an error is generated
+   on a display, look in this stack for an appropriate error handler,
+   set its `string' to the error message and call its `handler' with
+   `handler_data'.  If no handler applies to the error, don't catch
+   it, and let it crash Emacs instead.
+
+   This used to be a pointer to a string in which any error would be
+   placed before 2006.  */
 static struct x_error_message_stack *x_error_message;
 
 static struct x_error_message_stack *
@@ -21780,9 +21837,10 @@ x_find_error_handler (Display *dpy, XErrorEvent *event)
   return NULL;
 }
 
-/* An X error handler which stores the error message in
-   *x_error_message.  This is called from x_error_handler if
-   x_catch_errors is in effect.  */
+/* An X error handler which stores the error message in the first
+   applicable handler in the x_error_message stack.  This is called
+   from *x_error_handler if an x_catch_errors for DISPLAY is in
+   effect.  */
 
 static void
 x_error_catcher (Display *display, XErrorEvent *event,
@@ -21799,8 +21857,8 @@ x_error_catcher (Display *display, XErrorEvent *event,
 /* Begin trapping X errors for display DPY.
 
    After calling this function, X protocol errors generated on DPY no
-   longer cause Emacs to exit; instead, they are recorded in the
-   string stored in *x_error_message.
+   longer cause Emacs to exit; instead, they are recorded in an error
+   handler pushed onto the stack `x_error_message'.
 
    Calling x_check_errors signals an Emacs error if an X error has
    occurred since the last call to x_catch_errors or x_check_errors.
@@ -21808,8 +21866,10 @@ x_error_catcher (Display *display, XErrorEvent *event,
    Calling x_uncatch_errors resumes the normal error handling,
    skipping an XSync if the last request made is known to have been
    processed.  Calling x_uncatch_errors_after_check is similar, but
-   skips an XSync to the server, and should be used only immediately
-   after x_had_errors_p or x_check_errors.  */
+   always skips an XSync to the server, and should be used only
+   immediately after x_had_errors_p or x_check_errors, or when it is
+   known that no requests have been made since the last x_catch_errors
+   call for DPY.  */
 
 void
 x_catch_errors_with_handler (Display *dpy, x_special_error_handler handler,
@@ -21917,8 +21977,8 @@ x_check_errors (Display *dpy, const char *format)
     }
 }
 
-/* Nonzero if we had any X protocol errors
-   since we did x_catch_errors on DPY.  */
+/* Nonzero if any X protocol errors were generated since the last call
+   to x_catch_errors on DPY.  */
 
 bool
 x_had_errors_p (Display *dpy)
@@ -21938,7 +21998,8 @@ x_had_errors_p (Display *dpy)
   return x_error_message->string[0] != 0;
 }
 
-/* Forget about any errors we have had, since we did x_catch_errors on DPY.  */
+/* Forget about any errors we have had, since we did x_catch_errors on
+   DPY.  */
 
 void
 x_clear_errors (Display *dpy)
