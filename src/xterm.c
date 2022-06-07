@@ -2029,9 +2029,16 @@ xm_setup_dnd_targets (struct x_display_info *dpyinfo,
 	 it back to 0.  There will probably be no more updates to the
 	 protocol either.  */
       header.protocol = XM_DRAG_PROTOCOL_VERSION;
+
+      x_catch_errors (dpyinfo->display);
       xm_write_targets_table (dpyinfo->display, drag_window,
 			      dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
 			      &header, recs);
+      /* Presumably we got a BadAlloc upon writing the targets
+	 table.  */
+      if (x_had_errors_p (dpyinfo->display))
+	idx = -1;
+      x_uncatch_errors_after_check ();
     }
 
   XUngrabServer (dpyinfo->display);
@@ -10638,7 +10645,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			   Lisp_Object return_frame, Atom *ask_action_list,
 			   const char **ask_action_names, size_t n_ask_actions,
 			   bool allow_current_frame, Atom *target_atoms,
-			   int ntargets)
+			   int ntargets, Lisp_Object selection_target_list)
 {
 #ifndef USE_GTK
   XEvent next_event;
@@ -10666,6 +10673,10 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   struct frame *event_frame;
 
   base = SPECPDL_INDEX ();
+
+  /* Bind this here to avoid juggling bindings and SAFE_FREE in
+     Fx_begin_drag.  */
+  specbind (Qx_dnd_targets_list, selection_target_list);
 
   /* Before starting drag-and-drop, walk through the keyboard buffer
      to see if there are any UNSUPPORTED_DROP_EVENTs, and run them now
@@ -18728,12 +18739,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			 So instead of that, just ignore XI wheel
 			 events which land on a scroll bar.
 
-		        Here we assume anything which isn't the edit
-		        widget window is a scroll bar.  */
+			 Here we assume anything which isn't the edit
+			 widget window is a scroll bar.  */
 
 		      if (xev->child != None
 			  && xev->child != FRAME_X_WINDOW (f))
-			goto OTHER;
+			goto XI_OTHER;
 #endif
 
 		      if (fabs (total_x) > 0 || fabs (total_y) > 0)
@@ -21781,13 +21792,12 @@ x_text_icon (struct frame *f, const char *icon_name)
   return false;
 }
 
-#define X_ERROR_MESSAGE_SIZE 200
 
 struct x_error_message_stack
 {
-  /* Buffer containing the error message of any error that was
-     generated.  */
-  char string[X_ERROR_MESSAGE_SIZE];
+  /* Pointer to the error message of any error that was generated, or
+     NULL.  */
+  char *string;
 
   /* The display this error handler applies to.  */
   Display *dpy;
@@ -21817,6 +21827,9 @@ struct x_error_message_stack
    placed before 2006.  */
 static struct x_error_message_stack *x_error_message;
 
+/* The amount of items (depth) in that stack.  */
+int x_error_message_count;
+
 static struct x_error_message_stack *
 x_find_error_handler (Display *dpy, XErrorEvent *event)
 {
@@ -21837,6 +21850,17 @@ x_find_error_handler (Display *dpy, XErrorEvent *event)
   return NULL;
 }
 
+void
+x_unwind_errors_to (int depth)
+{
+  while (x_error_message_count > depth)
+    /* This is safe to call because we check whether or not
+       x_error_message->dpy is still alive before calling XSync.  */
+    x_uncatch_errors ();
+}
+
+#define X_ERROR_MESSAGE_SIZE 200
+
 /* An X error handler which stores the error message in the first
    applicable handler in the x_error_message stack.  This is called
    from *x_error_handler if an x_catch_errors for DISPLAY is in
@@ -21846,8 +21870,15 @@ static void
 x_error_catcher (Display *display, XErrorEvent *event,
 		 struct x_error_message_stack *stack)
 {
+  char buf[X_ERROR_MESSAGE_SIZE];
+
   XGetErrorText (display, event->error_code,
-		 stack->string, X_ERROR_MESSAGE_SIZE);
+		 buf, X_ERROR_MESSAGE_SIZE);
+
+  if (stack->string)
+    xfree (stack->string);
+
+  stack->string = xstrdup (buf);
 
   if (stack->handler)
     stack->handler (display, event, stack->string,
@@ -21875,15 +21906,17 @@ void
 x_catch_errors_with_handler (Display *dpy, x_special_error_handler handler,
 			     void *handler_data)
 {
-  struct x_error_message_stack *data = xmalloc (sizeof *data);
+  struct x_error_message_stack *data;
 
+  data = xzalloc (sizeof *data);
   data->dpy = dpy;
-  data->string[0] = 0;
   data->handler = handler;
   data->handler_data = handler_data;
   data->prev = x_error_message;
   data->first_request = NextRequest (dpy);
   x_error_message = data;
+
+  ++x_error_message_count;
 }
 
 void
@@ -21907,6 +21940,9 @@ x_uncatch_errors_after_check (void)
   block_input ();
   tmp = x_error_message;
   x_error_message = x_error_message->prev;
+  --x_error_message_count;
+  if (tmp->string)
+    xfree (tmp->string);
   xfree (tmp);
   unblock_input ();
 }
@@ -21942,6 +21978,9 @@ x_uncatch_errors (void)
 
   tmp = x_error_message;
   x_error_message = x_error_message->prev;
+  --x_error_message_count;
+  if (tmp->string)
+    xfree (tmp->string);
   xfree (tmp);
   unblock_input ();
 }
@@ -21953,7 +21992,7 @@ x_uncatch_errors (void)
 void
 x_check_errors (Display *dpy, const char *format)
 {
-  char string[X_ERROR_MESSAGE_SIZE];
+  char *string;
 
   /* This shouldn't happen, since x_check_errors should be called
      immediately inside an x_catch_errors block.  */
@@ -21968,11 +22007,11 @@ x_check_errors (Display *dpy, const char *format)
 	  > x_error_message->first_request))
     XSync (dpy, False);
 
-  if (x_error_message->string[0])
+  if (x_error_message->string)
     {
-      memcpy (string, x_error_message->string,
-	      X_ERROR_MESSAGE_SIZE);
-      x_uncatch_errors ();
+      string = alloca (strlen (x_error_message->string) + 1);
+      strcpy (string, x_error_message->string);
+
       error (format, string);
     }
 }
@@ -21995,7 +22034,7 @@ x_had_errors_p (Display *dpy)
 	  > x_error_message->first_request))
     XSync (dpy, False);
 
-  return x_error_message->string[0] != 0;
+  return x_error_message->string;
 }
 
 /* Forget about any errors we have had, since we did x_catch_errors on
@@ -22009,7 +22048,8 @@ x_clear_errors (Display *dpy)
   if (dpy != x_error_message->dpy)
     emacs_abort ();
 
-  x_error_message->string[0] = 0;
+  xfree (x_error_message->string);
+  x_error_message->string = NULL;
 }
 
 #if false
@@ -22142,6 +22182,12 @@ x_connection_closed (Display *dpy, const char *error_message, bool ioerror)
 	dpyinfo->display = 0;
     }
 
+  /* delete_frame can still try to read async input (even though we
+     tell pass `noelisp'), because looking up the `delete-before'
+     parameter calls Fassq which then calls maybe_quit.  So block
+     input while deleting frames.  */
+  block_input ();
+
   /* First delete frames whose mini-buffers are on frames
      that are on the dead display.  */
   FOR_EACH_FRAME (tail, frame)
@@ -22205,6 +22251,8 @@ For details, see etc/PROBLEMS.\n",
 	Fdelete_terminal (tmp, Qnoelisp);
       }
     }
+
+  unblock_input ();
 
   if (terminal_list == 0)
     {
@@ -26472,6 +26520,7 @@ syms_of_xterm (void)
   DEFSYM (Qvendor_specific_keysyms, "vendor-specific-keysyms");
   DEFSYM (Qlatin_1, "latin-1");
   DEFSYM (Qnow, "now");
+  DEFSYM (Qx_dnd_targets_list, "x-dnd-targets-list");
 
 #ifdef USE_GTK
   xg_default_icon_file = build_pure_c_string ("icons/hicolor/scalable/apps/emacs.svg");
@@ -26708,4 +26757,11 @@ operation, and TIME is the X server time when the drop happened.  */);
     doc: /* Max number of buckets allowed per display in the internal color cache.
 Values less than 1 mean 128.  This option is for debugging only.  */);
   x_color_cache_bucket_size = 128;
+
+  DEFVAR_LISP ("x-dnd-targets-list", Vx_dnd_targets_list,
+    doc: /* List of drag-and-drop targets.
+This variable contains the list of drag-and-drop selection targets
+during a drag-and-drop operation, in the same format as the TARGET
+argument to `x-begin-drag'.  */);
+  Vx_dnd_targets_list = Qnil;
 }
