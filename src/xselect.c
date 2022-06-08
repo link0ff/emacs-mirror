@@ -353,7 +353,10 @@ x_get_local_selection (Lisp_Object selection_symbol, Lisp_Object target_type,
 
       if (!NILP (handler_fn))
 	value = call3 (handler_fn, selection_symbol,
-		       (local_request ? Qnil : target_type),
+		       ((local_request
+			 && NILP (Vx_treat_local_requests_remotely))
+			? Qnil
+			: target_type),
 		       tem);
       else
 	value = Qnil;
@@ -1252,7 +1255,11 @@ x_get_foreign_selection (Lisp_Object selection_symbol, Lisp_Object target_type,
   else
     x_wait_for_cell_change (reading_selection_reply,
 			    make_timespec (secs, nsecs));
-  TRACE1 ("  Got event = %d", !NILP (XCAR (reading_selection_reply)));
+  TRACE1 ("  Got event = %s", (!NILP (XCAR (reading_selection_reply))
+			       ? (SYMBOLP (XCAR (reading_selection_reply))
+				  ? SSDATA (SYMBOL_NAME (XCAR (reading_selection_reply)))
+				  : "YES")
+			       : "NO"));
 
   if (NILP (XCAR (reading_selection_reply)))
     error ("Timed out waiting for reply from selection owner");
@@ -1947,7 +1954,7 @@ x_handle_selection_notify (const XSelectionEvent *event)
   if (event->selection != reading_which_selection)
     return;
 
-  TRACE0 ("Received SelectionNotify");
+  TRACE1 ("Received SelectionNotify: %d", (int) event->property);
   XSETCAR (reading_selection_reply,
 	   (event->property != 0 ? Qt : Qlambda));
 }
@@ -2793,6 +2800,14 @@ If the selection owner doesn't reply in this time, we give up.
 A value of 0 means wait as long as necessary.  This is initialized from the
 \"*selectionTimeout\" resource.  */);
   x_selection_timeout = 0;
+
+  DEFVAR_LISP ("x-treat-local-requests-remotely", Vx_treat_local_requests_remotely,
+    doc: /* Whether to treat local selection requests as remote ones.
+
+If non-nil, selection converters for string types (`STRING',
+`UTF8_STRING', `COMPOUND_TEXT', etc) will encode the strings, even
+when Emacs itself is converting the selection.  */);
+  Vx_treat_local_requests_remotely = Qnil;
 
   /* QPRIMARY is defined in keyboard.c.  */
   DEFSYM (QSECONDARY, "SECONDARY");
