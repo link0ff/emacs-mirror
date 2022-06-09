@@ -332,6 +332,10 @@ If non-nil, this option allows scrolling a window while dragging text
 around without a scroll wheel.
 
 +++
+*** 'mouse-drag-copy-region' can now be 'non-empty'.
+This inhibits putting empty strings onto the kill ring.
+
++++
 ** New user options 'dnd-indicate-insertion-point' and 'dnd-scroll-margin'.
 These options allow adjusting point and scrolling a window when
 dragging items from another program.
@@ -863,6 +867,7 @@ corresponding language environments are:
 **** Lontara script and language environment
 **** Hanifi Rohingya script and language environment
 **** Grantha script and language environment
+**** Kharoshthi script and language environment
 
 ---
 *** The "Oriya" language environment was renamed to "Odia".
@@ -2432,6 +2437,12 @@ dimensions.
 ** 'window-text-pixel-size' understands a new meaning of FROM.
 Specifying a cons as the FROM argument allows to start measuring text
 from a specified amount of pixels above or below a position.
+
++++
+** 'window-body-width' and 'window-body-height' can use remapped faces.
+Specifying 'remap' as the PIXELWISE argument now checks if the default
+face was remapped, and if so, uses the remapped face to determine the
+character width/height.
 
 +++
 ** 'set-window-vscroll' now accepts a new argument PRESERVE-VSCROLL-P.
