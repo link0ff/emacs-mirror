@@ -1077,6 +1077,10 @@ static void x_scroll_bar_end_update (struct x_display_info *, struct scroll_bar 
 static int x_filter_event (struct x_display_info *, XEvent *);
 #endif
 
+static struct frame *x_tooltip_window_to_frame (struct x_display_info *,
+						Window, bool *);
+static Window x_get_window_below (Display *, Window, int, int, int *, int *);
+
 /* Global state maintained during a drag-and-drop operation.  */
 
 /* Flag that indicates if a drag-and-drop operation is in progress.  */
@@ -1099,6 +1103,13 @@ struct frame *x_dnd_finish_frame;
    handle_one_xevent is waiting for the drop target to return some
    important information.  */
 bool x_dnd_waiting_for_finish;
+
+/* Whether or not to move the tooltip along with the mouse pointer
+   during drag-and-drop.  */
+static bool x_dnd_update_tooltip;
+
+/* Monitor attribute list used for updating the tooltip position.  */
+static Lisp_Object x_dnd_monitors;
 
 /* The display the drop target that is supposed to send information is
    on.  */
@@ -3544,12 +3555,15 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
 {
   Window child_return, child, dummy, proxy;
   int dest_x_return, dest_y_return, rc, proto, motif;
+  int parent_x, parent_y;
   bool extents_p;
 #if defined HAVE_XCOMPOSITE && (XCOMPOSITE_MAJOR > 0 || XCOMPOSITE_MINOR > 2)
   Window overlay_window;
   XWindowAttributes attrs;
 #endif
   int wmstate;
+  struct frame *tooltip;
+  bool unrelated;
 
   child_return = dpyinfo->root_window;
   dest_x_return = root_x;
@@ -3680,6 +3694,8 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
   while (child_return != None)
     {
       child = child_return;
+      parent_x = dest_x_return;
+      parent_y = dest_y_return;
 
       x_catch_errors (dpyinfo->display);
       rc = XTranslateCoordinates (dpyinfo->display,
@@ -3696,6 +3712,23 @@ x_dnd_get_target_window (struct x_display_info *dpyinfo,
 
       if (child_return)
 	{
+	  /* If child_return is a tooltip frame, look beneath it.  We
+	     never want to drop anything onto a tooltip frame.  */
+
+	  tooltip = x_tooltip_window_to_frame (dpyinfo, child_return,
+					       &unrelated);
+
+	  if (tooltip || unrelated)
+	    child_return = x_get_window_below (dpyinfo->display, child_return,
+					       parent_x, parent_y, &dest_x_return,
+					       &dest_y_return);
+
+	  if (!child_return)
+	    {
+	      x_uncatch_errors ();
+	      break;
+	    }
+
 	  if (x_dnd_get_wm_state_and_proto (dpyinfo, child_return,
 					    &wmstate, &proto, &motif,
 					    &proxy)
@@ -4161,6 +4194,12 @@ x_free_dnd_targets (void)
   xfree (x_dnd_targets);
   x_dnd_targets = NULL;
   x_dnd_n_targets = 0;
+}
+
+static void
+x_clear_dnd_monitors (void)
+{
+  x_dnd_monitors = Qnil;
 }
 
 static void
@@ -10712,7 +10751,8 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 			   Lisp_Object return_frame, Atom *ask_action_list,
 			   const char **ask_action_names, size_t n_ask_actions,
 			   bool allow_current_frame, Atom *target_atoms,
-			   int ntargets, Lisp_Object selection_target_list)
+			   int ntargets, Lisp_Object selection_target_list,
+			   bool follow_tooltip)
 {
 #ifndef USE_GTK
   XEvent next_event;
@@ -10914,6 +10954,15 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 		       FRAME_DISPLAY_INFO (f)->Xatom_XdndActionDescription);
       unblock_input ();
     }
+
+  if (follow_tooltip)
+    {
+      x_dnd_monitors
+	= Fx_display_monitor_attributes_list (frame);
+      record_unwind_protect_void (x_clear_dnd_monitors);
+    }
+
+  x_dnd_update_tooltip = follow_tooltip;
 
   /* This shouldn't happen.  */
   if (x_dnd_toplevels)
@@ -11885,7 +11934,7 @@ x_note_mouse_movement (struct frame *frame, const XMotionEvent *event,
   return false;
 }
 
-/* Get a sibling of DPY below WINDOW at PARENT_X and PARENT_Y.  */
+/* Get a sibling below WINDOW on DPY at PARENT_X and PARENT_Y.  */
 static Window
 x_get_window_below (Display *dpy, Window window,
 		    int parent_x, int parent_y,
@@ -15105,6 +15154,106 @@ mouse_or_wdesc_frame (struct x_display_info *dpyinfo, int wdesc)
     }
 }
 
+static void
+x_dnd_compute_tip_xy (int *root_x, int *root_y, Lisp_Object attributes)
+{
+  Lisp_Object monitor, geometry;
+  int min_x, min_y, max_x, max_y;
+  int width, height;
+
+  width = FRAME_PIXEL_WIDTH (XFRAME (tip_frame));
+  height = FRAME_PIXEL_HEIGHT (XFRAME (tip_frame));
+
+  max_y = -1;
+
+  /* Try to determine the monitor where the mouse pointer is and
+     its geometry.  See bug#22549.  */
+  while (CONSP (attributes))
+    {
+      monitor = XCAR (attributes);
+      geometry = assq_no_quit (Qgeometry, monitor);
+
+      if (CONSP (geometry))
+	{
+	  min_x = XFIXNUM (Fnth (make_fixnum (1), geometry));
+	  min_y = XFIXNUM (Fnth (make_fixnum (2), geometry));
+	  max_x = min_x + XFIXNUM (Fnth (make_fixnum (3), geometry));
+	  max_y = min_y + XFIXNUM (Fnth (make_fixnum (4), geometry));
+
+	  if (min_x <= *root_x && *root_x < max_x
+	      && min_y <= *root_y && *root_y < max_y)
+	    break;
+
+	  max_y = -1;
+	}
+
+      attributes = XCDR (attributes);
+    }
+
+  /* It was not possible to determine the monitor's geometry, so we
+     assign some sane defaults here: */
+  if (max_y < 0)
+    {
+      min_x = 0;
+      min_y = 0;
+      max_x = x_display_pixel_width (FRAME_DISPLAY_INFO (x_dnd_frame));
+      max_y = x_display_pixel_height (FRAME_DISPLAY_INFO (x_dnd_frame));
+    }
+
+  if (*root_y + XFIXNUM (tip_dy) <= min_y)
+    *root_y = min_y; /* Can happen for negative dy */
+  else if (*root_y + XFIXNUM (tip_dy) + height <= max_y)
+    /* It fits below the pointer */
+    *root_y += XFIXNUM (tip_dy);
+  else if (height + XFIXNUM (tip_dy) + min_y <= *root_y)
+    /* It fits above the pointer.  */
+    *root_y -= height + XFIXNUM (tip_dy);
+  else
+    /* Put it on the top.  */
+    *root_y = min_y;
+
+  if (*root_x + XFIXNUM (tip_dx) <= min_x)
+    *root_x = 0; /* Can happen for negative dx */
+  else if (*root_x + XFIXNUM (tip_dx) + width <= max_x)
+    /* It fits to the right of the pointer.  */
+    *root_x += XFIXNUM (tip_dx);
+  else if (width + XFIXNUM (tip_dx) + min_x <= *root_x)
+    /* It fits to the left of the pointer.  */
+    *root_x -= width + XFIXNUM (tip_dx);
+  else
+    /* Put it left justified on the screen -- it ought to fit that way.  */
+    *root_x = min_x;
+}
+
+static void
+x_dnd_update_tooltip_position (int root_x, int root_y)
+{
+  struct frame *tip_f;
+
+  if (!x_dnd_in_progress || !x_dnd_update_tooltip)
+    return;
+
+  if (!FRAMEP (tip_frame))
+    return;
+
+  tip_f = XFRAME (tip_frame);
+
+  if (!FRAME_LIVE_P (tip_f)
+      || (FRAME_X_DISPLAY (tip_f)
+	  != FRAME_X_DISPLAY (x_dnd_frame)))
+    return;
+
+  if (tip_window != None
+      && FIXNUMP (tip_dx) && FIXNUMP (tip_dy))
+    {
+      x_dnd_compute_tip_xy (&root_x, &root_y,
+			    x_dnd_monitors);
+
+      XMoveWindow (FRAME_X_DISPLAY (x_dnd_frame),
+		   tip_window, root_x, root_y);
+    }
+}
+
 /* Get the window underneath the pointer, see if it moved, and update
    the DND state accordingly.  */
 static void
@@ -15266,6 +15415,8 @@ x_dnd_update_state (struct x_display_info *dpyinfo, Time timestamp)
 	    xm_send_drag_motion_message (dpyinfo, FRAME_X_WINDOW (x_dnd_frame),
 					 target, &dmsg);
 	}
+
+      x_dnd_update_tooltip_position (root_x, root_y);
     }
   /* The pointer moved out of the screen.  */
   else if (x_dnd_last_protocol_version != -1)
@@ -17436,6 +17587,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 					       target, &dmsg);
 	      }
 
+	    x_dnd_update_tooltip_position (event->xmotion.x_root,
+					   event->xmotion.y_root);
+
 	    goto OTHER;
 	  }
 
@@ -17940,6 +18094,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  {
 		    x_dnd_end_window = x_dnd_last_seen_window;
 		    x_dnd_in_progress = false;
+
+		    if (x_dnd_update_tooltip
+			&& FRAMEP (tip_frame)
+			&& FRAME_LIVE_P (XFRAME (tip_frame))
+			&& (FRAME_X_DISPLAY (XFRAME (tip_frame))
+			    == FRAME_X_DISPLAY (x_dnd_frame)))
+		      Fx_hide_tip ();
+
 		    x_dnd_finish_frame = x_dnd_frame;
 
 		    if (x_dnd_last_seen_window != None
@@ -19146,6 +19308,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 						     target, &dmsg);
 		    }
 
+		  x_dnd_update_tooltip_position (xev->root_x, xev->root_y);
+
 		  goto XI_OTHER;
 		}
 
@@ -19305,6 +19469,16 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			{
 			  x_dnd_end_window = x_dnd_last_seen_window;
 			  x_dnd_in_progress = false;
+
+			  /* If a tooltip that we're following is
+			     displayed, hide it now.  */
+
+			  if (x_dnd_update_tooltip
+			      && FRAMEP (tip_frame)
+			      && FRAME_LIVE_P (XFRAME (tip_frame))
+			      && (FRAME_X_DISPLAY (XFRAME (tip_frame))
+				  == FRAME_X_DISPLAY (x_dnd_frame)))
+			    Fx_hide_tip ();
 
 			  /* This doesn't have to be marked since it
 			     is only accessed if
@@ -26618,6 +26792,9 @@ syms_of_xterm (void)
 {
   x_error_message = NULL;
   PDUMPER_IGNORE (x_error_message);
+
+  x_dnd_monitors = Qnil;
+  staticpro (&x_dnd_monitors);
 
   DEFSYM (Qvendor_specific_keysyms, "vendor-specific-keysyms");
   DEFSYM (Qlatin_1, "latin-1");
