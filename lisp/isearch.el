@@ -4532,7 +4532,17 @@ by default is the same as returned by `isearch-search-fun-default'."
                        (if isearch-forward old (max (1- old) (point-min)))
                        property)
                   old))
-           end found)
+           end found regexp regexp-^ regexp-$ (i 0))
+      (when isearch-regexp
+        (setq regexp string)
+        (while (string-match "\\(\\^\\)\\|\\$" string i)
+          (setq i (match-beginning 0))
+          (if (save-match-data (not (subregexp-context-p
+                                     string (match-beginning 0))))
+              ;; The ^/$ is inside a char-range or escaped or something.
+              (setq i (1+ i))
+            (setq string (replace-match "" t t string))
+            (if (match-beginning 1) (setq regexp-^ t) (setq regexp-$ t)))))
       ;; Otherwise, try to search for the next property.
       (unless beg
         (setq beg (if isearch-forward
@@ -4551,6 +4561,29 @@ by default is the same as returned by `isearch-search-fun-default'."
                                                 (max bound end))
                                       end)
                              noerror count))
+        ;; Handle ^/$ specially
+        (when (and regexp found)
+          ;; Apply ^/$ regexp on the whole filename field.
+          (save-match-data
+            (if (string-match regexp (buffer-substring beg end))
+                ;; FIXME: better to modify previous match-data
+                (setq found (if isearch-forward
+                                (+ beg (match-end 0))
+                              (- beg (match-end 0))))
+              (setq found nil)))
+          ;; Check ^/$ matches at filename field boundaries.
+          (when found
+            (goto-char found)
+            (unless (and (or (not regexp-^)
+                             (eq (if isearch-forward beg end) (point-min))
+                             (null (get-text-property
+                                    (1- (if isearch-forward beg end)) property)))
+                         (or (not regexp-$)
+                             (eq (point) (point-max))
+                             (null (get-text-property
+                                    (point) property))))
+              (setq found nil))))
+        ;; Get the next filename field.
         (unless found
           (setq beg (if isearch-forward
                         (next-single-property-change end property)
@@ -4558,6 +4591,11 @@ by default is the same as returned by `isearch-search-fun-default'."
           (when beg (goto-char beg))))
       (unless found (goto-char old))
       found)))
+
+(defun isearch-search-fun-in-noncontiguous-region ()
+  "Return the function that searches inside noncontiguous regions."
+  (lambda (string &optional bound noerror count)
+    (list string bound noerror count)))
 
 
 (defun isearch-resume (string regexp word forward message case-fold)
