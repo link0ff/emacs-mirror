@@ -7312,9 +7312,6 @@ now defined as a sibling."
 
 (defun find-sibling-file (file)
   "Visit a \"sibling\" file of FILE.
-By default, return only files that exist, but if ALL is non-nil,
-return all matches.
-
 When called interactively, FILE is the currently visited file.
 
 The \"sibling\" file is defined by the `find-sibling-rules' variable."
@@ -7386,12 +7383,11 @@ and `list-directory-verbose-switches'."
      (list (read-file-name
             (if pfx "List directory (verbose): "
 	      "List directory (brief): ")
-	    nil default-directory t
-            nil
+	    nil default-directory
             (lambda (file)
               (or (file-directory-p file)
                   (insert-directory-wildcard-in-dir-p
-                   (expand-file-name file)))))
+                   (file-name-as-directory (expand-file-name file))))))
            pfx)))
   (let ((switches (if verbose list-directory-verbose-switches
 		    list-directory-brief-switches))
