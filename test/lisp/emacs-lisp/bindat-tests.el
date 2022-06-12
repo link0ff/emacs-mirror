@@ -36,7 +36,7 @@
   (bindat-type
     (type u8)
     (opcode u8)
-    (length uintr 16) ;; little endian order
+    (length uint 16 'le) ;; little endian order
     (id strz 8)
     (data vec length)
     (_ align 4)))
@@ -128,18 +128,17 @@
           (r (zerop (% kind 2))))
       (dotimes (_ 100)
         (let* ((n (random (ash 1 bitlen)))
-               (i (- n (ash 1 (1- bitlen)))))
+               (i (- n (ash 1 (1- bitlen))))
+               (stype (bindat-type sint bitlen r))
+               (utype (bindat-type if r (uintr bitlen) (uint bitlen))))
           (should (equal (bindat-unpack
-                          (bindat-type sint bitlen r)
-                          (bindat-pack (bindat-type sint bitlen r) i))
+                          stype
+                          (bindat-pack stype i))
                          i))
           (when (>= i 0)
-            (should (equal (bindat-pack
-                            (bindat-type if r (uintr bitlen) (uint bitlen)) i)
-                           (bindat-pack (bindat-type sint bitlen r) i)))
-            (should (equal (bindat-unpack
-                            (bindat-type if r (uintr bitlen) (uint bitlen))
-                            (bindat-pack (bindat-type sint bitlen r) i))
+            (should (equal (bindat-pack utype i)
+                           (bindat-pack stype i)))
+            (should (equal (bindat-unpack utype (bindat-pack stype i))
                            i))))))))
 
 (defconst bindat-test--LEB128
@@ -188,6 +187,22 @@
     (let ((prealloc (make-string 2 ?x)))
       (apply #'bindat-pack (append (car tc) (list prealloc)))
       (should (equal prealloc (cdr tc))))))
+
+(ert-deftest bindat-test--str-strz-multibyte ()
+  (dolist (spec (list (bindat-type str 2)
+                      (bindat-type strz 2)
+                      (bindat-type strz)))
+    (should (equal (bindat-pack spec (string-to-multibyte "x")) "x\0"))
+    (should (equal (bindat-pack spec (string-to-multibyte "\xff")) "\xff\0"))
+    (should-error (bindat-pack spec "💩"))
+    (should-error (bindat-pack spec "\N{U+ff}")))
+  (dolist (spec (list '((x str 2)) '((x strz 2))))
+    (should (equal (bindat-pack spec `((x . ,(string-to-multibyte "x"))))
+                   "x\0"))
+    (should (equal (bindat-pack spec `((x . ,(string-to-multibyte "\xff"))))
+                   "\xff\0"))
+    (should-error (bindat-pack spec '((x . "💩"))))
+    (should-error (bindat-pack spec '((x . "\N{U+ff}"))))))
 
 (let ((spec (bindat-type strz 2)))
   (ert-deftest bindat-test--strz-fixedlen-len ()

@@ -3470,13 +3470,15 @@ type values:
 @itemx byte
 Unsigned byte, with length 1.
 
-@item uint @var{bitlen}
-Unsigned integer in network byte order, with @var{bitlen} bits.
+@item uint @var{bitlen} &optional @var{le}
+Unsigned integer in network byte order (big-endian), with @var{bitlen} bits.
 @var{bitlen} has to be a multiple of 8.
+If @var{le} is non-@code{nil}, then use little-endian byte order.
 
-@item uintr @var{bitlen}
-Unsigned integer in little endian order, with @var{bitlen} bits.
+@item sint @var{bitlen} @var{le}
+Signed integer in network byte order (big-endian), with @var{bitlen} bits.
 @var{bitlen} has to be a multiple of 8.
+If @var{le} is non-@code{nil}, then use little-endian byte order.
 
 @item str @var{len}
 Unibyte string (@pxref{Text Representations}) of length @var{len} bytes.
@@ -3484,8 +3486,11 @@ When packing, the first @var{len} bytes of the input string are copied
 to the packed output.  If the input string is shorter than @var{len},
 the remaining bytes will be null (zero) unless a pre-allocated string
 was provided to @code{bindat-pack}, in which case the remaining bytes
-are left unmodified.  When unpacking, any null bytes in the packed
-input string will appear in the unpacked output.
+are left unmodified.  If the input string is multibyte with only ASCII
+and @code{eight-bit} characters, it is converted to unibyte before it
+is packed; other multibyte strings signal an error.  When unpacking,
+any null bytes in the packed input string will appear in the unpacked
+output.
 
 @item strz &optional @var{len}
 If @var{len} is not provided: Variable-length null-terminated unibyte
@@ -3495,8 +3500,11 @@ null (zero) unless a pre-allocated string was provided to
 @code{bindat-pack}, in which case that byte is left unmodified.  The
 length of the packed output is the length of the input string plus one
 (for the null terminator).  The input string must not contain any null
-bytes.  When unpacking, the resulting string contains all bytes up to
-(but excluding) the null byte.
+bytes.  If the input string is multibyte with only ASCII and
+@code{eight-bit} characters, it is converted to unibyte before it is
+packed; other multibyte strings signal an error.  When unpacking, the
+resulting string contains all bytes up to (but excluding) the null
+byte.
 
 @quotation Caution
 If a pre-allocated string is provided to @code{bindat-pack}, the
