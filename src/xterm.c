@@ -4240,6 +4240,12 @@ x_dnd_cleanup_drag_and_drop (void *frame)
   if (x_dnd_motif_setup_p)
     XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
 		     FRAME_DISPLAY_INFO (f)->Xatom_XdndSelection);
+
+  /* Remove any type list set as well.  */
+  if (x_dnd_init_type_lists && x_dnd_n_targets > 3)
+    XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
+		     FRAME_DISPLAY_INFO (f)->Xatom_XdndTypeList);
+
   unblock_input ();
 
   x_dnd_frame = NULL;
@@ -9370,13 +9376,13 @@ x_draw_glyph_string (struct glyph_string *s)
 		  val = (WINDOW_BUFFER_LOCAL_VALUE
 			 (Qx_underline_at_descent_line, s->w));
 		  underline_at_descent_line
-		    = (!(NILP (val) || EQ (val, Qunbound))
+		    = (!(NILP (val) || BASE_EQ (val, Qunbound))
 		       || s->face->underline_at_descent_line_p);
 
 		  val = (WINDOW_BUFFER_LOCAL_VALUE
 			 (Qx_use_underline_position_properties, s->w));
 		  use_underline_position_properties
-		    = !(NILP (val) || EQ (val, Qunbound));
+		    = !(NILP (val) || BASE_EQ (val, Qunbound));
 
                   /* Get the underline thickness.  Default is 1 pixel.  */
                   if (font && font->underline_thickness > 0)
@@ -11263,6 +11269,12 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 		XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
 				 FRAME_DISPLAY_INFO (f)->Xatom_XdndSelection);
 
+
+	      /* Remove any type list set as well.  */
+	      if (x_dnd_init_type_lists && x_dnd_n_targets > 3)
+		XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
+				 FRAME_DISPLAY_INFO (f)->Xatom_XdndTypeList);
+
 	      /* Call kbd_buffer_store event, which calls
 		 handle_interrupt and sets `last-event-frame' along
 		 with various other things.  */
@@ -11348,6 +11360,12 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 	      if (x_dnd_motif_setup_p)
 		XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
 				 FRAME_DISPLAY_INFO (f)->Xatom_XdndSelection);
+
+
+	      /* Remove any type list set as well.  */
+	      if (x_dnd_init_type_lists && x_dnd_n_targets > 3)
+		XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
+				 FRAME_DISPLAY_INFO (f)->Xatom_XdndTypeList);
 	      unblock_input ();
 
 	      quit ();
@@ -11386,6 +11404,11 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   if (x_dnd_motif_setup_p)
     XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
 		     FRAME_DISPLAY_INFO (f)->Xatom_XdndSelection);
+
+  /* Remove any type list set as well.  */
+  if (x_dnd_init_type_lists && x_dnd_n_targets > 3)
+    XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
+		     FRAME_DISPLAY_INFO (f)->Xatom_XdndTypeList);
   unblock_input ();
 
   if (x_dnd_return_frame == 3
@@ -25677,7 +25700,8 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
       {
 	terminal->kboard = allocate_kboard (Qx);
 
-	if (!EQ (XSYMBOL (Qvendor_specific_keysyms)->u.s.function, Qunbound))
+	if (!BASE_EQ (XSYMBOL (Qvendor_specific_keysyms)->u.s.function,
+		      Qunbound))
 	  {
 	    char *vendor = ServerVendor (dpy);
 
