@@ -4573,13 +4573,13 @@ function which is by default is the same as returned by
                    match-data)
               (with-temp-buffer
                 (insert substring)
-                (goto-char (1+ (- beg offset)))
+                (goto-char (- beg offset -1))
                 ;; Apply ^/$ regexp on the whole extracted substring.
                 (setq found (funcall
                              (or search-fun (isearch-search-fun-default))
                              string (and bound (max (point-min)
                                                     (min (point-max)
-                                                         (1+ (- bound offset)))))
+                                                         (- bound offset -1))))
                              noerror count))
                 ;; Adjust match data as if it's matched in original buffer.
                 (when found
