@@ -4541,7 +4541,7 @@ function which is by default is the same as returned by
                        (setq i (match-end 0))
                        (when (subregexp-context-p string (match-beginning 0))
                          ;; The ^/$ is not inside a char-range or escaped.
-                         (throw 'subregexp nil))))))))
+                         (throw 'subregexp t))))))))
       ;; Otherwise, try to search for the next property.
       (unless beg
         (setq beg (if isearch-forward
@@ -4554,23 +4554,42 @@ function which is by default is the same as returned by
         (setq end (if isearch-forward
                       (next-single-property-change beg property)
                     (previous-single-property-change beg property)))
+        ;; Handle ^/$ specially by matching in a temporary buffer.
         (if subregexp
-            ;; Handle ^/$ specially by matching in a temporary buffer.
-            (let ((substring (buffer-substring beg end))
-                  match-data)
+            (let* ((prop-beg
+                    (if (or (if isearch-forward (bobp) (eobp))
+                            (null (get-text-property
+                                   (+ (point) (if isearch-forward -1 1))
+                                   property)))
+                        ;; Already at the beginning of the field.
+                        beg
+                      ;; Get the real beginning of the field when
+                      ;; the search was started in the middle.
+                      (if isearch-forward
+                          (previous-single-property-change beg property)
+                        (next-single-property-change beg property))))
+                   (offset (if isearch-forward (- beg prop-beg) (- prop-beg beg)))
+                   (substring (buffer-substring prop-beg end))
+                   match-data)
               (with-temp-buffer
                 (insert substring)
-                (goto-char (point-min))
+                (goto-char (if isearch-forward
+                               (+ (point-min) offset)
+                             (- (point-max) offset)))
                 ;; Apply ^/$ regexp on the whole extracted substring.
                 (setq found (funcall
                              (or search-fun (isearch-search-fun-default))
-                             string (if bound (- bound beg) (1+ (- end beg)))
+                             string (and bound (if isearch-forward
+                                                   (+ bound offset)
+                                                 (- bound offset)))
                              noerror count))
                 ;; Adjust match data as if it's matched in original buffer.
                 (when found
-                  (setq found (+ found beg)
-                        match-data (mapcar (lambda (m) (1- (+ m beg)))
-                                           (match-data)))))
+                  (setq found (+ found (if isearch-forward prop-beg end) -1)
+                        match-data
+                        (mapcar (lambda (m)
+                                  (+ m (if isearch-forward prop-beg end) -1))
+                                (match-data)))))
               (when match-data (set-match-data match-data)))
           (setq found (funcall
                        (or search-fun (isearch-search-fun-default))
