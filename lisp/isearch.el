@@ -4559,7 +4559,7 @@ function which is by default is the same as returned by
             (let* ((prop-beg
                     (if (or (if isearch-forward (bobp) (eobp))
                             (null (get-text-property
-                                   (+ (point) (if isearch-forward -1 1))
+                                   (+ (point) (if isearch-forward -1 0))
                                    property)))
                         ;; Already at the beginning of the field.
                         beg
@@ -4568,28 +4568,24 @@ function which is by default is the same as returned by
                       (if isearch-forward
                           (previous-single-property-change beg property)
                         (next-single-property-change beg property))))
-                   (offset (if isearch-forward (- beg prop-beg) (- prop-beg beg)))
                    (substring (buffer-substring prop-beg end))
+                   (offset (if isearch-forward prop-beg end))
                    match-data)
               (with-temp-buffer
                 (insert substring)
-                (goto-char (if isearch-forward
-                               (+ (point-min) offset)
-                             (- (point-max) offset)))
+                (goto-char (1+ (- beg offset)))
                 ;; Apply ^/$ regexp on the whole extracted substring.
                 (setq found (funcall
                              (or search-fun (isearch-search-fun-default))
-                             string (and bound (if isearch-forward
-                                                   (+ bound offset)
-                                                 (- bound offset)))
+                             string (and bound (max (point-min)
+                                                    (min (point-max)
+                                                         (1+ (- bound offset)))))
                              noerror count))
                 ;; Adjust match data as if it's matched in original buffer.
                 (when found
-                  (setq found (+ found (if isearch-forward prop-beg end) -1)
-                        match-data
-                        (mapcar (lambda (m)
-                                  (+ m (if isearch-forward prop-beg end) -1))
-                                (match-data)))))
+                  (setq found (+ found offset -1)
+                        match-data (mapcar (lambda (m) (+ m offset -1))
+                                           (match-data)))))
               (when match-data (set-match-data match-data)))
           (setq found (funcall
                        (or search-fun (isearch-search-fun-default))
