@@ -152,6 +152,13 @@ of 'user-emacs-directory'.
 * Incompatible changes in Emacs 29.1
 
 +++
+** 'E' in 'query-replace' now edits the replacement with exact case.
+Previously, this command did the same as 'e'.
+
+---
+** '/ a' in *Packages* now limits by package name(s) instead of regexp.
+
++++
 ** Setting the goal columns now also affects '<prior>' and '<next>'.
 Previously, 'C-x C-n' only affected 'next-line' and 'previous-line',
 but it now also affects 'scroll-up-command' and 'scroll-down-command'.
@@ -290,6 +297,9 @@ startup.  Previously, these functions ignored
 
 
 * Changes in Emacs 29.1
+
+---
+** Files with the '.eld' extension are now visited in 'lisp-data-mode'.
 
 +++
 ** New command 'find-sibling-file'.
@@ -884,6 +894,7 @@ corresponding language environments are:
 **** Grantha script and language environment
 **** Kharoshthi script and language environment
 **** Lepcha script and language environment
+**** Meetei Mayek script and language environment
 
 ---
 *** The "Oriya" language environment was renamed to "Odia".
@@ -1972,6 +1983,9 @@ functions.
 Previously it produced a nonsense value, -1, that was never intended.
 
 * Lisp Changes in Emacs 29.1
+
++++
+** 'read-regexp' now allows the user to indicate whether to use case folding.
 
 +++
 ** 'completing-read' now allows a function as its REQUIRE-MATCH argument.
