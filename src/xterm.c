@@ -2340,6 +2340,44 @@ xm_read_drop_start_reply (const XEvent *msg, xm_drop_start_reply *reply)
 }
 
 static int
+xm_read_drop_start_message (const XEvent *msg,
+			    xm_drop_start_message *dmsg)
+{
+  const uint8_t *data;
+
+  data = (const uint8_t *) &msg->xclient.data.b[0];
+
+  if ((XM_DRAG_REASON_ORIGINATOR (data[0])
+       != XM_DRAG_ORIGINATOR_INITIATOR)
+      || (XM_DRAG_REASON_CODE (data[0])
+	  != XM_DRAG_REASON_DROP_START))
+    return 1;
+
+  dmsg->reason = *(data++);
+  dmsg->byte_order = *(data++);
+  dmsg->side_effects = *(uint16_t *) data;
+  dmsg->timestamp = *(uint32_t *) (data + 2);
+  dmsg->x = *(uint16_t *) (data + 6);
+  dmsg->y = *(uint16_t *) (data + 8);
+  dmsg->index_atom = *(uint32_t *) (data + 10);
+  dmsg->source_window = *(uint32_t *) (data + 14);
+
+  if (dmsg->byte_order != XM_BYTE_ORDER_CUR_FIRST)
+    {
+      SWAPCARD16 (dmsg->side_effects);
+      SWAPCARD32 (dmsg->timestamp);
+      SWAPCARD16 (dmsg->x);
+      SWAPCARD16 (dmsg->y);
+      SWAPCARD32 (dmsg->index_atom);
+      SWAPCARD32 (dmsg->source_window);
+    }
+
+  dmsg->byte_order = XM_BYTE_ORDER_CUR_FIRST;
+
+  return 0;
+}
+
+static int
 xm_read_drag_receiver_info (struct x_display_info *dpyinfo,
 			    Window wdesc, xm_drag_receiver_info *rec)
 {
@@ -2393,6 +2431,40 @@ xm_read_drag_receiver_info (struct x_display_info *dpyinfo,
     XFree (tmp_data);
 
   return !rc;
+}
+
+static int
+xm_read_drag_motion_message (const XEvent *msg,
+			     xm_drag_motion_message *dmsg)
+{
+  const uint8_t *data;
+
+  data = (const uint8_t *) &msg->xclient.data.b[0];
+
+  if ((XM_DRAG_REASON_CODE (data[0])
+       != XM_DRAG_REASON_DRAG_MOTION)
+      || (XM_DRAG_REASON_ORIGINATOR (data[0])
+	  != XM_DRAG_ORIGINATOR_INITIATOR))
+    return 1;
+
+  dmsg->reason = *(data++);
+  dmsg->byteorder = *(data++);
+  dmsg->side_effects = *(uint16_t *) data;
+  dmsg->timestamp = *(uint32_t *) (data + 2);
+  dmsg->x = *(uint16_t *) (data + 6);
+  dmsg->y = *(uint16_t *) (data + 8);
+
+  if (dmsg->byteorder != XM_BYTE_ORDER_CUR_FIRST)
+    {
+      SWAPCARD16 (dmsg->side_effects);
+      SWAPCARD32 (dmsg->timestamp);
+      SWAPCARD16 (dmsg->x);
+      SWAPCARD16 (dmsg->y);
+    }
+
+  dmsg->byteorder = XM_BYTE_ORDER_CUR_FIRST;
+
+  return 0;
 }
 
 static void
@@ -15762,6 +15834,62 @@ x_monitors_changed_cb (GdkScreen *gscr, gpointer user_data)
 }
 #endif
 
+/* Extract the root window coordinates from the client message EVENT
+   if it is a message that we already understand.  Return false if the
+   event was not understood.  */
+static bool
+x_coords_from_dnd_message (struct x_display_info *dpyinfo,
+			   XEvent *event, int *x_out, int *y_out)
+{
+  xm_drag_motion_message dmsg;
+  xm_drop_start_message smsg;
+  xm_drop_start_reply reply;
+
+  if (event->type != ClientMessage)
+    return false;
+
+  if (event->xclient.message_type == dpyinfo->Xatom_XdndPosition)
+    {
+      if (event->xclient.format != 32)
+	return false;
+
+      *x_out = (((unsigned long) event->xclient.data.l[2]) >> 16
+		& 0xffff);
+      *y_out = (event->xclient.data.l[2] & 0xffff);
+
+      return true;
+    }
+
+  if ((event->xclient.message_type
+       == dpyinfo->Xatom_MOTIF_DRAG_AND_DROP_MESSAGE)
+      && event->xclient.format == 8)
+    {
+      if (!xm_read_drag_motion_message (event, &dmsg))
+	{
+	  *x_out = dmsg.x;
+	  *y_out = dmsg.y;
+
+	  return true;
+	}
+      else if (!xm_read_drop_start_message (event, &smsg))
+	{
+	  *x_out = smsg.x;
+	  *y_out = smsg.y;
+
+	  return true;
+	}
+      else if (!xm_read_drop_start_reply (event, &reply))
+	{
+	  *x_out = reply.better_x;
+	  *y_out = reply.better_y;
+
+	  return true;
+	}
+    }
+
+  return false;
+}
+
 /* Handles the XEvent EVENT on display DPYINFO.
 
    *FINISH is X_EVENT_GOTO_OUT if caller should stop reading events.
@@ -15804,6 +15932,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
   GdkEvent *copy = NULL;
   GdkDisplay *gdpy = gdk_x11_lookup_xdisplay (dpyinfo->display);
 #endif
+  int dx, dy;
   USE_SAFE_ALLOCA;
 
   *finish = X_EVENT_NORMAL;
@@ -15835,6 +15964,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
     {
     case ClientMessage:
       {
+	int rc;
+
 	if (x_dnd_in_progress
 	    && FRAME_DISPLAY_INFO (x_dnd_frame) == dpyinfo
 	    && event->xclient.message_type == dpyinfo->Xatom_XdndStatus)
@@ -16211,7 +16342,17 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	f = any;
 	if (!f)
 	  goto OTHER;
-	if (x_handle_dnd_message (f, &event->xclient, dpyinfo, &inev.ie))
+
+	/* These values are always used initialized, but GCC doesn't
+	   know that.  */
+	dx = 0;
+	dy = 0;
+
+	rc = x_coords_from_dnd_message (dpyinfo, (XEvent *) event,
+					&dx, &dy);
+
+	if (x_handle_dnd_message (f, &event->xclient, dpyinfo, &inev.ie,
+				  rc, dx, dy))
 	  *finish = X_EVENT_DROP;
       }
       break;
