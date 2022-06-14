@@ -9639,7 +9639,6 @@ minibuffer, but don't quit the completions window."
                 ((and (not (bobp))
                       (get-text-property (1- (point)) 'completion--string))
                  (setq beg (point)))
-                ;; FIXME:
                 (t (error "No completion here")))
                (setq beg (or (previous-single-property-change
                               beg 'completion--string)
