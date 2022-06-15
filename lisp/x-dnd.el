@@ -65,7 +65,9 @@ The default value for this variable is `x-dnd-default-test-function'."
     (,(purecopy "text/plain") . dnd-insert-text)
     (,(purecopy "COMPOUND_TEXT") . x-dnd-insert-ctext)
     (,(purecopy "STRING") . dnd-insert-text)
-    (,(purecopy "TEXT")   . dnd-insert-text))
+    (,(purecopy "TEXT")   . dnd-insert-text)
+    (,(purecopy "DndTypeFile") . x-dnd-handle-offix-file)
+    (,(purecopy "DndTypeText") . dnd-insert-text))
   "Which function to call to handle a drop of that type.
 If the type for the drop is not present, or the function is nil,
 the drop is rejected.  The function takes three arguments, WINDOW, ACTION
@@ -91,11 +93,23 @@ if drop is successful, nil if not."
     "text/plain"
     "COMPOUND_TEXT"
     "STRING"
-    "TEXT"))
+    "TEXT"
+    "DndTypeFile"
+    "DndTypeText"))
   "The types accepted by default for dropped data.
 The types are chosen in the order they appear in the list."
   :version "22.1"
   :type '(repeat string)
+  :group 'x)
+
+(defcustom x-dnd-use-offix-drop nil
+  "If non-nil, use the OffiX protocol to drop files and text.
+This allows dropping (via `dired-mouse-drag-files' or
+`mouse-drag-and-drop-region-cross-program') on some old Java
+applets and old KDE programs.  Turning this off allows dropping
+only text on some other programs such as xterm and urxvt."
+  :version "29.1"
+  :type 'boolean
   :group 'x)
 
 ;; Internal variables
@@ -137,6 +151,7 @@ any protocol specific data.")
     (x-register-dnd-atom "XdndPosition" frame)
     (x-register-dnd-atom "XdndLeave" frame)
     (x-register-dnd-atom "XdndDrop" frame)
+    (x-register-dnd-atom "_DND_PROTOCOL" frame)
     (x-dnd-init-xdnd-for-frame frame)
     (x-dnd-init-motif-for-frame frame)))
 
@@ -375,7 +390,8 @@ Currently XDND, Motif and old KDE 1.x protocols are recognized."
 	    (data (aref client-message 3)))
         (cond ((equal "DndProtocol" message-atom)	; Old KDE 1.x.
 	       (x-dnd-handle-old-kde event frame window message-atom format data))
-
+              ((equal "_DND_PROTOCOL" message-atom) ; OffiX protocol.
+               (x-dnd-handle-offix event frame window message-atom format data))
 	      ((equal "_MOTIF_DRAG_AND_DROP_MESSAGE" message-atom)	; Motif
 	       (x-dnd-handle-motif event frame window message-atom format data))
 
@@ -390,14 +406,59 @@ Currently XDND, Motif and old KDE 1.x protocols are recognized."
 (declare-function x-window-property "xfns.c"
 		  (prop &optional frame type source delete-p vector-ret-p))
 
-(defun x-dnd-handle-old-kde (_event frame window _message _format _data)
+(defun x-dnd-handle-old-kde (_event frame window _message _format data)
   "Open the files in a KDE 1.x drop."
-  (let ((values (x-window-property "DndSelection" frame nil 0 t)))
-    (x-dnd-handle-uri-list window 'private
-			   (replace-regexp-in-string "\0$" "" values))))
+  (let ((proto (aref data 4)))
+    ;; If PROTO > 0, this is an old KDE drop emulated by a program
+    ;; supporting a newer version of the OffiX protocol, so we should
+    ;; wait for the corresponding modern event instead.
+    (when (zerop proto)
+      (let ((values (x-window-property "DndSelection" frame nil 0 t)))
+        (x-dnd-handle-uri-list window 'private
+			       (replace-regexp-in-string "\0$" "" values))))))
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; New OffiX protocol.
 
+(defvar x-dnd-offix-id-to-name '((-1 . DndTypeInvalid)
+                                 (0 . DndTypeUnknown)
+                                 (1 . DndTypeRawData)
+                                 (2 . DndTypeFile)
+                                 (3 . DndTypeFiles)
+                                 (4 . DndTypeText)
+                                 (5 . DndTypeDir)
+                                 (6 . DndTypeLInk)
+                                 (7 . DndTypeExe)
+                                 (8 . DndTypeUrl)
+                                 (9 . DndTypeMime)
+                                 (10 . DndTypePixmap))
+  "Alist of OffiX protocol types to their names.")
 
+(defun x-dnd-handle-offix-file (window action string)
+  "Convert OffiX file name to a regular file name.
+Then, call `x-dnd-handle-file-name'.
+
+WINDOW and ACTION mean the same as in `x-dnd-handle-file-name'.
+STRING is the raw offiX file name data."
+  (x-dnd-handle-file-name window action
+                          (replace-regexp-in-string "\0$" "" string)))
+
+(defun x-dnd-handle-offix (event frame window _message-atom _format data)
+  "Handle OffiX drop event EVENT.
+FRAME is the frame where the drop happened.
+WINDOW is the window where the drop happened.
+_MESSAGE-ATOM and _FORMAT are unused.
+DATA is the vector containing the contents of the client
+message (format 32) that caused EVENT to be generated."
+  (let ((type (cdr (assq (aref data 0) x-dnd-offix-id-to-name)))
+        (data (x-window-property "_DND_SELECTION" frame nil 0 t)))
+    ;; First save state.
+    (x-dnd-save-state window nil nil (vector type) nil)
+    ;; Now call the test function to decide what action to perform.
+    (x-dnd-maybe-call-test-function window 'private)
+    (unwind-protect
+        (x-dnd-drop-data event frame window data
+                         (symbol-name type))
+      (x-dnd-forget-drop window))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;  XDND protocol.
@@ -887,14 +948,82 @@ Return a vector of atoms containing the selection targets."
 
 ;;; Handling drops.
 
-(defun x-dnd-handle-unsupported-drop (targets _x _y action _window-id _frame _time)
-  "Return non-nil if the drop described by TARGETS and ACTION should not proceed."
+(defvar x-treat-local-requests-remotely)
+
+(defun x-dnd-convert-to-offix (targets)
+  "Convert the contents of `XdndSelection' to OffiX data.
+TARGETS should be the list of targets currently available in
+`XdndSelection'.  Return a list of an OffiX type, and data
+suitable for passing to `x-change-window-property', or nil if the
+data could not be converted."
+  (let ((x-treat-local-requests-remotely t)
+        file-name-data string-data)
+    (cond
+     ((and (member "FILE_NAME" targets)
+           (setq file-name-data
+                 (gui-get-selection 'XdndSelection 'FILE_NAME)))
+      (if (string-match-p "\0" file-name-data)
+          ;; This means there are multiple file names in
+          ;; XdndSelection.  Convert the file name data to a format
+          ;; that OffiX understands.
+          (cons 'DndTypeFiles (concat file-name-data "\0"))
+        (cons 'DndTypeFile (concat file-name-data "\0"))))
+     ((and (member "STRING" targets)
+           (setq string-data
+                 (gui-get-selection 'XdndSelection 'STRING)))
+      (cons 'DndTypeText (encode-coding-string string-data
+                                               'latin-1))))))
+
+(defun x-dnd-do-offix-drop (targets x y frame window-id)
+  "Perform an OffiX drop on WINDOW-ID with the contents of `XdndSelection'.
+Return non-nil if the drop succeeded, or nil if it did not
+happen, which can happen if TARGETS didn't contain anything that
+the OffiX protocol can represent.
+
+X and Y are the root window coordinates of the drop.  TARGETS is
+the list of targets `XdndSelection' can be converted to."
+  (if-let* ((data (x-dnd-convert-to-offix targets))
+            (type-id (car (rassq (car data)
+                                 x-dnd-offix-id-to-name)))
+            (source-id (string-to-number
+                        (frame-parameter frame 'window-id)))
+            (message-data (list type-id           ; l[0] = DataType
+                                0                 ; l[1] = event->xbutton.state
+                                source-id         ; l[2] = window
+                                (+ x (* 65536 y)) ; l[3] = drop_x + 65536 * drop_y
+                                1)))              ; l[4] = protocol version
+    (prog1 t
+      ;; Send a legacy (old KDE) message first.  Newer clients will
+      ;; ignore it, since the protocol version is 1.
+      (x-change-window-property "DndSelection"
+                                (cdr data) frame
+                                "STRING" 8 nil 0)
+      (x-send-client-message frame window-id
+                             frame "DndProtocol"
+                             32 message-data)
+      ;; Now send a modern _DND_PROTOCOL message.
+      (x-change-window-property "_DND_SELECTION"
+                                (cdr data) frame
+                                "STRING" 8 nil 0)
+      (x-send-client-message frame window-id
+                             frame "_DND_PROTOCOL"
+                             32 message-data))))
+
+(defun x-dnd-handle-unsupported-drop (targets x y action window-id frame _time)
+  "Return non-nil if the drop described by TARGETS and ACTION should not proceed.
+X and Y are the root window coordinates of the drop.
+FRAME is the frame the drop originated on.
+WINDOW-ID is the X window the drop should happen to."
   (not (and (or (eq action 'XdndActionCopy)
                 (eq action 'XdndActionMove))
-            (or (member "STRING" targets)
-                (member "UTF8_STRING" targets)
-                (member "COMPOUND_TEXT" targets)
-                (member "TEXT" targets)))))
+            (not (and x-dnd-use-offix-drop
+                      (x-dnd-do-offix-drop targets x
+                                           y frame window-id)))
+            (or
+             (member "STRING" targets)
+             (member "UTF8_STRING" targets)
+             (member "COMPOUND_TEXT" targets)
+             (member "TEXT" targets)))))
 
 (defvar x-dnd-targets-list)
 (defvar x-dnd-native-test-function)
