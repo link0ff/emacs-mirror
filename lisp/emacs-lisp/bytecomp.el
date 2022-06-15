@@ -2557,9 +2557,7 @@ list that represents a doc string reference.
   ;; macroexpand-all.
   ;; (if (memq byte-optimize '(t source))
   ;;     (setq form (byte-optimize-form form for-effect)))
-  (cond
-   (lexical-binding (cconv-closure-convert form))
-   (t form)))
+  (cconv-closure-convert form))
 
 ;; byte-hunk-handlers cannot call this!
 (defun byte-compile-toplevel-file-form (top-level-form)
@@ -4225,25 +4223,13 @@ This function is never called when `lexical-binding' is nil."
 (byte-defop-compiler-1 quote)
 
 (defun byte-compile-setq (form)
-  (let* ((args (cdr form))
-         (len (length args)))
-    (if (= (logand len 1) 1)
-        (progn
-          (byte-compile-report-error
-           (format-message
-            "missing value for `%S' at end of setq" (car (last args))))
-          (byte-compile-form
-           `(signal 'wrong-number-of-arguments '(setq ,len))
-           byte-compile--for-effect))
-      (if args
-          (while args
-            (byte-compile-form (car (cdr args)))
-            (or byte-compile--for-effect (cdr (cdr args))
-                (byte-compile-out 'byte-dup 0))
-            (byte-compile-variable-set (car args))
-            (setq args (cdr (cdr args))))
-        ;; (setq), with no arguments.
-        (byte-compile-form nil byte-compile--for-effect)))
+  (cl-assert (= (length form) 3))       ; normalised in macroexp
+  (let ((var (nth 1 form))
+        (expr (nth 2 form)))
+    (byte-compile-form expr)
+    (unless byte-compile--for-effect
+      (byte-compile-out 'byte-dup 0))
+    (byte-compile-variable-set var)
     (setq byte-compile--for-effect nil)))
 
 (byte-defop-compiler-1 set-default)
@@ -4820,11 +4806,8 @@ binding slots have been popped."
     (byte-compile-out-tag endtag)))
 
 (defun byte-compile-unwind-protect (form)
-  (pcase (cddr form)
-    (`(:fun-body ,f)
-     (byte-compile-form f))
-    (handlers
-     (byte-compile-form `#'(lambda () ,@handlers))))
+  (cl-assert (eq (caddr form) :fun-body))
+  (byte-compile-form (nth 3 form))
   (byte-compile-out 'byte-unwind-protect 0)
   (byte-compile-form-do-effect (car (cdr form)))
   (byte-compile-out 'byte-unbind 1))
