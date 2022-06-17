@@ -24,8 +24,9 @@
 
 ;;; Commentary:
 
-;; This file provides the drop part only.  Currently supported protocols
-;; are XDND, Motif and the old KDE 1.x protocol.
+;; This file provides the receiving side of the XDND and Motif
+;; protocols, and both the receiving and initiating ends of the old
+;; KDE (OffiX) and new OffiX protocols.
 
 ;;; Code:
 
@@ -67,6 +68,7 @@ The default value for this variable is `x-dnd-default-test-function'."
     (,(purecopy "STRING") . dnd-insert-text)
     (,(purecopy "TEXT")   . dnd-insert-text)
     (,(purecopy "DndTypeFile") . x-dnd-handle-offix-file)
+    (,(purecopy "DndTypeFiles") . x-dnd-handle-offix-files)
     (,(purecopy "DndTypeText") . dnd-insert-text))
   "Which function to call to handle a drop of that type.
 If the type for the drop is not present, or the function is nil,
@@ -102,14 +104,20 @@ The types are chosen in the order they appear in the list."
   :type '(repeat string)
   :group 'x)
 
-(defcustom x-dnd-use-offix-drop nil
+(defcustom x-dnd-use-offix-drop 'files
   "If non-nil, use the OffiX protocol to drop files and text.
 This allows dropping (via `dired-mouse-drag-files' or
 `mouse-drag-and-drop-region-cross-program') on some old Java
 applets and old KDE programs.  Turning this off allows dropping
-only text on some other programs such as xterm and urxvt."
+only text on some other programs such as xterm and urxvt.
+
+If the symbol `files', use the OffiX protocol when dropping
+files, and the fallback drop method (which is used with programs
+like xterm) for text."
   :version "29.1"
-  :type 'boolean
+  :type '(choice (const :tag "Don't use the OffiX protocol for drag-and-drop" nil)
+                 (const :tag "Only use the OffiX protocol to drop files" files)
+                 (const :tag "Use the OffiX protocol for both files and text" t))
   :group 'x)
 
 ;; Internal variables
@@ -129,6 +137,7 @@ any protocol specific data.")
 
 (declare-function x-get-selection-internal "xselect.c"
 		  (selection-symbol target-type &optional time-stamp terminal))
+(declare-function x-display-set-last-user-time "xfns.c")
 
 (defconst x-dnd-xdnd-to-action
   '(("XdndActionPrivate" . private)
@@ -401,21 +410,43 @@ Currently XDND, Motif and old KDE 1.x protocols are recognized."
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;;  Old KDE protocol.  Only dropping of files.
+;;;  Old KDE protocol.
 
 (declare-function x-window-property "xfns.c"
 		  (prop &optional frame type source delete-p vector-ret-p))
 
-(defun x-dnd-handle-old-kde (_event frame window _message _format data)
-  "Open the files in a KDE 1.x drop."
+(defvar x-dnd-offix-old-kde-to-name '((-1 . DndTypeInvalid)
+                                      (0 . DndTypeUnknown)
+                                      (1 . DndTypeRawData)
+                                      (2 . DndTypeFile)
+                                      (3 . DndTypeFiles)
+                                      (4 . DndTypeText)
+                                      (5 . DndTypeDir)
+                                      (6 . DndTypeLink)
+                                      (7 . DndTypeExe)
+                                      (8 . DndTypeUrl))
+  "Alist of old KDE data types to their names.")
+
+(defun x-dnd-handle-old-kde (event frame window _message _format data)
+  "Handle an old KDE (OffiX) drop.
+EVENT, FRAME, WINDOW and DATA mean the same thing they do in
+`x-dnd-handle-offix.'"
   (let ((proto (aref data 4)))
     ;; If PROTO > 0, this is an old KDE drop emulated by a program
     ;; supporting a newer version of the OffiX protocol, so we should
     ;; wait for the corresponding modern event instead.
     (when (zerop proto)
-      (let ((values (x-window-property "DndSelection" frame nil 0 t)))
-        (x-dnd-handle-uri-list window 'private
-			       (replace-regexp-in-string "\0$" "" values))))))
+      (let ((type (cdr (assq (aref data 0) x-dnd-offix-old-kde-to-name)))
+            (data (x-window-property "DndSelection" frame nil 0 t)))
+        ;; First save state.
+        (x-dnd-save-state window nil nil (vector type) nil)
+        ;; Now call the test function to decide what action to perform.
+        (x-dnd-maybe-call-test-function window 'private)
+        (unwind-protect
+            (x-dnd-drop-data event frame window data
+                             (symbol-name type))
+          (x-dnd-forget-drop window))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; New OffiX protocol.
 
@@ -426,21 +457,34 @@ Currently XDND, Motif and old KDE 1.x protocols are recognized."
                                  (3 . DndTypeFiles)
                                  (4 . DndTypeText)
                                  (5 . DndTypeDir)
-                                 (6 . DndTypeLInk)
+                                 (6 . DndTypeLink)
                                  (7 . DndTypeExe)
                                  (8 . DndTypeUrl)
                                  (9 . DndTypeMime)
                                  (10 . DndTypePixmap))
-  "Alist of OffiX protocol types to their names.")
+  "Alist of OffiX data types to their names.")
 
 (defun x-dnd-handle-offix-file (window action string)
   "Convert OffiX file name to a regular file name.
 Then, call `x-dnd-handle-file-name'.
 
 WINDOW and ACTION mean the same as in `x-dnd-handle-file-name'.
-STRING is the raw offiX file name data."
+STRING is the raw OffiX file name data."
   (x-dnd-handle-file-name window action
                           (replace-regexp-in-string "\0$" "" string)))
+
+(defun x-dnd-handle-offix-files (window action string)
+  "Convert OffiX file name list to a URI list.
+Then, call `x-dnd-handle-file-name'.
+
+WINDOW and ACTION mean the same as in `x-dnd-handle-file-name'.
+STRING is the raw OffiX file name data."
+  (x-dnd-handle-file-name window action
+                          ;; OffiX file name lists contain one extra
+                          ;; NULL byte at the end.
+                          (if (string-suffix-p "\0\0" string)
+                              (substring string 0 (1- (length string)))
+                            string)))
 
 (defun x-dnd-handle-offix (event frame window _message-atom _format data)
   "Handle OffiX drop event EVENT.
@@ -578,7 +622,7 @@ FORMAT is 32 (not used).  MESSAGE is the data part of an XClientMessageEvent."
 			     (intern (x-dnd-current-type window))
 			     timestamp)))
 		success action)
-
+           (x-display-set-last-user-time timestamp)
 	   (setq action (if value
 			    (condition-case info
 				(x-dnd-drop-data event frame window value
@@ -818,6 +862,7 @@ Return a vector of atoms containing the selection targets."
 			    timestamp
 			    x
 			    y)))
+               (x-display-set-last-user-time timestamp)
 	       (x-send-client-message frame
 				      dnd-source
 				      frame
@@ -855,6 +900,7 @@ Return a vector of atoms containing the selection targets."
 			     my-byteorder)
 			    reply-flags
 			    timestamp)))
+               (x-display-set-last-user-time timestamp)
 	       (x-send-client-message frame
 				      dnd-source
 				      frame
@@ -913,7 +959,7 @@ Return a vector of atoms containing the selection targets."
 		      (timestamp (x-dnd-get-motif-value
 			          data 4 4 source-byteorder))
 		      action)
-
+                 (x-display-set-last-user-time timestamp)
 	         (x-send-client-message frame
 				        dnd-source
 				        frame
@@ -924,7 +970,8 @@ Return a vector of atoms containing the selection targets."
 		       (when (and reply-action atom-name)
 		         (let* ((value (x-get-selection-internal
 				        (intern atom-name)
-				        (intern (x-dnd-current-type window)))))
+				        (intern (x-dnd-current-type window))
+                                        timestamp)))
 		           (when value
 			     (condition-case info
 			         (x-dnd-drop-data event frame window value
@@ -966,7 +1013,7 @@ data could not be converted."
           ;; This means there are multiple file names in
           ;; XdndSelection.  Convert the file name data to a format
           ;; that OffiX understands.
-          (cons 'DndTypeFiles (concat file-name-data "\0"))
+          (cons 'DndTypeFiles (concat file-name-data "\0\0"))
         (cons 'DndTypeFile (concat file-name-data "\0"))))
      ((and (member "STRING" targets)
            (setq string-data
@@ -1017,6 +1064,8 @@ WINDOW-ID is the X window the drop should happen to."
   (not (and (or (eq action 'XdndActionCopy)
                 (eq action 'XdndActionMove))
             (not (and x-dnd-use-offix-drop
+                      (or (not (eq x-dnd-use-offix-drop 'files))
+                          (member "FILE_NAME" targets))
                       (x-dnd-do-offix-drop targets x
                                            y frame window-id)))
             (or
