@@ -299,6 +299,10 @@ startup.  Previously, these functions ignored
 * Changes in Emacs 29.1
 
 ---
+** New command 'duplicate-line'.
+This command duplicates the current line the specified number of times.
+
+---
 ** Files with the '.eld' extension are now visited in 'lisp-data-mode'.
 
 +++
@@ -1786,6 +1790,10 @@ This will display bookmark list from most recently set to least
 recently set.
 
 ---
+*** When editing a bookmark annotation, 'C-c C-k' will now cancel.
+It is bound to the new command 'bookmark-edit-annotation-cancel'.
+
+---
 *** New minor mode 'elide-head-mode'.
 Enabling this minor mode turns on hiding header material, like
 'elide-head' does; disabling it shows the header.  The commands
@@ -2004,6 +2012,12 @@ functions.
 ---
 ** '?\' at the end of a line now signals an error.
 Previously it produced a nonsense value, -1, that was never intended.
+
+** Some libraries obsolete since Emacs 24.1 and 24.3 have been removed:
+abbrevlist.el, assoc.el, complete.el, cust-print.el,
+erc-hecomplete.el, mailpost.el, mouse-sel.el, old-emacs-lock.el,
+patcomp.el, pc-select.el, s-region.el, and sregex.el.
+
 
 * Lisp Changes in Emacs 29.1
 
