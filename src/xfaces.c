@@ -5909,7 +5909,8 @@ realize_gui_face (struct face_cache *cache, Lisp_Object attrs[LFACE_VECTOR_SIZE]
 #ifdef HAVE_WINDOW_SYSTEM
   struct face *default_face;
   struct frame *f;
-  Lisp_Object stipple, underline, overline, strike_through, box;
+  Lisp_Object stipple, underline, overline, strike_through, box, temp_spec;
+  Lisp_Object temp_extra, antialias;
 
   eassert (FRAME_WINDOW_P (cache->f));
 
@@ -5951,8 +5952,28 @@ realize_gui_face (struct face_cache *cache, Lisp_Object attrs[LFACE_VECTOR_SIZE]
 	    emacs_abort ();
 	}
       if (! FONT_OBJECT_P (attrs[LFACE_FONT_INDEX]))
-	attrs[LFACE_FONT_INDEX]
-	  = font_load_for_lface (f, attrs, Ffont_spec (0, NULL));
+	{
+	  /* We want attrs to allow overriding most elements in the
+	     spec (IOW, to start out as an empty font spec), but
+	     preserve the antialiasing attribute.  (bug#17973,
+	     bug#37473).  */
+	  temp_spec = Ffont_spec (0, NULL);
+	  temp_extra = AREF (attrs[LFACE_FONT_INDEX],
+			     FONT_EXTRA_INDEX);
+	  /* If `:antialias' wasn't specified, keep it unspecified
+	     instead of changing it to nil.  */
+
+	  if (CONSP (temp_extra))
+	    antialias = Fassq (QCantialias, temp_extra);
+	  else
+	    antialias = Qnil;
+
+	  if (FONTP (attrs[LFACE_FONT_INDEX]) && !NILP (antialias))
+	    Ffont_put (temp_spec, QCantialias, Fcdr (antialias));
+
+	  attrs[LFACE_FONT_INDEX]
+	    = font_load_for_lface (f, attrs, temp_spec);
+	}
       if (FONT_OBJECT_P (attrs[LFACE_FONT_INDEX]))
 	{
 	  face->font = XFONT_OBJECT (attrs[LFACE_FONT_INDEX]);

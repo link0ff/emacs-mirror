@@ -151,6 +151,14 @@ of 'user-emacs-directory'.
 
 * Incompatible changes in Emacs 29.1
 
+---
+** Previously, the X reverseVideo value at startup was heeded for all frames.
+This meant that if you had a reverseVideo resource on the initial
+display, and then opened up a new frame on a display without any
+explicit reverseVideo setting, it would get heeded there, too.  (This
+included terminal frames.)  In Emacs 29, the reverseVideo X resource
+is handled like all the other X resources, and set on a per-frame basis.
+
 +++
 ** 'E' in 'query-replace' now edits the replacement with exact case.
 Previously, this command did the same as 'e'.
@@ -506,6 +514,12 @@ This is in addition to previously-supported ways of discovering 24-bit
 color support: either via the "RGB" or "setf24" capabilities, or if
 the 'COLORTERM' environment variable is set to the value "truecolor".
 
+*** Select active regions with xterm selection support.
+On terminals with xterm setSelection support, the active region may be
+saved to the X primary selection, following the
+'select-active-regions' variable.  This support is enabled when
+'tty-select-active-regions' is non-nil.
+
 ** ERT
 
 +++
@@ -566,6 +580,10 @@ This allows you to enter emoji using short strings, eg ':face_palm:'
 or ':scream:'.
 
 ** Help
+
+*** New user option 'help-clean-buttons'.
+If non-nil, link buttons in *Help* will have any surrounding quotes
+removed.
 
 ---
 *** 'M-x apropos-variable' output now includes values of variables.
@@ -1018,6 +1036,17 @@ This user option controls whether the 'e' (in a "*Backtrace*"
 buffer or while edebugging) and 'C-x C-e' (while edebugging) commands
 lead to a (further) backtrace.  By default, this variable is nil,
 which is a change in behaviour from previous Emacs versions.
+
++++
+*** 'e' in edebug can now take a prefix arg to pretty-print the results.
+When invoked with a prefix argument, as in 'C-u e', this command will
+pop up a new buffer and show the full pretty-printed value there.
+
++++
+*** 'C-x C-e' now interprets a non-zero prefix arg to pretty-print the results.
+When invoked with a non-zero prefix argument, as in 'C-u C-x C-e',
+this command will pop up a new buffer and show the full pretty-printed
+value there.
 
 ** Compile
 
@@ -1593,6 +1622,11 @@ the thumbnail file.
 
 ** Dired
 
+---
+*** New user option 'dired-omit-line-regexp'.
+This is used by 'dired-omit-mode', and now allows you to hide based on
+other things than just the file names.
+
 +++
 *** New user option 'dired-mouse-drag-files'.
 If non-nil, dragging file names with the mouse in a Dired buffer will
@@ -1618,6 +1652,22 @@ the buffer will take you to that directory.
 For example, the regexp ".*" will match only characters that are part
 of the file name.  Also "^.*$" can be used to match at the beginning
 of the file name and at the end of the file name.
+
+** Bookmarks
+
+---
+*** 'list-bookmarks' now includes a type column.
+Types are registered via a 'bookmark-handler-type' symbol property on
+the jumping function.
+
++++
+*** 'bookmark-sort-flag' can now be set to 'last-modified'.
+This will display bookmark list from most recently set to least
+recently set.
+
+---
+*** When editing a bookmark annotation, 'C-c C-k' will now cancel.
+It is bound to the new command 'bookmark-edit-annotation-cancel'.
 
 ** Exif
 
@@ -1778,20 +1828,6 @@ This package allows formatting data using variable-pitch fonts.
 The resulting tables can display text in variable pitch fonts, text
 using fonts of different sizes, and images.  See the "(vtable) Top"
 manual for more details.
-
----
-*** 'list-bookmarks' now includes a type column.
-Types are registered via a 'bookmark-handler-type' symbol property on
-the jumping function.
-
-+++
-*** 'bookmark-sort-flag' can now be set to 'last-modified'.
-This will display bookmark list from most recently set to least
-recently set.
-
----
-*** When editing a bookmark annotation, 'C-c C-k' will now cancel.
-It is bound to the new command 'bookmark-edit-annotation-cancel'.
 
 ---
 *** New minor mode 'elide-head-mode'.
@@ -2016,7 +2052,7 @@ Previously it produced a nonsense value, -1, that was never intended.
 ** Some libraries obsolete since Emacs 24.1 and 24.3 have been removed:
 abbrevlist.el, assoc.el, complete.el, cust-print.el,
 erc-hecomplete.el, mailpost.el, mouse-sel.el, old-emacs-lock.el,
-patcomp.el, pc-select.el, s-region.el, and sregex.el.
+patcomp.el, pc-mode.el, pc-select.el, s-region.el, and sregex.el.
 
 
 * Lisp Changes in Emacs 29.1
@@ -2345,6 +2381,12 @@ whether a string is suspicious.  It heeds the 'textsec-check' user
 option.
 
 ** Keymaps and key definitions
+
++++
+*** 'where-is-internal' can now filter events marked as non key events.
+If a command maps to a key binding like [some-event], and 'some-event'
+has a symbol plist containing a non-nil 'non-key-event' property, then
+that binding is ignored by 'where-is-internal'.
 
 +++
 *** New functions for defining and manipulating keystrokes.

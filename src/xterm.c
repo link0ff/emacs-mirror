@@ -1805,7 +1805,7 @@ xm_drag_window_io_error_handler (Display *dpy)
 }
 
 static Window
-xm_get_drag_window (struct x_display_info *dpyinfo)
+xm_get_drag_window_1 (struct x_display_info *dpyinfo)
 {
   Atom actual_type, _MOTIF_DRAG_WINDOW;
   int rc, actual_format;
@@ -1975,6 +1975,16 @@ xm_get_drag_window (struct x_display_info *dpyinfo)
   return drag_window;
 }
 
+static Window
+xm_get_drag_window (struct x_display_info *dpyinfo)
+{
+  if (dpyinfo->motif_drag_window != None)
+    return dpyinfo->motif_drag_window;
+
+  dpyinfo->motif_drag_window = xm_get_drag_window_1 (dpyinfo);
+  return dpyinfo->motif_drag_window;
+}
+
 static int
 xm_setup_dnd_targets (struct x_display_info *dpyinfo,
 		      Atom *targets, int ntargets)
@@ -1984,12 +1994,15 @@ xm_setup_dnd_targets (struct x_display_info *dpyinfo,
   unsigned char *tmp_data = NULL;
   unsigned long nitems, bytes_remaining;
   int rc, actual_format, idx;
+  bool had_errors;
   xm_targets_table_header header;
   xm_targets_table_rec **recs;
   xm_byte_order byteorder;
   uint8_t *data;
   ptrdiff_t total_bytes, total_items, i;
   uint32_t size, target_count;
+
+ retry_drag_window:
 
   drag_window = xm_get_drag_window (dpyinfo);
 
@@ -2003,12 +2016,26 @@ xm_setup_dnd_targets (struct x_display_info *dpyinfo,
 	 sizeof (Atom), x_atoms_compare);
 
   XGrabServer (dpyinfo->display);
+
+  x_catch_errors (dpyinfo->display);
   rc = XGetWindowProperty (dpyinfo->display, drag_window,
 			   dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
 			   0L, LONG_MAX, False,
 			   dpyinfo->Xatom_MOTIF_DRAG_TARGETS,
 			   &actual_type, &actual_format, &nitems,
 			   &bytes_remaining, &tmp_data) == Success;
+  had_errors = x_had_errors_p (dpyinfo->display);
+  x_uncatch_errors ();
+
+  /* The drag window is probably invalid, so remove our record of
+     it.  */
+  if (had_errors)
+    {
+      dpyinfo->motif_drag_window = None;
+      XUngrabServer (dpyinfo->display);
+
+      goto retry_drag_window;
+    }
 
   if (rc && tmp_data && !bytes_remaining
       && actual_type == dpyinfo->Xatom_MOTIF_DRAG_TARGETS
@@ -2272,8 +2299,9 @@ xm_get_drag_atom_1 (struct x_display_info *dpyinfo,
 
       XChangeProperty (dpyinfo->display, dpyinfo->root_window,
 		       dpyinfo->Xatom_EMACS_DRAG_ATOM, XA_ATOM, 32,
-		       (rc == Success && (actual_format != 32
-					  || actual_type != XA_ATOM)
+		       (rc != Success
+			|| (actual_format != 32
+			    || actual_type != XA_ATOM)
 			? PropModeReplace : PropModeAppend),
 		       (unsigned char *) &atom, 1);
 
@@ -2454,8 +2482,13 @@ xm_send_top_level_leave_message (struct x_display_info *dpyinfo, Window source,
 					       XM_DROP_SITE_NONE, x_dnd_motif_operations,
 					       XM_DROP_ACTION_DROP_CANCEL);
       mmsg.timestamp = dmsg->timestamp;
-      mmsg.x = 65535;
-      mmsg.y = 65535;
+
+      /* Use X_SHRT_MAX instead of the max value of uint16_t since
+	 that will be interpreted as a plausible position by Motif,
+	 and as such breaks if the drop target is beneath that
+	 position.  */
+      mmsg.x = X_SHRT_MAX;
+      mmsg.y = X_SHRT_MAX;
 
       xm_send_drag_motion_message (dpyinfo, source, target, &mmsg);
     }
@@ -6919,8 +6952,15 @@ static void x_scroll_bar_clear (struct frame *);
 static void x_check_font (struct frame *, struct font *);
 #endif
 
+/* If SEND_EVENT, make sure that TIME is larger than the current last
+   user time.  We don't sanitize timestamps from events sent by the X
+   server itself because some Lisp might have set the user time to a
+   ridiculously large value, and this way a more reasonable timestamp
+   can be obtained upon the next event.  */
+
 static void
-x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time)
+x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
+			      bool send_event)
 {
 #ifndef USE_GTK
   struct frame *focus_frame = dpyinfo->x_focus_frame;
@@ -6930,7 +6970,8 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time)
   eassert (time <= X_ULONG_MAX);
 #endif
 
-  dpyinfo->last_user_time = time;
+  if (!send_event || time > dpyinfo->last_user_time)
+    dpyinfo->last_user_time = time;
 
 #ifndef USE_GTK
   if (focus_frame)
@@ -7003,8 +7044,7 @@ void
 x_set_last_user_time_from_lisp (struct x_display_info *dpyinfo,
 				Time time)
 {
-  if (dpyinfo->last_user_time > time)
-    x_display_set_last_user_time (dpyinfo, time);
+  x_display_set_last_user_time (dpyinfo, time, true);
 }
 
 
@@ -11094,6 +11134,30 @@ x_clear_dnd_action (void)
   x_dnd_action_symbol = Qnil;
 }
 
+/* Delete action descriptions from F after drag-and-drop.  */
+static void
+x_dnd_delete_action_list (Lisp_Object frame)
+{
+  struct frame *f;
+
+  /* Delete those two properties, since some clients look at them and
+     not the action to decide whether or not the user should be
+     prompted to select an action.  This can be called with FRAME no
+     longer alive (or its display dead).  */
+
+  f = XFRAME (frame);
+
+  if (!FRAME_LIVE_P (f) || !FRAME_DISPLAY_INFO (f)->display)
+    return;
+
+  block_input ();
+  XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
+		   FRAME_DISPLAY_INFO (f)->Xatom_XdndActionList);
+  XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
+		   FRAME_DISPLAY_INFO (f)->Xatom_XdndActionDescription);
+  unblock_input ();
+}
+
 /* This function is defined far away from the rest of the XDND code so
    it can utilize `x_any_window_to_frame'.  */
 
@@ -11262,6 +11326,8 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 	= xm_side_effect_from_action (FRAME_DISPLAY_INFO (f),
 				      ask_action_list[0]);
 
+      record_unwind_protect (x_dnd_delete_action_list, frame);
+
       ask_actions = NULL;
       end = 0;
       count = SPECPDL_INDEX ();
@@ -11305,19 +11371,6 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
       unblock_input ();
 
       unbind_to (count, Qnil);
-    }
-  else
-    {
-      /* Delete those two properties, since some clients look at them
-	 and not the action to decide whether or not the user should
-	 be prompted to select an action.  */
-
-      block_input ();
-      XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
-		       FRAME_DISPLAY_INFO (f)->Xatom_XdndActionList);
-      XDeleteProperty (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f),
-		       FRAME_DISPLAY_INFO (f)->Xatom_XdndActionDescription);
-      unblock_input ();
     }
 
   if (follow_tooltip)
@@ -12612,7 +12665,7 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 	    && (dpyinfo->last_user_time
 		< dpyinfo->last_mouse_movement_time))
 	  x_display_set_last_user_time (dpyinfo,
-					dpyinfo->last_mouse_movement_time);
+					dpyinfo->last_mouse_movement_time, false);
 
 	if ((!f1 || FRAME_TOOLTIP_P (f1))
 	    && (EQ (track_mouse, Qdropping)
@@ -17302,7 +17355,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       goto OTHER;
 
     case KeyPress:
-      x_display_set_last_user_time (dpyinfo, event->xkey.time);
+      x_display_set_last_user_time (dpyinfo, event->xkey.time,
+				    event->xkey.send_event);
       ignore_next_mouse_click_timeout = 0;
       coding = Qlatin_1;
 
@@ -17753,7 +17807,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
     case EnterNotify:
-      x_display_set_last_user_time (dpyinfo, event->xcrossing.time);
+      x_display_set_last_user_time (dpyinfo, event->xcrossing.time,
+				    event->xcrossing.send_event);
 
       if (x_top_window_to_frame (dpyinfo, event->xcrossing.window))
 	x_detect_focus_change (dpyinfo, any, event, &inev.ie);
@@ -17838,7 +17893,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       goto OTHER;
 
     case LeaveNotify:
-      x_display_set_last_user_time (dpyinfo, event->xcrossing.time);
+      x_display_set_last_user_time (dpyinfo, event->xcrossing.time,
+				    event->xcrossing.send_event);
 
 #ifdef HAVE_XWIDGETS
       {
@@ -18562,7 +18618,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
     case ButtonPress:
       {
 	if (event->xbutton.type == ButtonPress)
-	  x_display_set_last_user_time (dpyinfo, event->xbutton.time);
+	  x_display_set_last_user_time (dpyinfo, event->xbutton.time,
+					event->xbutton.send_event);
 
 #ifdef HAVE_XWIDGETS
 	struct xwidget_view *xvw = xwidget_view_from_window (event->xbutton.window);
@@ -18605,6 +18662,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	    if (event->type == ButtonPress)
 	      {
+		x_display_set_last_user_time (dpyinfo, event->xbutton.time,
+					      event->xbutton.send_event);
+
 		dpyinfo->grabbed |= (1 << event->xbutton.button);
 		dpyinfo->last_mouse_frame = f;
 		if (f && !tab_bar_p)
@@ -19111,7 +19171,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      ev.window = enter->event;
 	      ev.time = enter->time;
 
-	      x_display_set_last_user_time (dpyinfo, enter->time);
+	      x_display_set_last_user_time (dpyinfo, enter->time,
+					    enter->send_event);
 
 #ifdef USE_MOTIF
 	      use_copy = true;
@@ -19260,7 +19321,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 							 leave->deviceid, false);
 #endif
 
-	      x_display_set_last_user_time (dpyinfo, leave->time);
+	      x_display_set_last_user_time (dpyinfo, leave->time,
+					    leave->send_event);
 
 #ifdef HAVE_XWIDGETS
 	      {
@@ -19514,7 +19576,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      if (xv)
 		{
 		  uint state = xev->mods.effective;
-		  x_display_set_last_user_time (dpyinfo, xev->time);
+		  x_display_set_last_user_time (dpyinfo, xev->time,
+						xev->send_event);
 
 		  if (xev->buttons.mask_len)
 		    {
@@ -19543,7 +19606,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 		  if (found_valuator)
 		    {
-		      x_display_set_last_user_time (dpyinfo, xev->time);
+		      x_display_set_last_user_time (dpyinfo, xev->time,
+						    xev->send_event);
+
 
 #if defined USE_GTK && !defined HAVE_GTK3
 		      /* Unlike on Motif, we can't select for XI
@@ -19558,6 +19623,15 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  && xev->child != FRAME_X_WINDOW (f))
 			goto XI_OTHER;
 #endif
+
+		      /* If this happened during a drag-and-drop
+			 operation, don't send an event.  We only have
+			 to set the user time.  */
+		      if (x_dnd_in_progress
+			  && (command_loop_level + minibuf_level
+			      <= x_dnd_recursion_depth)
+			  && dpyinfo == FRAME_DISPLAY_INFO (x_dnd_frame))
+			goto XI_OTHER;
 
 		      if (fabs (total_x) > 0 || fabs (total_y) > 0)
 			{
@@ -19729,7 +19803,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 							    XM_DRAG_REASON_TOP_LEVEL_LEAVE);
 			      lmsg.byteorder = XM_BYTE_ORDER_CUR_FIRST;
 			      lmsg.zero = 0;
-			      lmsg.timestamp = event->xmotion.time;
+			      lmsg.timestamp = xev->time;
 			      lmsg.source_window = FRAME_X_WINDOW (x_dnd_frame);
 
 			      if (x_dnd_motif_setup_p)
@@ -19989,19 +20063,32 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		{
 		  f = mouse_or_wdesc_frame (dpyinfo, xev->event);
 
-		  if (xev->evtype == XI_ButtonPress)
+		  /* Don't track grab status for emulated pointer
+		     events, because they are ignored by the regular
+		     mouse click processing code.  */
+#ifdef XIPointerEmulated
+		  if (!(xev->flags & XIPointerEmulated))
 		    {
-		      dpyinfo->grabbed |= (1 << xev->detail);
-		      dpyinfo->last_mouse_frame = f;
-		      if (f && !tab_bar_p)
-			f->last_tab_bar_item = -1;
+#endif
+		      if (xev->evtype == XI_ButtonPress)
+			{
+			  x_display_set_last_user_time (dpyinfo, xev->time,
+							xev->send_event);
+
+			  dpyinfo->grabbed |= (1 << xev->detail);
+			  dpyinfo->last_mouse_frame = f;
+			  if (f && !tab_bar_p)
+			    f->last_tab_bar_item = -1;
 #if ! defined (USE_GTK)
-		      if (f && !tool_bar_p)
-			f->last_tool_bar_item = -1;
+			  if (f && !tool_bar_p)
+			    f->last_tool_bar_item = -1;
 #endif /* not USE_GTK */
+			}
+		      else
+			dpyinfo->grabbed &= ~(1 << xev->detail);
+#ifdef XIPointerEmulated
 		    }
-		  else
-		    dpyinfo->grabbed &= ~(1 << xev->detail);
+#endif
 
 		  if (xev->evtype == XI_ButtonPress
 		      && x_dnd_last_seen_window != None
@@ -20261,7 +20348,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
 	      if (xev->evtype == XI_ButtonPress)
-		x_display_set_last_user_time (dpyinfo, xev->time);
+		x_display_set_last_user_time (dpyinfo, xev->time,
+					      xev->send_event);
 
 	      source = xi_device_from_id (dpyinfo, xev->sourceid);
 
@@ -20611,7 +20699,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		}
 #endif
 
-	      x_display_set_last_user_time (dpyinfo, xev->time);
+	      x_display_set_last_user_time (dpyinfo, xev->time,
+					    xev->send_event);
 	      ignore_next_mouse_click_timeout = 0;
 
 	      f = x_any_window_to_frame (dpyinfo, xev->event);
@@ -20774,8 +20863,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
 		  XSETFRAME (inev.ie.frame_or_window, f);
-		  inev.ie.modifiers
-		    = x_x_to_emacs_modifiers (FRAME_DISPLAY_INFO (f), state);
+		  inev.ie.modifiers = x_x_to_emacs_modifiers (dpyinfo, state);
 		  inev.ie.timestamp = xev->time;
 
 #ifdef HAVE_X_I18N
@@ -21405,7 +21493,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 	      device = xi_device_from_id (dpyinfo, xev->deviceid);
 	      source = xi_device_from_id (dpyinfo, xev->sourceid);
-	      x_display_set_last_user_time (dpyinfo, xev->time);
+	      x_display_set_last_user_time (dpyinfo, xev->time,
+					    xev->send_event);
 
 	      if (!device)
 		goto XI_OTHER;
@@ -21491,7 +21580,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      device = xi_device_from_id (dpyinfo, xev->deviceid);
 	      source = xi_device_from_id (dpyinfo, xev->sourceid);
-	      x_display_set_last_user_time (dpyinfo, xev->time);
+	      x_display_set_last_user_time (dpyinfo, xev->time,
+					    xev->send_event);
 
 	      if (!device)
 		goto XI_OTHER;
@@ -21537,7 +21627,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      device = xi_device_from_id (dpyinfo, xev->deviceid);
 	      source = xi_device_from_id (dpyinfo, xev->sourceid);
-	      x_display_set_last_user_time (dpyinfo, xev->time);
+	      x_display_set_last_user_time (dpyinfo, xev->time,
+					    xev->send_event);
 
 	      if (!device)
 		goto XI_OTHER;
@@ -21577,7 +21668,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      device = xi_device_from_id (dpyinfo, pev->deviceid);
 	      source = xi_device_from_id (dpyinfo, pev->sourceid);
-	      x_display_set_last_user_time (dpyinfo, pev->time);
+	      x_display_set_last_user_time (dpyinfo, pev->time,
+					    pev->send_event);
 
 	      if (!device)
 		goto XI_OTHER;
