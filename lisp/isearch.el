@@ -2856,6 +2856,7 @@ The command accepts Unicode names like \"smiling face\" or
 		   (if (and (eq case-fold-search t) search-upper-case)
 		       (setq case-fold-search
 			     (isearch-no-upper-case-p isearch-string isearch-regexp)))
+                   ;; C-M-r ^
 		   (looking-at (cond
 				((functionp isearch-regexp-function)
 				 (funcall isearch-regexp-function isearch-string t))
@@ -4523,10 +4524,21 @@ LAX-WHITESPACE: The value of `isearch-lax-whitespace' and
   (apply-partially
    #'search-within-boundaries
    search-fun
-   (lambda (pos) (seq-some (lambda (b) pos) region-bounds))
-   (lambda (pos) (if isearch-forward
-                     (next-single-property-change pos property)
-                   (previous-single-property-change pos property)))))
+   (lambda (pos)
+     (seq-some (lambda (b) (if isearch-forward
+                               (and (>= pos (car b)) (< pos (cdr b)))
+                             (and (> pos (car b)) (<= pos (cdr b)))))
+               region-bounds))
+   (lambda (pos)
+     (let* ((bounds (flatten-list region-bounds))
+            found)
+       (unless isearch-forward
+         (setq bounds (nreverse bounds)))
+       (while (and bounds (not found))
+         (if (if isearch-forward (< pos (car bounds)) (> pos (car bounds)))
+             (setq found (car bounds))
+           (setq bounds (cdr bounds))))
+       found))))
 
 (defun isearch-search-fun-in-text-property (search-fun property)
   "Return the function to search inside text that has the specified PROPERTY.
@@ -4537,7 +4549,12 @@ defaults to the value of `isearch-search-fun-default' when nil."
   (apply-partially
    #'search-within-boundaries
    search-fun
-   (lambda (pos) (get-text-property pos property))
+   (lambda (pos) (or (get-text-property pos property)
+                     ;; TRY x$
+                     ;; (and (not (if isearch-forward (bobp) (eobp)))
+                     ;;      (get-text-property (+ pos (if isearch-forward -1 1))
+                     ;;                         property))
+                     ))
    (lambda (pos) (if isearch-forward
                      (next-single-property-change pos property)
                    (previous-single-property-change pos property)))))
@@ -4547,7 +4564,9 @@ defaults to the value of `isearch-search-fun-default' when nil."
   (let* ((old (point))
          ;; Check if point is already on the property.
          (beg (when (funcall get-fun (if isearch-forward old
-                                       (max (1- old) (point-min))))
+                                       ;; old
+                                       (max (1- old) (point-min))
+                                       ))
                 old))
          end found (i 0)
          (subregexp
@@ -4572,12 +4591,15 @@ defaults to the value of `isearch-search-fun-default' when nil."
           (let* ((prop-beg
                   (if (or (if isearch-forward (bobp) (eobp))
                           (null (funcall get-fun (+ (point)
-                                                    (if isearch-forward -1 0)))))
+                                                    (if isearch-forward -1 1 ;; 0
+                                                        )))))
                       ;; Already at the beginning of the field.
                       beg
                     ;; Get the real beginning of the field when
                     ;; the search was started in the middle.
-                    (funcall next-fun beg)))
+                    (let ((isearch-forward (not isearch-forward)))
+                      ;; Search in the reverse direction.
+                      (funcall next-fun beg))))
                  (substring (buffer-substring prop-beg end))
                  (offset (if isearch-forward prop-beg end))
                  match-data)
@@ -4643,6 +4665,12 @@ CASE-FOLD non-nil means the search was case-insensitive."
                        (replace-regexp-in-string "'" "['’]")
                        (replace-regexp-in-string "\"" "[\"“”]")))))
     (buffer-local-restore-state isearch-fold-quotes-mode--state)))
+
+;; defdefdef
+;; defdefdef
+
+;; (setq-local isearch-search-fun-function (lambda () (isearch-search-fun-in-noncontiguous-region nil (region-bounds))))
+;; (setq-local isearch-search-fun-function (let ((rb (region-bounds))) (lambda () (isearch-search-fun-in-noncontiguous-region nil rb))))
 
 (provide 'isearch)
 
