@@ -1235,6 +1235,14 @@ static Window x_dnd_mouse_rect_target;
    drop target if the mouse pointer lies within.  */
 static XRectangle x_dnd_mouse_rect;
 
+/* If not None, Emacs is waiting for an XdndStatus event from this
+   window.  */
+static Window x_dnd_waiting_for_status_window;
+
+/* If .type != 0, an event that should be sent to .xclient.window
+   upon receiving an XdndStatus event from said window.  */
+static XEvent x_dnd_pending_send_position;
+
 /* The action the drop target actually chose to perform.
 
    Under XDND, this is set upon receiving the XdndFinished or
@@ -4380,9 +4388,16 @@ x_dnd_send_position (struct frame *f, Window target, int supported,
   if (supported >= 4)
     msg.xclient.data.l[4] = action;
 
-  x_catch_errors (dpyinfo->display);
-  XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
-  x_uncatch_errors ();
+  if (x_dnd_waiting_for_status_window == target)
+    x_dnd_pending_send_position = msg;
+  else
+    {
+      x_catch_errors (dpyinfo->display);
+      XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
+      x_uncatch_errors ();
+
+      x_dnd_waiting_for_status_window = target;
+    }
 }
 
 static void
@@ -4400,6 +4415,8 @@ x_dnd_send_leave (struct frame *f, Window target)
   msg.xclient.data.l[2] = 0;
   msg.xclient.data.l[3] = 0;
   msg.xclient.data.l[4] = 0;
+
+  x_dnd_waiting_for_status_window = None;
 
   x_catch_errors (dpyinfo->display);
   XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
@@ -11437,6 +11454,8 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   x_dnd_return_frame = 0;
   x_dnd_waiting_for_finish = false;
   x_dnd_waiting_for_motif_finish = 0;
+  x_dnd_waiting_for_status_window = None;
+  x_dnd_pending_send_position.type = 0;
   x_dnd_xm_use_help = false;
   x_dnd_motif_setup_p = false;
   x_dnd_end_window = None;
@@ -11928,8 +11947,8 @@ x_detect_focus_change (struct x_display_info *dpyinfo, struct frame *frame,
          really has focus, and these kinds of focus event don't
          correspond to real user input changes.  GTK+ uses the same
          filtering. */
-      if (event->xfocus.mode == NotifyGrab ||
-          event->xfocus.mode == NotifyUngrab)
+      if (event->xfocus.mode == NotifyGrab
+          || event->xfocus.mode == NotifyUngrab)
         return;
       x_focus_changed (event->type,
 		       (event->xfocus.detail == NotifyPointer ?
@@ -16326,6 +16345,22 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  x_dnd_action = None;
 	      }
 
+	    /* Send any pending XdndPosition message.  */
+	    if (x_dnd_waiting_for_status_window == target)
+	      {
+		if (x_dnd_pending_send_position.type != 0)
+		  {
+		    x_catch_errors (dpyinfo->display);
+		    XSendEvent (dpyinfo->display, target,
+				False, NoEventMask,
+				&x_dnd_pending_send_position);
+		    x_uncatch_errors ();
+		  }
+
+		x_dnd_pending_send_position.type = 0;
+		x_dnd_waiting_for_status_window = None;
+	      }
+
 	    goto done;
 	  }
 
@@ -20081,6 +20116,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  && dpyinfo == FRAME_DISPLAY_INFO (x_dnd_frame))
 		{
 		  f = mouse_or_wdesc_frame (dpyinfo, xev->event);
+		  device = xi_device_from_id (dpyinfo, xev->deviceid);
 
 		  /* Don't track grab status for emulated pointer
 		     events, because they are ignored by the regular
@@ -20096,6 +20132,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 			  dpyinfo->grabbed |= (1 << xev->detail);
 			  dpyinfo->last_mouse_frame = f;
+
+			  if (device)
+			    device->grab |= (1 << xev->detail);
+
 			  if (f && !tab_bar_p)
 			    f->last_tab_bar_item = -1;
 #if ! defined (USE_GTK)
@@ -20104,7 +20144,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif /* not USE_GTK */
 			}
 		      else
-			dpyinfo->grabbed &= ~(1 << xev->detail);
+			{
+			  dpyinfo->grabbed &= ~(1 << xev->detail);
+			  device->grab &= ~(1 << xev->detail);
+			}
 #ifdef XIPointerEmulated
 		    }
 #endif
