@@ -253,6 +253,7 @@
   ;; A particularly demanding file to load; 1600 does not seem to be enough.
   (load "emacs-lisp/cl-generic"))
 (load "simple")
+(load "emacs-lisp/seq")
 (load "emacs-lisp/nadvice")
 (load "minibuffer") ;Needs cl-generic (and define-minor-mode).
 (load "frame")
@@ -395,6 +396,9 @@
   (or (equal lp load-path)
       (message "Warning: Change in load-path due to site-load will be \
 lost after dumping")))
+
+;; Used by `kill-buffer', for instance.
+(load "emacs-lisp/rmc")
 
 ;; Make sure default-directory is unibyte when dumping.  This is
 ;; because we cannot decode and encode it correctly (since the locale
