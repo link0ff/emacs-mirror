@@ -609,6 +609,10 @@ or ':scream:'.
 
 ** Help
 
+---
+*** Variable values displayed by 'C-h v' in *Help* are now font-locked.
+
++++
 *** New user option 'help-clean-buttons'.
 If non-nil, link buttons in *Help* will have any surrounding quotes
 removed.
@@ -1381,6 +1385,13 @@ doesn't work on other systems.  Also see etc/PROBLEMS.
 These are used to alter an URL before using it.  By default it removes
 the common "utm_" trackers from URLs.
 
+** Find-Dired
+
+*** New command 'find-dired-with-command'.
+This enables users to run 'find-dired' with an arbitrary command,
+enabling running commands previously unsupported and also enabling new
+commands to be built on top.
+
 ** Gnus
 
 +++
@@ -2138,6 +2149,10 @@ patcomp.el, pc-mode.el, pc-select.el, s-region.el, and sregex.el.
 
 
 * Lisp Changes in Emacs 29.1
+
++++
+** 'plist-get', 'plist-put' and 'plist-member' are no longer limited to 'eq'.
+These function now take an optional comparison predicate argument.
 
 +++
 ** 'read-multiple-choice' can now use long-form answers.
