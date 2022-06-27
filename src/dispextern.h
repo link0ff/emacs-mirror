@@ -3085,12 +3085,15 @@ struct image
   XFORM xform;
 #endif
 #ifdef HAVE_HAIKU
-  /* Non-zero if the image has not yet been transformed for display.  */
-  int have_be_transforms_p;
+  /* The affine transformation to apply to this image.  */
+  double transform[3][3];
 
-  double be_rotate;
-  double be_scale_x;
-  double be_scale_y;
+  /* The original width and height of the image.  */
+  int original_width, original_height;
+
+  /* Whether or not bilinear filtering should be used to "smooth" the
+     image.  */
+  bool use_bilinear_filtering;
 #endif
 
   /* Colors allocated for this image, if any.  Allocated via xmalloc.  */

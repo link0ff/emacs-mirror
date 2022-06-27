@@ -1508,7 +1508,10 @@ the actual saved text might be different from what was killed."
              ;; 'find-composition' will return (FROM TO ....) or nil.
              (setq cmp (find-composition pos))
              (if cmp
-                 (setq pos (cadr cmp))
+                 ;; TO can be at POS, in which case we want to make
+                 ;; sure we advance at least by 1 character.
+                 (let ((cmp-end (cadr cmp)))
+                   (setq pos (max (1+ pos) cmp-end)))
                (setq pos (1+ pos)))
              (setq n (1- n)))
            (delete-char (- pos start) killflag)))
@@ -10619,6 +10622,23 @@ If the buffer doesn't exist, create it first."
         (with-current-buffer buffer
           (save-buffer)))
       t)))
+
+(defsubst string-empty-p (string)
+  "Check whether STRING is empty."
+  (string= string ""))
+
+(defun read-signal-name ()
+  "Read a signal number or name."
+  (let ((value
+         (completing-read "Signal code or name: "
+                          (signal-names)
+                          nil
+                          (lambda (value)
+                            (or (string-match "\\`[0-9]+\\'" value)
+                                (member value (signal-names)))))))
+    (if (string-match "\\`[0-9]+\\'" value)
+        (string-to-number value)
+      (intern (concat "sig" (downcase value))))))
 
 
 

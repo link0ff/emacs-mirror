@@ -3231,7 +3231,8 @@ init_iterator (struct it *it, struct window *w,
 
   it->cmp_it.id = -1;
 
-  update_redisplay_ticks (0, w);
+  if (max_redisplay_ticks > 0)
+    update_redisplay_ticks (0, w);
 
   /* Extra space between lines (on window systems only).  */
   if (base_face_id == DEFAULT_FACE_ID
@@ -8186,7 +8187,8 @@ void
 set_iterator_to_next (struct it *it, bool reseat_p)
 {
 
-  update_redisplay_ticks (1, it->w);
+  if (max_redisplay_ticks > 0)
+    update_redisplay_ticks (1, it->w);
 
   switch (it->method)
     {
@@ -16923,6 +16925,11 @@ redisplay_internal (void)
   if (interrupt_input && interrupts_deferred)
     request_sigio ();
 
+  /* We're done with this redisplay cycle, so reset the tick count in
+     preparation for the next redisplay cycle.  */
+  if (max_redisplay_ticks > 0)
+    update_redisplay_ticks (0, NULL);
+
   unbind_to (count, Qnil);
   RESUME_POLLING;
 }
@@ -21184,6 +21191,12 @@ try_window_id (struct window *w)
 						Qline_number_current_line,
 						w->frame))))
     GIVE_UP (24);
+
+  /* composition-break-at-point is incompatible with the optimizations
+     in this function, because we need to recompose characters when
+     point moves off their positions.  */
+  if (composition_break_at_point)
+    GIVE_UP (27);
 
   /* Make sure beg_unchanged and end_unchanged are up to date.  Do it
      only if buffer has really changed.  The reason is that the gap is
