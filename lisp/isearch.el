@@ -198,11 +198,6 @@ is one."
                  (const :tag "Move to another match" t))
   :version "28.1")
 
-(defcustom isearch-buffer-local nil
-  "Whether isearch should be buffer-local."
-  :type 'boolean
-  :version "28.1")
-
 (defvar isearch-mode-hook nil
   "Function(s) to call after starting up an incremental search.")
 
@@ -648,8 +643,8 @@ This is like `describe-bindings', but displays only Isearch keys."
     (define-key map "\C-x\\" 'isearch-transient-input-method)
 
     ;; People expect to be able to paste with the mouse.
-    ;; (define-key map [mouse-2] #'isearch-mouse-2)
-    ;; (define-key map [down-mouse-2] #'isearch-mouse-2)
+    (define-key map [mouse-2] #'isearch-mouse-2)
+    (define-key map [down-mouse-2] nil)
     (define-key map [xterm-paste] #'isearch-xterm-paste)
 
     ;; Some bindings you may want to put in your isearch-mode-hook.
@@ -970,8 +965,6 @@ Each element is an `isearch--state' struct where the slots are
 
 (defvar isearch--saved-overriding-local-map nil)
 
-(put 'isearch-mode 'overriding-keymap t)
-
 ;; Minor-mode-alist changes - kind of redundant with the
 ;; echo area, but if isearching in multiple windows, it can be useful.
 ;; Also, clicking the mode-line indicator pops up
@@ -1241,9 +1234,6 @@ isearching.
 The arg REGEXP-FUNCTION, if non-nil, should be a function.  It is
 used to set the value of `isearch-regexp-function'."
 
-  ;; (dolist (var '(isearch-forward ...))
-  ;;   (make-variable-buffer-local var))
-
   ;; Initialize global vars.
   (setq isearch-forward forward
 	isearch-regexp (or regexp
@@ -1317,14 +1307,11 @@ used to set the value of `isearch-regexp-function'."
   (setq	isearch-mode " Isearch")  ;; forward? regexp?
   (force-mode-line-update)
 
-  (if isearch-buffer-local
-      (add-to-list 'emulation-mode-map-alists `((isearch-mode . ,isearch-mode-map)))
-    (setq overriding-terminal-local-map isearch-mode-map))
+  (setq overriding-terminal-local-map isearch-mode-map)
   (run-hooks 'isearch-mode-hook)
-  (unless isearch-buffer-local
-    ;; Remember the initial map possibly modified
-    ;; by external packages in isearch-mode-hook.  (Bug#16035)
-    (setq isearch--saved-overriding-local-map overriding-terminal-local-map))
+  ;; Remember the initial map possibly modified
+  ;; by external packages in isearch-mode-hook.  (Bug#16035)
+  (setq isearch--saved-overriding-local-map overriding-terminal-local-map)
 
   ;; Pushing the initial state used to be before running isearch-mode-hook,
   ;; but a hook might set `isearch-push-state-function' used in
@@ -1333,10 +1320,10 @@ used to set the value of `isearch-regexp-function'."
 
   (isearch-update)
 
-  (add-hook 'pre-command-hook 'isearch-pre-command-hook nil isearch-buffer-local)
-  (add-hook 'post-command-hook 'isearch-post-command-hook nil isearch-buffer-local)
-  (add-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer nil isearch-buffer-local)
-  (add-hook 'kbd-macro-termination-hook 'isearch-done nil isearch-buffer-local)
+  (add-hook 'pre-command-hook 'isearch-pre-command-hook)
+  (add-hook 'post-command-hook 'isearch-post-command-hook)
+  (add-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer)
+  (add-hook 'kbd-macro-termination-hook 'isearch-done)
 
   ;; isearch-mode can be made modal (in the sense of not returning to
   ;; the calling function until searching is completed) by entering
@@ -1431,11 +1418,10 @@ NOPUSH is t and EDIT is t."
                                      ,isearch-message
                                      ',isearch-case-fold-search)))
 
-  (remove-hook 'pre-command-hook 'isearch-pre-command-hook isearch-buffer-local)
-  (remove-hook 'post-command-hook 'isearch-post-command-hook isearch-buffer-local)
-  (remove-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer isearch-buffer-local)
-  (remove-hook 'kbd-macro-termination-hook 'isearch-done isearch-buffer-local)
-
+  (remove-hook 'pre-command-hook 'isearch-pre-command-hook)
+  (remove-hook 'post-command-hook 'isearch-post-command-hook)
+  (remove-hook 'mouse-leave-buffer-hook 'isearch-mouse-leave-buffer)
+  (remove-hook 'kbd-macro-termination-hook 'isearch-done)
   (when (buffer-live-p isearch--current-buffer)
     (with-current-buffer isearch--current-buffer
       (setq isearch--current-buffer nil)
@@ -1513,7 +1499,6 @@ NOPUSH is t and EDIT is t."
 Mouse commands are allowed in Isearch if they have a non-nil
 `isearch-scroll' property or if they are listed in
 `isearch-mouse-commands'."
-  (message "! isearch-mouse-leave-buffer: %S" this-command)
   (unless (or (memq this-command isearch-mouse-commands)
               (eq (get this-command 'isearch-scroll) t))
     (isearch-done)))
@@ -1657,19 +1642,12 @@ You can update the global isearch variables by setting new values to
 `isearch-new-string', `isearch-new-message', `isearch-new-forward',
 `isearch-new-regexp-function', `isearch-new-case-fold',
 `isearch-new-nonincremental'."
-  `(if isearch-buffer-local
-       (let ((isearch-new-string isearch-string)
-             (isearch-new-message isearch-message))
-         (progn ,@body)
-         (setq isearch-string isearch-new-string
-               isearch-message isearch-new-message)
-         (let ((isearch-yank-flag t)) (isearch-search-and-update)))
   ;; This code is very hairy for several reasons, explained in the code.
   ;; Mainly, isearch-mode must be terminated while editing and then restarted.
   ;; If there were a way to catch any change of buffer from the minibuffer,
   ;; this could be simplified greatly.
   ;; Editing doesn't back up the search point.  Should it?
-   (condition-case nil
+  `(condition-case nil
       (progn
 	(let ((isearch-new-nonincremental isearch-nonincremental)
 
@@ -1813,7 +1791,7 @@ You can update the global isearch variables by setting new values to
     (quit  ; handle abort-recursive-edit
      (setq isearch-suspended nil)
      (isearch-abort)  ;; outside of let to restore outside global values
-     ))))
+     )))
 
 (defvar minibuffer-history-symbol) ;; from external package gmhist.el
 
@@ -1839,31 +1817,18 @@ The following additional command keys are active while editing.
 	  (minibuffer-allow-text-properties t))
      (setq isearch-new-string
 	   (minibuffer-with-setup-hook
-               (lambda ()
-                 (when isearch-buffer-local
-                   (add-hook 'after-change-functions
-                             (lambda (_ _ _)
-                               (let ((new-string (minibuffer-contents)))
-                                 (with-minibuffer-selected-window
-                                   (setq isearch-string new-string
-                                         isearch-message (mapconcat 'isearch-text-char-description
-		                                                    isearch-string ""))
-                                   (let ((isearch-yank-flag t)) (isearch-search-and-update)))))
-                             nil t)))
-             ;; !!! TEST HOW THESE CO-EXIST
-             (minibuffer-with-setup-hook
-                 (minibuffer-lazy-highlight-setup)
-               (read-from-minibuffer
-	        (isearch-message-prefix nil isearch-nonincremental)
-	        (cons isearch-string (1+ (or (isearch-fail-pos)
-					     (length isearch-string))))
-	        minibuffer-local-isearch-map nil
-	        (if isearch-regexp
-		    (cons 'regexp-search-ring
-		          (1+ (or regexp-search-ring-yank-pointer -1)))
-	          (cons 'search-ring
-		        (1+ (or search-ring-yank-pointer -1))))
-	        nil t)))
+               (minibuffer-lazy-highlight-setup)
+             (read-from-minibuffer
+	      (isearch-message-prefix nil isearch-nonincremental)
+	      (cons isearch-string (1+ (or (isearch-fail-pos)
+					   (length isearch-string))))
+	      minibuffer-local-isearch-map nil
+	      (if isearch-regexp
+		  (cons 'regexp-search-ring
+		        (1+ (or regexp-search-ring-yank-pointer -1)))
+	        (cons 'search-ring
+		      (1+ (or search-ring-yank-pointer -1))))
+	      nil t))
 	   isearch-new-message
 	   (mapconcat 'isearch-text-char-description
 		      isearch-new-string "")))))
@@ -1879,28 +1844,14 @@ The following additional command keys are active while editing.
 (defun isearch-forward-exit-minibuffer ()
   "Resume isearching forward from the minibuffer that edits the search string."
   (interactive)
-  (if isearch-buffer-local
-      (let ((new-string (minibuffer-contents)))
-        (with-minibuffer-selected-window
-          (setq isearch-string new-string
-                isearch-message (mapconcat 'isearch-text-char-description
-		                           isearch-string ""))
-          (isearch-repeat-forward)))
-    (setq isearch-new-forward t isearch-new-nonincremental nil)
-    (exit-minibuffer)))
+  (setq isearch-new-forward t isearch-new-nonincremental nil)
+  (exit-minibuffer))
 
 (defun isearch-reverse-exit-minibuffer ()
   "Resume isearching backward from the minibuffer that edits the search string."
   (interactive)
-  (if isearch-buffer-local
-      (let ((new-string (minibuffer-contents)))
-        (with-minibuffer-selected-window
-          (setq isearch-string new-string
-                isearch-message (mapconcat 'isearch-text-char-description
-		                           isearch-string ""))
-          (isearch-repeat-backward)))
-    (setq isearch-new-forward nil isearch-new-nonincremental nil)
-    (exit-minibuffer)))
+  (setq isearch-new-forward nil isearch-new-nonincremental nil)
+  (exit-minibuffer))
 
 (defun isearch-cancel ()
   "Terminate the search and go back to the starting point."
@@ -2679,10 +2630,7 @@ always reads a string from the `kill-ring' using the minibuffer."
   ;; then it "used" the mark which we should hence deactivate.
   (when select-active-regions (deactivate-mark)))
 
-;; mouse-minibuffer-check: Minibuffer window is not active
-;; MAYBE bind mouse-2 in inactive-minibuffer during isearch-mode?
-;; (put 'mouse-yank-primary 'isearch-scroll t)
-;; (put 'isearch-mouse-2 'isearch-scroll t)
+
 (defun isearch-mouse-2 (click)
   "Handle mouse-2 in Isearch mode.
 For a click in the echo area, invoke `isearch-yank-x-selection'.
@@ -2694,7 +2642,6 @@ is bound to outside of Isearch."
                        ;; Key search depends on mode (bug#47755)
                        (isearch-mode nil))
                    (key-binding (this-command-keys-vector) t))))
-    (message "! isearch-mouse-2 %S" w)
     (if (or mouse-yank-at-point
             (and (window-minibuffer-p w)
 	         (not (minibuffer-window-active-p w)))) ; in echo area
@@ -2852,12 +2799,14 @@ The command accepts Unicode names like \"smiling face\" or
     ;; Allow all those possibilities without moving point as
     ;; long as the match does not extend past search origin.
     (if (and (not isearch-forward) (not isearch-adjusted)
+             ;; ‘C-M-r ^’
+             ;; MAYBE BETTER to add ‘looking-at-function’?
+             (eq isearch-search-fun-function 'isearch-search-fun-default)
 	     (condition-case ()
 		 (let ((case-fold-search isearch-case-fold-search))
 		   (if (and (eq case-fold-search t) search-upper-case)
 		       (setq case-fold-search
 			     (isearch-no-upper-case-p isearch-string isearch-regexp)))
-                   ;; C-M-r ^
 		   (looking-at (cond
 				((functionp isearch-regexp-function)
 				 (funcall isearch-regexp-function isearch-string t))
@@ -3168,12 +3117,10 @@ before the command is executed globally with terminated Isearch.
 See more for options in `search-exit-option'."
   (let* ((key (this-single-command-keys))
 	 (main-event (aref key 0)))
-    ;; (message "!1 main-event %S %S" main-event this-command)
     (cond
      ;; Don't exit Isearch if we're in the middle of some
      ;; `set-transient-map' thingy like `universal-argument--mode'.
-     ((unless isearch-buffer-local
-        (not (eq overriding-terminal-local-map isearch--saved-overriding-local-map))))
+     ((not (eq overriding-terminal-local-map isearch--saved-overriding-local-map)))
      ;; Don't exit Isearch for isearch key bindings.
      ((or (commandp (lookup-key isearch-mode-map key nil))
           (commandp
@@ -3219,17 +3166,9 @@ See more for options in `search-exit-option'."
      ;; A mouse click on the isearch message starts editing the search string.
      ((and (eq (car-safe main-event) 'down-mouse-1)
 	   (window-minibuffer-p (posn-window (event-start main-event))))
-      ;; (message "!3 main-event %S" main-event)
       ;; Swallow the up-event.
       (read--potential-mouse-event)
       (setq this-command 'isearch-edit-string))
-     ((and isearch-buffer-local
-           (eq (car-safe main-event) 'mouse-2)
-	   (window-minibuffer-p (posn-window (event-start main-event))))
-      ;; (message "!2 main-event %S" main-event)
-      ;; Swallow the up-event.
-      (read--potential-mouse-event)
-      (setq this-command 'isearch-mouse-2))
      ;; Don't terminate the search for motion commands.
      ((and isearch-yank-on-move
            (symbolp this-command)
