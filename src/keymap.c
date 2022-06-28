@@ -1525,7 +1525,7 @@ static ptrdiff_t cmm_size = 0;
    list, let the key sequence be read, and hope some other piece of
    code signals the error.  */
 ptrdiff_t
-current_minor_maps (Lisp_Object **modeptr, Lisp_Object **mapptr, int overriding)
+current_minor_maps (Lisp_Object **modeptr, Lisp_Object **mapptr)
 {
   ptrdiff_t i = 0;
   Lisp_Object alist, assoc, var, val;
@@ -1552,10 +1552,7 @@ current_minor_maps (Lisp_Object **modeptr, Lisp_Object **mapptr, int overriding)
 	if ((assoc = XCAR (alist), CONSP (assoc))
 	    && (var = XCAR (assoc), SYMBOLP (var))
 	    && (val = find_symbol_value (var), !BASE_EQ (val, Qunbound))
-	    && !NILP (val)
-	    && (overriding == 0
-		|| (overriding == 1 && NILP (Fget (var, Qoverriding_keymap)))
-		|| (overriding == 2 && !NILP (Fget (var, Qoverriding_keymap)))))
+	    && !NILP (val))
 	  {
 	    Lisp_Object temp;
 
@@ -1753,7 +1750,7 @@ like in the respective argument of `key-binding'.  */)
 	keymaps = Fcons (local_map, keymaps);
 
       /* Now put all the minor mode keymaps on the list.  */
-      nmaps = current_minor_maps (0, &maps, 1);
+      nmaps = current_minor_maps (0, &maps);
 
       for (int i = --nmaps; i >= 0; i--)
 	if (!NILP (maps[i]))
@@ -1761,12 +1758,6 @@ like in the respective argument of `key-binding'.  */)
 
       if (!NILP (keymap))
 	keymaps = Fcons (keymap, keymaps);
-
-      /* Now put all the overriding minor mode keymaps on the list.  */
-      nmaps = current_minor_maps (0, &maps, 2);
-      for (int i = --nmaps; i >= 0; i--)
-	if (!NILP (maps[i]))
-	  keymaps = Fcons (maps[i], keymaps);
 
       if (!NILP (olp) && !NILP (otlp))
 	keymaps = Fcons (otlp, keymaps);
@@ -1861,7 +1852,7 @@ bindings; see the description of `lookup-key' for more details about this.  */)
   (Lisp_Object key, Lisp_Object accept_default)
 {
   Lisp_Object *modes, *maps;
-  int nmaps = current_minor_maps (&modes, &maps, 0);
+  int nmaps = current_minor_maps (&modes, &maps);
   Lisp_Object binding = Qnil;
 
   int j;
@@ -1922,7 +1913,7 @@ DEFUN ("current-minor-mode-maps", Fcurrent_minor_mode_maps, Scurrent_minor_mode_
   (void)
 {
   Lisp_Object *maps;
-  int nmaps = current_minor_maps (0, &maps, 0);
+  int nmaps = current_minor_maps (0, &maps);
 
   return Flist (nmaps, maps);
 }
@@ -2924,7 +2915,7 @@ You type        Translation\n\
 	 minor modes correctly.  */
       Fset_buffer (buffer);
 
-      int nmaps = current_minor_maps (&modes, &maps, 0);
+      int nmaps = current_minor_maps (&modes, &maps);
       Fset_buffer (outbuf);
 
       start1 = get_local_map (BUF_PT (XBUFFER (buffer)),
@@ -3337,7 +3328,6 @@ syms_of_keymap (void)
   DEFSYM (Qdescribe_map_tree, "describe-map-tree");
 
   DEFSYM (Qkeymap_canonicalize, "keymap-canonicalize");
-  DEFSYM (Qoverriding_keymap, "overriding-keymap");
 
   /* Now we are ready to set up this property, so we can
      create char tables.  */
