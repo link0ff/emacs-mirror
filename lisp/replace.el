@@ -2931,6 +2931,11 @@ characters."
          ;; If non-nil, it is marker saying where in the buffer to stop.
          (limit nil)
          (region-filter nil)
+         ;; (replace-re-search-function
+         ;;  (or replace-re-search-function
+         ;;      ;; To be able to use "^.*$" on rectangles
+         ;;      (when (and regexp-flag region-noncontiguous-p)
+         ;;        #'search-noncontiguous-region)))
 
          ;; Data for the next match.  If a cons, it has the same format as
          ;; (match-data); otherwise it is t if a match is possible at point.
@@ -3052,10 +3057,11 @@ characters."
 	  (setq match-again
 		(and nonempty-match
 		     (or (not regexp-flag)
-			 (and (save-excursion
-				(replace-search search-string limit
-						regexp-flag delimited-flag
-						case-fold-search backward))
+                         (not (eq isearch-search-fun-function
+                                  'isearch-search-fun-default))
+			 (and (if backward
+				  (looking-back search-string nil)
+				(looking-at search-string))
 			      (let ((match (match-data)))
 				(and (/= (nth 0 match) (nth 1 match))
 				     match))))))
@@ -3338,12 +3344,8 @@ characters."
 			 ;; decide whether the search string
 			 ;; can match again just after this match.
 			 (if (and regexp-flag nonempty-match)
-			     (setq match-again
-				   (and (save-window-excursion
-					  (replace-search search-string limit
-						          regexp-flag delimited-flag
-						          case-fold-search backward))
-					(match-data)))))
+			     (setq match-again (and (looking-at search-string)
+						    (match-data)))))
 			;; Edit replacement.
 			((or (eq def 'edit-replacement)
                              (eq def 'edit-replacement-exact-case))
