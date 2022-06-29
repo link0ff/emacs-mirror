@@ -84,20 +84,20 @@ if drop is successful, nil if not."
 
 (defcustom x-dnd-known-types
   (mapcar 'purecopy
-  '("text/uri-list"
-    "text/x-moz-url"
-    "_NETSCAPE_URL"
-    "FILE_NAME"
-    "UTF8_STRING"
-    "text/plain;charset=UTF-8"
-    "text/plain;charset=utf-8"
-    "text/unicode"
-    "text/plain"
-    "COMPOUND_TEXT"
-    "STRING"
-    "TEXT"
-    "DndTypeFile"
-    "DndTypeText"))
+          '("text/uri-list"
+            "text/x-moz-url"
+            "_NETSCAPE_URL"
+            "FILE_NAME"
+            "UTF8_STRING"
+            "text/plain;charset=UTF-8"
+            "text/plain;charset=utf-8"
+            "text/unicode"
+            "text/plain"
+            "COMPOUND_TEXT"
+            "STRING"
+            "TEXT"
+            "DndTypeFile"
+            "DndTypeText"))
   "The types accepted by default for dropped data.
 The types are chosen in the order they appear in the list."
   :version "22.1"
@@ -380,7 +380,8 @@ Currently XDND, Motif and old KDE 1.x protocols are recognized."
         (progn
           (let ((action (cdr (assoc (symbol-name (cadr client-message))
                                     x-dnd-xdnd-to-action)))
-                (targets (cddr client-message)))
+                (targets (cddr client-message))
+                (local-value (nth 2 client-message)))
             (x-dnd-save-state window nil nil
                               (apply #'vector targets))
             (x-dnd-maybe-call-test-function window action)
@@ -388,8 +389,8 @@ Currently XDND, Motif and old KDE 1.x protocols are recognized."
                 (x-dnd-drop-data event (if (framep window) window
                                          (window-frame window))
                                  window
-                                 (x-get-selection-internal
-                                  'XdndSelection
+                                 (x-get-local-selection
+                                  local-value
                                   (intern (x-dnd-current-type window)))
                                  (x-dnd-current-type window))
               (x-dnd-forget-drop window))))
@@ -521,7 +522,7 @@ message (format 32) that caused EVENT to be generated."
 			    frame "ATOM" 32 t))
 
 (defun x-dnd-get-drop-width-height (frame w accept)
-  "Return the width/height to be sent in a XDndStatus message.
+  "Return the width/height to be sent in a XdndStatus message.
 FRAME is the frame and W is the window where the drop happened.
 If ACCEPT is nil return 0 (empty rectangle),
 otherwise if W is a window, return its width/height,
@@ -538,7 +539,7 @@ otherwise return the frame width/height."
     0))
 
 (defun x-dnd-get-drop-x-y (frame w)
-  "Return the x/y coordinates to be sent in a XDndStatus message.
+  "Return the x/y coordinates to be sent in a XdndStatus message.
 Coordinates are required to be absolute.
 FRAME is the frame and W is the window where the drop happened.
 If W is a window, return its absolute coordinates,
@@ -608,10 +609,13 @@ FORMAT is 32 (not used).  MESSAGE is the data part of an XClientMessageEvent."
 		(list-to-send
 		 (list (string-to-number
 			(frame-parameter frame 'outer-window-id))
-		       accept ;; 1 = Accept, 0 = reject.
-		       (x-dnd-get-drop-x-y frame window)
-		       (x-dnd-get-drop-width-height
-			frame window (eq accept 1))
+		       (+ 2 accept) ;; 1 = accept, 0 = reject.  2 =
+                                    ;; "want position updates".
+                       (if dnd-indicate-insertion-point 0
+		         (x-dnd-get-drop-x-y frame window))
+                       (if dnd-indicate-insertion-point 0
+		         (x-dnd-get-drop-width-height
+			  frame window (eq accept 1)))
                        ;; The no-toolkit Emacs build can actually
                        ;; receive drops from programs that speak
                        ;; versions of XDND earlier than 3 (such as
@@ -1123,6 +1127,83 @@ ACTION is the action given to `x-begin-drag'."
       (intern (car (rassq (car state) x-dnd-xdnd-to-action))))))
 
 (setq x-dnd-native-test-function #'x-dnd-handle-native-drop)
+
+;;; XDS protocol support.
+
+(declare-function x-begin-drag "xfns.c")
+(declare-function x-delete-window-property "xfns.c")
+(defvar selection-converter-alist)
+
+(defvar x-dnd-xds-current-file nil
+  "The file name for which a direct save is currently being performed.")
+
+(defvar x-dnd-xds-source-frame nil
+  "The frame from which a direct save is currently being performed.")
+
+(defun x-dnd-handle-direct-save (_selection _type _value)
+  "Handle a selection request for `XdndDirectSave'."
+  (let* ((uri (x-window-property "XdndDirectSave0"
+                                 x-dnd-xds-source-frame
+                                 "AnyPropertyType" nil t))
+         (local-name (dnd-get-local-file-name uri nil)))
+    (if (not local-name)
+        '(STRING . "F")
+      (condition-case nil
+          (progn
+            (rename-file x-dnd-xds-current-file
+                         local-name t)
+            (when (equal x-dnd-xds-current-file
+                         dnd-last-dragged-remote-file)
+              (dnd-remove-last-dragged-remote-file)))
+        (:success '(STRING . "S"))
+        (error '(STRING . "F"))))))
+
+(defun x-dnd-do-direct-save (file name frame allow-same-frame)
+  "Perform a direct save operation on FILE, from FRAME.
+FILE is the file containing the contents to drop.
+NAME is the name that should be given to the file after dropping.
+FRAME is the frame from which the drop will originate.
+ALLOW-SAME-FRAME means whether or not dropping will be allowed
+on FRAME.
+
+Return the action taken by the drop target, or nil."
+  (dnd-remove-last-dragged-remote-file)
+  (let ((file-name file)
+        (original-file-name file)
+        (selection-converter-alist
+         (cons (cons 'XdndDirectSave0
+                     #'x-dnd-handle-direct-save)
+               selection-converter-alist))
+        (x-dnd-xds-current-file nil)
+        (x-dnd-xds-source-frame frame)
+        encoded-name)
+    (unwind-protect
+        (progn
+          (when (file-remote-p file)
+            (setq file-name (file-local-copy file))
+            (setq dnd-last-dragged-remote-file file-name)
+            (add-hook 'kill-emacs-hook
+                      #'dnd-remove-last-dragged-remote-file))
+          (setq encoded-name
+                (encode-coding-string name
+                                      (or file-name-coding-system
+                                          default-file-name-coding-system)))
+          (setq x-dnd-xds-current-file file-name)
+          (x-change-window-property "XdndDirectSave0" encoded-name
+                                    frame "text/plain" 8 nil)
+          (gui-set-selection 'XdndSelection (concat "file://" file-name))
+          ;; FIXME: this does not work with GTK file managers, since
+          ;; they always reach for `text/uri-list' first, contrary to
+          ;; the spec.
+          (x-begin-drag '("XdndDirectSave0" "text/uri-list")
+                        'XdndActionDirectSave
+                        frame nil allow-same-frame))
+      ;; TODO: check for failure and implement selection-based file
+      ;; transfer.
+      (x-delete-window-property "XdndDirectSave0" frame)
+      ;; Delete any remote copy that was made.
+      (when (not (equal file-name original-file-name))
+        (delete-file file-name)))))
 
 (provide 'x-dnd)
 
