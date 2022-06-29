@@ -452,19 +452,19 @@ and doesn't remove full-buffer highlighting after a search."
   :group 'isearch
   :group 'matching)
 
-(defcustom lazy-count-prefix-format "%s/%s "
+(defcustom lazy-count-prefix-format "%s/%s%s "
   "Format of the current/total number of matches for the prompt prefix."
   :type '(choice (const :tag "No prefix" nil)
-                 (string :tag "Prefix format string" "%s/%s "))
+                 (string :tag "Prefix format string" "%s/%s%s "))
   :group 'lazy-count
-  :version "27.1")
+  :version "29.1")
 
 (defcustom lazy-count-suffix-format nil
   "Format of the current/total number of matches for the prompt suffix."
   :type '(choice (const :tag "No suffix" nil)
-                 (string :tag "Suffix format string" " [%s of %s]"))
+                 (string :tag "Suffix format string" " [%s of %s]%s"))
   :group 'lazy-count
-  :version "27.1")
+  :version "29.1")
 
 
 ;; Define isearch help map.
@@ -1277,6 +1277,7 @@ used to set the value of `isearch-regexp-function'."
 
 	isearch-lazy-count-current nil
 	isearch-lazy-count-total nil
+	isearch-lazy-count-invisible nil
 
 	;; Save the original value of `minibuffer-message-timeout', and
 	;; set it to nil so that isearch's messages don't get timed out.
@@ -3532,7 +3533,11 @@ isearch-message-suffix prompt.  Otherwise, for isearch-message-prefix."
                     (- isearch-lazy-count-total
                        isearch-lazy-count-current
                        -1)))
-                (or isearch-lazy-count-total "?"))
+                (or isearch-lazy-count-total "?")
+                (if isearch-lazy-count-invisible
+                    ;; "invisible" means "unreachable", "intangible"
+                    (format " (invisible %s)" isearch-lazy-count-invisible)
+                  ""))
       "")))
 
 
@@ -4011,6 +4016,7 @@ since they have special meaning in a regexp."
 (defvar isearch-lazy-highlight-error nil)
 (defvar isearch-lazy-count-current nil)
 (defvar isearch-lazy-count-total nil)
+(defvar isearch-lazy-count-invisible nil)
 (defvar isearch-lazy-count-hash (make-hash-table))
 (defvar lazy-count-update-hook nil
   "Hook run after new lazy count results are computed.")
@@ -4089,7 +4095,8 @@ by other Emacs features."
         ;; Reset old counter before going to count new numbers
         (clrhash isearch-lazy-count-hash)
         (setq isearch-lazy-count-current nil
-              isearch-lazy-count-total nil)
+              isearch-lazy-count-total nil
+              isearch-lazy-count-invisible nil)
         ;; Delay updating the message if possible, to avoid flicker
         (when (string-equal isearch-string "")
           (when (and isearch-mode (null isearch-message-function))
@@ -4170,14 +4177,24 @@ Attempt to do the search exactly the way the pending Isearch would."
 	     isearch-lazy-highlight-regexp-lax-whitespace)
 	    (isearch-forward isearch-lazy-highlight-forward)
 	    ;; Don't match invisible text unless it can be opened
-	    ;; or when counting matches and user can visit hidden matches
+	    ;; or when counting matches and user can visit hidden matches.
+            ;; In any case don't leave search-invisible with the value `open'
+            ;; since then lazy-highlight will open all overlays with matches.
+            ;; TODO: maybe somehow optimize to not lazy-highlight unreachable hits?
 	    (search-invisible (or (eq search-invisible 'open)
 				  (and isearch-lazy-count search-invisible)))
 	    (retry t)
-	    (success nil))
+	    (success nil)
+            (opoint))
 	;; Use a loop like in `isearch-search'.
+        ;; (message "!!")
 	(while retry
+          (setq opoint (point))
 	  (setq success (isearch-search-string string bound t))
+          ;; (message "! %S %S %S %S %S" opoint success
+          ;;          (match-beginning 0) (match-end 0)
+          ;;          (funcall isearch-filter-predicate
+	  ;;       	    (match-beginning 0) (match-end 0)))
 	  ;; Clear RETRY unless the search predicate says
 	  ;; to skip this search hit.
 	  (if (or (not success)
@@ -4331,11 +4348,15 @@ Attempt to do the search exactly the way the pending Isearch would."
 				(setq found nil)
 			      (forward-char -1)))
 			(when isearch-lazy-count
-			  (setq isearch-lazy-count-total
-				(1+ (or isearch-lazy-count-total 0)))
-			  (puthash (if isearch-lazy-highlight-forward me mb)
-				   isearch-lazy-count-total
-				   isearch-lazy-count-hash))
+                          ;; TODO: CHECK condition
+			  (if (and search-invisible (invisible-p (get-text-property (point) 'invisible)))
+			      (setq isearch-lazy-count-invisible
+				    (1+ (or isearch-lazy-count-invisible 0)))
+			    (setq isearch-lazy-count-total
+				  (1+ (or isearch-lazy-count-total 0)))
+			    (puthash (if isearch-lazy-highlight-forward me mb)
+				     isearch-lazy-count-total
+				     isearch-lazy-count-hash)))
 			;; Don't highlight the match when this loop is used
 			;; only to count matches or when matches were already
 			;; highlighted within the current window boundaries
