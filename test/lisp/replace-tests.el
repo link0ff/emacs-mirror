@@ -460,20 +460,12 @@ Each element has the format:
   (let* ((replace-re-search-function #'re-search-forward))
     (query-replace--run-tests query-replace-tests))
 
-  (let* ((pairs '((1 . 2) (3 . 4)))
+  (let* ((bounds '((1 . 2) (3 . 4)))
          (replace-re-search-function
-          (lambda (string &optional _bound noerror count)
-            (let (found)
-              (while (and (not found) pairs)
-                (goto-char (caar pairs))
-                (when (re-search-forward string (cdar pairs) noerror count)
-                  (setq found t))
-                (pop pairs))
-              found)))
+          (isearch-search-fun-in-noncontiguous-region nil bounds))
          (tests
           '(
-            ;; FIXME: this test should pass after fixing bug#54733:
-            ;; ("aaaa" "C-M-% .* RET 1 RET !" "1a1a")
+            ("aaaa" "C-M-% .* RET 1 RET !" "1a1a")
             )))
     (query-replace--run-tests tests)))
 
@@ -485,8 +477,9 @@ Each element has the format:
     ;; Test case from commit 5632eb272c7
     ("a a a " "\\ba " "c" nil t nil nil nil nil nil nil nil "ccc") ; not "ca c"
     ;; The same with region inside the second match
-    ;; FIXME: this test should pass after fixing bug#54733:
-    ;; ("a a a " "\\ba " "c" nil t nil nil nil 1 4 nil nil "ca a ")
+    ("a a a " "\\ba " "c" nil t nil nil nil 1 3 nil nil "ca a ")
+    ("a a a " "\\ba " "c" nil t nil nil nil 1 4 nil nil "ca a ")
+    ("a a a " "\\ba " "c" nil t nil nil nil 1 5 nil nil "cca ")
     ))
 
 (defun perform-replace--run-tests (tests)
