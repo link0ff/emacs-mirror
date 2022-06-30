@@ -4547,9 +4547,9 @@ defaults to the value of `isearch-search-fun-default' when nil."
       (if subregexp
           (let* ((prop-beg
                   (if (or (if isearch-forward (bobp) (eobp))
-                          (null (funcall get-fun (+ (point)
-                                                    (if isearch-forward -1 1 ;; 0
-                                                        )))))
+                          (null (funcall get-fun
+                                         (+ (point)
+                                            (if isearch-forward -1 1)))))
                       ;; Already at the beginning of the field.
                       beg
                     ;; Get the real beginning of the field when
@@ -4575,6 +4575,7 @@ defaults to the value of `isearch-search-fun-default' when nil."
                 (setq found (+ found offset -1)
                       match-data (mapcar (lambda (m) (+ m offset -1))
                                          (match-data)))))
+            (when found (goto-char found))
             (when match-data (set-match-data match-data)))
         (setq found (funcall
                      (or search-fun (isearch-search-fun-default))
