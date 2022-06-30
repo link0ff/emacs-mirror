@@ -4407,6 +4407,7 @@ Attempt to do the search exactly the way the pending Isearch would."
           (cleanup lazy-highlight-cleanup)
           (transform #'identity)
           (filter nil)
+          (search-fun nil)
           (regexp isearch-regexp)
           (regexp-function isearch-regexp-function)
           (case-fold isearch-case-fold-search)
@@ -4426,6 +4427,7 @@ exits.
 TRANSFORM: A function taking one argument, the minibuffer contents,
 and returning the `isearch-string' to use for lazy highlighting.
 FILTER: A function to add to `isearch-filter-predicate'.
+SEARCH-FUN: A function to add to `isearch-search-fun-function'.
 REGEXP: The value of `isearch-regexp' to use for lazy highlighting.
 REGEXP-FUNCTION: The value of `isearch-regexp-function' to use for
 lazy highlighting.
@@ -4445,6 +4447,9 @@ LAX-WHITESPACE: The value of `isearch-lax-whitespace' and
               (when filter
                 (with-current-buffer buffer
                   (remove-function (local 'isearch-filter-predicate) filter)))
+              (when search-fun
+                (with-current-buffer buffer
+                  (remove-function (local 'isearch-search-fun-function) search-fun)))
               (remove-hook 'lazy-count-update-hook display-count)
               (when overlay (delete-overlay overlay))
               (remove-hook 'after-change-functions after-change t)
@@ -4480,11 +4485,16 @@ LAX-WHITESPACE: The value of `isearch-lax-whitespace' and
         (when filter
           (with-current-buffer buffer
             (add-function :after-while (local 'isearch-filter-predicate) filter)))
+        (when search-fun
+          (with-current-buffer buffer
+            (add-function :around (local 'isearch-search-fun-function) search-fun)))
         (funcall after-change nil nil nil)))))
 
 
-(defun isearch-search-fun-in-noncontiguous-region (search-fun region-bounds)
-  "Return the function that searches inside noncontiguous regions."
+(defun isearch-search-fun-in-noncontiguous-region (search-fun bounds)
+  "Return the function that searches inside noncontiguous regions.
+A noncontiguous regions is defined by the argument BOUNDS that
+is a list of cons cells of the form (START . END)."
   (apply-partially
    #'search-within-boundaries
    search-fun
@@ -4492,10 +4502,10 @@ LAX-WHITESPACE: The value of `isearch-lax-whitespace' and
      (seq-some (lambda (b) (if isearch-forward
                                (and (>= pos (car b)) (< pos (cdr b)))
                              (and (> pos (car b)) (<= pos (cdr b)))))
-               region-bounds))
+               bounds))
    (lambda (pos)
-     (let* ((bounds (flatten-list region-bounds))
-            found)
+     (let ((bounds (flatten-list bounds))
+           found)
        (unless isearch-forward
          (setq bounds (nreverse bounds)))
        (while (and bounds (not found))

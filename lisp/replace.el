@@ -371,10 +371,6 @@ should a regexp."
            (from (minibuffer-with-setup-hook
                      (minibuffer-lazy-highlight-setup
                       :case-fold case-fold-search
-                      ;; TODO: replace with search-function
-                      ;; :filter (when (use-region-p)
-                      ;;           (replace--region-filter
-                      ;;            (funcall region-extract-function 'bounds)))
                       :highlight query-replace-lazy-highlight
                       :regexp regexp-flag
                       :regexp-function (or replace-regexp-function
@@ -382,6 +378,15 @@ should a regexp."
                                            (and replace-char-fold
 	                                        (not regexp-flag)
 	                                        #'char-fold-to-regexp))
+                      :search-fun (when (use-region-p)
+                                    (let ((bounds
+                                           (mapcar (lambda (p)
+                                                     (cons (copy-marker (car p))
+                                                           (copy-marker (cdr p))))
+                                                   (funcall region-extract-function 'bounds))))
+                                      (lambda (orig-fun)
+                                        (isearch-search-fun-in-noncontiguous-region
+                                         (funcall orig-fun) bounds))))
                       :transform (lambda (string)
                                    (let* ((split (query-replace--split-string string))
                                           (from-string (if (consp split) (car split) split)))
@@ -2851,26 +2856,6 @@ to a regexp that is actually used for the search.")
 	       ,search-str ,next-replace)
          ,stack))
 
-;; (defun replace--region-filter (bounds)
-;;   "Return a function that decides if a region is inside BOUNDS.
-;; BOUNDS is a list of cons cells of the form (START . END).  The
-;; returned function takes as argument two buffer positions, START
-;; and END."
-;;   (let ((region-bounds
-;;          (mapcar (lambda (position)
-;;                    (cons (copy-marker (car position))
-;;                          (copy-marker (cdr position))))
-;;                  bounds)))
-;;     (lambda (start end)
-;;       (delq nil (mapcar
-;;                  (lambda (bounds)
-;;                    (and
-;;                     (>= start (car bounds))
-;;                     (<= start (cdr bounds))
-;;                     (>= end   (car bounds))
-;;                     (<= end   (cdr bounds))))
-;;                  region-bounds)))))
-
 (defun perform-replace (from-string replacements
 		        query-flag regexp-flag delimited-flag
 			&optional repeat-count map start end backward region-noncontiguous-p)
@@ -2935,7 +2920,10 @@ characters."
          ;; Unless a single contiguous chunk is selected, operate on multiple chunks.
          (noncontiguous-region-bounds
           (when region-noncontiguous-p
-            (funcall region-extract-function 'bounds)))
+            (mapcar (lambda (p)
+                      (cons (copy-marker (car p))
+                            (copy-marker (cdr p))))
+                    (funcall region-extract-function 'bounds))))
          (noncontiguous-search-fun
           (when noncontiguous-region-bounds
             (isearch-search-fun-in-noncontiguous-region
