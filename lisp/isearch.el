@@ -2803,7 +2803,7 @@ The command accepts Unicode names like \"smiling face\" or
     (if (and (not isearch-forward) (not isearch-adjusted)
              ;; ‘C-M-r ^’
              ;; MAYBE BETTER to add ‘looking-at-function’?
-             (eq isearch-search-fun-function 'isearch-search-fun-default)
+             ;; (eq isearch-search-fun-function 'isearch-search-fun-default)
 	     (condition-case ()
 		 (let ((case-fold-search isearch-case-fold-search))
 		   (if (and (eq case-fold-search t) search-upper-case)
@@ -4133,6 +4133,7 @@ by other Emacs features."
 	  isearch-lazy-highlight-lax-whitespace   isearch-lax-whitespace
 	  isearch-lazy-highlight-regexp-lax-whitespace isearch-regexp-lax-whitespace
 	  isearch-lazy-highlight-regexp-function  isearch-regexp-function
+          ;; isearch-lazy-highlight-search-fun-function isearch-search-fun-function
 	  isearch-lazy-highlight-forward      isearch-forward)
     ;; Extend start/end to match whole string at point (bug#19353)
     (if isearch-lazy-highlight-forward
@@ -4185,11 +4186,12 @@ Attempt to do the search exactly the way the pending Isearch would."
 				  (and isearch-lazy-count search-invisible)))
 	    (retry t)
 	    (success nil)
-            (opoint))
+            ;; (opoint)
+            )
 	;; Use a loop like in `isearch-search'.
         ;; (message "!!")
 	(while retry
-          (setq opoint (point))
+          ;; (setq opoint (point))
 	  (setq success (isearch-search-string string bound t))
           ;; (message "! %S %S %S %S %S" opoint success
           ;;          (match-beginning 0) (match-end 0)
