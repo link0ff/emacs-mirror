@@ -2801,20 +2801,15 @@ The command accepts Unicode names like \"smiling face\" or
     ;; Allow all those possibilities without moving point as
     ;; long as the match does not extend past search origin.
     (if (and (not isearch-forward) (not isearch-adjusted)
-             ;; ‘C-M-r ^’
-             ;; MAYBE BETTER to add ‘looking-at-function’?
-             ;; (eq isearch-search-fun-function 'isearch-search-fun-default)
 	     (condition-case ()
 		 (let ((case-fold-search isearch-case-fold-search))
 		   (if (and (eq case-fold-search t) search-upper-case)
 		       (setq case-fold-search
 			     (isearch-no-upper-case-p isearch-string isearch-regexp)))
-		   (looking-at (cond
-				((functionp isearch-regexp-function)
-				 (funcall isearch-regexp-function isearch-string t))
-				(isearch-regexp-function (word-search-regexp isearch-string t))
-				(isearch-regexp isearch-string)
-				(t (regexp-quote isearch-string)))))
+		   ;; Like `looking-at' but uses search functions:
+		   (let ((isearch-forward t))
+		     (isearch-search-string
+		      (concat "\\=\\(?:" isearch-string "\\)") nil t)))
 	       (error nil))
 	     (or isearch-yank-flag
 		 (<= (match-end 0)
@@ -4133,7 +4128,6 @@ by other Emacs features."
 	  isearch-lazy-highlight-lax-whitespace   isearch-lax-whitespace
 	  isearch-lazy-highlight-regexp-lax-whitespace isearch-regexp-lax-whitespace
 	  isearch-lazy-highlight-regexp-function  isearch-regexp-function
-          ;; isearch-lazy-highlight-search-fun-function isearch-search-fun-function
 	  isearch-lazy-highlight-forward      isearch-forward)
     ;; Extend start/end to match whole string at point (bug#19353)
     (if isearch-lazy-highlight-forward
@@ -4179,24 +4173,24 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    (isearch-forward isearch-lazy-highlight-forward)
 	    ;; Don't match invisible text unless it can be opened
 	    ;; or when counting matches and user can visit hidden matches.
-            ;; In any case don't leave search-invisible with the value `open'
-            ;; since then lazy-highlight will open all overlays with matches.
-            ;; TODO: maybe somehow optimize to not lazy-highlight unreachable hits?
+	    ;; In any case don't leave search-invisible with the value `open'
+	    ;; since then lazy-highlight will open all overlays with matches.
+	    ;; TODO: maybe somehow optimize to not lazy-highlight unreachable hits?
 	    (search-invisible (or (eq search-invisible 'open)
 				  (and isearch-lazy-count search-invisible)))
 	    (retry t)
 	    (success nil)
-            ;; (opoint)
-            )
+	    ;; (opoint)
+	    )
 	;; Use a loop like in `isearch-search'.
-        ;; (message "!!")
+	;; (message "!!")
 	(while retry
-          ;; (setq opoint (point))
+	  ;; (setq opoint (point))
 	  (setq success (isearch-search-string string bound t))
-          ;; (message "! %S %S %S %S %S" opoint success
-          ;;          (match-beginning 0) (match-end 0)
-          ;;          (funcall isearch-filter-predicate
-	  ;;       	    (match-beginning 0) (match-end 0)))
+	  ;; (message "! %S %S %S %S %S" opoint success
+	  ;;          (match-beginning 0) (match-end 0)
+	  ;;          (funcall isearch-filter-predicate
+	  ;;           (match-beginning 0) (match-end 0)))
 	  ;; Clear RETRY unless the search predicate says
 	  ;; to skip this search hit.
 	  (if (or (not success)
@@ -4350,7 +4344,7 @@ Attempt to do the search exactly the way the pending Isearch would."
 				(setq found nil)
 			      (forward-char -1)))
 			(when isearch-lazy-count
-                          ;; TODO: CHECK condition
+			  ;; TODO: CHECK condition
 			  (if (and search-invisible (invisible-p (get-text-property (point) 'invisible)))
 			      (setq isearch-lazy-count-invisible
 				    (1+ (or isearch-lazy-count-invisible 0)))

@@ -871,7 +871,8 @@ ITEMS is an xref item which " ; FIXME: Expand documentation.
       (setq pairs (cdr buf-pairs))
       (goto-char (point-min))
       (setq continue
-            (perform-replace from to t t nil nil multi-query-replace-map nil nil nil t)))
+            (perform-replace from to t t nil nil multi-query-replace-map
+                             nil nil nil t)))
     (unless did-it-once (user-error "No suitable matches here"))
     (when (and continue (not buf-pairs))
       (message "All results processed"))))
