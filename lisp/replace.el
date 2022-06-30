@@ -3057,11 +3057,11 @@ characters."
 	  (setq match-again
 		(and nonempty-match
 		     (or (not regexp-flag)
-                         (not (eq isearch-search-fun-function
-                                  'isearch-search-fun-default))
-			 (and (if backward
-				  (looking-back search-string nil)
-				(looking-at search-string))
+			 (and (save-excursion
+				(replace-search
+                                 (concat "\\=\\(?:" search-string "\\)")
+                                 limit regexp-flag delimited-flag
+				 case-fold-search backward))
 			      (let ((match (match-data)))
 				(and (/= (nth 0 match) (nth 1 match))
 				     match))))))
@@ -3344,8 +3344,13 @@ characters."
 			 ;; decide whether the search string
 			 ;; can match again just after this match.
 			 (if (and regexp-flag nonempty-match)
-			     (setq match-again (and (looking-at search-string)
-						    (match-data)))))
+			     (setq match-again
+				   (and (save-window-excursion
+					  (replace-search
+                                           (concat "\\=\\(?:" search-string "\\)")
+                                           limit regexp-flag delimited-flag
+					   case-fold-search backward))
+					(match-data)))))
 			;; Edit replacement.
 			((or (eq def 'edit-replacement)
                              (eq def 'edit-replacement-exact-case))
