@@ -4586,7 +4586,9 @@ defaults to the value of `isearch-search-fun-default' when nil."
                       match-data (mapcar (lambda (m) (+ m offset -1))
                                          (match-data)))))
             (when found (goto-char found))
-            (when match-data (set-match-data match-data)))
+            (when match-data (set-match-data
+                              (mapcar (lambda (m) (copy-marker m))
+                                      match-data))))
         (setq found (funcall
                      (or search-fun (isearch-search-fun-default))
                      string (if bound (if isearch-forward

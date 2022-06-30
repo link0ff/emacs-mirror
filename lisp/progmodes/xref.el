@@ -858,29 +858,9 @@ ITEMS is an xref item which " ; FIXME: Expand documentation.
 
 ;; FIXME: Write a nicer UI.
 (defun xref--query-replace-1 (from to iter)
-  (let* ((query-replace-lazy-highlight nil)
-         (continue t)
+  (let* ((continue t)
          did-it-once buf-pairs pairs
-         current-beg current-end
-         ;; Counteract the "do the next match now" hack in
-         ;; `perform-replace'.  And still, it'll report that those
-         ;; matches were "filtered out" at the end.
-         (isearch-filter-predicate
-          (lambda (beg end)
-            (and current-beg
-                 (>= beg current-beg)
-                 (<= end current-end))))
-         (replace-re-search-function
-          (lambda (from &optional _bound noerror)
-            (let (found pair)
-              (while (and (not found) pairs)
-                (setq pair (pop pairs)
-                      current-beg (car pair)
-                      current-end (cdr pair))
-                (goto-char current-beg)
-                (when (re-search-forward from current-end noerror)
-                  (setq found t)))
-              found))))
+         (region-extract-function (lambda (_) pairs)))
     (while (and continue (setq buf-pairs (funcall iter :next)))
       (if did-it-once
           ;; Reuse the same window for subsequent buffers.
@@ -889,8 +869,9 @@ ITEMS is an xref item which " ; FIXME: Expand documentation.
          (pop-to-buffer (car buf-pairs)))
         (setq did-it-once t))
       (setq pairs (cdr buf-pairs))
+      (goto-char (point-min))
       (setq continue
-            (perform-replace from to t t nil nil multi-query-replace-map)))
+            (perform-replace from to t t nil nil multi-query-replace-map nil nil nil t)))
     (unless did-it-once (user-error "No suitable matches here"))
     (when (and continue (not buf-pairs))
       (message "All results processed"))))
