@@ -371,9 +371,10 @@ should a regexp."
            (from (minibuffer-with-setup-hook
                      (minibuffer-lazy-highlight-setup
                       :case-fold case-fold-search
-                      :filter (when (use-region-p)
-                                (replace--region-filter
-                                 (funcall region-extract-function 'bounds)))
+                      ;; TODO: replace with search-function
+                      ;; :filter (when (use-region-p)
+                      ;;           (replace--region-filter
+                      ;;            (funcall region-extract-function 'bounds)))
                       :highlight query-replace-lazy-highlight
                       :regexp regexp-flag
                       :regexp-function (or replace-regexp-function
@@ -2850,25 +2851,25 @@ to a regexp that is actually used for the search.")
 	       ,search-str ,next-replace)
          ,stack))
 
-(defun replace--region-filter (bounds)
-  "Return a function that decides if a region is inside BOUNDS.
-BOUNDS is a list of cons cells of the form (START . END).  The
-returned function takes as argument two buffer positions, START
-and END."
-  (let ((region-bounds
-         (mapcar (lambda (position)
-                   (cons (copy-marker (car position))
-                         (copy-marker (cdr position))))
-                 bounds)))
-    (lambda (start end)
-      (delq nil (mapcar
-                 (lambda (bounds)
-                   (and
-                    (>= start (car bounds))
-                    (<= start (cdr bounds))
-                    (>= end   (car bounds))
-                    (<= end   (cdr bounds))))
-                 region-bounds)))))
+;; (defun replace--region-filter (bounds)
+;;   "Return a function that decides if a region is inside BOUNDS.
+;; BOUNDS is a list of cons cells of the form (START . END).  The
+;; returned function takes as argument two buffer positions, START
+;; and END."
+;;   (let ((region-bounds
+;;          (mapcar (lambda (position)
+;;                    (cons (copy-marker (car position))
+;;                          (copy-marker (cdr position))))
+;;                  bounds)))
+;;     (lambda (start end)
+;;       (delq nil (mapcar
+;;                  (lambda (bounds)
+;;                    (and
+;;                     (>= start (car bounds))
+;;                     (<= start (cdr bounds))
+;;                     (>= end   (car bounds))
+;;                     (<= end   (cdr bounds))))
+;;                  region-bounds)))))
 
 (defun perform-replace (from-string replacements
 		        query-flag regexp-flag delimited-flag
@@ -2930,12 +2931,25 @@ characters."
 
          ;; If non-nil, it is marker saying where in the buffer to stop.
          (limit nil)
-         (region-filter nil)
-         ;; (replace-re-search-function
-         ;;  (or replace-re-search-function
-         ;;      ;; To be able to use "^.*$" on rectangles
-         ;;      (when (and regexp-flag region-noncontiguous-p)
-         ;;        #'search-noncontiguous-region)))
+
+         ;; Unless a single contiguous chunk is selected, operate on multiple chunks.
+         (noncontiguous-region-bounds
+          (when region-noncontiguous-p
+            (funcall region-extract-function 'bounds)))
+         (noncontiguous-search-fun
+          (when noncontiguous-region-bounds
+            (isearch-search-fun-in-noncontiguous-region
+             nil noncontiguous-region-bounds)))
+         (replace-search-function
+          (or replace-search-function noncontiguous-search-fun))
+         (replace-re-search-function
+          ;; To be able to use "^.*$" on rectangles
+          (or replace-re-search-function noncontiguous-search-fun))
+         (replace-search-fun-function
+          (when noncontiguous-region-bounds
+            (lambda (orig-fun)
+              (isearch-search-fun-in-noncontiguous-region
+               (funcall orig-fun) noncontiguous-region-bounds))))
 
          ;; Data for the next match.  If a cons, it has the same format as
          ;; (match-data); otherwise it is t if a match is possible at point.
@@ -2957,11 +2971,10 @@ characters."
                               "(\\<query-replace-map>\\[help] for help) "))
                      minibuffer-prompt-properties))))
 
-    ;; Unless a single contiguous chunk is selected, operate on multiple chunks.
-    (when region-noncontiguous-p
-      (setq region-filter (replace--region-filter
-                           (funcall region-extract-function 'bounds)))
-      (add-function :after-while isearch-filter-predicate region-filter))
+    ;; For lazy-highlight during replacement
+    (when replace-search-fun-function
+      (add-function :around isearch-search-fun-function
+                    replace-search-fun-function))
 
     ;; If region is active, in Transient Mark mode, operate on region.
     (if backward
@@ -3330,7 +3343,8 @@ characters."
 			       ;; when perform-replace was started from
 			       ;; `xref--query-replace-1' that let-binds
 			       ;; `isearch-filter-predicate' (bug#53758).
-			       (isearch-filter-predicate #'isearch-filter-visible))
+			       (isearch-filter-predicate #'isearch-filter-visible)
+			       (isearch-search-fun-function #'isearch-search-fun-default))
 			   (setq real-match-data (replace-match-data
 						  nil real-match-data
 						  real-match-data))
@@ -3418,8 +3432,9 @@ characters."
                       search-string-replaced    nil
                       last-was-act-and-show     nil))))))
       (replace-dehighlight)
-      (when region-filter
-        (remove-function isearch-filter-predicate region-filter)))
+      (when replace-search-fun-function
+        (remove-function isearch-search-fun-function
+                         replace-search-fun-function)))
     (or unread-command-events
 	(message (ngettext "Replaced %d occurrence%s"
 			   "Replaced %d occurrences%s"
