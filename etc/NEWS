@@ -159,6 +159,9 @@ of 'user-emacs-directory'.
 
 * Incompatible changes in Emacs 29.1
 
++++
+** Warning about "eager macro-expansion failure" is changed into an error.
+
 ---
 ** Previously, the X reverseVideo value at startup was heeded for all frames.
 This meant that if you had a reverseVideo resource on the initial
@@ -313,6 +316,12 @@ startup.  Previously, these functions ignored
 
 
 * Changes in Emacs 29.1
+
+---
+** New bindings in 'find-function-setup-keys' for 'find-library'.
+When 'find-function-setup-keys' is enabled, 'C-x L' is now bound to
+'find-library', 'C-x 4 L' is now bound to 'find-library-other-window'
+and 'C-x 5 L' is now bound to 'find-library-other-frame'.
 
 +++
 ** New key binding after 'M-x' or 'M-X': 'M-X'.
@@ -606,6 +615,11 @@ inserted.
 *** New command 'emoji-describe' (bound to 'C-x 8 e d').
 This command will tell you the name of the Emoji at point.  (This
 command also works for non-Emoji characters.)
+
+---
+*** New commands 'emoji-zoom-increase' and 'emoji-zoom-decrease'.
+These are bound to 'C-x 8 e +' and 'C-x 8 e -', respectively.  They
+can be used on any character, but are mainly useful for emoji.
 
 ---
 *** New input method 'emoji'.
@@ -977,6 +991,15 @@ so automatically.
 
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
+
+** Elisp
+
+*** New command 'elisp-eval-buffer' (bound to 'C-c C-e').
+This command evals the forms in the the current buffer.
+
+*** New commands 'elisp-byte-compile-file' and 'elisp-byte-compile-buffer'.
+These commands (bound to 'C-c C-f' and 'C-c C-b', respectively)
+byte-compile the visited file and the current buffer, respectively.
 
 ** Games
 
@@ -2887,6 +2910,10 @@ when used as part of a property list specification for the
 +++
 ** 'defalias' records a more precise history of definitions.
 This is recorded in the 'function-history' symbol property.
+
+---
+** New hook 'save-place-after-find-file-hook'.
+This is called at the end of 'save-place-find-file-hook'.
 
 ---
 ** 'indian-tml-base-table' no longer translates digits.
