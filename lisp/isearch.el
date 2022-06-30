@@ -4621,12 +4621,6 @@ CASE-FOLD non-nil means the search was case-insensitive."
                        (replace-regexp-in-string "\"" "[\"“”]")))))
     (buffer-local-restore-state isearch-fold-quotes-mode--state)))
 
-;; defdefdef
-;; defdefdef
-
-;; (setq-local isearch-search-fun-function (lambda () (isearch-search-fun-in-noncontiguous-region nil (region-bounds))))
-;; (setq-local isearch-search-fun-function (let ((rb (region-bounds))) (lambda () (isearch-search-fun-in-noncontiguous-region nil rb))))
-
 (provide 'isearch)
 
 ;;; isearch.el ends here
