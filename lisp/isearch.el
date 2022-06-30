@@ -4511,12 +4511,15 @@ defaults to the value of `isearch-search-fun-default' when nil."
   (apply-partially
    #'search-within-boundaries
    search-fun
-   (lambda (pos) (or (get-text-property pos property)
-                     ;; TRY x$
-                     ;; (and (not (if isearch-forward (bobp) (eobp)))
-                     ;;      (get-text-property (+ pos (if isearch-forward -1 1))
-                     ;;                         property))
-                     ))
+   (lambda (pos) (get-text-property (if isearch-forward pos (max (1- pos) (point-min))) property))
+   ;; (lambda (pos) (or (get-text-property pos property)
+   ;;                   (and (not isearch-forward)
+   ;;                        (get-text-property (max (1- pos) (point-min)) property))
+   ;;                   ;; TRY x$
+   ;;                   ;; (and (not (if isearch-forward (bobp) (eobp)))
+   ;;                   ;;      (get-text-property (+ pos (if isearch-forward -1 1))
+   ;;                   ;;                         property))
+   ;;                   ))
    (lambda (pos) (if isearch-forward
                      (next-single-property-change pos property)
                    (previous-single-property-change pos property)))))
@@ -4526,8 +4529,8 @@ defaults to the value of `isearch-search-fun-default' when nil."
   (let* ((old (point))
          ;; Check if point is already on the property.
          (beg (when (funcall get-fun (if isearch-forward old
-                                       ;; old
-                                       (max (1- old) (point-min))
+                                       old
+                                       ;; (max (1- old) (point-min))
                                        ))
                 old))
          end found (i 0)
