@@ -317,6 +317,17 @@ startup.  Previously, these functions ignored
 
 * Changes in Emacs 29.1
 
+** New config variable 'syntax-wholeline-max' to reduce the cost of long lines.
+This variable is used by some operations (mostly syntax-propertization
+and font-locking) to treat lines longer than this variable as if they
+were made up of various smaller lines.  This can help reduce the
+pathological slowdowns seen in buffers made of a single long line, but
+can also cause misbehavior in the presence of such long lines (tho
+most of that misbehavior should usually be limited to mis-highlighting).
+You can recover the previous behavior with:
+
+    (setq syntax-wholeline-max most-positive-fixnum)
+
 ---
 ** New bindings in 'find-function-setup-keys' for 'find-library'.
 When 'find-function-setup-keys' is enabled, 'C-x L' is now bound to
@@ -411,6 +422,12 @@ This inhibits putting empty strings onto the kill ring.
 ** New user options 'dnd-indicate-insertion-point' and 'dnd-scroll-margin'.
 These options allow adjusting point and scrolling a window when
 dragging items from another program.
+
++++
+** The X Direct Save (XDS) protocol is now supported.
+This means dropping an image or file link from programs such as
+Firefox will no longer create a temporary file in a random directory,
+instead asking you where to save the file first.
 
 +++
 ** New user option 'record-all-keys'.
