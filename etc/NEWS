@@ -516,6 +516,12 @@ This inherits from the 'mode-line' face, but is the face actually used
 on the mode lines (along with 'mode-line-inactive').
 
 +++
+** New face attribute pseudo-value 'reset'.
+This value stands for the value of the corresponding attribute of the
+'default' face.  It can be used to reset attribute values produced by
+inheriting from other faces.
+
++++
 ** New function 'buffer-text-pixel-size'.
 This is similar to 'window-text-pixel-size', but can be used when the
 buffer isn't displayed.
@@ -1038,6 +1044,16 @@ so automatically.
 
 ** Dired
 
+---
+*** 'dired-clean-up-buffers-too' moved from dired-x to dired.
+This means that Dired now offers to kill buffers visiting files and
+dirs when they are deleted in Dired.  Before, you had to require
+'dired-x' to enable this behavior.  To disable this behavior,
+customize the user option 'dired-clean-up-buffers-too' to nil.  The
+related user option 'dired-clean-confirm-killing-deleted-buffers'
+(which see) has also been moved to 'dired'.
+
++++
 *** 'dired-info' and 'dired-man' moved from dired-x to dired.
 The 'dired-info' and 'dired-man' commands have been moved from the
 'dired-x' package to 'dired'.  They have also been renamed to
@@ -1054,6 +1070,10 @@ the following to your Init file:
 (with-eval-after-load 'dired
   (keymap-set dired-mode-map "N" nil)
   (keymap-set dired-mode-map "I" nil))
+
+---
+*** New command 'dired-do-eww'.
+This command visits the file on the current line with EWW.
 
 ** Elisp
 
@@ -2240,6 +2260,10 @@ patcomp.el, pc-mode.el, pc-select.el, s-region.el, and sregex.el.
 
 
 * Lisp Changes in Emacs 29.1
+
++++
+** New function 'seq-split'.
+This returns a list of sub-sequences of the specified sequence.
 
 +++
 ** 'plist-get', 'plist-put' and 'plist-member' are no longer limited to 'eq'.
