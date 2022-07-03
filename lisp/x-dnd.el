@@ -139,7 +139,23 @@ that was dropped."
   :type 'function
   :group 'x)
 
+(defcustom x-dnd-copy-types '("chromium/x-renderer-taint")
+  "List of data types offered by programs that don't support `private'.
+Some programs (such as Chromium) do not support
+`XdndActionPrivate'.  The default `x-dnd-test-function' will
+always return `copy' instead, for programs offering one of the
+data types in this list."
+  :version "29.1"
+  :type '(repeat string)
+  :group 'x)
+
 ;; Internal variables
+
+(defvar x-dnd-debug-errors nil
+  "Whether or not to signal protocol errors during drag-and-drop.
+This is useful for debugging errors in the DND code, but makes
+drag-and-drop much slower over network connections with high
+latency.")
 
 (defvar x-dnd-current-state nil
   "The current state for a drop.
@@ -200,13 +216,22 @@ any protocol specific data.")
 
 (defun x-dnd-default-test-function (_window _action types)
   "The default test function for drag and drop.
-WINDOW is where the mouse is when this function is called.  It may be
-a frame if the mouse is over the menu bar, scroll bar or tool bar.
-ACTION is the suggested action from the source, and TYPES are the
-types the drop data can have.  This function only accepts drops with
-types in `x-dnd-known-types'.  It always returns the action private."
+WINDOW is where the mouse is when this function is called.  It
+may be a frame if the mouse is over the menu bar, scroll bar or
+tool bar.  ACTION is the suggested action from the source, and
+TYPES are the types the drop data can have.  This function only
+accepts drops with types in `x-dnd-known-types'.  It always
+returns the action `private', unless `types' contains a value
+inside `x-dnd-copy-types'."
   (let ((type (x-dnd-choose-type types)))
-    (when type (cons 'private type))))
+    (when type (let ((list x-dnd-copy-types))
+                 (catch 'out
+                   (while t
+                     (if (not list)
+                         (throw 'out (cons 'private type))
+                       (if (x-dnd-find-type (car list) types)
+                           (throw 'out (cons 'copy type))
+                         (setq list (cdr list))))))))))
 
 (defun x-dnd-current-type (frame-or-window)
   "Return the type we want the DND data to be in for the current drop.
@@ -406,11 +431,14 @@ nil if not."
 	  (select-frame frame)
 	  (funcall handler window action data))))))
 
+(defvar x-fast-protocol-requests)
+
 (defun x-dnd-handle-drag-n-drop-event (event)
   "Receive drag and drop events (X client messages).
 Currently XDND, Motif and old KDE 1.x protocols are recognized."
   (interactive "e")
   (let* ((client-message (car (cdr (cdr event))))
+         (x-fast-protocol-requests (not x-dnd-debug-errors))
 	 (window (posn-window (event-start event))))
     (if (eq (and (consp client-message)
                  (car client-message))
@@ -422,6 +450,8 @@ Currently XDND, Motif and old KDE 1.x protocols are recognized."
                                     x-dnd-xdnd-to-action)))
                 (targets (cddr client-message))
                 (local-value (nth 2 client-message)))
+            (when (windowp window)
+              (select-window window))
             (x-dnd-save-state window nil nil
                               (apply #'vector targets))
             (x-dnd-maybe-call-test-function window action)
@@ -1154,19 +1184,25 @@ X and Y are the root window coordinates of the drop.
 FRAME is the frame the drop originated on.
 WINDOW-ID is the X window the drop should happen to.
 LOCAL-SELECTION-DATA is the local selection data of the drop."
-  (not (and (or (eq action 'XdndActionCopy)
-                (eq action 'XdndActionMove))
-            (not (and x-dnd-use-offix-drop local-selection-data
-                      (or (not (eq x-dnd-use-offix-drop 'files))
-                          (member "FILE_NAME" targets))
-                      (x-dnd-do-offix-drop targets x
-                                           y frame window-id
-                                           local-selection-data)))
-            (or
-             (member "STRING" targets)
-             (member "UTF8_STRING" targets)
-             (member "COMPOUND_TEXT" targets)
-             (member "TEXT" targets)))))
+  (let ((chosen-action nil))
+    (not (and (or (eq action 'XdndActionCopy)
+                  (eq action 'XdndActionMove))
+              (not (and x-dnd-use-offix-drop local-selection-data
+                        (or (not (eq x-dnd-use-offix-drop 'files))
+                            (member "FILE_NAME" targets))
+                        (when (x-dnd-do-offix-drop targets x
+                                                   y frame window-id
+                                                   local-selection-data)
+                          (setq chosen-action 'XdndActionCopy))))
+              (let ((delegate-p (or (member "STRING" targets)
+                                    (member "UTF8_STRING" targets)
+                                    (member "COMPOUND_TEXT" targets)
+                                    (member "TEXT" targets))))
+                (prog1 delegate-p
+                  ;; A string will avoid the drop emulation done in C
+                  ;; code, but won't be returned from `x-begin-drag'.
+                  (setq chosen-action (unless delegate-p ""))))))
+    chosen-action))
 
 (defvar x-dnd-targets-list)
 (defvar x-dnd-native-test-function)
@@ -1284,7 +1320,8 @@ was taken, or the direct save failed."
           ;; FIXME: this does not work with GTK file managers, since
           ;; they always reach for `text/uri-list' first, contrary to
           ;; the spec.
-          (let ((action (x-begin-drag '("XdndDirectSave0" "text/uri-list")
+          (let ((action (x-begin-drag '("XdndDirectSave0" "text/uri-list"
+                                        "application/octet-stream")
                                       'XdndActionDirectSave
                                       frame nil allow-same-frame)))
             (if (not x-dnd-xds-performed)

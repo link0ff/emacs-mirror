@@ -148,8 +148,15 @@ This is run at the end of the Emacs startup process, and is meant to
 be used to reinitialize structures that would normally be done at load
 time.
 
+** Native Compilation
+
 ---
-** New function 'startup-redirect-eln-cache'.
+*** New command 'native-compile-prune-cache'.
+This command deletes older .eln cache entries (but not the ones for
+the current Emacs version).
+
+---
+*** New function 'startup-redirect-eln-cache'.
 This function can be called in your init files to change the
 user-specific directory where Emacs stores the "*.eln" files produced
 by native compilation of Lisp packages Emacs loads.  The default
@@ -317,6 +324,21 @@ startup.  Previously, these functions ignored
 
 * Changes in Emacs 29.1
 
+---
+** 'longlines-mode' is no longer obsolete.
+
++++
+** New command to change the font size globally.
+To increase the font size, type 'C-x C-M-+' or 'C-x C-M-='; to
+decrease it, type 'C-x C-M--'; to restore the font size, type 'C-x
+C-M-0'.  The final key in these commands may be repeated without the
+leading 'C-x' and without the modifiers, e.g. 'C-x C-M-+ C-M-+ C-M-+'
+and 'C-x C-M-+ + +' increase the font size by three steps.  When
+mouse-wheel-mode is enabled, 'C-M-wheel-up' and 'C-M-wheel-down' also
+increase and decrease the font size globally.  Additionally, the
+variable 'global-text-scale-adjust-resizes-frames' controls whether
+the frames are resized when the font size is changed.
+
 ** New config variable 'syntax-wholeline-max' to reduce the cost of long lines.
 This variable is used by some operations (mostly syntax-propertization
 and font-locking) to treat lines longer than this variable as if they
@@ -435,6 +457,11 @@ If non-nil, this option will force recording of all input keys,
 including those typed in response to passwords prompt (this was the
 previous behavior).  The default is nil, which inhibits recording of
 passwords.
+
++++
+** New user option 'longlines-breakpoint-chars'.
+This is a string containing chars that could be used as breakpoint in
+longlines mode.
 
 +++
 ** New function 'command-query'.
@@ -1009,10 +1036,29 @@ so automatically.
 
 * Changes in Specialized Modes and Packages in Emacs 29.1
 
+** Dired
+
+*** 'dired-info' and 'dired-man' moved from dired-x to dired.
+The 'dired-info' and 'dired-man' commands have been moved from the
+'dired-x' package to 'dired'.  They have also been renamed to
+'dired-do-info' and 'dired-do-man'; the old command names are obsolete
+aliases.
+
+The keys 'I' ('dired-do-info') and 'N' ('dired-do-man') are now bound
+in Dired mode by default.  The user options 'dired-bind-man' and
+'dired-bind-info' no longer have any effect and are obsolete.
+
+To get the old behavior back and unbind these keys in Dired mode, add
+the following to your Init file:
+
+(with-eval-after-load 'dired
+  (keymap-set dired-mode-map "N" nil)
+  (keymap-set dired-mode-map "I" nil))
+
 ** Elisp
 
 *** New command 'elisp-eval-buffer' (bound to 'C-c C-e').
-This command evals the forms in the the current buffer.
+This command evals the forms in the current buffer.
 
 *** New commands 'elisp-byte-compile-file' and 'elisp-byte-compile-buffer'.
 These commands (bound to 'C-c C-f' and 'C-c C-b', respectively)

@@ -2216,7 +2216,7 @@ and with BASE-SIZE appended as the last element."
         (lambda (elem)
           (let ((str
                  ;; Don't modify the string itself, but a copy, since the
-                 ;; the string may be read-only or used for other purposes.
+                 ;; string may be read-only or used for other purposes.
                  ;; Furthermore, since `completions' may come from
                  ;; display-completion-list, `elem' may be a list.
                  (if (consp elem)
@@ -3241,8 +3241,9 @@ Fourth arg MUSTMATCH can take the following values:
   input, but she needs to confirm her choice if she called
   `minibuffer-complete' right before `minibuffer-complete-and-exit'
   and the input is not an existing file.
-- a function, which will be called with the input as the argument.
-  If it returns a non-nil value, the minibuffer is exited with that value.
+- a function, which will be called with the input as the
+  argument.  If the function returns a non-nil value, the
+  minibuffer is exited with that argument as the value.
 - anything else behaves like t except that typing RET does not exit if it
   does non-null completion.
 
