@@ -1268,6 +1268,13 @@ static Window x_dnd_waiting_for_status_window;
    upon receiving an XdndStatus event from said window.  */
 static XEvent x_dnd_pending_send_position;
 
+/* If true, send a drop from `x_dnd_finish_frame' to the pending
+   status window after receiving all pending XdndStatus events.  */
+static bool x_dnd_need_send_drop;
+
+/* The protocol version of any such drop.  */
+static int x_dnd_send_drop_proto;
+
 /* The action the drop target actually chose to perform.
 
    Under XDND, this is set upon receiving the XdndFinished or
@@ -4529,6 +4536,19 @@ x_dnd_send_drop (struct frame *f, Window target, Time timestamp,
   return true;
 }
 
+static bool
+x_dnd_do_drop (Window target, int supported)
+{
+  if (x_dnd_waiting_for_status_window != target)
+    return x_dnd_send_drop (x_dnd_frame, target,
+			    x_dnd_selection_timestamp, supported);
+
+  x_dnd_need_send_drop = true;
+  x_dnd_send_drop_proto = supported;
+
+  return true;
+}
+
 static void
 x_set_dnd_targets (Atom *targets, int ntargets)
 {
@@ -5057,7 +5077,11 @@ xi_convert_button_state (XIButtonState *in, unsigned int *out)
 }
 
 /* Return the modifier state in XEV as a standard X modifier mask.  */
-static unsigned int
+
+#ifdef USE_GTK
+static
+#endif
+unsigned int
 xi_convert_event_state (XIDeviceEvent *xev)
 {
   unsigned int mods, buttons;
@@ -11398,6 +11422,9 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   ltimestamp = x_timestamp_for_selection (FRAME_DISPLAY_INFO (f),
 					  QXdndSelection);
 
+  if (NILP (ltimestamp))
+    error ("No local value for XdndSelection");
+
   if (BIGNUMP (ltimestamp))
     x_dnd_selection_timestamp = bignum_to_intmax (ltimestamp);
   else
@@ -11538,6 +11565,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   x_dnd_allow_current_frame = allow_current_frame;
   x_dnd_movement_frame = NULL;
   x_dnd_init_type_lists = false;
+  x_dnd_need_send_drop = false;
 #ifdef HAVE_XKB
   x_dnd_keyboard_state = 0;
 
@@ -16426,8 +16454,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       {
 	int rc;
 
-	if (x_dnd_in_progress
-	    && FRAME_DISPLAY_INFO (x_dnd_frame) == dpyinfo
+	if (((x_dnd_in_progress
+	      && FRAME_DISPLAY_INFO (x_dnd_frame) == dpyinfo)
+	     || (x_dnd_waiting_for_finish
+		 && FRAME_DISPLAY_INFO (x_dnd_finish_frame) == dpyinfo))
 	    && event->xclient.message_type == dpyinfo->Xatom_XdndStatus)
 	  {
 	    Window target;
@@ -16436,6 +16466,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    target = event->xclient.data.l[0];
 
 	    if (x_dnd_last_protocol_version != -1
+		&& x_dnd_in_progress
 		&& target == x_dnd_last_seen_window
 		&& event->xclient.data.l[1] & 2)
 	      {
@@ -16452,7 +16483,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      x_dnd_mouse_rect_target = None;
 
 	    if (x_dnd_last_protocol_version != -1
-		&& target == x_dnd_last_seen_window)
+		&& (x_dnd_in_progress
+		    && target == x_dnd_last_seen_window))
 	      {
 		if (event->xclient.data.l[1] & 1)
 		  {
@@ -16484,6 +16516,26 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  }
 		else
 		  x_dnd_waiting_for_status_window = None;
+
+		/* Send any pending drop if warranted.  */
+		if (x_dnd_waiting_for_finish && x_dnd_need_send_drop
+		    && x_dnd_waiting_for_status_window == None)
+		  {
+		    if (event->xclient.data.l[1] & 1)
+		      {
+			if (x_dnd_send_drop_proto >= 2)
+			  x_dnd_action = event->xclient.data.l[4];
+			else
+			  x_dnd_action = dpyinfo->Xatom_XdndActionCopy;
+		      }
+		    else
+		      x_dnd_action = None;
+
+		    x_dnd_waiting_for_finish
+		      = x_dnd_send_drop (x_dnd_finish_frame,
+					 target, x_dnd_selection_timestamp,
+					 x_dnd_send_drop_proto);
+		  }
 	      }
 
 	    goto done;
@@ -18948,9 +19000,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			x_dnd_waiting_for_finish_proto = x_dnd_last_protocol_version;
 
 			x_dnd_waiting_for_finish
-			  = x_dnd_send_drop (x_dnd_frame, x_dnd_last_seen_window,
-					     x_dnd_selection_timestamp,
-					     x_dnd_last_protocol_version);
+			  = x_dnd_do_drop (x_dnd_last_seen_window,
+					   x_dnd_last_protocol_version);
 			x_dnd_finish_display = dpyinfo->display;
 		      }
 		    else if (x_dnd_last_seen_window != None)
@@ -20354,9 +20405,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			      x_dnd_waiting_for_finish_proto = x_dnd_last_protocol_version;
 
 			      x_dnd_waiting_for_finish
-				= x_dnd_send_drop (x_dnd_frame, x_dnd_last_seen_window,
-						   x_dnd_selection_timestamp,
-						   x_dnd_last_protocol_version);
+				= x_dnd_do_drop (x_dnd_last_seen_window,
+						 x_dnd_last_protocol_version);
 			      x_dnd_finish_display = dpyinfo->display;
 			    }
 			  else if (x_dnd_last_seen_window != None)
@@ -23098,6 +23148,19 @@ static void
 x_ignore_errors_for_next_request (struct x_display_info *dpyinfo)
 {
   struct x_failable_request *request, *max;
+#ifdef HAVE_GTK3
+  GdkDisplay *gdpy;
+
+  /* GTK 3 tends to override our own error handler inside certain
+     callbacks, which this can be called from.  Instead of trying to
+     restore our own, add a trap for the following requests with
+     GDK as well.  */
+
+  gdpy = gdk_x11_lookup_xdisplay (dpyinfo->display);
+
+  if (gdpy)
+    gdk_x11_display_error_trap_push (gdpy);
+#endif
 
   if ((dpyinfo->next_failable_request
        != dpyinfo->failable_requests)
@@ -23136,9 +23199,26 @@ static void
 x_stop_ignoring_errors (struct x_display_info *dpyinfo)
 {
   struct x_failable_request *range;
+#ifdef HAVE_GTK3
+  GdkDisplay *gdpy;
+#endif
 
   range = dpyinfo->next_failable_request - 1;
   range->end = XNextRequest (dpyinfo->display) - 1;
+
+  /* Abort if no request was made since
+     `x_ignore_errors_for_next_request'.  */
+
+  if (X_COMPARE_SERIALS (range->end, <,
+			 range->start))
+    emacs_abort ();
+
+#ifdef HAVE_GTK3
+  gdpy = gdk_x11_lookup_xdisplay (dpyinfo->display);
+
+  if (gdpy)
+    gdk_x11_display_error_trap_pop_ignored (gdpy);
+#endif
 }
 
 /* Undo the last x_catch_errors call.
@@ -23335,6 +23415,8 @@ x_connection_closed (Display *dpy, const char *error_message, bool ioerror)
   xm_drop_start_message dmsg;
   struct frame *f;
   Lisp_Object minibuf_frame, tmp;
+  struct x_failable_request *failable;
+  struct x_error_message_stack *stack;
 
   dpyinfo = x_display_info_for_display (dpy);
   error_msg = alloca (strlen (error_message) + 1);
@@ -23492,6 +23574,38 @@ For details, see etc/PROBLEMS.\n",
         /* We have just closed all frames on this display. */
         emacs_abort ();
 
+      /* This was the last terminal remaining, so print the error
+	 message and associated error handlers and kill Emacs.  */
+      if (dpyinfo->terminal == terminal_list
+	  && !terminal_list->next_terminal)
+	{
+	  fprintf (stderr, "%s\n", error_msg);
+
+	  if (!ioerror && dpyinfo)
+	    {
+	      /* Dump the list of error handlers for debugging
+		 purposes.  */
+
+	      fprintf (stderr, "X error handlers currently installed:\n");
+
+	      for (failable = dpyinfo->failable_requests;
+		   failable < dpyinfo->next_failable_request;
+		   ++failable)
+		{
+		  if (failable->end)
+		    fprintf (stderr, "Ignoring errors between %lu to %lu\n",
+			     failable->start, failable->end);
+		  else
+		    fprintf (stderr, "Ignoring errors from %lu onwards\n",
+			     failable->start);
+		}
+
+	      for (stack = x_error_message; stack; stack = stack->prev)
+		fprintf (stderr, "Trapping errors from %lu\n",
+			 stack->first_request);
+	    }
+	}
+
       XSETTERMINAL (tmp, dpyinfo->terminal);
       Fdelete_terminal (tmp, Qnoelisp);
     }
@@ -23499,10 +23613,7 @@ For details, see etc/PROBLEMS.\n",
   unblock_input ();
 
   if (terminal_list == 0)
-    {
-      fprintf (stderr, "%s\n", error_msg);
-      Fkill_emacs (make_fixnum (70), Qnil);
-    }
+    Fkill_emacs (make_fixnum (70), Qnil);
 
   totally_unblock_input ();
 
@@ -23592,7 +23703,8 @@ x_error_handler (Display *display, XErrorEvent *event)
 static void NO_INLINE
 x_error_quitter (Display *display, XErrorEvent *event)
 {
-  char buf[256], buf1[356];
+  char buf[256], buf1[400 + INT_STRLEN_BOUND (int)
+		      + INT_STRLEN_BOUND (unsigned long)];
 
   /* Ignore BadName errors.  They can happen because of fonts
      or colors that are not defined.  */
@@ -23604,8 +23716,9 @@ x_error_quitter (Display *display, XErrorEvent *event)
      original error handler.  */
 
   XGetErrorText (display, event->error_code, buf, sizeof (buf));
-  sprintf (buf1, "X protocol error: %s on protocol request %d",
-	   buf, event->request_code);
+  sprintf (buf1, "X protocol error: %s on protocol request %d\n"
+	   "Serial no: %lu\n", buf, event->request_code,
+	   event->serial);
   x_connection_closed (display, buf1, false);
 }
 
