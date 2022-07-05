@@ -2001,6 +2001,18 @@ Set it to nil to exclude line numbering from kills and copies.
 This option provides a mechanism to selectively disable font-lock
 keyword-driven fontifications.
 
+---
+*** New user option 'auto-save-visited-predicate'.
+This user option is a predicate function which is called by
+'auto-save-visited-mode' to decide whether or not to save a buffer.
+You can use it to automatically save only specific buffers, for
+example buffers using a particular mode or in some directory.
+
+---
+*** New user option 'remote-file-name-inhibit-auto-save-visited'.
+If this user option is non-nil, 'auto-save-visited-mode' will not
+auto-save remote buffers.  The default is nil.
+
 +++
 *** New package vtable.el for formatting tabular data.
 This package allows formatting data using variable-pitch fonts.
@@ -2277,7 +2289,7 @@ These function now take an optional comparison predicate argument.
 ** 'read-multiple-choice' can now use long-form answers.
 
 +++
-** 'read-regexp' now allows the user to indicate whether to use case folding.
+** 'M-c' in 'read-regexp' now toggles case folding.
 
 +++
 ** 'completing-read' now allows a function as its REQUIRE-MATCH argument.
