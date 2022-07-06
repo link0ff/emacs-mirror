@@ -6013,10 +6013,14 @@ To test whether a function can be called interactively, use
 (define-obsolete-function-alias
   'set-temporary-overlay-map #'set-transient-map "24.4")
 
-(defvar set-transient-map-timeout 10
+(defvar set-transient-map-timeout nil
   "Break the repetition chain of keys after specified timeout.
-When a number, exit the previous set-transient-map after idle time
+When a number, exit the previous `set-transient-map' after idle time
 of the specified number of seconds.")
+;; TODO: move to defcustom in cus-start.el
+
+(defvar set-transient-map-timer nil
+  "Timer to exit `set-transient-map' after `set-transient-map-timeout'.")
 
 (defun set-transient-map (map &optional keep-pred on-exit message timeout)
   "Set MAP as a temporary keymap taking precedence over other keymaps.
@@ -6036,18 +6040,18 @@ key lookup sequence then continues.
 This returns an \"exit function\", which can be called with no argument
 to deactivate this transient map, regardless of KEEP-PRED."
   (let* ((timeout (or set-transient-map-timeout timeout))
-         (timer nil)
          (message
           (when message
-            (if (stringp message) message
-              (let (keys)
-                (map-keymap (lambda (key cmd) (and cmd (push key keys))) map)
-                (format-message "Repeat with %s"
-                                (mapconcat (lambda (key)
-                                             (substitute-command-keys
-                                              (format "\\`%s'"
-                                                      (key-description (vector key)))))
-                                           keys ", "))))))
+            (let (keys)
+              (map-keymap (lambda (key cmd) (and cmd (push key keys))) map)
+              (format-spec (if (stringp message) message
+                             "Repeat with %k")
+                           `((?k . ,(mapconcat
+                                     (lambda (key)
+                                       (substitute-command-keys
+                                        (format "\\`%s'"
+                                                (key-description (vector key)))))
+                                     keys ", ")))))))
          (clearfun (make-symbol "clear-transient-map"))
          (exitfun
           (lambda ()
@@ -6055,6 +6059,7 @@ to deactivate this transient map, regardless of KEEP-PRED."
             (remove-hook 'pre-command-hook clearfun)
             ;; Clear the prompt after exiting.
             (when message (message ""))
+            (when set-transient-map-timer (cancel-timer set-transient-map-timer))
             (when on-exit (funcall on-exit)))))
     ;; Don't use letrec, because equal (in add/remove-hook) could get trapped
     ;; in a cycle. (bug#46326)
@@ -6090,6 +6095,9 @@ to deactivate this transient map, regardless of KEEP-PRED."
                 (funcall exitfun)))))
     (add-hook 'pre-command-hook clearfun)
     (internal-push-keymap map 'overriding-terminal-local-map)
+    (when timeout
+      (when set-transient-map-timer (cancel-timer set-transient-map-timer))
+      (setq set-transient-map-timer (run-with-idle-timer timeout nil exitfun)))
     (when message (message "%s" message))
     exitfun))
 
