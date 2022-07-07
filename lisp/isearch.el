@@ -3792,10 +3792,11 @@ Optional third argument, if t, means if fail just return nil (no error).
     (save-excursion
       (goto-char beg)
       (let (;; can-be-opened keeps track if we can open some overlays.
-	    (can-be-opened (eq search-invisible 'open))
+	    (can-be-opened (memq search-invisible '(open can-be-opened)))
 	    ;; the list of overlays that could be opened
 	    (crt-overlays nil))
-	(when (and can-be-opened isearch-hide-immediately)
+	(when (and can-be-opened isearch-hide-immediately
+                   (not (eq search-invisible 'can-be-opened)))
 	  (isearch-close-unnecessary-overlays beg end))
 	;; If the following character is currently invisible,
 	;; skip all characters with that same `invisible' property value.
@@ -3834,9 +3835,10 @@ Optional third argument, if t, means if fail just return nil (no error).
 	(if (>= (point) end)
 	    (if (and can-be-opened (consp crt-overlays))
 		(progn
-		  (setq isearch-opened-overlays
-			(append isearch-opened-overlays crt-overlays))
-		  (mapc 'isearch-open-overlay-temporary crt-overlays)
+		  (unless (eq search-invisible 'can-be-opened)
+                    (setq isearch-opened-overlays
+			  (append isearch-opened-overlays crt-overlays))
+		    (mapc 'isearch-open-overlay-temporary crt-overlays))
 		  nil)
 	      (setq isearch-hidden t)))))))
 
@@ -4189,12 +4191,14 @@ Attempt to do the search exactly the way the pending Isearch would."
 
             ;; Count all invisible matches, but highlight only
             ;; according to search-invisible without opening overlays.
-	    (search-invisible (or isearch-lazy-count search-invisible)
+	    (search-invisible (or isearch-lazy-count
+                                  (if (eq search-invisible 'open)
+                                      'can-be-opened
+                                    search-invisible))
                               ;; (or (eq search-invisible 'open)
 		              ;;     (and isearch-lazy-count search-invisible))
                               )
-            (isearch-check-overlays t)
-	    (retry t)
+            (retry t)
 	    (success nil)
 	    ;; (opoint)
 	    )
@@ -4218,15 +4222,23 @@ Attempt to do the search exactly the way the pending Isearch would."
     (error nil)))
 
 (defun isearch-lazy-highlight-match (mb me)
-  (let ((ov (make-overlay mb me)))
-    (push ov isearch-lazy-highlight-overlays)
-    ;; 1000 is higher than ediff's 100+,
-    ;; but lower than isearch main overlay's 1001
-    (overlay-put ov 'priority 1000)
-    (overlay-put ov 'face 'lazy-highlight)
-    (unless (or (eq isearch-lazy-highlight 'all-windows)
-                isearch-lazy-highlight-buffer)
-      (overlay-put ov 'window (selected-window)))))
+  (unless (and isearch-lazy-count
+               ;; Recheck the match that possibly was intended
+               ;; for counting only, but not for highlighting
+               (not (let ((search-invisible
+                           (if (eq search-invisible 'open)
+                               'can-be-opened
+                             search-invisible)))
+                      (funcall isearch-filter-predicate mb me))))
+    (let ((ov (make-overlay mb me)))
+      (push ov isearch-lazy-highlight-overlays)
+      ;; 1000 is higher than ediff's 100+,
+      ;; but lower than isearch main overlay's 1001
+      (overlay-put ov 'priority 1000)
+      (overlay-put ov 'face 'lazy-highlight)
+      (unless (or (eq isearch-lazy-highlight 'all-windows)
+                  isearch-lazy-highlight-buffer)
+        (overlay-put ov 'window (selected-window))))))
 
 (defun isearch-lazy-highlight-start ()
   "Start a new lazy-highlight updating loop."
@@ -4361,8 +4373,11 @@ Attempt to do the search exactly the way the pending Isearch would."
 			      (forward-char -1)))
 			(when isearch-lazy-count
                           ;; Count as invisible when can't open overlay
-			  (if (and ;; search-invisible
-                                   (invisible-p (get-text-property (point) 'invisible)))
+			  (if (not (let ((search-invisible
+                                          (if (eq search-invisible 'open)
+                                              'can-be-opened
+                                            search-invisible)))
+                                     (funcall isearch-filter-predicate mb me)))
 			      (setq isearch-lazy-count-invisible
 				    (1+ (or isearch-lazy-count-invisible 0)))
 			    (setq isearch-lazy-count-total
