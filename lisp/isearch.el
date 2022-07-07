@@ -452,19 +452,25 @@ and doesn't remove full-buffer highlighting after a search."
   :group 'isearch
   :group 'matching)
 
-(defcustom lazy-count-prefix-format "%s/%s%s "
+(defcustom lazy-count-prefix-format "%s/%s "
   "Format of the current/total number of matches for the prompt prefix."
   :type '(choice (const :tag "No prefix" nil)
-                 (string :tag "Prefix format string" "%s/%s%s "))
+                 (string :tag "Prefix format string" "%s/%s "))
   :group 'lazy-count
-  :version "29.1")
+  :version "27.1")
 
 (defcustom lazy-count-suffix-format nil
   "Format of the current/total number of matches for the prompt suffix."
   :type '(choice (const :tag "No suffix" nil)
-                 (string :tag "Suffix format string" " [%s of %s]%s"))
+                 (string :tag "Suffix format string" " [%s of %s]"))
   :group 'lazy-count
-  :version "29.1")
+  :version "27.1")
+
+(defvar lazy-count-invisible-format " (invisible %s)"
+  "Format of the number of invisible matches for the prompt.
+When invisible matches exist, their number is appended
+after the total number of matches.  Display nothing when
+this variable is nil.")
 
 
 ;; Define isearch help map.
@@ -2806,10 +2812,12 @@ The command accepts Unicode names like \"smiling face\" or
 		   (if (and (eq case-fold-search t) search-upper-case)
 		       (setq case-fold-search
 			     (isearch-no-upper-case-p isearch-string isearch-regexp)))
-		   ;; Like `looking-at' but uses search functions:
-		   (let ((isearch-forward t))
-		     (isearch-search-string
-		      (concat "\\=\\(?:" isearch-string "\\)") nil t)))
+		   (looking-at (cond
+				((functionp isearch-regexp-function)
+				 (funcall isearch-regexp-function isearch-string t))
+				(isearch-regexp-function (word-search-regexp isearch-string t))
+				(isearch-regexp isearch-string)
+				(t (regexp-quote isearch-string)))))
 	       (error nil))
 	     (or isearch-yank-flag
 		 (<= (match-end 0)
@@ -3528,11 +3536,12 @@ isearch-message-suffix prompt.  Otherwise, for isearch-message-prefix."
                     (- isearch-lazy-count-total
                        isearch-lazy-count-current
                        -1)))
-                (or isearch-lazy-count-total "?")
-                (if isearch-lazy-count-invisible
-                    ;; "invisible" means "unreachable", "intangible"
-                    (format " (invisible %s)" isearch-lazy-count-invisible)
-                  ""))
+                (if (and isearch-lazy-count-invisible
+                         lazy-count-invisible-format)
+                    (concat (format "%s" (or isearch-lazy-count-total "?"))
+                            (format lazy-count-invisible-format
+                                    isearch-lazy-count-invisible))
+                  (or isearch-lazy-count-total "?")))
       "")))
 
 
@@ -4176,8 +4185,15 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    ;; In any case don't leave search-invisible with the value `open'
 	    ;; since then lazy-highlight will open all overlays with matches.
 	    ;; TODO: maybe somehow optimize to not lazy-highlight unreachable hits?
-	    (search-invisible (or (eq search-invisible 'open)
-				  (and isearch-lazy-count search-invisible)))
+            ;; (But still need to count them)
+
+            ;; Count all invisible matches, but highlight only
+            ;; according to search-invisible without opening overlays.
+	    (search-invisible (or isearch-lazy-count search-invisible)
+                              ;; (or (eq search-invisible 'open)
+		              ;;     (and isearch-lazy-count search-invisible))
+                              )
+            (isearch-check-overlays t)
 	    (retry t)
 	    (success nil)
 	    ;; (opoint)
@@ -4344,8 +4360,9 @@ Attempt to do the search exactly the way the pending Isearch would."
 				(setq found nil)
 			      (forward-char -1)))
 			(when isearch-lazy-count
-			  ;; TODO: CHECK condition
-			  (if (and search-invisible (invisible-p (get-text-property (point) 'invisible)))
+                          ;; Count as invisible when can't open overlay
+			  (if (and ;; search-invisible
+                                   (invisible-p (get-text-property (point) 'invisible)))
 			      (setq isearch-lazy-count-invisible
 				    (1+ (or isearch-lazy-count-invisible 0)))
 			    (setq isearch-lazy-count-total
