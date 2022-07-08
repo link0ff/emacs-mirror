@@ -4183,11 +4183,8 @@ Attempt to do the search exactly the way the pending Isearch would."
 	     isearch-lazy-highlight-regexp-lax-whitespace)
 	    (isearch-forward isearch-lazy-highlight-forward)
 	    ;; Count all invisible matches, but highlight only
-	    ;; according to search-invisible without opening overlays.
+	    ;; matches that can be opened by visiting them later
 	    (search-invisible (or (not (null isearch-lazy-count))
-				  ;; Don't leave search-invisible with the
-				  ;; value `open' since then lazy-highlight
-				  ;; will open all overlays with matches.
 				  'can-be-opened))
 	    (retry t)
 	    (success nil))
@@ -4205,14 +4202,11 @@ Attempt to do the search exactly the way the pending Isearch would."
     (error nil)))
 
 (defun isearch-lazy-highlight-match (mb me)
-  (unless (and isearch-lazy-count
-               ;; Recheck the match that possibly was intended
-               ;; for counting only, but not for highlighting
-               (not (let ((search-invisible
-                           (if (eq search-invisible 'open)
-                               'can-be-opened
-                             search-invisible)))
-                      (funcall isearch-filter-predicate mb me))))
+  (when (or (not isearch-lazy-count)
+            ;; Recheck the match that possibly was intended
+            ;; for counting only, but not for highlighting
+            (let ((search-invisible 'can-be-opened))
+              (funcall isearch-filter-predicate mb me)))
     (let ((ov (make-overlay mb me)))
       (push ov isearch-lazy-highlight-overlays)
       ;; 1000 is higher than ediff's 100+,
@@ -4355,7 +4349,10 @@ Attempt to do the search exactly the way the pending Isearch would."
 				(setq found nil)
 			      (forward-char -1)))
 			(when isearch-lazy-count
-			  ;; Count as invisible when can't open overlay
+			  ;; Count as invisible when can't open overlay,
+			  ;; but don't leave search-invisible with the
+			  ;; value `open' since then lazy-highlight
+			  ;; will open all overlays with matches.
 			  (if (not (let ((search-invisible
 					  (if (eq search-invisible 'open)
 					      'can-be-opened
