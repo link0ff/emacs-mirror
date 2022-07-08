@@ -4499,7 +4499,7 @@ LAX-WHITESPACE: The value of `isearch-lax-whitespace' and
 
 (defun isearch-search-fun-in-noncontiguous-region (search-fun bounds)
   "Return the function that searches inside noncontiguous regions.
-A noncontiguous regions is defined by the argument BOUNDS that
+A noncontiguous region is defined by the argument BOUNDS that
 is a list of cons cells of the form (START . END)."
   (apply-partially
    #'search-within-boundaries
