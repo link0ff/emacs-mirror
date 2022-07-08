@@ -4182,35 +4182,18 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    (isearch-regexp-lax-whitespace
 	     isearch-lazy-highlight-regexp-lax-whitespace)
 	    (isearch-forward isearch-lazy-highlight-forward)
-	    ;; Don't match invisible text unless it can be opened
-	    ;; or when counting matches and user can visit hidden matches.
-	    ;; In any case don't leave search-invisible with the value `open'
-	    ;; since then lazy-highlight will open all overlays with matches.
-	    ;; TODO: maybe somehow optimize to not lazy-highlight unreachable hits?
-            ;; (But still need to count them)
-
-            ;; Count all invisible matches, but highlight only
-            ;; according to search-invisible without opening overlays.
-	    (search-invisible (or isearch-lazy-count
-                                  (if (eq search-invisible 'open)
-                                      'can-be-opened
-                                    search-invisible))
-                              ;; (or (eq search-invisible 'open)
-		              ;;     (and isearch-lazy-count search-invisible))
-                              )
-            (retry t)
-	    (success nil)
-	    ;; (opoint)
-	    )
+	    ;; Count all invisible matches, but highlight only
+	    ;; according to search-invisible without opening overlays.
+	    (search-invisible (or (not (null isearch-lazy-count))
+				  ;; Don't leave search-invisible with the
+				  ;; value `open' since then lazy-highlight
+				  ;; will open all overlays with matches.
+				  'can-be-opened))
+	    (retry t)
+	    (success nil))
 	;; Use a loop like in `isearch-search'.
-	;; (message "!!")
 	(while retry
-	  ;; (setq opoint (point))
 	  (setq success (isearch-search-string string bound t))
-	  ;; (message "! %S %S %S %S %S" opoint success
-	  ;;          (match-beginning 0) (match-end 0)
-	  ;;          (funcall isearch-filter-predicate
-	  ;;           (match-beginning 0) (match-end 0)))
 	  ;; Clear RETRY unless the search predicate says
 	  ;; to skip this search hit.
 	  (if (or (not success)
@@ -4372,12 +4355,12 @@ Attempt to do the search exactly the way the pending Isearch would."
 				(setq found nil)
 			      (forward-char -1)))
 			(when isearch-lazy-count
-                          ;; Count as invisible when can't open overlay
+			  ;; Count as invisible when can't open overlay
 			  (if (not (let ((search-invisible
-                                          (if (eq search-invisible 'open)
-                                              'can-be-opened
-                                            search-invisible)))
-                                     (funcall isearch-filter-predicate mb me)))
+					  (if (eq search-invisible 'open)
+					      'can-be-opened
+					    search-invisible)))
+				     (funcall isearch-filter-predicate mb me)))
 			      (setq isearch-lazy-count-invisible
 				    (1+ (or isearch-lazy-count-invisible 0)))
 			    (setq isearch-lazy-count-total
