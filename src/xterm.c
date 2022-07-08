@@ -3921,6 +3921,8 @@ x_dnd_do_unsupported_drop (struct x_display_info *dpyinfo,
 	      True, ButtonReleaseMask, &event);
   x_stop_ignoring_errors (dpyinfo);
 
+  x_dnd_action_symbol = QXdndActionPrivate;
+
   return;
 
  cancel:
@@ -6448,20 +6450,6 @@ x_set_frame_alpha (struct frame *f)
   unsigned long opac;
   Window parent;
 
-#ifndef USE_XCB
-  unsigned char *data = NULL;
-  Atom actual;
-  int rc, format;
-  unsigned long n, left;
-  unsigned long value;
-#else
-  xcb_get_property_cookie_t opacity_cookie;
-  xcb_get_property_reply_t *opacity_reply;
-  xcb_generic_error_t *error;
-  bool rc;
-  uint32_t value;
-#endif
-
   if (dpyinfo->highlight_frame == f)
     alpha = f->alpha[0];
   else
@@ -6482,8 +6470,6 @@ x_set_frame_alpha (struct frame *f)
 
   opac = alpha * OPAQUE;
 
-  x_catch_errors (dpy);
-
   /* If there is a parent from the window manager, put the property there
      also, to work around broken window managers that fail to do that.
      Do this unconditionally as this function is called on reparent when
@@ -6492,77 +6478,23 @@ x_set_frame_alpha (struct frame *f)
   if (!FRAME_PARENT_FRAME (f))
     {
       parent = x_find_topmost_parent (f);
+
       if (parent != None)
-	XChangeProperty (dpy, parent, dpyinfo->Xatom_net_wm_window_opacity,
-			 XA_CARDINAL, 32, PropModeReplace,
-			 (unsigned char *) &opac, 1);
+	{
+	  x_ignore_errors_for_next_request (dpyinfo);
+	  XChangeProperty (dpy, parent,
+			   dpyinfo->Xatom_net_wm_window_opacity,
+			   XA_CARDINAL, 32, PropModeReplace,
+			   (unsigned char *) &opac, 1);
+	  x_stop_ignoring_errors (dpyinfo);
+	}
     }
 
-  /* return unless necessary */
-  {
-#ifndef USE_XCB
-    rc = XGetWindowProperty (dpy, win, dpyinfo->Xatom_net_wm_window_opacity,
-			     0, 1, False, XA_CARDINAL,
-			     &actual, &format, &n, &left,
-			     &data);
-
-    if (rc == Success && actual != None
-	&& n && format == XA_CARDINAL && data)
-      {
-        value = *(unsigned long *) data;
-
-	/* Xlib sign-extends values greater than 0x7fffffff on 64-bit
-	   machines.  Get the low bits by ourself.  */
-
-	value &= 0xffffffff;
-
-	if (value == opac)
-	  {
-	    x_uncatch_errors ();
-	    XFree (data);
-	    return;
-	  }
-      }
-
-    if (data)
-      XFree (data);
-#else
-    /* Avoid the confusing Xlib sign-extension mess by using XCB
-       instead.  */
-    opacity_cookie
-      = xcb_get_property (dpyinfo->xcb_connection, 0, (xcb_window_t) win,
-			  (xcb_atom_t) dpyinfo->Xatom_net_wm_window_opacity,
-			  XCB_ATOM_CARDINAL, 0, 1);
-    opacity_reply
-      = xcb_get_property_reply (dpyinfo->xcb_connection,
-				opacity_cookie, &error);
-
-    rc = opacity_reply;
-
-    if (!opacity_reply)
-      free (error);
-    else
-      {
-	rc = (opacity_reply->format == 32
-	      && opacity_reply->type == XCB_ATOM_CARDINAL
-	      && (xcb_get_property_value_length (opacity_reply) >= 4));
-
-	if (rc)
-	  value = *(uint32_t *) xcb_get_property_value (opacity_reply);
-      }
-
-    if (opacity_reply)
-      free (opacity_reply);
-
-    if (rc && value == opac)
-      return;
-#endif
-  }
-
+  x_ignore_errors_for_next_request (dpyinfo);
   XChangeProperty (dpy, win, dpyinfo->Xatom_net_wm_window_opacity,
 		   XA_CARDINAL, 32, PropModeReplace,
 		   (unsigned char *) &opac, 1);
-  x_uncatch_errors ();
+  x_stop_ignoring_errors (dpyinfo);
 }
 
 /***********************************************************************
@@ -11873,8 +11805,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
 					   XFIXNUM (Fnth (make_fixnum (4),
 							  x_dnd_unsupported_drop_data)),
 					   x_dnd_unsupported_drop_time);
-
-	      if (SYMBOLP (val))
+	      else if (SYMBOLP (val))
 		x_dnd_action_symbol = val;
 
 	      x_dnd_unwind_flag = false;
