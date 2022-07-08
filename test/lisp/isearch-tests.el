@@ -118,7 +118,5 @@
       (insert "foofoo\n")
       (isearch--test-search-within-boundaries pairs))))
 
-;; (message "! %S %S %S" (isearch-search-string ".*$" nil t) (match-beginning 0) (match-end 0))
-
 (provide 'isearch-tests)
 ;;; isearch-tests.el ends here
