@@ -3796,7 +3796,7 @@ Optional third argument, if t, means if fail just return nil (no error).
 	    ;; the list of overlays that could be opened
 	    (crt-overlays nil))
 	(when (and can-be-opened isearch-hide-immediately
-                   (not (eq search-invisible 'can-be-opened)))
+		   (not (eq search-invisible 'can-be-opened)))
 	  (isearch-close-unnecessary-overlays beg end))
 	;; If the following character is currently invisible,
 	;; skip all characters with that same `invisible' property value.
@@ -3836,7 +3836,7 @@ Optional third argument, if t, means if fail just return nil (no error).
 	    (if (and can-be-opened (consp crt-overlays))
 		(progn
 		  (unless (eq search-invisible 'can-be-opened)
-                    (setq isearch-opened-overlays
+		    (setq isearch-opened-overlays
 			  (append isearch-opened-overlays crt-overlays))
 		    (mapc 'isearch-open-overlay-temporary crt-overlays))
 		  nil)
