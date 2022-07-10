@@ -2085,7 +2085,7 @@ xm_setup_dnd_targets (struct x_display_info *dpyinfo,
 			   &actual_type, &actual_format, &nitems,
 			   &bytes_remaining, &tmp_data) == Success;
   had_errors = x_had_errors_p (dpyinfo->display);
-  x_uncatch_errors ();
+  x_uncatch_errors_after_check ();
 
   /* The drag window is probably invalid, so remove our record of
      it.  */
@@ -2798,6 +2798,7 @@ x_dnd_free_toplevels (bool display_alive)
   unsigned long *prev_masks;
   specpdl_ref count;
   Display *dpy;
+  struct x_display_info *dpyinfo;
 
   if (!x_dnd_toplevels)
     /* Probably called inside an IO error handler.  */
@@ -2865,17 +2866,22 @@ x_dnd_free_toplevels (bool display_alive)
 
   if (display_alive)
     {
-      x_catch_errors (dpy);
+      dpyinfo = x_display_info_for_display (dpy);
 
-      for (i = 0; i < n_windows; ++i)
+      if (n_windows)
 	{
-	  XSelectInput (dpy, destroy_windows[i], prev_masks[i]);
-#ifdef HAVE_XSHAPE
-	  XShapeSelectInput (dpy, destroy_windows[i], None);
-#endif
-	}
+	  x_ignore_errors_for_next_request (dpyinfo);
 
-      x_uncatch_errors ();
+	  for (i = 0; i < n_windows; ++i)
+	    {
+	      XSelectInput (dpy, destroy_windows[i], prev_masks[i]);
+#ifdef HAVE_XSHAPE
+	      XShapeSelectInput (dpy, destroy_windows[i], None);
+#endif
+	    }
+
+	  x_stop_ignoring_errors (dpyinfo);
+	}
     }
 
   unbind_to (count, Qnil);
@@ -3389,12 +3395,12 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
 	    }
 #endif
 
-	  x_catch_errors (dpyinfo->display);
+	  x_ignore_errors_for_next_request (dpyinfo);
 	  XSelectInput (dpyinfo->display, toplevels[i],
 			(attrs.your_event_mask
 			 | StructureNotifyMask
 			 | PropertyChangeMask));
-	  x_uncatch_errors ();
+	  x_stop_ignoring_errors (dpyinfo);
 
 	  x_dnd_toplevels = tem;
 	}
@@ -3873,8 +3879,10 @@ x_dnd_do_unsupported_drop (struct x_display_info *dpyinfo,
 	 && child_return != None)
     child = child_return;
 
+  x_uncatch_errors ();
+
   if (!CONSP (value))
-    goto cancel;
+    return;
 
   current_value = assq_no_quit (QPRIMARY,
 				dpyinfo->terminal->Vselection_alist);
@@ -3891,9 +3899,7 @@ x_dnd_do_unsupported_drop (struct x_display_info *dpyinfo,
      from generating events that will insert something else.  */
 
   if (owner != FRAME_X_WINDOW (f))
-    goto cancel;
-
-  x_uncatch_errors ();
+    return;
 
   event.xbutton.window = child;
   event.xbutton.subwindow = None;
@@ -3903,7 +3909,7 @@ x_dnd_do_unsupported_drop (struct x_display_info *dpyinfo,
   event.xbutton.button = 2;
   event.xbutton.same_screen = True;
 
-  x_set_pending_dnd_time (before);
+  dpyinfo->pending_dnd_time = before;
 
   event.xbutton.type = ButtonPress;
   event.xbutton.time = before + 1;
@@ -3924,9 +3930,6 @@ x_dnd_do_unsupported_drop (struct x_display_info *dpyinfo,
   x_dnd_action_symbol = QXdndActionPrivate;
 
   return;
-
- cancel:
-  x_uncatch_errors ();
 }
 
 static void
@@ -7115,6 +7118,23 @@ x_update_frame_user_time_window (struct frame *f)
 
   output = FRAME_X_OUTPUT (f);
   dpyinfo = FRAME_DISPLAY_INFO (f);
+
+  if (!NILP (Vx_no_window_manager))
+    {
+      if (output->user_time_window != None
+	  && output->user_time_window != FRAME_OUTER_WINDOW (f))
+	{
+	  XDestroyWindow (dpyinfo->display, output->user_time_window);
+	  XDeleteProperty (dpyinfo->display, FRAME_OUTER_WINDOW (f),
+			   dpyinfo->Xatom_net_wm_user_time_window);
+	}
+      else
+	XDeleteProperty (dpyinfo->display, FRAME_OUTER_WINDOW (f),
+			 dpyinfo->Xatom_net_wm_user_time);
+
+      output->user_time_window = None;
+      return;
+    }
 
   if (!x_wm_supports (f, dpyinfo->Xatom_net_wm_user_time_window))
     {
@@ -16474,16 +16494,16 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		switch (operation)
 		  {
 		  case XM_DRAG_MOVE:
-		    x_dnd_action = dpyinfo->Xatom_XdndActionMove;
+		    x_dnd_action_symbol = QXdndActionMove;
 		    break;
 
 		  case XM_DRAG_COPY:
-		    x_dnd_action = dpyinfo->Xatom_XdndActionCopy;
+		    x_dnd_action_symbol = QXdndActionCopy;
 		    break;
 
 		    /* This means XM_DRAG_OPERATION_IS_LINK (operation).  */
 		  default:
-		    x_dnd_action = dpyinfo->Xatom_XdndActionLink;
+		    x_dnd_action_symbol = QXdndActionLink;
 		    break;
 		  }
 
@@ -16573,11 +16593,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
             if (event->xclient.data.l[0] == dpyinfo->Xatom_wm_delete_window)
               {
-                f = any;
+                f = x_top_window_to_frame (dpyinfo,
+					   event->xclient.window);
+
                 if (!f)
 		  goto OTHER; /* May be a dialog that is to be removed  */
 
 		inev.ie.kind = DELETE_WINDOW_EVENT;
+		inev.ie.timestamp = event->xclient.data.l[1];
 		XSETFRAME (inev.ie.frame_or_window, f);
 		goto done;
               }
@@ -18934,23 +18957,17 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			      }
 			  }
 			else
-			  {
-			    x_set_pending_dnd_time (event->xbutton.time);
-			    x_dnd_send_unsupported_drop (dpyinfo, (x_dnd_last_seen_toplevel != None
-								   ? x_dnd_last_seen_toplevel
-								   : x_dnd_last_seen_window),
-							 event->xbutton.x_root, event->xbutton.y_root,
-							 event->xbutton.time);
-			  }
+			  x_dnd_send_unsupported_drop (dpyinfo, (x_dnd_last_seen_toplevel != None
+								 ? x_dnd_last_seen_toplevel
+								 : x_dnd_last_seen_window),
+						       event->xbutton.x_root, event->xbutton.y_root,
+						       event->xbutton.time);
 		      }
 		    else if (x_dnd_last_seen_toplevel != None)
-		      {
-			x_set_pending_dnd_time (event->xbutton.time);
-			x_dnd_send_unsupported_drop (dpyinfo, x_dnd_last_seen_toplevel,
-						     event->xbutton.x_root,
-						     event->xbutton.y_root,
-						     event->xbutton.time);
-		      }
+		      x_dnd_send_unsupported_drop (dpyinfo, x_dnd_last_seen_toplevel,
+						   event->xbutton.x_root,
+						   event->xbutton.y_root,
+						   event->xbutton.time);
 
 
 		    x_dnd_last_protocol_version = -1;
@@ -19215,6 +19232,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       goto OTHER;
 
     case DestroyNotify:
+      if (event->xdestroywindow.window
+	  == dpyinfo->net_supported_window)
+	dpyinfo->net_supported_window = None;
+
       xft_settings_event (dpyinfo, event);
       break;
 
@@ -20348,22 +20369,16 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 				    }
 				}
 			      else
-				{
-				  x_set_pending_dnd_time (xev->time);
-				  x_dnd_send_unsupported_drop (dpyinfo, (x_dnd_last_seen_toplevel != None
-									 ? x_dnd_last_seen_toplevel
-									 : x_dnd_last_seen_window),
-							       xev->root_x, xev->root_y, xev->time);
-				}
+				x_dnd_send_unsupported_drop (dpyinfo, (x_dnd_last_seen_toplevel != None
+								       ? x_dnd_last_seen_toplevel
+								       : x_dnd_last_seen_window),
+							     xev->root_x, xev->root_y, xev->time);
 			    }
 			  else if (x_dnd_last_seen_toplevel != None)
-			    {
-			      x_set_pending_dnd_time (xev->time);
-			      x_dnd_send_unsupported_drop (dpyinfo,
-							   x_dnd_last_seen_toplevel,
-							   xev->root_x, xev->root_y,
-							   xev->time);
-			    }
+			    x_dnd_send_unsupported_drop (dpyinfo,
+							 x_dnd_last_seen_toplevel,
+							 xev->root_x, xev->root_y,
+							 xev->time);
 
 			  x_dnd_last_protocol_version = -1;
 			  x_dnd_last_motif_style = XM_DRAG_STYLE_NONE;
@@ -24076,6 +24091,36 @@ x_set_offset (struct frame *f, int xoff, int yoff, int change_gravity)
   unblock_input ();
 }
 
+static Window
+x_get_wm_check_window (struct x_display_info *dpyinfo)
+{
+  Window result;
+  unsigned char *tmp_data = NULL;
+  int rc, actual_format;
+  unsigned long actual_size, bytes_remaining;
+  Atom actual_type;
+
+  rc = XGetWindowProperty (dpyinfo->display, dpyinfo->root_window,
+			   dpyinfo->Xatom_net_supporting_wm_check,
+                           0, 1, False, XA_WINDOW, &actual_type,
+			   &actual_format, &actual_size,
+                           &bytes_remaining, &tmp_data);
+
+  if (rc != Success || actual_type != XA_WINDOW
+      || actual_format != 32 || actual_size != 1)
+    {
+      if (tmp_data)
+	XFree (tmp_data);
+
+      return None;
+    }
+
+  result = *(Window *) tmp_data;
+  XFree (tmp_data);
+
+  return result;
+}
+
 /* Return true if _NET_SUPPORTING_WM_CHECK window exists and _NET_SUPPORTED
    on the root window for frame F contains ATOMNAME.
    This is how a WM check shall be done according to the Window Manager
@@ -24096,33 +24141,40 @@ x_wm_supports_1 (struct x_display_info *dpyinfo, Atom want_atom)
   unsigned char *tmp_data = NULL;
   Atom target_type = XA_WINDOW;
 
+  /* The user says there's no window manager, so take him up on
+     it.  */
+  if (!NILP (Vx_no_window_manager))
+    return false;
+
   block_input ();
 
   x_catch_errors (dpy);
-  rc = XGetWindowProperty (dpy, target_window,
-                           dpyinfo->Xatom_net_supporting_wm_check,
-                           0, max_len, False, target_type,
-                           &actual_type, &actual_format, &actual_size,
-                           &bytes_remaining, &tmp_data);
 
-  if (rc != Success || actual_type != XA_WINDOW || x_had_errors_p (dpy))
+  wmcheck_window = dpyinfo->net_supported_window;
+
+  if (wmcheck_window == None)
+    wmcheck_window = x_get_wm_check_window (dpyinfo);
+
+  if (!x_special_window_exists_p (dpyinfo, wmcheck_window))
     {
-      if (tmp_data) XFree (tmp_data);
-      x_uncatch_errors ();
-      unblock_input ();
-      return false;
-    }
+      if (dpyinfo->net_supported_window != None)
+	{
+	  dpyinfo->net_supported_window = None;
+	  wmcheck_window = x_get_wm_check_window (dpyinfo);
 
-  wmcheck_window = *(Window *) tmp_data;
-  XFree (tmp_data);
-
-  /* Check if window exists. */
-  XSelectInput (dpy, wmcheck_window, StructureNotifyMask);
-  if (x_had_errors_p (dpy))
-    {
-      x_uncatch_errors_after_check ();
-      unblock_input ();
-      return false;
+	  if (!x_special_window_exists_p (dpyinfo, wmcheck_window))
+	    {
+	      x_uncatch_errors ();
+	      unblock_input ();
+	      return false;
+	    }
+	}
+      else
+	{
+	  x_uncatch_errors ();
+	  unblock_input ();
+	  return false;
+	}
     }
 
   if (dpyinfo->net_supported_window != wmcheck_window)

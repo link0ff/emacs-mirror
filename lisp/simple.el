@@ -5352,17 +5352,6 @@ that `filter-buffer-substring' received.  It should return the
 buffer substring between BEG and END, after filtering.  If DELETE is
 non-nil, it should delete the text between BEG and END from the buffer.")
 
-(defvar buffer-substring-filters nil
-  "List of filter functions for `buffer-substring--filter'.
-Each function must accept a single argument, a string, and return a string.
-The buffer substring is passed to the first function in the list,
-and the return value of each function is passed to the next.
-As a special convention, point is set to the start of the buffer text
-being operated on (i.e., the first argument of `buffer-substring--filter')
-before these functions are called.")
-(make-obsolete-variable 'buffer-substring-filters
-                        'filter-buffer-substring-function "24.1")
-
 (defun filter-buffer-substring (beg end &optional delete)
   "Return the buffer substring between BEG and END, after filtering.
 If DELETE is non-nil, delete the text between BEG and END from the buffer.
@@ -5383,20 +5372,15 @@ that are special to a buffer, and should not be copied into other buffers."
   "Default function to use for `filter-buffer-substring-function'.
 Its arguments and return value are as specified for `filter-buffer-substring'.
 Also respects the obsolete wrapper hook `filter-buffer-substring-functions'
-\(see `with-wrapper-hook' for details about wrapper hooks),
-and the abnormal hook `buffer-substring-filters'.
+(see `with-wrapper-hook' for details about wrapper hooks).
 No filtering is done unless a hook says to."
   (subr--with-wrapper-hook-no-warnings
     filter-buffer-substring-functions (beg end delete)
     (cond
-     ((or delete buffer-substring-filters)
+     (delete
       (save-excursion
         (goto-char beg)
-        (let ((string (if delete (delete-and-extract-region beg end)
-                        (buffer-substring beg end))))
-          (dolist (filter buffer-substring-filters)
-            (setq string (funcall filter string)))
-          string)))
+        (delete-and-extract-region beg end)))
      (t
       (buffer-substring beg end)))))
 
@@ -8942,15 +8926,15 @@ presented."
 (define-minor-mode auto-save-mode
   "Toggle auto-saving in the current buffer (Auto Save mode).
 
-When this mode is enabled, Emacs periodically saves each visited
-file in a separate file called the \"auto-save file\".  This is a
-safety measure to prevent you from losing more than a limited
-amount of work if the system crashes.
+When this mode is enabled, Emacs periodically saves each file-visiting
+buffer in a separate \"auto-save file\".  This is a safety measure to
+prevent you from losing more than a limited amount of work if the
+system crashes.
 
-Auto-saving does not alter the file you actually use: the visited
-file is changed only when you request saving it explicitly (such
-as with \\[save-buffer]).  If you want to save visited files
-automatically, use \\[auto-save-visited-mode]).
+Auto-saving does not alter the file visited by the buffer: the visited
+file is changed only when you request saving it explicitly (such as
+with \\[save-buffer]).  If you want to save the buffer into its
+visited files automatically, use \\[auto-save-visited-mode]).
 
 For more details, see Info node `(emacs) Auto Save'."
   :variable ((and buffer-auto-save-file-name

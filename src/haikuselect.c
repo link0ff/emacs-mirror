@@ -1024,12 +1024,23 @@ init_haiku_select (void)
 void
 haiku_handle_selection_clear (struct input_event *ie)
 {
+  enum haiku_clipboard id;
+
+  id = haiku_get_clipboard_name (ie->arg);
+
+  if (be_selection_outdated_p (id, ie->timestamp))
+    return;
+
   CALLN (Frun_hook_with_args,
 	 Qhaiku_lost_selection_functions, ie->arg);
+
+  /* This is required for redisplay to happen if something changed the
+     display inside the selection loss functions.  */
+  redisplay_preserve_echo_area (20);
 }
 
 void
-haiku_selection_disowned (enum haiku_clipboard id)
+haiku_selection_disowned (enum haiku_clipboard id, int64 count)
 {
   struct input_event ie;
 
@@ -1051,6 +1062,7 @@ haiku_selection_disowned (enum haiku_clipboard id)
       break;
     }
 
+  ie.timestamp = count;
   kbd_buffer_store_event (&ie);
 }
 
