@@ -301,9 +301,9 @@ to `delete-selection-mode'."
 (put 'yank-from-kill-ring 'delete-selection 'yank)
 (put 'clipboard-yank 'delete-selection 'yank)
 (put 'mouse-yank-primary 'delete-selection 'yank)
+(put 'mouse-yank-secondary 'delete-selection 'yank)
 (put 'mouse-yank-at-click 'delete-selection 'yank)
 (put 'menu-bar-select-yank 'delete-selection 'yank)
-
 (put 'insert-register 'delete-selection t)
 ;; delete-backward-char and delete-forward-char already delete the selection by
 ;; default, but not delete-char.

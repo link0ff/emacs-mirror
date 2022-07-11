@@ -321,6 +321,10 @@ the major mode according to 'initial-major-mode', like at Emacs
 startup.  Previously, these functions ignored
 'initial-scratch-message' and left "*scratch*" in 'fundamental-mode'.
 
+---
+** The rlogin.el library is now obsolete.
+Use something like `M-x shell RET ssh <host> RET' instead.
+
 
 * Changes in Emacs 29.1
 
@@ -463,8 +467,8 @@ previous behavior).  The default is nil, which inhibits recording of
 passwords.
 
 +++
-** New user option 'longlines-breakpoint-chars'.
-This is a string containing chars that could be used as breakpoint in
+** New user option 'longlines-break-chars'.
+This is a string containing chars that could be used as break point in
 longlines mode.
 
 +++
@@ -2664,6 +2668,10 @@ them towards or away from each other.
 ** New hook 'x-pre-popup-menu-hook'.
 This hook is run before 'x-popup-menu' is about to display a
 deck-of-cards menu on screen.
+
+** New hook 'post-select-region-hook'.
+This hook is run immediately after 'select-active-regions' causes the
+region to be set as the primary selection.
 
 ** New function 'buffer-match-p'.
 Check if a buffer satisfies some condition.  Some examples for

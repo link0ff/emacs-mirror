@@ -666,35 +666,26 @@ count_size_as_multibyte (const unsigned char *str, ptrdiff_t len)
 }
 
 
-/* Convert unibyte text at STR of BYTES bytes to a multibyte text
-   that contains the same single-byte characters.  It actually
-   converts all 8-bit characters to multibyte forms.  It is assured
-   that we can use LEN bytes at STR as a work area and that is
-   enough.  */
-
+/* Convert unibyte text at SRC of NCHARS chars to a multibyte text
+   at DST, that contains the same single-byte characters.
+   Return the number of bytes written at DST.  */
 ptrdiff_t
-str_to_multibyte (unsigned char *str, ptrdiff_t len, ptrdiff_t bytes)
+str_to_multibyte (unsigned char *dst, const unsigned char *src,
+		  ptrdiff_t nchars)
 {
-  unsigned char *p = str, *endp = str + bytes;
-  unsigned char *to;
-
-  while (p < endp && *p < 0x80) p++;
-  if (p == endp)
-    return bytes;
-  to = p;
-  bytes = endp - p;
-  endp = str + len;
-  memmove (endp - bytes, p, bytes);
-  p = endp - bytes;
-  while (p < endp)
+  unsigned char *d = dst;
+  for (ptrdiff_t i = 0; i < nchars; i++)
     {
-      int c = *p++;
-
-      if (c >= 0x80)
-	c = BYTE8_TO_CHAR (c);
-      to += CHAR_STRING (c, to);
+      unsigned char c = src[i];
+      if (c <= 0x7f)
+	*d++ = c;
+      else
+	{
+	  *d++ = 0xc0 + ((c >> 6) & 1);
+	  *d++ = 0x80 + (c & 0x3f);
+	}
     }
-  return (to - str);
+  return d - dst;
 }
 
 /* Arrange multibyte text at STR of LEN bytes as a unibyte text.  It
