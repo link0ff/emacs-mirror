@@ -3065,10 +3065,11 @@ characters."
 		(and nonempty-match
 		     (or (not regexp-flag)
 			 ;; Like `looking-at' but uses search functions:
-			 (and (replace-search
-			       (concat "\\=\\(?:" search-string "\\)")
-			       limit regexp-flag delimited-flag
-			       case-fold-search backward)
+			 (and (save-excursion
+				(replace-search
+			         (concat "\\=\\(?:" search-string "\\)")
+			         limit regexp-flag delimited-flag
+			         case-fold-search backward))
 			      (let ((match (match-data)))
 				(and (/= (nth 0 match) (nth 1 match))
 				     match))))))
@@ -3353,7 +3354,7 @@ characters."
 			 ;; can match again just after this match.
 			 (if (and regexp-flag nonempty-match)
 			     (setq match-again
-				   (and (save-window-excursion
+				   (and (save-excursion
 					  (replace-search
 					   (concat "\\=\\(?:" search-string "\\)")
 					   limit regexp-flag delimited-flag
