@@ -1709,6 +1709,12 @@ this message for SVG and XPM.
 *** New commands: 'image-flip-horizontally' and 'image-flip-vertically'.
 These commands horizontally and vertically flip the image under point.
 
+** Images
+
++++
+*** Users can now add special image conversion functions.
+This is done via 'image-converter-add-handler'.
+
 ** Image-Dired
 
 +++
@@ -2023,6 +2029,11 @@ shell session terminates.
 Set it to nil to exclude line numbering from kills and copies.
 
 ** Miscellaneous
+
+---
+*** New user option 'webjump-use-internal-browser'.
+When non-nil, WebJump will use an internal browser to open web pages,
+instead of the default external browser.
 
 +++
 *** New user option 'font-lock-ignore'.
