@@ -1433,7 +1433,7 @@ static bool x_dnd_use_toplevels;
 /* Motif drag-and-drop protocol support.  */
 
 /* Pointer to a variable which stores whether or not an X error
-   occured while trying to create the Motif drag window.  */
+   occurred while trying to create the Motif drag window.  */
 static volatile bool *xm_drag_window_error;
 
 typedef enum xm_byte_order
@@ -2308,7 +2308,7 @@ xm_get_drag_atom_1 (struct x_display_info *dpyinfo,
 			   &actual_format, &nitems, &bytes_remaining,
 			   &tmp_data);
   atom = None;
-  /* GCC thinks i is used unitialized, but it's always initialized if
+  /* GCC thinks i is used uninitialized, but it's always initialized if
      `atoms' exists at that particular spot.  */
   i = 0;
 
@@ -14969,7 +14969,6 @@ x_scroll_bar_expose (struct scroll_bar *bar, const XEvent *event)
   Window w = bar->x_window;
 #else
   Drawable w = bar->x_drawable;
-#endif
   int x, y, width, height;
 
   if (event->type == Expose)
@@ -14986,6 +14985,7 @@ x_scroll_bar_expose (struct scroll_bar *bar, const XEvent *event)
       width = event->xgraphicsexpose.width;
       height = event->xgraphicsexpose.height;
     }
+#endif
 
   struct frame *f = XFRAME (WINDOW_FRAME (XWINDOW (bar->window)));
   GC gc = f->output_data.x->normal_gc;
@@ -18670,10 +18670,12 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	       configureEvent.xconfigure.height,
 	       f->new_width, f->new_height);
 
+#ifdef HAVE_XDBE
 	  block_input ();
           if (FRAME_X_DOUBLE_BUFFERED_P (f))
             x_drop_xrender_surfaces (f);
           unblock_input ();
+#endif
           xg_frame_resized (f, configureEvent.xconfigure.width,
                             configureEvent.xconfigure.height);
 #ifdef USE_CAIRO
@@ -23312,6 +23314,22 @@ x_trace_wire (Display *dpy)
 
 static char *error_msg;
 
+/* Try to find a frame in Vframe_list, and make it the selected frame.
+   `delete_frame' sometimes misses the initial frame for an unknown
+   reason when Emacs is running as a background daemon.  */
+
+static void
+x_try_restore_frame (void)
+{
+  Lisp_Object tail, frame;
+
+  FOR_EACH_FRAME (tail, frame)
+    {
+      if (!NILP (do_switch_frame (frame, 1, Qnil)))
+	return;
+    }
+}
+
 /* Handle the loss of connection to display DPY.  ERROR_MESSAGE is
    the text of an error message that lead to the connection loss.  */
 
@@ -23528,6 +23546,11 @@ For details, see etc/PROBLEMS.\n",
       XSETTERMINAL (tmp, dpyinfo->terminal);
       Fdelete_terminal (tmp, Qnoelisp);
     }
+
+  /* The initial "daemon" frame is sometimes not selected by
+     `delete_frame' when Emacs is a background daemon.  */
+  if (NILP (selected_frame))
+    x_try_restore_frame ();
 
   unblock_input ();
 
@@ -27913,9 +27936,12 @@ void
 mark_xterm (void)
 {
   Lisp_Object val;
-#if defined HAVE_XINPUT2 || defined USE_TOOLKIT_SCROLL_BARS
+#if defined HAVE_XINPUT2 || defined USE_TOOLKIT_SCROLL_BARS \
+  || defined HAVE_XRANDR || defined USE_GTK
   struct x_display_info *dpyinfo;
+#if defined HAVE_XINPUT2 || defined USE_TOOLKIT_SCROLL_BARS
   int i;
+#endif
 #endif
 
   if (x_dnd_return_frame_object)
@@ -28182,7 +28208,7 @@ you, try increasing the value of
   x_mouse_click_focus_ignore_position = false;
 
   DEFVAR_INT ("x-mouse-click-focus-ignore-time", x_mouse_click_focus_ignore_time,
-    doc: /* Number of miliseconds for which to ignore buttons after focus change.
+    doc: /* Number of milliseconds for which to ignore buttons after focus change.
 This variable only takes effect if
 `x-mouse-click-focus-ignore-position' is non-nil, and should be
 adjusted if the default value does not work for whatever reason.  */);
