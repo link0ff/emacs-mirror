@@ -1285,6 +1285,15 @@ static Window x_dnd_waiting_for_status_window;
    upon receiving an XdndStatus event from said window.  */
 static XEvent x_dnd_pending_send_position;
 
+/* Whether or not that event corresponds to a button press.  */
+static bool x_dnd_pending_send_position_button;
+
+/* The root-window position of that event.  */
+static int x_dnd_pending_send_position_root_x;
+
+/* Likewise.  */
+static int x_dnd_pending_send_position_root_y;
+
 /* If true, send a drop from `x_dnd_finish_frame' to the pending
    status window after receiving all pending XdndStatus events.  */
 static bool x_dnd_need_send_drop;
@@ -4453,22 +4462,6 @@ x_dnd_send_position (struct frame *f, Window target, int supported,
   struct x_display_info *dpyinfo = FRAME_DISPLAY_INFO (f);
   XEvent msg;
 
-  if (target == x_dnd_mouse_rect_target
-      && x_dnd_mouse_rect.width
-      && x_dnd_mouse_rect.height
-      /* Ignore the mouse rectangle if we're supposed to be sending a
-	 button press instead.  */
-      && (supported < 5 || !button))
-    {
-      if (root_x >= x_dnd_mouse_rect.x
-	  && root_x < (x_dnd_mouse_rect.x
-		       + x_dnd_mouse_rect.width)
-	  && root_y >= x_dnd_mouse_rect.y
-	  && root_y < (x_dnd_mouse_rect.y
-		       + x_dnd_mouse_rect.height))
-	return;
-    }
-
   msg.xclient.type = ClientMessage;
   msg.xclient.message_type = dpyinfo->Xatom_XdndPosition;
   msg.xclient.format = 32;
@@ -4476,20 +4469,21 @@ x_dnd_send_position (struct frame *f, Window target, int supported,
   msg.xclient.data.l[0] = FRAME_X_WINDOW (f);
   msg.xclient.data.l[1] = 0;
 
-  if (supported >= 5)
+  /* This is problematic because it's not specified in the
+     freedesktop.org copy of the protocol specification, but the copy
+     maintained by the original author of the protocol specifies it
+     for all versions.  Since at least one program supports these
+     flags, but uses protocol v4 (and not v5), set them for all
+     protocool versions.  */
+  if (button >= 4 && button <= 7)
     {
-      if (button >= 4 && button <= 7)
-	{
-	  msg.xclient.data.l[1] |= (1 << 9);
-	  msg.xclient.data.l[1] |= (button - 4) << 7;
-	}
-      else if (button)
-	return;
-
-      msg.xclient.data.l[1] |= state & 0x3f;
+      msg.xclient.data.l[1] |= (1 << 10);
+      msg.xclient.data.l[1] |= (button - 4) << 8;
     }
   else if (button)
     return;
+
+  msg.xclient.data.l[1] |= state & 0xff;
 
   msg.xclient.data.l[2] = (root_x << 16) | root_y;
   msg.xclient.data.l[3] = 0;
@@ -4502,9 +4496,30 @@ x_dnd_send_position (struct frame *f, Window target, int supported,
     msg.xclient.data.l[4] = action;
 
   if (x_dnd_waiting_for_status_window == target)
-    x_dnd_pending_send_position = msg;
+    {
+      x_dnd_pending_send_position = msg;
+      x_dnd_pending_send_position_button = button;
+      x_dnd_pending_send_position_root_x = root_x;
+      x_dnd_pending_send_position_root_y = root_y;
+    }
   else
     {
+      if (target == x_dnd_mouse_rect_target
+	  && x_dnd_mouse_rect.width
+	  && x_dnd_mouse_rect.height
+	  /* Ignore the mouse rectangle if we're supposed to be sending a
+	     button press instead.  */
+	  && !button)
+	{
+	  if (root_x >= x_dnd_mouse_rect.x
+	      && root_x < (x_dnd_mouse_rect.x
+			   + x_dnd_mouse_rect.width)
+	      && root_y >= x_dnd_mouse_rect.y
+	      && root_y < (x_dnd_mouse_rect.y
+			   + x_dnd_mouse_rect.height))
+	    return;
+	}
+
       x_ignore_errors_for_next_request (dpyinfo);
       XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
       x_stop_ignoring_errors (dpyinfo);
@@ -4530,6 +4545,7 @@ x_dnd_send_leave (struct frame *f, Window target)
   msg.xclient.data.l[4] = 0;
 
   x_dnd_waiting_for_status_window = None;
+  x_dnd_pending_send_position.type = 0;
 
   x_ignore_errors_for_next_request (dpyinfo);
   XSendEvent (FRAME_X_DISPLAY (f), target, False, NoEventMask, &msg);
@@ -16372,6 +16388,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  {
 	    Window target;
 	    unsigned long r1, r2;
+	    int root_x, root_y;
+	    bool button;
 
 	    target = event->xclient.data.l[0];
 
@@ -16417,17 +16435,43 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      {
 		if (x_dnd_pending_send_position.type != 0)
 		  {
-		    x_ignore_errors_for_next_request (dpyinfo);
-		    XSendEvent (dpyinfo->display, target,
-				False, NoEventMask,
-				&x_dnd_pending_send_position);
-		    x_stop_ignoring_errors (dpyinfo);
-		    x_dnd_pending_send_position.type = 0;
+		    /* If the last XdndStatus specified a mouse
+		       rectangle and this event falls inside, don't
+		       send the event, but clear
+		       x_dnd_waiting_for_status_window instead.  */
 
-		    /* Since we sent another XdndPosition message, we
-		       have to wait for another one in reply, so don't
-		       reset `x_dnd_waiting_for_status_window'
-		       here.  */
+		    root_x = x_dnd_pending_send_position_root_x;
+		    root_y = x_dnd_pending_send_position_root_y;
+		    button = x_dnd_pending_send_position_button;
+
+		    if (target == x_dnd_mouse_rect_target
+			&& x_dnd_mouse_rect.width
+			&& x_dnd_mouse_rect.height
+			/* Ignore the mouse rectangle if we're
+			   supposed to be sending a button press
+			   instead.  */
+			&& !button
+			&& (root_x >= x_dnd_mouse_rect.x
+			    && root_x < (x_dnd_mouse_rect.x
+					 + x_dnd_mouse_rect.width)
+			    && root_y >= x_dnd_mouse_rect.y
+			    && root_y < (x_dnd_mouse_rect.y
+					 + x_dnd_mouse_rect.height)))
+		      x_dnd_waiting_for_status_window = None;
+		    else
+		      {
+			x_ignore_errors_for_next_request (dpyinfo);
+			XSendEvent (dpyinfo->display, target,
+				    False, NoEventMask,
+				    &x_dnd_pending_send_position);
+			x_stop_ignoring_errors (dpyinfo);
+			x_dnd_pending_send_position.type = 0;
+
+			/* Since we sent another XdndPosition message, we
+			   have to wait for another one in reply, so don't
+			   reset `x_dnd_waiting_for_status_window'
+			   here.  */
+		      }
 		  }
 		else
 		  x_dnd_waiting_for_status_window = None;
