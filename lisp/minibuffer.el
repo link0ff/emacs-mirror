@@ -4503,6 +4503,7 @@ instead of the default completion table."
     (completion-in-region (minibuffer--completion-prompt-end) (point-max)
                           completions nil)))
 
+
 (defun minibuffer-complete-defaults ()
   "Complete minibuffer defaults as far as possible.
 Like `minibuffer-complete' but completes on the default items
