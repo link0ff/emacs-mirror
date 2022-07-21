@@ -7157,7 +7157,11 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
 			      bool send_event)
 {
 #ifndef USE_GTK
-  struct frame *focus_frame = dpyinfo->x_focus_frame;
+  struct frame *focus_frame;
+  Time old_time;
+
+  focus_frame = dpyinfo->x_focus_frame;
+  old_time = dpyinfo->last_user_time;
 #endif
 
 #ifdef ENABLE_CHECKING
@@ -7168,8 +7172,11 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
     dpyinfo->last_user_time = time;
 
 #ifndef USE_GTK
-  if (focus_frame)
+  /* Don't waste bandwidth if the time hasn't actually changed.  */
+  if (focus_frame && old_time != dpyinfo->last_user_time)
     {
+      time = dpyinfo->last_user_time;
+
       while (FRAME_PARENT_FRAME (focus_frame))
 	focus_frame = FRAME_PARENT_FRAME (focus_frame);
 
@@ -18670,6 +18677,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		 MOVE_FRAME_EVENT later.  */
 	      kbd_buffer_store_event (&inev.ie);
 	      inev.ie.kind = NO_EVENT;
+
+	      /* Also update the position of the drag-and-drop
+		 tooltip.  */
+	      x_dnd_update_tooltip_now ();
 	    }
 #endif
 
