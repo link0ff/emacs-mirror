@@ -1390,6 +1390,12 @@ static int x_dnd_recursion_depth;
    initiating Motif drag-and-drop for the first time.  */
 static Lisp_Object x_dnd_selection_alias_cell;
 
+/* The last known position of the tooltip window.  */
+static int x_dnd_last_tooltip_x, x_dnd_last_tooltip_y;
+
+/* Whether or not those values are actually known yet.  */
+static bool x_dnd_last_tooltip_valid;
+
 /* Structure describing a single window that can be the target of
    drag-and-drop operations.  */
 struct x_client_list_window
@@ -2931,7 +2937,7 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
   Window *toplevels;
   int format, rc;
   unsigned long nitems, bytes_after;
-  unsigned long i;
+  unsigned long i, real_nitems;
   unsigned char *data = NULL;
   int frame_extents[4];
 
@@ -2994,6 +3000,16 @@ x_dnd_compute_toplevels (struct x_display_info *dpyinfo)
     }
 
   toplevels = (Window *) data;
+
+  for (i = 0, real_nitems = 0; i < nitems; ++i)
+    {
+      /* Some window managers with built in compositors end up putting
+	 tooltips in the client list, which is silly.  */
+      if (!x_tooltip_window_to_frame (dpyinfo, toplevels[i], NULL))
+	toplevels[real_nitems++] = toplevels[i];
+    }
+
+  nitems = real_nitems;
 
 #ifdef USE_XCB
   USE_SAFE_ALLOCA;
@@ -11066,7 +11082,8 @@ x_tooltip_window_to_frame (struct x_display_info *dpyinfo,
   GdkWindow *tooltip_window;
 #endif
 
-  *unrelated_tooltip_p = false;
+  if (unrelated_tooltip_p)
+    *unrelated_tooltip_p = false;
 
   FOR_EACH_FRAME (tail, frame)
     {
@@ -11095,14 +11112,16 @@ x_tooltip_window_to_frame (struct x_display_info *dpyinfo,
       if (tooltip_window
 	  && (gdk_x11_window_get_xid (tooltip_window) == wdesc))
 	{
-	  *unrelated_tooltip_p = true;
+	  if (unrelated_tooltip_p)
+	    *unrelated_tooltip_p = true;
 	  break;
 	}
 #else
       if (tooltip_window
 	  && (GDK_WINDOW_XID (tooltip_window) == wdesc))
 	{
-	  *unrelated_tooltip_p = true;
+	  if (unrelated_tooltip_p)
+	    *unrelated_tooltip_p = true;
 	  break;
 	}
 #endif
@@ -11670,6 +11689,7 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   x_dnd_run_unsupported_drop_function = false;
   x_dnd_use_toplevels
     = x_wm_supports (f, FRAME_DISPLAY_INFO (f)->Xatom_net_client_list_stacking);
+  x_dnd_last_tooltip_valid = false;
   x_dnd_toplevels = NULL;
   x_dnd_allow_current_frame = allow_current_frame;
   x_dnd_movement_frame = NULL;
@@ -15928,6 +15948,15 @@ x_dnd_update_tooltip_position (int root_x, int root_y)
       x_dnd_compute_tip_xy (&root_x, &root_y,
 			    x_dnd_monitors);
 
+      if (x_dnd_last_tooltip_valid
+	  && root_x == x_dnd_last_tooltip_x
+	  && root_y == x_dnd_last_tooltip_y)
+	return;
+
+      x_dnd_last_tooltip_x = root_x;
+      x_dnd_last_tooltip_y = root_y;
+      x_dnd_last_tooltip_valid = true;
+
       XMoveWindow (FRAME_X_DISPLAY (x_dnd_frame),
 		   tip_window, root_x, root_y);
     }
@@ -16956,7 +16985,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
         xft_settings_event (dpyinfo, event);
 
 	f = any;
-	if (!f)
+	/* We don't want to ever leak tooltip frames to Lisp code.  */
+	if (!f || FRAME_TOOLTIP_P (f))
 	  goto OTHER;
 
 	/* These values are always used initialized, but GCC doesn't
