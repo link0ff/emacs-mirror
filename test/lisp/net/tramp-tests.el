@@ -5349,7 +5349,7 @@ INPUT, if non-nil, is a string sent to the process."
 
 (ert-deftest tramp-test32-shell-command ()
   "Check `shell-command'."
-  :tags '(:expensive-test)
+  :tags (unless (getenv "EMACS_EMBA_CI") '(:expensive-test))
   (skip-unless (tramp--test-enabled))
   (skip-unless (tramp--test-supports-processes-p))
   ;; Prior Emacs 27, `shell-file-name' was hard coded as "/bin/sh" for
@@ -5400,13 +5400,21 @@ INPUT, if non-nil, is a string sent to the process."
 	  (let ((stderr (generate-new-buffer "*stderr*")))
 	    (unwind-protect
 		(with-temp-buffer
+                  (when (getenv "EMACS_EMBA_CI")
+                    (tramp--test-message "Hallo1"))
 		  (funcall
 		   this-shell-command
 		   "echo foo >&2; echo bar" (current-buffer) stderr)
+                  (when (getenv "EMACS_EMBA_CI")
+                    (tramp--test-message "Hallo2"))
 		  (should (string-equal "bar\n" (buffer-string)))
+                  (when (getenv "EMACS_EMBA_CI")
+                    (tramp--test-message "Hallo3"))
 		  ;; Check stderr.
 		  (should
-		   (string-equal "foo\n" (tramp-get-buffer-string stderr))))
+		   (string-equal "foo\n" (tramp-get-buffer-string stderr)))
+                  (when (getenv "EMACS_EMBA_CI")
+                    (tramp--test-message "Hallo4")))
 
 	      ;; Cleanup.
 	      (ignore-errors (kill-buffer stderr))))))
