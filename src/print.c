@@ -105,6 +105,7 @@ bool print_output_debug_flag EXTERNALLY_VISIBLE = 1;
      = !NILP (BVAR (current_buffer, enable_multibyte_characters));	\
    Lisp_Object original = printcharfun;					\
    record_unwind_current_buffer ();					\
+   specbind(Qprint__unreadable_callback_buffer, Fcurrent_buffer ());	\
    if (NILP (printcharfun)) printcharfun = Qt;				\
    if (BUFFERP (printcharfun))						\
      {									\
@@ -179,14 +180,14 @@ bool print_output_debug_flag EXTERNALLY_VISIBLE = 1;
 			print_buffer_pos_byte, 0, 1, 0);		\
        signal_after_change (PT - print_buffer_pos, 0, print_buffer_pos);\
      }									\
-   unbind_to (specpdl_count, Qnil);					\
    if (MARKERP (original))						\
      set_marker_both (original, Qnil, PT, PT_BYTE);			\
    if (old_point >= 0)							\
      SET_PT_BOTH (old_point + (old_point >= start_point			\
 			       ? PT - start_point : 0),			\
 		  old_point_byte + (old_point_byte >= start_point_byte	\
-				    ? PT_BYTE - start_point_byte : 0));
+				    ? PT_BYTE - start_point_byte : 0)); \
+   unbind_to (specpdl_count, Qnil);					\
 
 /* This is used to free the print buffer; we don't simply record xfree
    since print_buffer can be reallocated during the printing.  */
@@ -1655,6 +1656,17 @@ print_vectorlike (Lisp_Object obj, Lisp_Object printcharfun, bool escapeflag,
 	 infinite recursion in the function called.  */
       Lisp_Object func = Vprint_unreadable_function;
       specbind (Qprint_unreadable_function, Qnil);
+
+      /* If we're being called from `prin1-to-string' or the like,
+	 we're now in the secret " prin1" buffer.  This can lead to
+	 problems if, for instance, the callback function switches a
+	 window to this buffer -- this will make Emacs segfault.  */
+      if (!NILP (Vprint__unreadable_callback_buffer)
+	  && !NILP (Fbuffer_live_p (Vprint__unreadable_callback_buffer)))
+	{
+	  record_unwind_current_buffer ();
+	  set_buffer_internal (XBUFFER (Vprint__unreadable_callback_buffer));
+	}
       Lisp_Object result = CALLN (Ffuncall, func, obj,
 				  escapeflag? Qt: Qnil);
       unbind_to (count, Qnil);
@@ -2912,6 +2924,15 @@ printed.  If the function returns anything else, the object will not
 be printed.  */);
   Vprint_unreadable_function = Qnil;
   DEFSYM (Qprint_unreadable_function, "print-unreadable-function");
+
+  DEFVAR_LISP ("print--unreadable-callback-buffer",
+	       Vprint__unreadable_callback_buffer,
+	       doc: /* Dynamically bound to indicate current buffer.  */);
+  Vprint__unreadable_callback_buffer = Qnil;
+  DEFSYM (Qprint__unreadable_callback_buffer,
+	  "print--unreadable-callback-buffer");
+  /* Don't export this variable to Elisp.  */
+  Funintern (Qprint__unreadable_callback_buffer, Qnil);
 
   defsubr (&Sflush_standard_output);
 
