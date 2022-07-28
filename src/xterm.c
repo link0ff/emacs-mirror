@@ -24322,7 +24322,11 @@ x_set_offset (struct frame *f, int xoff, int yoff, int change_gravity)
 #endif
 
   /* 'x_sync_with_move' is too costly for dragging child frames.  */
-  if (!FRAME_PARENT_FRAME (f))
+  if (!FRAME_PARENT_FRAME (f)
+      /* If no window manager exists, just calling XSync will be
+	 sufficient to ensure that the window geometry has been
+	 updated.  */
+      && NILP (Vx_no_window_manager))
     {
       x_sync_with_move (f, f->left_pos, f->top_pos,
 			FRAME_DISPLAY_INFO (f)->wm_type == X_WMTYPE_UNKNOWN);
@@ -25055,11 +25059,9 @@ x_sync_with_move (struct frame *f, int left, int top, bool fuzzy)
       current_left = 0;
       current_top = 0;
 
-      /* In theory, this call to XSync only needs to happen once, but in
-         practice, it doesn't seem to work, hence the need for the surrounding
-         loop.  */
-
-      XSync (FRAME_X_DISPLAY (f), False);
+      /* There is no need to call XSync (even when no window manager
+	 is present) because x_real_positions already does that
+	 implicitly.  */
       x_real_positions (f, &current_left, &current_top);
 
       if (fuzzy)
