@@ -355,16 +355,22 @@ option) and can be set to nil to disable Just-in-time Lock mode.
 * Changes in Emacs 29.1
 
 ---
-** Emacs is now capable of editing files with arbitrarily long lines.
-The display of long lines has been optimized, and Emacs no longer
-chokes when a buffer on display contains long lines.  If you still
-experience slowdowns while editing files with long lines, this is
-either due to font locking, which you can turn off with 'M-x
-font-lock-mode' or 'C-u C-x x f', or to the current major mode or one
-of the enabled minor modes, in which case you should open the the file
-with 'M-x find-file-literally' instead of 'C-x C-f'.  The variable
-'long-line-threshold' controls whether and when these display
-optimizations are used.
+** Emacs is now capable of editing files with very long lines.
+The display of long lines has been optimized, and Emacs should no
+longer choke when a buffer on display contains long lines.  The
+variable 'long-line-threshold' controls whether and when these display
+optimizations are in effect.
+
+If you still experience slowdowns while editing files with long lines,
+this may be due to line truncation, or to one of the enabled minor
+modes, or to the current major mode.  Try turning off line truncation
+with 'C-x x t', or try disabling all known slow minor modes with
+'M-x so-long-minor-mode', or try disabling both known slow minor modes
+and the major mode with 'M-x so-long-mode', or visit the file with
+'M-x find-file-literally' instead of the usual 'C-x C-f'.
+
+Note that the display optimizations in these cases may cause the
+buffer to be occasionally mis-fontified.
 
 +++
 ** New command to change the font size globally.
@@ -592,12 +598,21 @@ Only in the Lucid build, this controls colors used for highlighted
 menu item widgets.
 
 +++
-** On X11, Emacs now tries to synchronize window resize with the window manager.
+** On X, Emacs now tries to synchronize window resize with the window manager.
 This leads to less flicker and empty areas of a frame being displayed
 when a frame is being resized.  Unfortunately, it does not work on
 some ancient buggy window managers, so if Emacs appears to freeze, but
 is still responsive to input, you can turn it off by setting the X
 resource "synchronizeResize" to "off".
+
++++
+** On X, Emacs can optionally synchronize display with the graphics hardware.
+When this is enabled by setting the X resource "synchronizeResize" to
+"extended", frame content "tearing" is drastically reduced.  This is
+only supported on the Motif, Lucid, and no-toolkit builds, and
+requires an X compositing manager supporting the extended frame
+synchronization protocol (see
+https://fishsoup.net/misc/wm-spec-synchronization.html).
 
 +++
 ** New frame parameter 'alpha-background' and X resource "alphaBackground".
@@ -836,7 +851,8 @@ or is itself too long.
 +++
 *** New user option 'outline-minor-mode-use-buttons'.
 If non-nil, Outline Minor Mode will use buttons to hide/show outlines
-in addition to the ellipsis.  The default is nil.
+in addition to the ellipsis.  The default is nil in editing modes, but
+non-nil in 'special-mode' and its derivatives.
 
 +++
 ** Support for the WebP image format.
@@ -1324,7 +1340,11 @@ characters instead of just 'SPC' and 'TAB'.
 ---
 ** New mode, 'emacs-news-mode', for editing the NEWS file.
 This mode adds some highlighting, fixes the 'M-q' command, and has
-commands for doing maintenance.
+commands for doing maintenance of the Emacs NEWS files.  In addition,
+this mode turns on 'outline-minor-mode', and thus displays
+customizable icons (see 'icon-preference') on heading lines.  To
+disable these icons, customize 'outline-minor-mode-use-buttons' to a
+nil value.
 
 ---
 ** Kmacro
@@ -2519,6 +2539,13 @@ things to be saved.
 
 ** New function 'string-equal-ignore-case'.
 This compares strings ignoring case differences.
+
++++
+** New argument LOCK of 'narrow-to-region'.
+If 'narrow-to-region' is called from Lisp with the new optional
+argument LOCK non-nil, then calls to 'widen' and calls to
+'narrow-to-region' with the optional argument LOCK nil or omitted do
+not produce any effect until the end of the current body form.
 
 ** Themes
 

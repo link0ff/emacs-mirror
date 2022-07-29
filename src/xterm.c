@@ -998,6 +998,7 @@ static const struct x_atom_ref x_atom_refs[] =
     ATOM_REFS_INIT ("_NET_WM_SYNC_REQUEST", Xatom_net_wm_sync_request)
     ATOM_REFS_INIT ("_NET_WM_SYNC_REQUEST_COUNTER", Xatom_net_wm_sync_request_counter)
     ATOM_REFS_INIT ("_NET_WM_FRAME_DRAWN", Xatom_net_wm_frame_drawn)
+    ATOM_REFS_INIT ("_NET_WM_FRAME_TIMINGS", Xatom_net_wm_frame_timings)
     ATOM_REFS_INIT ("_NET_WM_USER_TIME", Xatom_net_wm_user_time)
     ATOM_REFS_INIT ("_NET_WM_USER_TIME_WINDOW", Xatom_net_wm_user_time_window)
     ATOM_REFS_INIT ("_NET_CLIENT_LIST_STACKING", Xatom_net_client_list_stacking)
@@ -6595,6 +6596,153 @@ x_set_frame_alpha (struct frame *f)
 		    Starting and ending an update
  ***********************************************************************/
 
+#if defined HAVE_XSYNC && !defined USE_GTK
+static Bool
+x_sync_is_frame_drawn_event (Display *dpy, XEvent *event,
+			     XPointer user_data)
+{
+  struct frame *f;
+  struct x_display_info *dpyinfo;
+
+  f = (struct frame *) user_data;
+  dpyinfo = FRAME_DISPLAY_INFO (f);
+
+  if (event->type == ClientMessage
+      && (event->xclient.message_type
+	  == dpyinfo->Xatom_net_wm_frame_drawn)
+      && event->xclient.window == FRAME_OUTER_WINDOW (f))
+    return True;
+
+  return False;
+}
+
+/* Wait for the compositing manager to finish drawing the last frame.
+   If the compositing manager has already drawn everything, do
+   nothing.  */
+
+static void
+x_sync_wait_for_frame_drawn_event (struct frame *f)
+{
+  XEvent event;
+
+  if (!FRAME_X_WAITING_FOR_DRAW (f)
+      /* The compositing manager can't draw a frame if it is
+	 unmapped.  */
+      || !FRAME_VISIBLE_P (f))
+    return;
+
+  /* Wait for the frame drawn message to arrive.  */
+  XIfEvent (FRAME_X_DISPLAY (f), &event,
+	    x_sync_is_frame_drawn_event, (XPointer) f);
+  FRAME_X_WAITING_FOR_DRAW (f) = false;
+}
+
+/* Tell the compositing manager to postpone updates of F until a frame
+   has finished drawing.  */
+
+static void
+x_sync_update_begin (struct frame *f)
+{
+  XSyncValue value, add;
+  Bool overflow;
+
+  if (FRAME_X_EXTENDED_COUNTER (f) == None)
+    return;
+
+  value = FRAME_X_COUNTER_VALUE (f);
+
+  if (FRAME_X_OUTPUT (f)->ext_sync_end_pending_p)
+    {
+      FRAME_X_COUNTER_VALUE (f)
+	= FRAME_X_OUTPUT (f)->resize_counter_value;
+
+      value = FRAME_X_COUNTER_VALUE (f);
+
+      if (XSyncValueLow32 (value) % 2)
+	{
+	  XSyncIntToValue (&add, 1);
+	  XSyncValueAdd (&value, value, add, &overflow);
+
+	  if (overflow)
+	    XSyncIntToValue (&value, 0);
+	}
+
+      FRAME_X_OUTPUT (f)->ext_sync_end_pending_p = false;
+    }
+
+  /* Since a frame is already in progress, there is no point in
+     continuing.  */
+  if (XSyncValueLow32 (value) % 2)
+    return;
+
+  /* Wait for the last frame to be drawn before drawing this one.  */
+  x_sync_wait_for_frame_drawn_event (f);
+
+  /* Since Emacs needs a non-urgent redraw, ensure that value % 4 ==
+     0.  */
+  if (XSyncValueLow32 (value) % 4 == 2)
+    XSyncIntToValue (&add, 3);
+  else
+    XSyncIntToValue (&add, 1);
+
+  XSyncValueAdd (&FRAME_X_COUNTER_VALUE (f),
+		 value, add, &overflow);
+
+  if (overflow)
+    XSyncIntToValue (&FRAME_X_COUNTER_VALUE (f), 3);
+
+  eassert (XSyncValueLow32 (FRAME_X_COUNTER_VALUE (f)) % 4 != 1);
+
+  XSyncSetCounter (FRAME_X_DISPLAY (f),
+		   FRAME_X_EXTENDED_COUNTER (f),
+		   FRAME_X_COUNTER_VALUE (f));
+}
+
+/* Tell the compositing manager that FRAME has been drawn and can be
+   updated.  */
+
+static void
+x_sync_update_finish (struct frame *f)
+{
+  XSyncValue value, add;
+  Bool overflow;
+
+  if (FRAME_X_EXTENDED_COUNTER (f) == None)
+    return;
+
+  value = FRAME_X_COUNTER_VALUE (f);
+
+  if (!(XSyncValueLow32 (value) % 2))
+    return;
+
+  XSyncIntToValue (&add, 1);
+  XSyncValueAdd (&FRAME_X_COUNTER_VALUE (f),
+		 value, add, &overflow);
+
+  if (overflow)
+    XSyncIntToValue (&FRAME_X_COUNTER_VALUE (f), 0);
+
+  XSyncSetCounter (FRAME_X_DISPLAY (f),
+		   FRAME_X_EXTENDED_COUNTER (f),
+		   FRAME_X_COUNTER_VALUE (f));
+
+  /* FIXME: this leads to freezes if the compositing manager crashes
+     in the meantime.  */
+  if (FRAME_OUTPUT_DATA (f)->use_vsync_p)
+    FRAME_X_WAITING_FOR_DRAW (f) = true;
+}
+
+/* Handle a _NET_WM_FRAME_DRAWN message from the compositor.  */
+
+static void
+x_sync_handle_frame_drawn (struct x_display_info *dpyinfo,
+			   XEvent *message, struct frame *f)
+{
+  if (FRAME_OUTER_WINDOW (f) == message->xclient.window)
+    FRAME_X_WAITING_FOR_DRAW (f) = false;
+}
+#endif
+
 /* Start an update of frame F.  This function is installed as a hook
    for update_begin, i.e. it is called when update_begin is called.
    This function is called prior to calls to gui_update_window_begin for
@@ -6604,7 +6752,16 @@ x_set_frame_alpha (struct frame *f)
 static void
 x_update_begin (struct frame *f)
 {
+#if defined HAVE_XSYNC && !defined USE_GTK
+  /* If F is double-buffered, we can make the entire frame center
+     around XdbeSwapBuffers.  */
+#ifdef HAVE_XDBE
+  if (!FRAME_X_DOUBLE_BUFFERED_P (f))
+#endif
+    x_sync_update_begin (f);
+#else
   /* Nothing to do.  */
+#endif
 }
 
 /* Draw a vertical window border from (x,y0) to (x,y1)  */
@@ -6686,33 +6843,54 @@ x_draw_window_divider (struct window *w, int x0, int x1, int y0, int y1)
     }
 }
 
+#ifdef HAVE_XDBE
+
 /* Show the frame back buffer.  If frame is double-buffered,
    atomically publish to the user's screen graphics updates made since
    the last call to show_back_buffer.  */
 
-#ifdef HAVE_XDBE
 static void
 show_back_buffer (struct frame *f)
 {
+  XdbeSwapInfo swap_info;
+#ifdef USE_CAIRO
+  cairo_t *cr;
+#endif
+
   block_input ();
 
   if (FRAME_X_DOUBLE_BUFFERED_P (f))
     {
+#if defined HAVE_XSYNC && !defined USE_GTK
+      /* Wait for drawing of the previous frame to complete before
+	 displaying this new frame.  */
+      x_sync_wait_for_frame_drawn_event (f);
+
+      /* Begin a new frame.  */
+      x_sync_update_begin (f);
+#endif
+
 #ifdef USE_CAIRO
-      cairo_t *cr = FRAME_CR_CONTEXT (f);
+      cr = FRAME_CR_CONTEXT (f);
       if (cr)
 	cairo_surface_flush (cairo_get_target (cr));
 #endif
-      XdbeSwapInfo swap_info;
       memset (&swap_info, 0, sizeof (swap_info));
       swap_info.swap_window = FRAME_X_WINDOW (f);
       swap_info.swap_action = XdbeCopied;
       XdbeSwapBuffers (FRAME_X_DISPLAY (f), &swap_info, 1);
+
+#if defined HAVE_XSYNC && !defined USE_GTK
+      /* Finish the frame here.  */
+      x_sync_update_finish (f);
+#endif
     }
+
   FRAME_X_NEED_BUFFER_FLIP (f) = false;
 
   unblock_input ();
 }
+
 #endif
 
 /* Updates back buffer and flushes changes to display.  Called from
@@ -6750,17 +6928,17 @@ x_update_end (struct frame *f)
 
 #ifdef USE_CAIRO
   if (!FRAME_X_DOUBLE_BUFFERED_P (f) && FRAME_CR_CONTEXT (f))
-    {
-      block_input ();
-      cairo_surface_flush (cairo_get_target (FRAME_CR_CONTEXT (f)));
-      unblock_input ();
-    }
+    cairo_surface_flush (cairo_get_target (FRAME_CR_CONTEXT (f)));
 #endif
 
-#ifndef XFlush
-  block_input ();
-  XFlush (FRAME_X_DISPLAY (f));
-  unblock_input ();
+  /* If double buffering is disabled, finish the update here.
+     Otherwise, finish the update when the back buffer is next
+     displayed.  */
+#if defined HAVE_XSYNC && !defined USE_GTK
+#ifdef HAVE_XDBE
+  if (!FRAME_X_DOUBLE_BUFFERED_P (f))
+#endif
+    x_sync_update_finish (f);
 #endif
 }
 
@@ -6770,11 +6948,7 @@ x_update_end (struct frame *f)
 static void
 XTframe_up_to_date (struct frame *f)
 {
-#if defined HAVE_XSYNC && !defined HAVE_GTK3
-  XSyncValue add;
-  XSyncValue current;
-  Bool overflow_p;
-#elif defined HAVE_XSYNC
+#if defined HAVE_XSYNC && defined HAVE_GTK3
   GtkWidget *widget;
   GdkWindow *window;
   GdkFrameClock *clock;
@@ -6799,29 +6973,6 @@ XTframe_up_to_date (struct frame *f)
 		       FRAME_X_BASIC_COUNTER (f),
 		       FRAME_X_OUTPUT (f)->pending_basic_counter_value);
       FRAME_X_OUTPUT (f)->sync_end_pending_p = false;
-    }
-
-  if (FRAME_X_OUTPUT (f)->ext_sync_end_pending_p
-      && FRAME_X_EXTENDED_COUNTER (f) != None)
-    {
-      current = FRAME_X_OUTPUT (f)->current_extended_counter_value;
-
-      if (XSyncValueLow32 (current) % 2)
-	XSyncIntToValue (&add, 1);
-      else
-	XSyncIntToValue (&add, 2);
-
-      XSyncValueAdd (&FRAME_X_OUTPUT (f)->current_extended_counter_value,
-		     current, add, &overflow_p);
-
-      if (overflow_p)
-	emacs_abort ();
-
-      XSyncSetCounter (FRAME_X_DISPLAY (f),
-		       FRAME_X_EXTENDED_COUNTER (f),
-		       FRAME_X_OUTPUT (f)->current_extended_counter_value);
-
-      FRAME_X_OUTPUT (f)->ext_sync_end_pending_p = false;
     }
 #else
   if (FRAME_X_OUTPUT (f)->xg_sync_end_pending_p)
@@ -16861,8 +17012,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      }
 		    else if (event->xclient.data.l[4] == 1)
 		      {
-			XSyncIntsToValue (&FRAME_X_OUTPUT (f)->current_extended_counter_value,
-					  event->xclient.data.l[2], event->xclient.data.l[3]);
+			XSyncIntsToValue (&FRAME_X_OUTPUT (f)->resize_counter_value,
+					  event->xclient.data.l[2],
+					  event->xclient.data.l[3]);
+
 			FRAME_X_OUTPUT (f)->ext_sync_end_pending_p = true;
 		      }
 
@@ -16978,6 +17131,23 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	    *finish = X_EVENT_GOTO_OUT;
             goto done;
           }
+
+#if defined HAVE_XSYNC && !defined USE_GTK
+	/* These messages are sent by the compositing manager after a
+	   frame is drawn under extended synchronization.  */
+	if (event->xclient.message_type
+	    == dpyinfo->Xatom_net_wm_frame_drawn)
+	  {
+	    if (any)
+	      x_sync_handle_frame_drawn (dpyinfo, (XEvent *) event, any);
+
+	    goto done;
+	  }
+
+	if (event->xclient.message_type
+	    == dpyinfo->Xatom_net_wm_frame_timings)
+	  goto done;
+#endif
 
         xft_settings_event (dpyinfo, event);
 
