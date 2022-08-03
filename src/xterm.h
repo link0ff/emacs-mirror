@@ -769,6 +769,16 @@ struct x_display_info
   /* The pending drag-and-drop time for middle-click based
      drag-and-drop emulation.  */
   Time pending_dnd_time;
+
+#if defined HAVE_XSYNC && !defined USE_GTK
+  /* Whether or not the server time is probably the same as
+     "clock_gettime (CLOCK_MONOTONIC, ...)".  */
+  bool server_time_monotonic_p;
+
+  /* The time difference between the X server clock and the monotonic
+     clock.  */
+  int64_t server_time_offset;
+#endif
 };
 
 #ifdef HAVE_X_I18N
@@ -1061,6 +1071,12 @@ struct x_output
   /* Whether or not Emacs should wait for the compositing manager to
      draw frames before starting a new frame.  */
   bool_bf use_vsync_p : 1;
+
+  /* The time (in microseconds) it took to draw the last frame.  */
+  uint64_t last_frame_time;
+
+  /* A temporary time used to calculate that value.  */
+  uint64_t temp_frame_time;
 #endif
 #endif
 

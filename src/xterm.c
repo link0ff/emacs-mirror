@@ -4960,15 +4960,6 @@ x_xr_ensure_picture (struct frame *f)
 }
 #endif
 
-/* Remove calls to XFlush by defining XFlush to an empty replacement.
-   Calls to XFlush should be unnecessary because the X output buffer
-   is flushed automatically as needed by calls to XPending,
-   XNextEvent, or XWindowEvent according to the XFlush man page.
-   XTread_socket calls XPending.  Removing XFlush improves
-   performance.  */
-
-#define XFlush(DISPLAY)	(void) 0
-
 
 /***********************************************************************
 			      Debugging
@@ -6614,12 +6605,17 @@ x_if_event (Display *dpy, XEvent *event_return,
   current_time = current_timespec ();
   target = timespec_add (current_time, timeout);
 
+  /* Check if an event is already in the queue.  If it is, avoid
+     syncing.  */
+  if (XCheckIfEvent (dpy, event_return, predicate, arg))
+    return 0;
+
   while (true)
     {
       /* Get events into the queue.  */
       XSync (dpy, False);
 
-      /* Check if an event is now in the queue.  */
+      /* Look for an event again.  */
       if (XCheckIfEvent (dpy, event_return, predicate, arg))
 	return 0;
 
@@ -6641,6 +6637,61 @@ x_if_event (Display *dpy, XEvent *event_return,
       if (timespec_cmp (target, current_time) < 0)
 	return 1;
     }
+}
+
+/* Return the monotonic time corresponding to the high-resolution
+   server timestamp TIMESTAMP.  Return 0 if the necessary information
+   is not available.  */
+
+static uint64_t
+x_sync_get_monotonic_time (struct x_display_info *dpyinfo,
+			   uint64_t timestamp)
+{
+  if (dpyinfo->server_time_monotonic_p)
+    return timestamp;
+
+  /* This means we haven't yet initialized the server time offset.  */
+  if (!dpyinfo->server_time_offset)
+    return 0;
+
+  return timestamp - dpyinfo->server_time_offset;
+}
+
+/* Return the current monotonic time in the same format as a
+   high-resolution server timestamp.  */
+
+static uint64_t
+x_sync_current_monotonic_time (void)
+{
+  struct timespec time;
+
+  clock_gettime (CLOCK_MONOTONIC, &time);
+  return time.tv_sec * 1000000 + time.tv_nsec / 1000;
+}
+
+/* Decode a _NET_WM_FRAME_DRAWN message and calculate the time it took
+   to draw the last frame.  */
+
+static void
+x_sync_note_frame_times (struct x_display_info *dpyinfo,
+			 struct frame *f, XEvent *event)
+{
+  uint64_t low, high, time;
+  struct x_output *output;
+
+  low = event->xclient.data.l[2];
+  high = event->xclient.data.l[3];
+  output = FRAME_X_OUTPUT (f);
+
+  time = x_sync_get_monotonic_time (dpyinfo, low | (high << 32));
+
+  if (time)
+    output->last_frame_time = time - output->temp_frame_time;
+
+#ifdef FRAME_DEBUG
+  fprintf (stderr, "Drawing the last frame took: %lu ms (%lu)\n",
+	   output->last_frame_time / 1000, time);
+#endif
 }
 
 static Bool
@@ -6690,6 +6741,8 @@ x_sync_wait_for_frame_drawn_event (struct frame *f)
       /* Also change the frame parameter to reflect the new state.  */
       store_frame_param (f, Quse_frame_synchronization, Qnil);
     }
+  else
+    x_sync_note_frame_times (FRAME_DISPLAY_INFO (f), f, &event);
 
   FRAME_X_WAITING_FOR_DRAW (f) = false;
 }
@@ -6734,6 +6787,10 @@ x_sync_update_begin (struct frame *f)
 
   /* Wait for the last frame to be drawn before drawing this one.  */
   x_sync_wait_for_frame_drawn_event (f);
+
+  /* Make a note of the time at which we started to draw this
+     frame.  */
+  FRAME_X_OUTPUT (f)->temp_frame_time = x_sync_current_monotonic_time ();
 
   /* Since Emacs needs a non-urgent redraw, ensure that value % 4 ==
      1.  Later, add 3 to create the even counter value.  */
@@ -6805,6 +6862,8 @@ x_sync_handle_frame_drawn (struct x_display_info *dpyinfo,
 {
   if (FRAME_OUTER_WINDOW (f) == message->xclient.window)
     FRAME_X_WAITING_FOR_DRAW (f) = false;
+
+  x_sync_note_frame_times (dpyinfo, f, message);
 }
 #endif
 
@@ -7388,6 +7447,9 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
 #ifndef USE_GTK
   struct frame *focus_frame;
   Time old_time;
+#if defined HAVE_XSYNC
+  uint64_t monotonic_time;
+#endif
 
   focus_frame = dpyinfo->x_focus_frame;
   old_time = dpyinfo->last_user_time;
@@ -7399,6 +7461,28 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
 
   if (!send_event || time > dpyinfo->last_user_time)
     dpyinfo->last_user_time = time;
+
+#if defined HAVE_XSYNC && !defined USE_GTK
+  if (!send_event)
+    {
+      /* See if the current CLOCK_MONOTONIC time is reasonably close
+	 to the X server time.  */
+      monotonic_time = x_sync_current_monotonic_time ();
+
+      if (time * 1000 > monotonic_time - 500 * 1000
+	  && time * 1000 < monotonic_time + 500 * 1000)
+	dpyinfo->server_time_monotonic_p = true;
+      else
+	{
+	  /* Compute an offset that can be subtracted from the server
+	     time to estimate the monotonic time on the X server.  */
+
+	  dpyinfo->server_time_monotonic_p = false;
+	  dpyinfo->server_time_offset
+	    = ((int64_t) time * 1000) - monotonic_time;
+	}
+    }
+#endif
 
 #ifndef USE_GTK
   /* Don't waste bandwidth if the time hasn't actually changed.  */
@@ -10464,16 +10548,12 @@ x_clear_frame (struct frame *f)
   mark_window_cursors_off (XWINDOW (FRAME_ROOT_WINDOW (f)));
 
   block_input ();
-
   font_drop_xrender_surfaces (f);
   x_clear_window (f);
 
   /* We have to clear the scroll bars.  If we have changed colors or
      something like that, then they should be notified.  */
   x_scroll_bar_clear (f);
-
-  XFlush (FRAME_X_DISPLAY (f));
-
   unblock_input ();
 }
 
@@ -10851,7 +10931,6 @@ x_scroll_run (struct window *w, struct run *run)
 						   view->clip_bottom - view->clip_top);
 		    }
 		  xwidget_expose (view);
-		  XFlush (dpy);
 		}
             }
 	}
@@ -16499,6 +16578,29 @@ x_wait_for_cell_change (Lisp_Object cell, struct timespec timeout)
     }
 }
 
+/* Find whether or not an undelivered MONITORS_CHANGED_EVENT is
+   already on the event queue.  DPYINFO is the display any such event
+   must apply to.  */
+
+static bool
+x_find_monitors_changed_event (struct x_display_info *dpyinfo)
+{
+  union buffered_input_event *event;
+
+  event = kbd_fetch_ptr;
+
+  while (event != kbd_store_ptr)
+    {
+      if (event->ie.kind == MONITORS_CHANGED_EVENT
+	  && XTERMINAL (event->ie.arg) == dpyinfo->terminal)
+	return true;
+
+      event = X_NEXT_KBD_EVENT (event);
+    }
+
+  return false;
+}
+
 #ifdef USE_GTK
 static void
 x_monitors_changed_cb (GdkScreen *gscr, gpointer user_data)
@@ -16514,6 +16616,9 @@ x_monitors_changed_cb (GdkScreen *gscr, gpointer user_data)
   dpyinfo = x_display_info_for_display (dpy);
 
   if (!dpyinfo)
+    return;
+
+  if (x_find_monitors_changed_event (dpyinfo))
     return;
 
   XSETTERMINAL (terminal, dpyinfo->terminal);
@@ -18884,13 +18989,20 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  if (configureEvent.xconfigure.width != dpyinfo->screen_width
 	      || configureEvent.xconfigure.height != dpyinfo->screen_height)
 	    {
-	      inev.ie.kind = MONITORS_CHANGED_EVENT;
-	      XSETTERMINAL (inev.ie.arg, dpyinfo->terminal);
+	      /* Also avoid storing duplicate events here, since
+		 Fx_display_monitor_attributes_list will return the
+		 same information for both invocations of the
+		 hook.  */
+	      if (!x_find_monitors_changed_event (dpyinfo))
+		{
+		  inev.ie.kind = MONITORS_CHANGED_EVENT;
+		  XSETTERMINAL (inev.ie.arg, dpyinfo->terminal);
 
-	      /* Store this event now since inev.ie.type could be set to
-		 MOVE_FRAME_EVENT later.  */
-	      kbd_buffer_store_event (&inev.ie);
-	      inev.ie.kind = NO_EVENT;
+		  /* Store this event now since inev.ie.type could be set to
+		     MOVE_FRAME_EVENT later.  */
+		  kbd_buffer_store_event (&inev.ie);
+		  inev.ie.kind = NO_EVENT;
+		}
 
 	      /* Also update the position of the drag-and-drop
 		 tooltip.  */
@@ -22532,7 +22644,6 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      || event->type == (dpyinfo->xrandr_event_base
 				 + RRNotify)))
 	{
-	  union buffered_input_event *ev;
 	  Time timestamp;
 	  Lisp_Object current_monitors;
 	  XRRScreenChangeNotifyEvent *notify;
@@ -22560,13 +22671,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  else
 	    timestamp = 0;
 
-	  ev = (kbd_store_ptr == kbd_buffer
-		? kbd_buffer + KBD_BUFFER_SIZE - 1
-		: kbd_store_ptr - 1);
-
-	  if (kbd_store_ptr != kbd_fetch_ptr
-	      && ev->ie.kind == MONITORS_CHANGED_EVENT
-	      && XTERMINAL (ev->ie.arg) == dpyinfo->terminal)
+	  if (x_find_monitors_changed_event (dpyinfo))
 	    /* Don't store a MONITORS_CHANGED_EVENT if there is
 	       already an undelivered event on the queue.  */
 	    goto OTHER;
@@ -23131,8 +23236,6 @@ x_draw_window_cursor (struct window *w, struct glyph_row *glyph_row, int x,
 	xic_set_preeditarea (w, x, y);
 #endif
     }
-
-  XFlush (FRAME_X_DISPLAY (f));
 }
 
 
@@ -26190,8 +26293,6 @@ x_free_frame_resources (struct frame *f)
 	XFreeCursor (FRAME_X_DISPLAY (f), f->output_data.x->bottom_edge_cursor);
       if (f->output_data.x->bottom_left_corner_cursor != 0)
 	XFreeCursor (FRAME_X_DISPLAY (f), f->output_data.x->bottom_left_corner_cursor);
-
-      XFlush (FRAME_X_DISPLAY (f));
     }
 
 #ifdef HAVE_GTK3
