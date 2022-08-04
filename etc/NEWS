@@ -3418,7 +3418,7 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.
 
 outline-regexp: "[*]+"
 outline-minor-mode-use-buttons: t
-mode: outline-minor
+eval: (outline-minor-mode 1)
 
 
 Local variables:

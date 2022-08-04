@@ -710,5 +710,5 @@ COPYING PERMISSIONS:
 ;;; outline-regexp: "\\*\\_>"
 ;;; outline-minor-mode-cycle: t
 ;;; outline-minor-mode-highlight: t
-;;; mode: outline-minor
+;;; eval: (outline-minor-mode 1)
 ;;; End:
