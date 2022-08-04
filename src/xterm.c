@@ -997,6 +997,7 @@ static const struct x_atom_ref x_atom_refs[] =
     ATOM_REFS_INIT ("_NET_WORKAREA", Xatom_net_workarea)
     ATOM_REFS_INIT ("_NET_WM_SYNC_REQUEST", Xatom_net_wm_sync_request)
     ATOM_REFS_INIT ("_NET_WM_SYNC_REQUEST_COUNTER", Xatom_net_wm_sync_request_counter)
+    ATOM_REFS_INIT ("_NET_WM_SYNC_FENCES", Xatom_net_wm_sync_fences)
     ATOM_REFS_INIT ("_NET_WM_FRAME_DRAWN", Xatom_net_wm_frame_drawn)
     ATOM_REFS_INIT ("_NET_WM_FRAME_TIMINGS", Xatom_net_wm_frame_timings)
     ATOM_REFS_INIT ("_NET_WM_USER_TIME", Xatom_net_wm_user_time)
@@ -6812,6 +6813,85 @@ x_sync_update_begin (struct frame *f)
 		   FRAME_X_COUNTER_VALUE (f));
 }
 
+#ifdef HAVE_XSYNCTRIGGERFENCE
+
+/* Trigger the sync fence for counter VALUE immediately before a frame
+   finishes.  */
+
+static void
+x_sync_trigger_fence (struct frame *f, XSyncValue value)
+{
+  uint64_t n, low, high, idx;
+
+  /* Sync fences aren't supported by the X server.  */
+  if (FRAME_DISPLAY_INFO (f)->xsync_major < 3
+      || (FRAME_DISPLAY_INFO (f)->xsync_major == 3
+	  && FRAME_DISPLAY_INFO (f)->xsync_minor < 1))
+    return;
+
+  low = XSyncValueLow32 (value);
+  high = XSyncValueHigh32 (value);
+
+  n = low | (high << 32);
+  idx = (n / 4) % 2;
+
+#ifdef FRAME_DEBUG
+  fprintf (stderr, "Triggering synchonization fence: %lu\n", idx);
+#endif
+
+  XSyncTriggerFence (FRAME_X_DISPLAY (f),
+		     FRAME_X_OUTPUT (f)->sync_fences[idx]);
+}
+
+/* Initialize the sync fences on F.  */
+
+void
+x_sync_init_fences (struct frame *f)
+{
+  struct x_output *output;
+  struct x_display_info *dpyinfo;
+
+  output = FRAME_X_OUTPUT (f);
+  dpyinfo = FRAME_DISPLAY_INFO (f);
+
+  /* Sync fences aren't supported by the X server.  */
+  if (dpyinfo->xsync_major < 3
+      || (dpyinfo->xsync_major == 3
+	  && dpyinfo->xsync_minor < 1))
+    return;
+
+  output->sync_fences[0]
+    = XSyncCreateFence (FRAME_X_DISPLAY (f),
+			/* The drawable given below is only used to
+			   determine the screen on which the fence is
+			   created.  */
+			FRAME_X_WINDOW (f),
+			False);
+  output->sync_fences[1]
+    = XSyncCreateFence (FRAME_X_DISPLAY (f),
+			FRAME_X_WINDOW (f),
+			False);
+
+  XChangeProperty (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
+		   dpyinfo->Xatom_net_wm_sync_fences, XA_CARDINAL,
+		   32, PropModeReplace,
+		   (unsigned char *) &output->sync_fences, 2);
+}
+
+static void
+x_sync_free_fences (struct frame *f)
+{
+  if (FRAME_X_OUTPUT (f)->sync_fences[0] != None)
+    XSyncDestroyFence (FRAME_X_DISPLAY (f),
+		       FRAME_X_OUTPUT (f)->sync_fences[0]);
+
+  if (FRAME_X_OUTPUT (f)->sync_fences[1] != None)
+    XSyncDestroyFence (FRAME_X_DISPLAY (f),
+		       FRAME_X_OUTPUT (f)->sync_fences[1]);
+}
+
+#endif
+
 /* Tell the compositing manager that FRAME has been drawn and can be
    updated.  */
 
@@ -6844,12 +6924,15 @@ x_sync_update_finish (struct frame *f)
   if (overflow)
     XSyncIntToValue (&FRAME_X_COUNTER_VALUE (f), 0);
 
+  /* Trigger any sync fences if necessary.  */
+#ifdef HAVE_XSYNCTRIGGERFENCE
+  x_sync_trigger_fence (f, FRAME_X_COUNTER_VALUE (f));
+#endif
+
   XSyncSetCounter (FRAME_X_DISPLAY (f),
 		   FRAME_X_EXTENDED_COUNTER (f),
 		   FRAME_X_COUNTER_VALUE (f));
 
-  /* FIXME: this leads to freezes if the compositing manager crashes
-     in the meantime.  */
   if (FRAME_OUTPUT_DATA (f)->use_vsync_p)
     FRAME_X_WAITING_FOR_DRAW (f) = true;
 }
@@ -13283,6 +13366,37 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
 
 /* Scroll bar support.  */
 
+#if defined HAVE_XINPUT2
+
+/* Select for input extension events used by scroll bars.  This will
+   result in the corresponding core events not being generated for
+   SCROLL_BAR.  */
+
+MAYBE_UNUSED static void
+xi_select_scroll_bar_events (struct x_display_info *dpyinfo,
+			     Window scroll_bar)
+{
+  XIEventMask mask;
+  unsigned char *m;
+  ptrdiff_t length;
+
+  length = XIMaskLen (XI_LASTEVENT);
+  mask.mask = m = alloca (length);
+  memset (m, 0, length);
+  mask.mask_len = length;
+
+  mask.deviceid = XIAllMasterDevices;
+  XISetMask (m, XI_ButtonPress);
+  XISetMask (m, XI_ButtonRelease);
+  XISetMask (m, XI_Motion);
+  XISetMask (m, XI_Enter);
+  XISetMask (m, XI_Leave);
+
+  XISelectEvents (dpyinfo->display, scroll_bar, &mask, 1);
+}
+
+#endif
+
 /* Given an X window ID and a DISPLAY, find the struct scroll_bar which
    manages it.
    This can be called in GC, so we have to make sure to strip off mark
@@ -14073,25 +14187,8 @@ x_create_toolkit_scroll_bar (struct frame *f, struct scroll_bar *bar)
   /* Ask for input extension button and motion events.  This lets us
      send the proper `wheel-up' or `wheel-down' events to Emacs.  */
   if (FRAME_DISPLAY_INFO (f)->supports_xi2)
-    {
-      XIEventMask mask;
-      ptrdiff_t l = XIMaskLen (XI_LASTEVENT);
-      unsigned char *m;
-
-      mask.mask = m = alloca (l);
-      memset (m, 0, l);
-      mask.mask_len = l;
-
-      mask.deviceid = XIAllMasterDevices;
-      XISetMask (m, XI_ButtonPress);
-      XISetMask (m, XI_ButtonRelease);
-      XISetMask (m, XI_Motion);
-      XISetMask (m, XI_Enter);
-      XISetMask (m, XI_Leave);
-
-      XISelectEvents (XtDisplay (widget), XtWindow (widget),
-		      &mask, 1);
-    }
+    xi_select_scroll_bar_events (FRAME_DISPLAY_INFO (f),
+				 XtWindow (widget));
 #endif
 #else /* !USE_MOTIF i.e. use Xaw */
 
@@ -14298,25 +14395,8 @@ x_create_horizontal_toolkit_scroll_bar (struct frame *f, struct scroll_bar *bar)
   /* Ask for input extension button and motion events.  This lets us
      send the proper `wheel-up' or `wheel-down' events to Emacs.  */
   if (FRAME_DISPLAY_INFO (f)->supports_xi2)
-    {
-      XIEventMask mask;
-      ptrdiff_t l = XIMaskLen (XI_LASTEVENT);
-      unsigned char *m;
-
-      mask.mask = m = alloca (l);
-      memset (m, 0, l);
-      mask.mask_len = l;
-
-      mask.deviceid = XIAllMasterDevices;
-      XISetMask (m, XI_ButtonPress);
-      XISetMask (m, XI_ButtonRelease);
-      XISetMask (m, XI_Motion);
-      XISetMask (m, XI_Enter);
-      XISetMask (m, XI_Leave);
-
-      XISelectEvents (XtDisplay (widget), XtWindow (widget),
-		      &mask, 1);
-    }
+    xi_select_scroll_bar_events (FRAME_DISPLAY_INFO (f),
+				 XtWindow (widget));
 #endif
 #else /* !USE_MOTIF i.e. use Xaw */
 
@@ -14738,24 +14818,8 @@ x_scroll_bar_create (struct window *w, int top, int left,
   /* Ask for input extension button and motion events.  This lets us
      send the proper `wheel-up' or `wheel-down' events to Emacs.  */
   if (FRAME_DISPLAY_INFO (f)->supports_xi2)
-    {
-      XIEventMask mask;
-      ptrdiff_t l = XIMaskLen (XI_LASTEVENT);
-      unsigned char *m;
-
-      mask.mask = m = alloca (l);
-      memset (m, 0, l);
-      mask.mask_len = l;
-
-      mask.deviceid = XIAllMasterDevices;
-      XISetMask (m, XI_ButtonPress);
-      XISetMask (m, XI_ButtonRelease);
-      XISetMask (m, XI_Motion);
-      XISetMask (m, XI_Enter);
-      XISetMask (m, XI_Leave);
-
-      XISelectEvents (FRAME_X_DISPLAY (f), window, &mask, 1);
-    }
+    xi_select_scroll_bar_events (FRAME_DISPLAY_INFO (f),
+				 window);
 #endif
 
     bar->x_window = window;
@@ -25750,6 +25814,7 @@ x_make_frame_visible (struct frame *f)
   struct x_display_info *dpyinfo;
   struct x_output *output;
 #endif
+  bool output_flushed;
 
   if (FRAME_PARENT_FRAME (f))
     {
@@ -25840,8 +25905,6 @@ x_make_frame_visible (struct frame *f)
 	}
     }
 
-  XFlush (FRAME_X_DISPLAY (f));
-
   /* Synchronize to ensure Emacs knows the frame is visible
      before we do anything else.  We do this loop with input not blocked
      so that incoming events are handled.  */
@@ -25859,6 +25922,10 @@ x_make_frame_visible (struct frame *f)
 
     /* This must come after we set COUNT.  */
     unblock_input ();
+
+    /* Keep track of whether or not the output buffer was flushed, to
+       avoid any extra flushes.  */
+    output_flushed = false;
 
     /* We unblock here so that arriving X events are processed.  */
 
@@ -25893,6 +25960,7 @@ x_make_frame_visible (struct frame *f)
 	   there, and take the potential window manager hit.  */
 	XGetGeometry (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
 		      &rootw, &x, &y, &width, &height, &border, &depth);
+	output_flushed = true;
 
 	if (original_left != x || original_top != y)
 	  XMoveWindow (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
@@ -25927,7 +25995,11 @@ x_make_frame_visible (struct frame *f)
 	    (f, build_string ("x_make_frame_visible"));
 
 	x_wait_for_event (f, MapNotify);
+	output_flushed = true;
       }
+
+    if (!output_flushed)
+      x_flush (f);
   }
 }
 
@@ -26293,6 +26365,11 @@ x_free_frame_resources (struct frame *f)
 	XFreeCursor (FRAME_X_DISPLAY (f), f->output_data.x->bottom_edge_cursor);
       if (f->output_data.x->bottom_left_corner_cursor != 0)
 	XFreeCursor (FRAME_X_DISPLAY (f), f->output_data.x->bottom_left_corner_cursor);
+
+      /* Free sync fences.  */
+#if defined HAVE_XSYNCTRIGGERFENCE && !defined USE_GTK
+      x_sync_free_fences (f);
+#endif
     }
 
 #ifdef HAVE_GTK3
