@@ -5291,6 +5291,7 @@ xi_populate_device_from_info (struct xi_device_t *xi_device,
   xi_device->direct_p = false;
 #endif
   xi_device->name = build_string (device->name);
+  xi_device->attachment = device->attachment;
 
   for (c = 0; c < device->num_classes; ++c)
     {
@@ -5394,7 +5395,7 @@ xi_populate_device_from_info (struct xi_device_t *xi_device,
 static void
 x_cache_xi_devices (struct x_display_info *dpyinfo)
 {
-  int ndevices, actual_devices;
+  int ndevices, actual_devices, i;
   XIDeviceInfo *infos;
 
   actual_devices = 0;
@@ -5411,9 +5412,9 @@ x_cache_xi_devices (struct x_display_info *dpyinfo)
       return;
     }
 
-  dpyinfo->devices = xmalloc (sizeof *dpyinfo->devices * ndevices);
+  dpyinfo->devices = xzalloc (sizeof *dpyinfo->devices * ndevices);
 
-  for (int i = 0; i < ndevices; ++i)
+  for (i = 0; i < ndevices; ++i)
     {
       if (infos[i].enabled)
 	xi_populate_device_from_info (&dpyinfo->devices[actual_devices++],
@@ -7585,6 +7586,26 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
     }
 #endif
 }
+
+#ifdef USE_GTK
+
+static void
+x_set_gtk_user_time (struct frame *f, Time time)
+{
+  GtkWidget *widget;
+  GdkWindow *window;
+
+  widget = FRAME_GTK_OUTER_WIDGET (f);
+  window = gtk_widget_get_window (widget);
+
+  /* This widget isn't realized yet.  */
+  if (!window)
+    return;
+
+  gdk_x11_window_set_user_time (window, time);
+}
+
+#endif
 
 /* Not needed on GTK because GTK handles reporting the user time
    itself.  */
@@ -12446,6 +12467,246 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   return unbind_to (base, Qnil);
 }
 
+#ifdef HAVE_XINPUT2
+
+/* Since the input extension assigns a keyboard focus to each master
+   device, there is no longer a 1:1 correspondence between the
+   selected frame and the focus frame immediately after the keyboard
+   focus is switched to a given frame.  This situation is handled by
+   keeping track of each master device's focus frame, the time of the
+   last interaction with that frame, and always keeping the focus on
+   the most recently selected frame.  We also use the pointer of the
+   device that is keeping the current frame focused in functions like
+   `mouse-position'.  */
+
+static void
+xi_handle_focus_change (struct x_display_info *dpyinfo)
+{
+  struct input_event ie;
+  struct frame *focus, *new;
+  struct xi_device_t *device, *source = NULL;
+  ptrdiff_t i;
+  Time time;
+#ifdef USE_GTK
+  struct x_output *output;
+  GtkWidget *widget;
+#endif
+
+  focus = dpyinfo->x_focus_frame;
+  new = NULL;
+  time = 0;
+
+  dpyinfo->client_pointer_device = -1;
+
+  for (i = 0; i < dpyinfo->num_devices; ++i)
+    {
+      device = &dpyinfo->devices[i];
+
+      if (device->focus_frame
+	  && device->focus_frame_time > time)
+	{
+	  new = device->focus_frame;
+	  time = device->focus_frame_time;
+	  source = device;
+
+	  /* Use this device for future calls to `mouse-position' etc.
+	     If it is a keyboard, use its attached pointer.  */
+
+	  if (device->use == XIMasterKeyboard)
+	    dpyinfo->client_pointer_device = device->attachment;
+	  else
+	    dpyinfo->client_pointer_device = device->device_id;
+	}
+
+      if (device->focus_implicit_frame
+	  && device->focus_implicit_time > time)
+	{
+	  new = device->focus_implicit_frame;
+	  time = device->focus_implicit_time;
+	  source = device;
+
+	  /* Use this device for future calls to `mouse-position' etc.
+	     If it is a keyboard, use its attached pointer.  */
+
+	  if (device->use == XIMasterKeyboard)
+	    dpyinfo->client_pointer_device = device->attachment;
+	  else
+	    dpyinfo->client_pointer_device = device->device_id;
+	}
+    }
+
+  if (new != focus && focus)
+    {
+#ifdef HAVE_X_I18N
+      if (FRAME_XIC (focus))
+	XUnsetICFocus (FRAME_XIC (focus));
+#endif
+
+#ifdef USE_GTK
+      output = FRAME_X_OUTPUT (focus);
+
+      if (x_gtk_use_native_input)
+	{
+	  gtk_im_context_focus_out (output->im_context);
+	  gtk_im_context_set_client_window (output->im_context,
+					    NULL);
+	}
+#endif
+
+      EVENT_INIT (ie);
+      ie.kind = FOCUS_OUT_EVENT;
+      XSETFRAME (ie.frame_or_window, focus);
+
+      kbd_buffer_store_event (&ie);
+    }
+
+  if (new != focus && new)
+    {
+#ifdef HAVE_X_I18N
+      if (FRAME_XIC (new))
+	XSetICFocus (FRAME_XIC (new));
+#endif
+
+#ifdef USE_GTK
+      output = FRAME_X_OUTPUT (new);
+
+      if (x_gtk_use_native_input)
+	{
+	  widget = FRAME_GTK_OUTER_WIDGET (new);
+
+	  gtk_im_context_focus_in (output->im_context);
+	  gtk_im_context_set_client_window (output->im_context,
+					    gtk_widget_get_window (widget));
+	}
+#endif
+
+      EVENT_INIT (ie);
+      ie.kind = FOCUS_IN_EVENT;
+      ie.device = source->name;
+      XSETFRAME (ie.frame_or_window, new);
+
+      kbd_buffer_store_event (&ie);
+    }
+
+  x_new_focus_frame (dpyinfo, new);
+}
+
+static void
+xi_focus_handle_for_device (struct x_display_info *dpyinfo,
+			    struct frame *mentioned_frame,
+			    XIEvent *base_event)
+{
+  struct xi_device_t *device;
+  XIEnterEvent *event;
+
+  /* XILeaveEvent, XIFocusInEvent, etc are just synonyms for
+     XIEnterEvent.  */
+  event = (XIEnterEvent *) base_event;
+  device = xi_device_from_id (dpyinfo, event->deviceid);
+
+  if (!device)
+    return;
+
+  switch (event->evtype)
+    {
+    case XI_FocusIn:
+      device->focus_frame = mentioned_frame;
+      device->focus_frame_time = event->time;
+      break;
+
+    case XI_FocusOut:
+      device->focus_frame = NULL;
+      break;
+
+    case XI_Enter:
+      if (!event->focus)
+	break;
+
+      if (device->use == XIMasterPointer)
+	device = xi_device_from_id (dpyinfo, device->attachment);
+
+      if (!device)
+	break;
+
+      device->focus_implicit_frame = mentioned_frame;
+      device->focus_implicit_time = event->time;
+      break;
+
+    case XI_Leave:
+      if (!event->focus)
+	break;
+
+      if (device->use == XIMasterPointer)
+	device = xi_device_from_id (dpyinfo, device->attachment);
+
+      if (!device)
+	break;
+
+      device->focus_implicit_frame = NULL;
+      break;
+    }
+
+  xi_handle_focus_change (dpyinfo);
+}
+
+static void
+xi_handle_delete_frame (struct x_display_info *dpyinfo,
+			struct frame *f)
+{
+  struct xi_device_t *device;
+  ptrdiff_t i;
+
+  for (i = 0; i < dpyinfo->num_devices; ++i)
+    {
+      device = &dpyinfo->devices[i];
+
+      if (device->focus_frame == f)
+	device->focus_frame = NULL;
+
+      if (device->focus_implicit_frame == f)
+	device->focus_implicit_frame = NULL;
+    }
+}
+
+/* Handle an interaction by DEVICE on frame F.  TIME is the time of
+   the interaction; if F isn't currently the global focus frame, but
+   is the focus of DEVICE, make it the focus frame.  */
+
+static void
+xi_handle_interaction (struct x_display_info *dpyinfo,
+		       struct frame *f, struct xi_device_t *device,
+		       Time time)
+{
+  bool change;
+
+  /* If DEVICE is a pointer, use its attached keyboard device.  */
+  if (device->use == XIMasterPointer)
+    device = xi_device_from_id (dpyinfo, device->attachment);
+
+  if (!device)
+    return;
+
+  change = false;
+
+  if (device->focus_frame == f)
+    {
+      device->focus_frame_time = time;
+      change = true;
+    }
+
+  if (device->focus_implicit_frame == f)
+    {
+      device->focus_implicit_time = time;
+      change = true;
+    }
+
+  /* If F isn't currently focused, update the focus state.  */
+  if (change && f != dpyinfo->x_focus_frame)
+    xi_handle_focus_change (dpyinfo);
+}
+
+#endif
+
 /* The focus may have changed.  Figure out if it is a real focus change,
    by checking both FocusIn/Out and Enter/LeaveNotify events.
 
@@ -12475,37 +12736,6 @@ x_detect_focus_change (struct x_display_info *dpyinfo, struct frame *frame,
 			   dpyinfo, frame, bufp);
       }
       break;
-
-#ifdef HAVE_XINPUT2
-    case GenericEvent:
-      {
-	XIEvent *xi_event = event->xcookie.data;
-	XIEnterEvent *enter_or_focus = event->xcookie.data;
-
-        struct frame *focus_frame = dpyinfo->x_focus_event_frame;
-        int focus_state
-          = focus_frame ? focus_frame->output_data.x->focus_state : 0;
-
-	if (xi_event->evtype == XI_FocusIn
-	    || xi_event->evtype == XI_FocusOut)
-	  x_focus_changed ((xi_event->evtype == XI_FocusIn
-			    ? FocusIn : FocusOut),
-			   ((enter_or_focus->detail
-			     == XINotifyPointer)
-			    ? FOCUS_IMPLICIT : FOCUS_EXPLICIT),
-			     dpyinfo, frame, bufp);
-	else if ((xi_event->evtype == XI_Enter
-		  || xi_event->evtype == XI_Leave)
-		 && (enter_or_focus->detail != XINotifyInferior)
-		 && enter_or_focus->focus
-		 && !(focus_state & FOCUS_EXPLICIT))
-	  x_focus_changed ((xi_event->evtype == XI_Enter
-			    ? FocusIn : FocusOut),
-			   FOCUS_IMPLICIT,
-			   dpyinfo, frame, bufp);
-	break;
-      }
-#endif
 
     case FocusIn:
     case FocusOut:
@@ -12852,6 +13082,68 @@ get_keysym_name (int keysym)
   return value;
 }
 
+/* Like XQueryPointer, but always use the right client pointer
+   device.  */
+
+Bool
+x_query_pointer (Display *dpy, Window w, Window *root_return,
+		 Window *child_return, int *root_x_return,
+		 int *root_y_return, int *win_x_return,
+		 int *win_y_return, unsigned int *mask_return)
+{
+  Bool rc;
+#ifdef HAVE_XINPUT2
+  struct x_display_info *dpyinfo;
+  bool had_errors;
+  XIModifierState modifiers;
+  XIButtonState buttons;
+  XIGroupState group; /* Unused.  */
+  double root_x, root_y, win_x, win_y;
+  unsigned int state;
+#endif
+
+#ifdef HAVE_XINPUT2
+  dpyinfo = x_display_info_for_display (dpy);
+  if (dpyinfo && dpyinfo->client_pointer_device != -1)
+    {
+      /* Catch errors caused by the device going away.  This is not
+	 very expensive, since XIQueryPointer will sync anyway.  */
+      x_catch_errors (dpy);
+      rc = XIQueryPointer (dpyinfo->display,
+			   dpyinfo->client_pointer_device,
+			   w, root_return, child_return,
+			   &root_x, &root_y, &win_x, &win_y,
+			   &buttons, &modifiers, &group);
+      had_errors = x_had_errors_p (dpy);
+      x_uncatch_errors_after_check ();
+
+      if (had_errors)
+	rc = XQueryPointer (dpyinfo->display, w, root_return,
+			    child_return, root_x_return,
+			    root_y_return, win_x_return,
+			    win_y_return, mask_return);
+      else
+	{
+	  state = 0;
+
+	  xi_convert_button_state (&buttons, &state);
+	  *mask_return = state | modifiers.effective;
+
+	  *root_x_return = lrint (root_x);
+	  *root_y_return = lrint (root_y);
+	  *win_x_return = lrint (win_x);
+	  *win_y_return = lrint (win_y);
+	}
+    }
+  else
+#endif
+    rc = XQueryPointer (dpy, w, root_return, child_return,
+			root_x_return, root_y_return, win_x_return,
+			win_y_return, mask_return);
+
+  return rc;
+}
+
 /* Mouse clicks and mouse movement.  Rah.
 
    Formerly, we used PointerMotionHintMask (in standard_event_mask)
@@ -13118,20 +13410,20 @@ XTmouse_position (struct frame **fp, int insist, Lisp_Object *bar_window,
       dpyinfo->last_mouse_scroll_bar = NULL;
 
       /* Figure out which root window we're on.  */
-      XQueryPointer (FRAME_X_DISPLAY (*fp),
-		     DefaultRootWindow (FRAME_X_DISPLAY (*fp)),
-		     /* The root window which contains the pointer.  */
-		     &root,
-		     /* Trash which we can't trust if the pointer is on
-			a different screen.  */
-		     &dummy_window,
-		     /* The position on that root window.  */
-		     &root_x, &root_y,
-		     /* More trash we can't trust.  */
-		     &dummy, &dummy,
-		     /* Modifier keys and pointer buttons, about which
-			we don't care.  */
-		     (unsigned int *) &dummy);
+      x_query_pointer (FRAME_X_DISPLAY (*fp),
+		       DefaultRootWindow (FRAME_X_DISPLAY (*fp)),
+		       /* The root window which contains the pointer.  */
+		       &root,
+		       /* Trash which we can't trust if the pointer is on
+			  a different screen.  */
+		       &dummy_window,
+		       /* The position on that root window.  */
+		       &root_x, &root_y,
+		       /* More trash we can't trust.  */
+		       &dummy, &dummy,
+		       /* Modifier keys and pointer buttons, about which
+			  we don't care.  */
+		       (unsigned int *) &dummy);
 
       /* Now we have a position on the root; find the innermost window
 	 containing the pointer.  */
@@ -15704,17 +15996,17 @@ x_scroll_bar_report_motion (struct frame **fp, Lisp_Object *bar_window,
 
   /* Get the mouse's position relative to the scroll bar window, and
      report that.  */
-  if (XQueryPointer (FRAME_X_DISPLAY (f), w,
+  if (x_query_pointer (FRAME_X_DISPLAY (f), w,
 
-		     /* Root, child, root x and root y.  */
-		     &dummy_window, &dummy_window,
-		     &dummy_coord, &dummy_coord,
+		       /* Root, child, root x and root y.  */
+		       &dummy_window, &dummy_window,
+		       &dummy_coord, &dummy_coord,
 
-		     /* Position relative to scroll bar.  */
-		     &win_x, &win_y,
+		       /* Position relative to scroll bar.  */
+		       &win_x, &win_y,
 
-		     /* Mouse buttons and modifier keys.  */
-		     &dummy_mask))
+		       /* Mouse buttons and modifier keys.  */
+		       &dummy_mask))
     {
       int top_range = VERTICAL_SCROLL_BAR_TOP_RANGE (f, bar->height);
 
@@ -15773,17 +16065,17 @@ x_horizontal_scroll_bar_report_motion (struct frame **fp, Lisp_Object *bar_windo
 
   /* Get the mouse's position relative to the scroll bar window, and
      report that.  */
-  if (XQueryPointer (FRAME_X_DISPLAY (f), w,
+  if (x_query_pointer (FRAME_X_DISPLAY (f), w,
 
-		     /* Root, child, root x and root y.  */
-		     &dummy_window, &dummy_window,
-		     &dummy_coord, &dummy_coord,
+		       /* Root, child, root x and root y.  */
+		       &dummy_window, &dummy_window,
+		       &dummy_coord, &dummy_coord,
 
-		     /* Position relative to scroll bar.  */
-		     &win_x, &win_y,
+		       /* Position relative to scroll bar.  */
+		       &win_x, &win_y,
 
-		     /* Mouse buttons and modifier keys.  */
-		     &dummy_mask))
+		       /* Mouse buttons and modifier keys.  */
+		       &dummy_mask))
     {
       int left_range = HORIZONTAL_SCROLL_BAR_LEFT_RANGE (f, bar->width);
 
@@ -18041,6 +18333,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       x_display_set_last_user_time (dpyinfo, event->xkey.time,
 				    event->xkey.send_event);
       ignore_next_mouse_click_timeout = 0;
+
       coding = Qlatin_1;
 
 #if defined (USE_X_TOOLKIT) || defined (USE_GTK)
@@ -18050,6 +18343,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
       f = any;
+
+#ifdef USE_GTK
+      if (f)
+	x_set_gtk_user_time (f, event->xkey.time);
+#endif
 
       /* If mouse-highlight is an integer, input clears out
 	 mouse highlighting.  */
@@ -19838,11 +20136,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	  {
 	  case XI_FocusIn:
 	    {
-	      XIFocusInEvent *focusin = (XIFocusInEvent *) xi_event;
-	      struct xi_device_t *source;
+	      XIFocusInEvent *focusin;
 
+	      focusin = (XIFocusInEvent *) xi_event;
 	      any = x_any_window_to_frame (dpyinfo, focusin->event);
-	      source = xi_device_from_id (dpyinfo, focusin->sourceid);
+
 #ifdef USE_GTK
 	      /* Some WMs (e.g. Mutter in Gnome Shell), don't unmap
 		 minimized/iconified windows; thus, for those WMs we won't get
@@ -19871,24 +20169,19 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    }
 		}
 
-	      x_detect_focus_change (dpyinfo, any, event, &inev.ie);
+	      xi_focus_handle_for_device (dpyinfo, any, xi_event);
 
-	      if (inev.ie.kind != NO_EVENT && source)
-		inev.ie.device = source->name;
 	      goto XI_OTHER;
 	    }
 
 	  case XI_FocusOut:
 	    {
-	      XIFocusOutEvent *focusout = (XIFocusOutEvent *) xi_event;
-	      struct xi_device_t *source;
+	      XIFocusOutEvent *focusout;
 
+	      focusout = (XIFocusOutEvent *) xi_event;
 	      any = x_any_window_to_frame (dpyinfo, focusout->event);
-	      source = xi_device_from_id (dpyinfo, focusout->sourceid);
-	      x_detect_focus_change (dpyinfo, any, event, &inev.ie);
+	      xi_focus_handle_for_device (dpyinfo, any, xi_event);
 
-	      if (inev.ie.kind != NO_EVENT && source)
-		inev.ie.device = source->name;
 	      goto XI_OTHER;
 	    }
 
@@ -19937,7 +20230,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		 are an inferiors of the frame's top window, which will
 		 get virtual events.  */
 	      if (any)
-		x_detect_focus_change (dpyinfo, any, event, &inev.ie);
+		xi_focus_handle_for_device (dpyinfo, any, xi_event);
 
 	      if (!any)
 		any = x_any_window_to_frame (dpyinfo, enter->event);
@@ -20077,7 +20370,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #endif
 
 	      if (any)
-		x_detect_focus_change (dpyinfo, any, event, &inev.ie);
+		xi_focus_handle_for_device (dpyinfo, any, xi_event);
 
 #ifndef USE_X_TOOLKIT
 	      f = x_top_window_to_frame (dpyinfo, leave->event);
@@ -21137,6 +21430,16 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		    }
 		}
 
+	      if (f)
+		{
+		  /* If the user interacts with a frame that's focused
+		     on another device, but not the current focus
+		     frame, make it the focus frame.  */
+		  if (device)
+		    xi_handle_interaction (dpyinfo, f, device,
+					   xev->time);
+		}
+
 #ifdef USE_GTK
 	      if (!f)
 		{
@@ -21417,6 +21720,25 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      ignore_next_mouse_click_timeout = 0;
 
 	      f = x_any_window_to_frame (dpyinfo, xev->event);
+
+	      /* GTK handles TAB events in an undesirable manner, so
+		 keyboard events are always dropped.  But as a side
+		 effect, the user time will no longer be set by GDK,
+		 so do that manually.  */
+#ifdef USE_GTK
+	      if (f)
+		x_set_gtk_user_time (f, xev->time);
+#endif
+
+	      if (f)
+		{
+		  /* If the user interacts with a frame that's focused
+		     on another device, but not the current focus
+		     frame, make it the focus frame.  */
+		  if (device)
+		    xi_handle_interaction (dpyinfo, f, device,
+					   xev->time);
+		}
 
 	      XKeyPressedEvent xkey;
 
@@ -21912,7 +22234,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      if (n_disabled)
 			{
 			  ndevices = 0;
-			  devices = xmalloc (sizeof *devices * dpyinfo->num_devices);
+			  devices = xzalloc (sizeof *devices * dpyinfo->num_devices);
 
 			  for (i = 0; i < dpyinfo->num_devices; ++i)
 			    {
@@ -21959,6 +22281,8 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 			  dpyinfo->devices
 			    = xrealloc (dpyinfo->devices, (sizeof *dpyinfo->devices
 							   * ++dpyinfo->num_devices));
+			  memset (dpyinfo->devices + dpyinfo->num_devices - 1,
+				  0, sizeof *dpyinfo->devices);
 			  device = &dpyinfo->devices[dpyinfo->num_devices - 1];
 			  xi_populate_device_from_info (device, info);
 			}
@@ -21980,7 +22304,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		      if (info)
 			{
 			  if (device && info->enabled)
-			    device->use = info->use;
+			    {
+			      device->use = info->use;
+			      device->attachment = info->attachment;
+			    }
 			  else if (device)
 			    disabled[n_disabled++] = hev->info[i].deviceid;
 
@@ -21992,7 +22319,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 	      if (n_disabled)
 		{
 		  ndevices = 0;
-		  devices = xmalloc (sizeof *devices * dpyinfo->num_devices);
+		  devices = xzalloc (sizeof *devices * dpyinfo->num_devices);
 
 		  for (i = 0; i < dpyinfo->num_devices; ++i)
 		    {
@@ -22027,6 +22354,10 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 		  dpyinfo->num_devices = ndevices;
 		}
 
+	      /* Now that the device hierarchy has been changed,
+		 recompute focus.  */
+	      xi_handle_focus_change (dpyinfo);
+
 	      goto XI_OTHER;
 	    }
 
@@ -22044,17 +22375,9 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	      device = xi_device_from_id (dpyinfo, device_changed->deviceid);
 
-	      if (!device)
-		{
-		  /* An existing device might have been enabled.  */
-		  x_cache_xi_devices (dpyinfo);
-
-		  /* Now try to find the device again, in case it was
-		     just enabled.  */
-		  device = xi_device_from_id (dpyinfo, device_changed->deviceid);
-		}
-
-	      /* If it wasn't enabled, then stop handling this event.  */
+	      /* If the device isn't enabled, then stop handling this
+		 event.  A HierarchyChanged event will be sent if it
+		 is enabled afterwards.  */
 	      if (!device)
 		goto XI_OTHER;
 
@@ -26219,6 +26542,11 @@ x_free_frame_resources (struct frame *f)
 
   block_input ();
 
+#ifdef HAVE_XINPUT2
+  /* Remove any record of this frame being focused.  */
+  xi_handle_delete_frame (dpyinfo, f);
+#endif
+
   /* If a display connection is dead, don't try sending more
      commands to the X server.  */
   if (dpyinfo->display)
@@ -27592,6 +27920,8 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 #else /* Some old version of XI2 we're not interested in. */
   int minor = 0;
 #endif
+
+  dpyinfo->client_pointer_device = -1;
 
   if (XQueryExtension (dpyinfo->display, "XInputExtension",
 		       &dpyinfo->xi2_opcode, &xi_first_event,
