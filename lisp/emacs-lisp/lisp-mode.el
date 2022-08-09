@@ -762,7 +762,7 @@ decided heuristically.)"
           (when symbol
             (let ((spec (get symbol 'edebug-form-spec)))
               (save-excursion
-                (when (and (eq (car spec) '&define)
+                (when (and (eq (car-safe spec) '&define)
                            (memq 'name spec))
                   (pop spec)
                   (while (and spec (not name))
@@ -774,7 +774,7 @@ decided heuristically.)"
           ;; name).  If the symbol starts with \"def\", then it's
           ;; likely that the next symbol is the name.
           (when (and (not name)
-                     (string-match-p "\\`def" (symbol-name symbol)))
+                     (string-match-p "\\(\\`\\|-\\)def" (symbol-name symbol)))
             (when-let ((candidate (ignore-errors (read (current-buffer)))))
               (cond
                ((symbolp candidate)
