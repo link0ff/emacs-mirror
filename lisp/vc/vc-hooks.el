@@ -855,41 +855,40 @@ In the latter case, VC mode is deactivated for this buffer."
 ;; Autoloading works fine, but it prevents shortcuts from appearing
 ;; in the menu because they don't exist yet when the menu is built.
 ;; (autoload 'vc-prefix-map "vc" nil nil 'keymap)
-(defvar vc-prefix-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map "a" #'vc-update-change-log)
-    (with-suppressed-warnings ((obsolete vc-switch-backend))
-      (define-key map "B" #'vc-switch-backend))
-    (define-key map "bc" #'vc-create-tag)
-    (define-key map "bl" #'vc-print-branch-log)
-    (define-key map "bs" #'vc-retrieve-tag)
-    (define-key map "d" #'vc-dir)
-    (define-key map "g" #'vc-annotate)
-    (define-key map "G" #'vc-ignore)
-    (define-key map "h" #'vc-region-history)
-    (define-key map "i" #'vc-register)
-    (define-key map "l" #'vc-print-log)
-    (define-key map "L" #'vc-print-root-log)
-    (define-key map "I" #'vc-log-incoming)
-    (define-key map "O" #'vc-log-outgoing)
-    (define-key map "ML" #'vc-log-mergebase)
-    (define-key map "MD" #'vc-diff-mergebase)
-    (define-key map "m" #'vc-merge)
-    (define-key map "r" #'vc-retrieve-tag)
-    (define-key map "s" #'vc-create-tag)
-    (define-key map "S" #'vc-log-search)
-    (define-key map "u" #'vc-revert)
-    (define-key map "v" #'vc-next-action)
-    (define-key map "+" #'vc-update)
-    ;; I'd prefer some kind of symmetry with vc-update:
-    (define-key map "P" #'vc-push)
-    (define-key map "=" #'vc-diff)
-    (define-key map "D" #'vc-root-diff)
-    (define-key map "~" #'vc-revision-other-window)
-    (define-key map "x" #'vc-delete-file)
-    map))
+(defvar-keymap vc-prefix-map
+  "a"   #'vc-update-change-log
+  "bc"  #'vc-create-tag ;; vc-create-branch
+  "bl"  #'vc-print-branch-log
+  "bs"  #'vc-retrieve-tag ;; vc-switch-branch
+  "d"   #'vc-dir
+  "g"   #'vc-annotate
+  "G"   #'vc-ignore
+  "h"   #'vc-region-history
+  "i"   #'vc-register
+  "l"   #'vc-print-log
+  "L"   #'vc-print-root-log
+  "I"   #'vc-log-incoming
+  "O"   #'vc-log-outgoing
+  "M L" #'vc-log-mergebase
+  "M D" #'vc-diff-mergebase
+  "m"   #'vc-merge
+  "r"   #'vc-retrieve-tag
+  "s"   #'vc-create-tag
+  "S"   #'vc-log-search
+  "u"   #'vc-revert
+  "v"   #'vc-next-action
+  "+"   #'vc-update
+  ;; I'd prefer some kind of symmetry with vc-update:
+  "P"   #'vc-push
+  "="   #'vc-diff
+  "D"   #'vc-root-diff
+  "~"   #'vc-revision-other-window
+  "x"   #'vc-delete-file)
 (fset 'vc-prefix-map vc-prefix-map)
 (define-key ctl-x-map "v" 'vc-prefix-map)
+
+(with-suppressed-warnings ((obsolete vc-switch-backend))
+  (keymap-set vc-prefix-map "b" #'vc-switch-backend))
 
 (defvar vc-menu-map
   (let ((map (make-sparse-keymap "Version Control")))
