@@ -4,15 +4,8 @@
 
 ;; Author: Vinicius Jose Latorre <viniciusjl.gnu@gmail.com>
 ;; Keywords: wp, print, PostScript
-;; Version: 6.9.3
+;; Old-Version: 6.9.3
 ;; URL: https://www.emacswiki.org/cgi-bin/wiki/ViniciusJoseLatorre
-
-(defconst pr-version "6.9.3"
-  "printing.el, v 6.9.3 <2007/12/09 vinicius>
-
-Please send all bug fixes and enhancements to
-	bug-gnu-emacs@gnu.org and Vinicius Jose Latorre <viniciusjl.gnu@gmail.com>
-")
 
 ;; This file is part of GNU Emacs.
 
@@ -1014,10 +1007,6 @@ Please send all bug fixes and enhancements to
 
 (require 'lpr)
 (require 'ps-print)
-
-(and (string< ps-print-version "6.6.4")
-     (error "`printing' requires `ps-print' package version 6.6.4 or later"))
-
 
 (defconst pr-cygwin-system
   (and lpr-windows-system (getenv "OSTYPE")
@@ -3007,9 +2996,7 @@ Calls `pr-update-menus' to adjust menus."
 
 
 (defconst pr-help-message
-  (concat "printing.el version " pr-version
-	  "    ps-print.el version " ps-print-version
-	  "\n\n
+  "\
 Menu Layout
 -----------
 
@@ -3215,14 +3202,12 @@ VI. Customization:
    23. Show current settings for `printing', `ps-print' or `lpr'.
 
    24. Quick help for printing menu layout.
-")
+"
   "Printing help message.")
 
 
 (defconst pr-interface-help-message
-  (concat "printing.el version " pr-version
-	  "    ps-print.el version " ps-print-version
-	  "\n\n
+  "\
 The printing interface buffer has the same functionality as the printing menu.
 The major difference is that the states (like sending PostScript generated to a
 file, n-up printing, etc.) are set and saved between printing buffer
@@ -3449,7 +3434,7 @@ The printing interface buffer has the following sections:
 
    Quick help for printing interface buffer and printing menu layout.  You can
    also quit the printing interface buffer or kill all printing help buffer.
-")
+"
   "Printing buffer interface help message.")
 
 
@@ -4402,7 +4387,6 @@ Or choose the menu option Printing/Show Settings/printing."
     (mapconcat
      #'ps-print-quote
      (list
-      (concat "\n;;; printing.el version " pr-version "\n")
       ";; internal vars"
       (ps-comment-string "emacs-version       " emacs-version)
       (ps-comment-string "pr-txt-command      " pr-txt-command)
@@ -5597,9 +5581,6 @@ COMMAND.exe, COMMAND.bat and COMMAND.com in this order."
   (switch-to-buffer (get-buffer-create pr-buffer-name))
 
   ;; header
-  (let ((versions (concat "printing v" pr-version
-			  "    ps-print v" ps-print-version)))
-    (widget-insert (make-string (- 79 (length versions)) ?\ ) versions))
   (pr-insert-italic "\nCurrent Directory : " 1)
   (pr-insert-italic default-directory)
 
@@ -6213,6 +6194,12 @@ COMMAND.exe, COMMAND.bat and COMMAND.com in this order."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defconst pr-version "6.9.3"
+  "printing.el, v 6.9.3 <2007/12/09 vinicius>
+
+Please send all bug fixes and enhancements to
+   bug-gnu-emacs@gnu.org and Vinicius Jose Latorre <viniciusjl.gnu@gmail.com>")
+(make-obsolete-variable 'pr-version 'emacs-version "29.1")
 
 (provide 'printing)
 
