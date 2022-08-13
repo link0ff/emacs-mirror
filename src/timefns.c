@@ -1714,19 +1714,24 @@ usage: (encode-time TIME &rest OBSOLESCENT-ARGUMENTS)  */)
 }
 
 DEFUN ("time-convert", Ftime_convert, Stime_convert, 1, 2, 0,
-       doc: /* Convert TIME value to a Lisp timestamp.
-With optional FORM, convert to that timestamp form.
+       doc: /* Convert TIME value to a Lisp timestamp of the given FORM.
 Truncate the returned value toward minus infinity.
 
-If FORM is nil (the default), return the same form as `current-time'.
+If FORM is nil, return the same form as `current-time'.
+
 If FORM is a positive integer, return a pair of integers (TICKS . FORM),
 where TICKS is the number of clock ticks and FORM is the clock frequency
-in ticks per second.  If FORM is t, return (TICKS . PHZ), where
-PHZ is a suitable clock frequency in ticks per second.  If FORM is
-`integer', return an integer count of seconds.  If FORM is `list',
-return an integer list (HIGH LOW USEC PSEC), where HIGH has the most
-significant bits of the seconds, LOW has the least significant 16
-bits, and USEC and PSEC are the microsecond and picosecond counts.  */)
+in ticks per second.
+
+If FORM is t, return (TICKS . PHZ), where PHZ is a suitable clock
+frequency in ticks per second.
+
+If FORM is `integer', return an integer count of seconds.
+
+If FORM is `list', return an integer list (HIGH LOW USEC PSEC), where
+HIGH has the most significant bits of the seconds, LOW has the least
+significant 16 bits, and USEC and PSEC are the microsecond and
+picosecond counts.  */)
      (Lisp_Object time, Lisp_Object form)
 {
   struct lisp_time t;
