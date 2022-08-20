@@ -2553,13 +2553,6 @@ produces pretty nice output, and it highlights links. It renders
 @samp{&ndash;} and @samp{&reg;} okay. It sometimes fails to wrap lines
 properly. It always downloads remote images.
 @c -------------------------
-@cindex browser, @samp{html2text}
-@cindex @samp{html2text}
-@item @samp{html2text}
-The @samp{html2text} browser requires an external program. Some users
-have reported problems with it, such as filling the entire message as
-if it were one paragraph, or displaying chunks of raw HTML.
-@c -------------------------
 @cindex browser, @samp{links}
 @cindex @samp{links}
 @item @samp{links}
@@ -2820,24 +2813,6 @@ The appearance of the buttons is controlled by the faces
 @code{mh-show-pgg-good}, @code{mh-show-pgg-bad}, and
 @code{mh-show-pgg-unknown} depending on the validity of the signature.
 The latter is used whether the signature is unknown or untrusted.
-
-@cindex @samp{pgg} customization group
-@cindex PGG
-@cindex customization group, @samp{pgg}
-
-The @samp{pgg} customization group may have some settings which may
-interest you.
-@iftex
-See @cite{The PGG Manual}.
-@end iftex
-@ifinfo
-@xref{Top, , The PGG Manual, pgg, The PGG Manual}.
-@end ifinfo
-@ifhtml
-See
-@uref{https://www.gnu.org/software/emacs/manual/pgg.html,
-@cite{The PGG Manual}}.
-@end ifhtml
 
 @node Printing
 @section Printing Your Mail
@@ -5584,33 +5559,6 @@ The option @code{mh-mml-method-default} is used to select between a
 variety of mail security mechanisms. The default is @samp{PGP (MIME)}
 if it is supported; otherwise, the default is @samp{None}. Other
 mechanisms include vanilla @samp{PGP} and @samp{S/MIME}.
-
-@cindex @samp{pgg} customization group
-@cindex PGG
-@cindex customization group, @samp{pgg}
-
-The @samp{pgg} customization group may have some settings which may
-interest you.
-@iftex
-See @cite{The PGG Manual}.
-@end iftex
-@ifinfo
-@xref{Top, , The PGG Manual, pgg, The PGG Manual}.
-@end ifinfo
-@ifhtml
-See
-@uref{https://www.gnu.org/software/emacs/manual/pgg.html,
-@cite{The PGG Manual}}.
-@end ifhtml
-
-@cindex header field, @samp{Fcc}
-@cindex @samp{Fcc} header field
-@vindex pgg-encrypt-for-me
-
-In particular, I turn on the option @code{pgg-encrypt-for-me} so that
-all messages I encrypt are encrypted with my public key as well. If
-you keep a copy of all of your outgoing mail with a @samp{Fcc:} header
-field, this setting is vital so that you can read the mail you write!
 
 @node Checking Recipients
 @section Checking Recipients

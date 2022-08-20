@@ -556,7 +556,9 @@ select_window (Lisp_Object window, Lisp_Object norecord,
 	 frame is active.  */
       Fselect_frame (frame, norecord);
       /* Fselect_frame called us back so we've done all the work already.  */
-      eassert (EQ (window, selected_window));
+      eassert (EQ (window, selected_window)
+	       || (EQ (window, f->minibuffer_window)
+		   && NILP (Fminibufferp (XWINDOW (window)->contents, Qt))));
       return window;
     }
   else
@@ -6575,9 +6577,12 @@ and redisplay normally--don't erase and redraw the frame.  */)
      in case scroll_margin is buffer-local.  */
   this_scroll_margin = window_scroll_margin (w, MARGIN_IN_LINES);
 
-  /* Don't use redisplay code for initial frames, as the necessary
-     data structures might not be set up yet then.  */
-  if (!FRAME_INITIAL_P (XFRAME (w->frame)))
+  /* Don't use the display code for initial frames, as the necessary
+     data structures might not be set up yet then.  Also don't use it
+     for buffers with very long lines, as it tremdously slows down
+     redisplay, especially when lines are truncated.  */
+  if (!FRAME_INITIAL_P (XFRAME (w->frame))
+      && !current_buffer->long_line_optimizations_p)
     {
       specpdl_ref count = SPECPDL_INDEX ();
 

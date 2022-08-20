@@ -154,8 +154,7 @@
 ;; Load-time macro-expansion can only take effect after setting
 ;; load-source-file-function because of where it is called in lread.c.
 (load "emacs-lisp/macroexp")
-(if (or (byte-code-function-p (symbol-function 'macroexpand-all))
-        (subr-native-elisp-p (symbol-function 'macroexpand-all)))
+(if (compiled-function-p (symbol-function 'macroexpand-all))
     nil
   ;; Since loaddefs is not yet loaded, macroexp's uses of pcase will simply
   ;; fail until pcase is explicitly loaded.  This also means that we have to
@@ -479,17 +478,12 @@ lost after dumping")))
   ;; installed or if the source directory got moved.  This is set to be
   ;; a pair in the form of:
   ;;     (rel-filename-from-install-bin . rel-filename-from-local-bin).
-  (let ((h (make-hash-table :test #'eq))
-        (bin-dest-dir (cadr (member "--bin-dest" command-line-args)))
+  (let ((bin-dest-dir (cadr (member "--bin-dest" command-line-args)))
         (eln-dest-dir (cadr (member "--eln-dest" command-line-args))))
     (when (and bin-dest-dir eln-dest-dir)
       (setq eln-dest-dir
             (concat eln-dest-dir "native-lisp/" comp-native-version-dir "/"))
-      (mapatoms (lambda (s)
-                  (let ((f (symbol-function s)))
-                    (when (subr-native-elisp-p f)
-                      (puthash (subr-native-comp-unit f) nil h)))))
-      (maphash (lambda (cu _)
+      (maphash (lambda (_ cu)
                  (let* ((file (native-comp-unit-file cu))
                         (preloaded (equal (substring (file-name-directory file)
                                                      -10 -1)
@@ -509,7 +503,7 @@ lost after dumping")))
                                          bin-dest-dir)
                      ;; Relative filename from the built uninstalled binary.
                      (file-relative-name file invocation-directory)))))
-	       h))))
+	       comp-loaded-comp-units-h))))
 
 (when (hash-table-p purify-flag)
   (let ((strings 0)
