@@ -53,7 +53,8 @@
 ;; - responsible-p (file)                          OK
 ;; - receive-file (file rev)                       NOT NEEDED
 ;; - unregister (file)                             OK
-;; * checkin (files rev comment)                   OK
+;; * checkin (files comment rev)                   OK
+;; - checkin-patch (patch-string comment)          OK
 ;; * find-revision (file rev buffer)               OK
 ;; * checkout (file &optional rev)                 OK
 ;; * revert (file &optional contents-done)         OK
@@ -914,7 +915,11 @@ If toggling on, also insert its message into the buffer."
   "Major mode for editing Git log messages.
 It is based on `log-edit-mode', and has Git-specific extensions.")
 
-(defun vc-git-checkin (files comment &optional _rev)
+(defun vc-git-checkin-patch (patch-string comment)
+  (vc-git-checkin nil comment nil patch-string))
+
+;; FIXME: the new 4th argument `patch-string' is undocumented in API!
+(defun vc-git-checkin (files comment &optional _rev patch-string)
   (let* ((file1 (or (car files) default-directory))
          (root (vc-git-root file1))
          (default-directory (expand-file-name root))
@@ -936,12 +941,20 @@ It is based on `log-edit-mode', and has Git-specific extensions.")
           (if (eq system-type 'windows-nt)
               (let ((default-directory (file-name-directory file1)))
                 (make-nearby-temp-file "git-msg")))))
+    (when patch-string
+      (let ((patch-file (make-temp-file "git-patch")))
+        (with-temp-file patch-file
+          (insert patch-string))
+        (unwind-protect
+            (apply #'vc-git-command nil 0 patch-file
+                   (list "apply" "--cached"))
+          (delete-file patch-file))))
     (cl-flet ((boolean-arg-fn
                (argument)
                (lambda (value) (when (equal value "yes") (list argument)))))
       ;; When operating on the whole tree, better pass "-a" than ".", since "."
       ;; fails when we're committing a merge.
-      (apply #'vc-git-command nil 0 (if only files)
+      (apply #'vc-git-command nil 0 (if (and only (not patch-string)) files)
              (nconc (if msg-file (list "commit" "-F"
                                        (file-local-name msg-file))
                       (list "commit" "-m"))
@@ -959,7 +972,8 @@ It is based on `log-edit-mode', and has Git-specific extensions.")
                           (write-region (car args) nil msg-file))
                         (setq args (cdr args)))
                       args)
-		    (if only (list "--only" "--") '("-a")))))
+                    (unless patch-string
+                      (if only (list "--only" "--") '("-a"))))))
     (if (and msg-file (file-exists-p msg-file)) (delete-file msg-file))))
 
 (defun vc-git-find-revision (file rev buffer)
