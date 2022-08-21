@@ -857,9 +857,9 @@ In the latter case, VC mode is deactivated for this buffer."
 ;; (autoload 'vc-prefix-map "vc" nil nil 'keymap)
 (defvar-keymap vc-prefix-map
   "a"   #'vc-update-change-log
-  "bc"  #'vc-create-tag ;; vc-create-branch
-  "bl"  #'vc-print-branch-log
-  "bs"  #'vc-retrieve-tag ;; vc-switch-branch
+  "b c" #'vc-create-tag ;; vc-create-branch
+  "b l" #'vc-print-branch-log
+  "b s" #'vc-retrieve-tag ;; vc-switch-branch
   "d"   #'vc-dir
   "g"   #'vc-annotate
   "G"   #'vc-ignore
@@ -887,8 +887,8 @@ In the latter case, VC mode is deactivated for this buffer."
 (fset 'vc-prefix-map vc-prefix-map)
 (define-key ctl-x-map "v" 'vc-prefix-map)
 
-(with-suppressed-warnings ((obsolete vc-switch-backend))
-  (keymap-set vc-prefix-map "b" #'vc-switch-backend))
+;; (with-suppressed-warnings ((obsolete vc-switch-backend))
+;;   (keymap-set vc-prefix-map "b" #'vc-switch-backend))
 
 (defvar vc-menu-map
   (let ((map (make-sparse-keymap "Version Control")))
