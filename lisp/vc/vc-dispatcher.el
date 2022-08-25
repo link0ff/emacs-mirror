@@ -677,7 +677,8 @@ empty comment.  Remember the file's buffer in `vc-parent-buffer'
 \(current one if no file).  Puts the log-entry buffer in major mode
 MODE, defaulting to `log-edit-mode' if MODE is nil.
 AFTER-HOOK specifies the local value for `vc-log-after-operation-hook'.
-BACKEND, if non-nil, specifies a VC backend for the Log Edit buffer."
+BACKEND, if non-nil, specifies a VC backend for the Log Edit buffer.
+PATCH-STRING is a patch to check in."
   (let ((parent
          (if (vc-dispatcher-browsing)
              ;; If we are called from a directory browser, the parent buffer is
@@ -692,7 +693,8 @@ BACKEND, if non-nil, specifies a VC backend for the Log Edit buffer."
     (setq-local vc-parent-buffer parent)
     (setq-local vc-parent-buffer-name
                 (concat " from " (buffer-name vc-parent-buffer)))
-    (setq-local vc-patch-string patch-string)
+    (when patch-string
+      (setq-local vc-patch-string patch-string))
     (vc-log-edit files mode backend)
     (make-local-variable 'vc-log-after-operation-hook)
     (when after-hook

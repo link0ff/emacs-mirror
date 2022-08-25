@@ -1625,8 +1625,6 @@ Type \\[vc-next-action] to check in changes.")
      ".\n")
     (message "Please explain why you stole the lock.  Type C-c C-c when done.")))
 
-(defvar vc-patch-string nil)
-
 (defun vc-checkin (files backend &optional comment initial-contents rev patch-string)
   "Check in FILES. COMMENT is a comment string; if omitted, a
 buffer is popped up to accept a comment.  If INITIAL-CONTENTS is
@@ -1634,6 +1632,7 @@ non-nil, then COMMENT is used as the initial contents of the log
 entry buffer.
 The optional argument REV may be a string specifying the new revision
 level (only supported for some older VCSes, like RCS and CVS).
+The optional argument PATCH-STRING is a string to check in as a patch.
 
 Runs the normal hooks `vc-before-checkin-hook' and `vc-checkin-hook'."
   (run-hooks 'vc-before-checkin-hook)
@@ -1794,7 +1793,7 @@ objects, and finally killing buffer ORIGINAL."
 (defvar vc-diff-added-files nil
   "If non-nil, diff added files by comparing them to /dev/null.")
 
-(defvar vc-patch-buffer nil)
+(defvar vc-patch-string nil)
 
 (defun vc-diff-patch ()
   (let ((buffer "*vc-diff*")
@@ -1808,6 +1807,7 @@ objects, and finally killing buffer ORIGINAL."
     (diff-mode)
     (setq-local diff-vc-backend (vc-responsible-backend default-directory))
     (setq-local revert-buffer-function (lambda (_ _) (vc-diff-patch)))
+    (setq-local vc-patch-string patch-string)
     (pop-to-buffer (current-buffer))
     (vc-run-delayed (vc-diff-finish (current-buffer) nil))))
 
