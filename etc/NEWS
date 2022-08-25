@@ -162,6 +162,14 @@ of 'user-emacs-directory'.
 
 * Incompatible changes in Emacs 29.1
 
++++
+*** Explicitly-set readedness state is preserved when reverting a buffer.
+If you use the 'C-x C-q' command to change the read-only state of the
+buffer and then revert it, Emacs would previously use the file
+permission bits to determine whether the buffer should be read-only
+after reverting the buffer.  Emacs now remembers the decision made in
+'C-x C-q'.
+
 ---
 *** The Gtk selection face is no longer used for the region.
 The combination of a Gtk-controlled background and a foreground color
@@ -2599,13 +2607,13 @@ The following generalized variables have been made obsolete:
 'current-column', 'current-global-map', 'current-input-mode',
 'current-local-map', 'current-window-configuration',
 'default-file-modes', 'documentation-property', 'frame-height',
-'frame-visible-p', 'global-key-binding', 'local-key-binding', 'mark',
-'mark-marker', 'marker-position', 'mouse-position', 'point',
-'point-marker', 'point-max', 'point-min', 'read-mouse-position',
-'screen-height', 'screen-width', 'selected-frame', 'selected-screen',
-'selected-window', 'standard-case-table', 'syntax-table',
-'visited-file-modtime', 'window-height', 'window-width', and
-'x-get-secondary-selection'.
+'frame-width', 'frame-visible-p', 'global-key-binding',
+'local-key-binding', 'mark', 'mark-marker', 'marker-position',
+'mouse-position', 'point', 'point-marker', 'point-max', 'point-min',
+'read-mouse-position', 'screen-height', 'screen-width',
+'selected-frame', 'selected-screen', 'selected-window',
+'standard-case-table', 'syntax-table', 'visited-file-modtime',
+'window-height', 'window-width', and 'x-get-secondary-selection'.
 
 
 * Lisp Changes in Emacs 29.1
