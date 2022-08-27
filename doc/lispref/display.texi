@@ -2625,14 +2625,17 @@ Draw a box with lines of width 1, in the foreground color.
 Draw a box with lines of width 1, in color @var{color}.
 
 @item @code{(:line-width (@var{vwidth} . @var{hwidth}) :color @var{color} :style @var{style})}
-This way you can explicitly specify all aspects of the box.  The values
-@var{vwidth} and @var{hwidth} specifies respectively the width of the
-vertical and horizontal lines to draw; they default to (1 . 1).
-A negative horizontal or vertical width @minus{}@var{n} means to draw a line
-of width @var{n} that occupies the space of the underlying text, thus
-avoiding any increase in the character height or width. For simplification
-the width could be specified with only a single number @var{n} instead
-of a list, such case is equivalent to @code{((abs @var{n}) . @var{n})}.
+You can explicitly specify all aspects of the box with a plist on this
+form.  Any element in this plist can be omitted.
+
+The values @var{vwidth} and @var{hwidth} specifies respectively the
+width of the vertical and horizontal lines to draw; they default to (1
+. 1).  A negative horizontal or vertical width @minus{}@var{n} means
+to draw a line of width @var{n} that occupies the space of the
+underlying text, thus avoiding any increase in the character height or
+width. For simplification the width could be specified with only a
+single number @var{n} instead of a list, such case is equivalent to
+@code{((abs @var{n}) . @var{n})}.
 
 The value @var{style} specifies whether to draw a 3D box.  If it is
 @code{released-button}, the box looks like a 3D button that is not
@@ -8541,7 +8544,11 @@ hexadecimal notation.
 
 @item an @acronym{ASCII} string
 Display a box containing that string.  The string should contain at
-most 6 @acronym{ASCII} characters.
+most 6 @acronym{ASCII} characters.  As an exception, if the string
+includes just one character, on text-mode terminals that character
+will be displayed without a box; this allows to handle such
+``acronyms'' as a replacement character for characters that cannot be
+displayed by the terminal.
 
 @item a cons cell @code{(@var{graphical} . @var{text})}
 Display with @var{graphical} on graphical displays, and with

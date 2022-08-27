@@ -6714,9 +6714,9 @@ x_if_event (Display *dpy, XEvent *event_return,
    server timestamp TIMESTAMP.  Return 0 if the necessary information
    is not available.  */
 
-static uint64_t
+static uint_fast64_t
 x_sync_get_monotonic_time (struct x_display_info *dpyinfo,
-			   uint64_t timestamp)
+			   uint_fast64_t timestamp)
 {
   if (dpyinfo->server_time_monotonic_p)
     return timestamp;
@@ -6725,19 +6725,29 @@ x_sync_get_monotonic_time (struct x_display_info *dpyinfo,
   if (!dpyinfo->server_time_offset)
     return 0;
 
-  return timestamp - dpyinfo->server_time_offset;
+  uint_fast64_t t;
+  return (INT_SUBTRACT_WRAPV (timestamp, dpyinfo->server_time_offset, &t)
+	  ? 0 : t);
 }
 
-/* Return the current monotonic time in the same format as a
-   high-resolution server timestamp.  */
+# ifndef CLOCK_MONOTONIC
+#  define CLOCK_MONOTONIC CLOCK_REALTIME
+# endif
 
-static uint64_t
+/* Return the current monotonic time in the same format as a
+   high-resolution server timestamp, or 0 if not available.  */
+
+static uint_fast64_t
 x_sync_current_monotonic_time (void)
 {
   struct timespec time;
-
-  clock_gettime (CLOCK_MONOTONIC, &time);
-  return time.tv_sec * 1000000 + time.tv_nsec / 1000;
+  uint_fast64_t t;
+  return (((clock_gettime (CLOCK_MONOTONIC, &time) != 0
+	    && (CLOCK_MONOTONIC == CLOCK_REALTIME
+		|| clock_gettime (CLOCK_REALTIME, &time) != 0))
+	   || INT_MULTIPLY_WRAPV (time.tv_sec, 1000000, &t)
+	   || INT_ADD_WRAPV (t, time.tv_nsec / 1000, &t))
+	  ? 0 : t);
 }
 
 /* Decode a _NET_WM_FRAME_DRAWN message and calculate the time it took
@@ -6747,7 +6757,7 @@ static void
 x_sync_note_frame_times (struct x_display_info *dpyinfo,
 			 struct frame *f, XEvent *event)
 {
-  uint64_t low, high, time;
+  uint_fast64_t low, high, time;
   struct x_output *output;
 
   low = event->xclient.data.l[2];
@@ -6756,12 +6766,16 @@ x_sync_note_frame_times (struct x_display_info *dpyinfo,
 
   time = x_sync_get_monotonic_time (dpyinfo, low | (high << 32));
 
-  if (time)
-    output->last_frame_time = time - output->temp_frame_time;
+  if (!time || !output->temp_frame_time
+      || INT_SUBTRACT_WRAPV (time, output->temp_frame_time,
+			     &output->last_frame_time))
+    output->last_frame_time = 0;
 
 #ifdef FRAME_DEBUG
-  fprintf (stderr, "Drawing the last frame took: %lu ms (%lu)\n",
-	   output->last_frame_time / 1000, time);
+  uint_fast64_t last_frame_ms = output->last_frame_time / 1000;
+  fprintf (stderr,
+	   "Drawing the last frame took: %"PRIuFAST64" ms (%"PRIuFAST64")\n",
+	   last_frame_ms, time);
 #endif
 }
 
@@ -6891,7 +6905,7 @@ x_sync_update_begin (struct frame *f)
 static void
 x_sync_trigger_fence (struct frame *f, XSyncValue value)
 {
-  uint64_t n, low, high, idx;
+  uint_fast64_t n, low, high, idx;
 
   /* Sync fences aren't supported by the X server.  */
   if (FRAME_DISPLAY_INFO (f)->xsync_major < 3
@@ -7600,9 +7614,6 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
 #ifndef USE_GTK
   struct frame *focus_frame;
   Time old_time;
-#if defined HAVE_XSYNC && defined HAVE_CLOCK_GETTIME
-  uint64_t monotonic_time;
-#endif
 
   focus_frame = dpyinfo->x_focus_frame;
   old_time = dpyinfo->last_user_time;
@@ -7620,19 +7631,26 @@ x_display_set_last_user_time (struct x_display_info *dpyinfo, Time time,
     {
       /* See if the current CLOCK_MONOTONIC time is reasonably close
 	 to the X server time.  */
-      monotonic_time = x_sync_current_monotonic_time ();
+      uint_fast64_t monotonic_time = x_sync_current_monotonic_time ();
+      uint_fast64_t monotonic_ms = monotonic_time / 1000;
+      int_fast64_t diff_ms;
 
-      if (time * 1000 > monotonic_time - 500 * 1000
-	  && time * 1000 < monotonic_time + 500 * 1000)
-	dpyinfo->server_time_monotonic_p = true;
-      else
+      dpyinfo->server_time_monotonic_p
+	= (monotonic_time != 0
+	   && !INT_SUBTRACT_WRAPV (time, monotonic_ms, &diff_ms)
+	   && -500 < diff_ms && diff_ms < 500);
+
+      if (!dpyinfo->server_time_monotonic_p)
 	{
 	  /* Compute an offset that can be subtracted from the server
 	     time to estimate the monotonic time on the X server.  */
 
-	  dpyinfo->server_time_monotonic_p = false;
-	  dpyinfo->server_time_offset
-	    = ((int64_t) time * 1000) - monotonic_time;
+	  if (!monotonic_time
+	      || INT_MULTIPLY_WRAPV (time, 1000, &dpyinfo->server_time_offset)
+	      || INT_SUBTRACT_WRAPV (dpyinfo->server_time_offset,
+				     monotonic_time,
+				     &dpyinfo->server_time_offset))
+	    dpyinfo->server_time_offset = 0;
 	}
     }
 #endif
@@ -8298,6 +8316,8 @@ x_draw_glyphless_glyph_string_foreground (struct glyph_string *s)
 		   ? CHAR_TABLE_REF (Vglyphless_char_display,
 				     glyph->u.glyphless.ch)
 		   : XCHAR_TABLE (Vglyphless_char_display)->extras[0]);
+	      if (CONSP (acronym))
+		acronym = XCAR (acronym);
 	      if (STRINGP (acronym))
 		str = SSDATA (acronym);
 	    }
@@ -20608,11 +20628,14 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	bool must_free_data = false;
 	XIEvent *xi_event = (XIEvent *) event->xcookie.data;
+
 	/* Sometimes the event is already claimed by GTK, which
 	   will free its data in due course. */
-	if (!xi_event && XGetEventData (dpyinfo->display, &event->xcookie))
+	if (!xi_event)
 	  {
-	    must_free_data = true;
+	    if (XGetEventData (dpyinfo->display, &event->xcookie))
+	      must_free_data = true;
+
 	    xi_event = (XIEvent *) event->xcookie.data;
 	  }
 
@@ -20620,7 +20643,25 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 
 	if (!xi_event)
 	  {
-	    eassert (!must_free_data);
+	    /* It may turn out that the event data has already been
+	       implicitly freed for various reasons up to and
+	       including XMenuActivate pushing some other event onto
+	       the foreign-event queue, or x_menu_wait_for_events
+	       calling XNextEvent through a timer that tries to wait
+	       for input.
+
+	       In that case, XGetEventData will return True, but
+	       cookie->data will be NULL.  Since handling such input
+	       events is not really important, we can afford to
+	       discard them.
+
+	       The way Xlib is currently implemented makes calling
+	       XFreeEventData unnecessary in this case, but call it
+	       anyway, since not doing so may lead to a memory leak in
+	       the future.  */
+
+	    if (must_free_data)
+	      XFreeEventData (dpyinfo->display, &event->xcookie);
 	    goto OTHER;
 	  }
 
