@@ -1795,18 +1795,19 @@ objects, and finally killing buffer ORIGINAL."
 
 (defvar vc-patch-string nil)
 
-(defun vc-diff-patch ()
-  (let ((buffer "*vc-diff*")
-        (patch-string vc-patch-string))
+(defun vc-diff-patch-string (patch-string)
+  "Report diffs to be committed from the patch.
+Like `vc-diff-internal' but uses PATCH-STRING to display
+in the output buffer."
+  (let ((buffer "*vc-diff*"))
     (vc-setup-buffer buffer)
-    (set-buffer buffer)
     (let ((buffer-undo-list t)
           (inhibit-read-only t))
       (insert patch-string))
     (setq buffer-read-only t)
     (diff-mode)
     (setq-local diff-vc-backend (vc-responsible-backend default-directory))
-    (setq-local revert-buffer-function (lambda (_ _) (vc-diff-patch)))
+    (setq-local revert-buffer-function (lambda (_ _) (vc-diff-patch-string)))
     (setq-local vc-patch-string patch-string)
     (pop-to-buffer (current-buffer))
     (vc-run-delayed (vc-diff-finish (current-buffer) nil))))
@@ -2000,19 +2001,20 @@ state of each file in the fileset."
     (when buffer-file-name (vc-buffer-sync not-urgent))))
 
 ;;;###autoload
-(defun vc-diff (&optional historic not-urgent)
+(defun vc-diff (&optional historic not-urgent fileset)
   "Display diffs between file revisions.
 Normally this compares the currently selected fileset with their
 working revisions.  With a prefix argument HISTORIC, it reads two revision
 designators specifying which revisions to compare.
 
 The optional argument NOT-URGENT non-nil means it is ok to say no to
-saving the buffer."
+saving the buffer.  The optional argument FILESET can override the
+deduced fileset."
   (interactive (list current-prefix-arg t))
   (if historic
       (call-interactively 'vc-version-diff)
     (vc-maybe-buffer-sync not-urgent)
-    (let ((fileset (vc-deduce-fileset t)))
+    (let ((fileset (or fileset (vc-deduce-fileset t))))
       (vc-buffer-sync-fileset fileset not-urgent)
       (vc-diff-internal t fileset nil nil
 			(called-interactively-p 'interactive)))))
