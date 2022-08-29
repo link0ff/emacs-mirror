@@ -48,6 +48,7 @@
 
 
 (eval-and-compile
+  (defvar char-fold--no-regexp nil)
   (defun char-fold--make-table ()
     (let* ((equiv (make-char-table 'char-fold-table))
            (equiv-multi (make-char-table 'char-fold-table))
@@ -201,11 +202,14 @@
            symmetric)))
 
       ;; Convert the lists of characters we compiled into regexps.
-      (map-char-table
-       (lambda (char decomp-list)
-         (let ((re (regexp-opt (cons (char-to-string char) decomp-list))))
-           (aset equiv char re)))
-       equiv)
+      (unless char-fold--no-regexp
+        ;; Non-nil `char-fold--no-regexp' unoptimized for regexp
+        ;; is used by `describe-char-fold-equivalences'.
+        (map-char-table
+         (lambda (char decomp-list)
+           (let ((re (regexp-opt (cons (char-to-string char) decomp-list))))
+             (aset equiv char re)))
+         equiv))
       equiv)))
 
 (defconst char-fold-table
@@ -420,6 +424,28 @@ which is searched for with `re-search-backward'.
 BOUND NOERROR COUNT are passed to `re-search-backward'."
   (interactive "sSearch: ")
   (re-search-backward (char-fold-to-regexp string) bound noerror count))
+
+
+(defun describe-char-fold-equivalences ()
+  "Describe character equivalences of `char-fold-to-regexp'."
+  (interactive)
+  (require 'help-fns)
+  (let ((help-buffer-under-preparation t))
+    (help-setup-xref (list #'describe-char-fold-equivalences)
+                     (called-interactively-p 'interactive))
+    (let ((equivalences nil))
+      (map-char-table
+       (lambda (char list)
+         (setq equivalences (cons (cons char list) equivalences)))
+       (let ((char-fold--no-regexp t))
+         (char-fold--make-table)))
+      (with-help-window (help-buffer)
+        (with-current-buffer standard-output
+          (insert "A list char-fold equivalences for `char-fold-to-regexp'.\n\n")
+          (dolist (equiv (nreverse equivalences))
+            (insert (format "%c: %s\n" (car equiv)
+                            (mapconcat #'identity (cdr equiv)
+                                       " ")))))))))
 
 (provide 'char-fold)
 
