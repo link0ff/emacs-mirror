@@ -426,26 +426,69 @@ BOUND NOERROR COUNT are passed to `re-search-backward'."
   (re-search-backward (char-fold-to-regexp string) bound noerror count))
 
 
-(defun describe-char-fold-equivalences ()
-  "Describe character equivalences of `char-fold-to-regexp'."
-  (interactive)
+(defun describe-char-fold-all-equivalences (&optional lax)
+  "Describe all character equivalences of `char-fold-to-regexp'.
+Interactively, a prefix arg means also include any ligatures that
+characters partially match."
+  (interactive (list current-prefix-arg))
   (require 'help-fns)
   (let ((help-buffer-under-preparation t))
-    (help-setup-xref (list #'describe-char-fold-equivalences)
+    (help-setup-xref (list #'describe-char-fold-all-equivalences)
                      (called-interactively-p 'interactive))
-    (let ((equivalences nil))
+    (let* ((equivalences nil)
+           (char-fold--no-regexp t)
+           (table (char-fold--make-table))
+           (extra (char-table-extra-slot table 0)))
       (map-char-table
        (lambda (char list)
-         (setq equivalences (cons (cons char list) equivalences)))
-       (let ((char-fold--no-regexp t))
-         (char-fold--make-table)))
+         (when lax
+           (setq list (append list (mapcar (lambda (entry)
+                                             (cdr entry))
+                                           (aref extra char)))))
+         (setq equivalences (cons (cons char list)
+                                  equivalences)))
+       table)
       (with-help-window (help-buffer)
         (with-current-buffer standard-output
-          (insert "A list char-fold equivalences for `char-fold-to-regexp'.\n\n")
+          (setq-local bidi-paragraph-direction 'left-to-right)
+          (insert "A list char-fold equivalences for `char-fold-to-regexp':\n\n")
           (dolist (equiv (nreverse equivalences))
             (insert (format "%c: %s\n" (car equiv)
-                            (mapconcat #'identity (cdr equiv)
-                                       " ")))))))))
+                            (string-join (cdr equiv) " ")))))))))
+
+(defun describe-char-fold-equivalences (char &optional lax)
+  "Display characters equivalent to CHAR.
+Prompt for CHAR.  Interactively, a prefix arg means also include
+any ligatures that CHAR partially matches."
+  (interactive (list (ignore-errors
+                       (read-char-by-name "Character (Unicode name or hex, default all): "))
+                     current-prefix-arg))
+  (require 'help-fns)
+  (if char
+      (let ((help-buffer-under-preparation t))
+        (help-setup-xref (list #'describe-char-fold-equivalences)
+                         (called-interactively-p 'interactive))
+        (let* ((equivalences nil)
+               (char-fold--no-regexp t)
+               (table (char-fold--make-table))
+               (extra (aref (char-table-extra-slot table 0) char)))
+          (setq equivalences (aref table char))
+          (when lax
+            (setq equivalences (append equivalences
+                                       (mapcar (lambda (entry)
+                                                 (cdr entry))
+                                               extra))))
+          (setq equivalences (cons (char-to-string char) equivalences))
+          (with-help-window (help-buffer)
+            (with-current-buffer standard-output
+              (insert (mapconcat
+                       (lambda (c)
+                         (format "%s: \?\\N{%s}\n"
+                                 c
+                                 (or (get-char-code-property (string-to-char c) 'name)
+                                     (get-char-code-property (string-to-char c) 'old-name))))
+                       equivalences))))))
+    (describe-char-fold-all-equivalences)))
 
 (provide 'char-fold)
 
