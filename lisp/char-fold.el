@@ -428,9 +428,10 @@ BOUND NOERROR COUNT are passed to `re-search-backward'."
 
 (defun describe-char-fold-equivalences (char &optional lax)
   "Display characters equivalent to CHAR.
-Prompt for CHAR.  With no input, by default describe all character
-equivalences of `char-fold-to-regexp'.  Interactively, a prefix arg
-means also include partially matching ligatures."
+Prompt for CHAR.  With no input, i.e. when CHAR is nil, by default
+describe all available character equivalences of `char-fold-to-regexp'.
+Interactively, a prefix arg means also include partially matching
+ligatures."
   (interactive (list (ignore-errors
                        (read-char-by-name
                         "Character (Unicode name or hex, default all): "))
@@ -470,8 +471,8 @@ means also include partially matching ligatures."
                                  (or (get-char-code-property (string-to-char c) 'name)
                                      (get-char-code-property (string-to-char c) 'old-name))))
                        equivalences))
+            (insert "A list of char-fold equivalences for `char-fold-to-regexp':\n\n")
             (setq-local bidi-paragraph-direction 'left-to-right)
-            (insert "A list char-fold equivalences for `char-fold-to-regexp':\n\n")
             (dolist (equiv (nreverse equivalences))
               (insert (format "%c: %s\n" (car equiv)
                               (string-join (cdr equiv) " "))))))))))
