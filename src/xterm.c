@@ -12740,6 +12740,25 @@ xi_focus_handle_for_device (struct x_display_info *dpyinfo,
 
     case XI_FocusOut:
       device->focus_frame = NULL;
+
+      /* So, unfortunately, the X Input Extension is implemented such
+	 that means XI_Leave events will not have their focus field
+	 set if the core focus is transferred to another window after
+	 an entry event that pretends to (or really does) set the
+	 implicit focus.  In addition, if the core focus is set, but
+	 the extension focus on the client pointer is not, all
+	 XI_Enter events will have their focus fields set, despite not
+	 actually changing the effective focus window.  Combined with
+	 almost all window managers not setting the focus on input
+	 extension devices, this means that Emacs will continue to
+	 think the implicit focus is set on one of its frames if the
+	 actual (core) focus is transferred to another window while
+	 the pointer remains inside a frame.  The only workaround in
+	 this case is to clear the implicit focus along with
+	 XI_FocusOut events, which is not correct at all, but better
+	 than leaving frames in an incorrectly-focused state.
+	 (bug#57468) */
+      device->focus_implicit_frame = NULL;
       break;
 
     case XI_Enter:
@@ -13163,7 +13182,13 @@ x_mouse_leave (struct x_display_info *dpyinfo)
       hlinfo->mouse_face_mouse_frame = NULL;
     }
 
-  x_new_focus_frame (dpyinfo, dpyinfo->x_focus_event_frame);
+#ifdef HAVE_XINPUT2
+  if (!dpyinfo->supports_xi2)
+    /* I don't understand what the call below is supposed to do.  But
+       reading dpyinfo->x_focus_event_frame is invalid on input
+       extension builds, so disable it there.  */
+#endif
+    x_new_focus_frame (dpyinfo, dpyinfo->x_focus_event_frame);
 }
 #endif
 
@@ -18416,6 +18441,20 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       f = x_top_window_to_frame (dpyinfo, event->xreparent.window);
       if (f)
         {
+#ifndef USE_GTK
+	  if (FRAME_OUTPUT_DATA (f)->parent_desc
+	      && FRAME_X_EMBEDDED_P (f))
+	    {
+	      /* The frame's embedder was destroyed; mark the frame as
+		 no longer embedded, and map the frame.  An
+		 UnmapNotify event must have previously been received
+		 during the start of save-set processing.  */
+
+	      FRAME_X_OUTPUT (f)->explicit_parent = false;
+	      x_make_frame_visible (f);
+	    }
+#endif
+
 	  /* Maybe we shouldn't set this for child frames ??  */
 	  f->output_data.x->parent_desc = event->xreparent.parent;
 
@@ -19262,6 +19301,18 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       x_display_set_last_user_time (dpyinfo, event->xcrossing.time,
 				    event->xcrossing.send_event);
 
+#ifdef HAVE_XINPUT2
+      /* For whatever reason, the X server continues to deliver
+	 EnterNotify and LeaveNotify events despite us selecting for
+	 related XI_Enter and XI_Leave events.  It's not just our
+	 problem, since windows created by "xinput test-xi2" suffer
+	 from the same defect.  Simply ignore all such events while
+	 the input extension is enabled.  (bug#57468) */
+
+      if (dpyinfo->supports_xi2)
+	goto OTHER;
+#endif
+
       if (x_top_window_to_frame (dpyinfo, event->xcrossing.window))
 	x_detect_focus_change (dpyinfo, any, event, &inev.ie);
 
@@ -19363,6 +19414,18 @@ handle_one_xevent (struct x_display_info *dpyinfo,
       x_display_set_last_user_time (dpyinfo, event->xcrossing.time,
 				    event->xcrossing.send_event);
 
+#ifdef HAVE_XINPUT2
+      /* For whatever reason, the X server continues to deliver
+	 EnterNotify and LeaveNotify events despite us selecting for
+	 related XI_Enter and XI_Leave events.  It's not just our
+	 problem, since windows created by "xinput test-xi2" suffer
+	 from the same defect.  Simply ignore all such events while
+	 the input extension is enabled.  (bug#57468) */
+
+      if (dpyinfo->supports_xi2)
+	goto OTHER;
+#endif
+
 #ifdef HAVE_XWIDGETS
       {
 	struct xwidget_view *xvw = xwidget_view_from_window (event->xcrossing.window);
@@ -19388,14 +19451,7 @@ handle_one_xevent (struct x_display_info *dpyinfo,
 #else
       f = x_top_window_to_frame (dpyinfo, event->xcrossing.window);
 #endif
-#if defined USE_X_TOOLKIT && defined HAVE_XINPUT2 && !defined USE_MOTIF
-      /* The XI2 event mask is set on the frame widget, so this event
-	 likely originates from the shell widget, which we aren't
-	 interested in.  (But don't ignore this on Motif, since we
-	 want to clear the mouse face when a popup is active.)  */
-      if (dpyinfo->supports_xi2)
-	f = NULL;
-#endif
+
       if (f)
         {
 	  /* Now clear dpyinfo->last_mouse_motion_frame, or
@@ -27455,6 +27511,31 @@ x_get_atom_name (struct x_display_info *dpyinfo, Atom atom,
 
   return value;
 }
+
+#ifndef USE_GTK
+
+/* Set up XEmbed for F, and change its save set to handle the parent
+   being destroyed.  */
+
+bool
+x_embed_frame (struct x_display_info *dpyinfo, struct frame *f)
+{
+  bool rc;
+
+  x_catch_errors (dpyinfo->display);
+  /* Catch errors; the target window might no longer exist.  */
+  XReparentWindow (dpyinfo->display, FRAME_OUTER_WINDOW (f),
+		   FRAME_OUTPUT_DATA (f)->parent_desc, 0, 0);
+  rc = x_had_errors_p (dpyinfo->display);
+  x_uncatch_errors_after_check ();
+
+  if (rc)
+    return false;
+
+  return true;
+}
+
+#endif
 
 
 /* Setting window manager hints.  */

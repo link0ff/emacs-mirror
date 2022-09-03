@@ -109,6 +109,12 @@ files when the Emacs session which locked it crashes, or was otherwise
 interrupted, and didn't exit gracefully.  See the "(emacs) Saving
 Emacs Sessions" node in the Emacs manual for more details.
 
+** Miscellaneous
+
++++
+*** User option 'minibuffer-eldef-shorten-default' is now obsolete.
+Customize the user option 'minibuffer-default-prompt-format' instead.
+
 
 * Startup Changes in Emacs 29.1
 
@@ -161,6 +167,17 @@ of 'user-emacs-directory'.
 
 
 * Incompatible changes in Emacs 29.1
+
+---
+*** 'show-paren-mode' is now disabled in 'special-mode' buffers.
+In Emacs versions previous to Emacs 28.1, 'show-paren-mode' defaulted
+off.  In Emacs 28.1, the mode was switched on in all buffers.  In
+Emacs 29.1, this was changed to be switched on in all editing-related
+buffers, but not in buffers that inherit from 'special-mode'.  To get
+back to how things worked in Emacs 28.1, put the following in your
+init file:
+
+  (setopt show-paren-predicate t)
 
 +++
 *** Explicitly-set read-only state is preserved when reverting a buffer.
@@ -338,6 +355,18 @@ When functions like 'other-buffer' and 'server-execute' recreate
 the major mode according to 'initial-major-mode', like at Emacs
 startup.  Previously, these functions ignored
 'initial-scratch-message' and left "*scratch*" in 'fundamental-mode'.
+
+---
+** The 'rlogin' method in the URL library is now obsolete.
+Emacs will now display a warning if you request a URL like
+"rlogin://foo@example.org".
+
+---
+** Setting 'url-gateway-method' to 'rlogin' is now obsolete.
+Emacs will now display a warning when setting it to that value.
+The user options 'url-gateway-rlogin-host',
+'url-gateway-rlogin-parameters', and 'url-gateway-rlogin-user-name'
+are also obsolete.
 
 ---
 ** The autoarg.el library is now marked obsolete.
@@ -1994,19 +2023,25 @@ This replaces the message most navigation commands in the thumbnail
 buffer used to show at the bottom of the screen.
 
 +++
-*** 'image-dired-show-all-from-dir-max-files' has been increased to 500.
-This option controls asking for confirmation when starting Image-Dired
-in a directory with many files.  However, Image-Dired creates
-thumbnails in the background these days, so this is not as important
-as it used to be, back when entering a large directory could lock up
-Emacs for tens of seconds.  In addition, you can now customize this
-option to nil to disable this confirmation completely.
+*** 'image-dired-show-all-from-dir-max-files' increased to 1000.
+This user option controls asking for confirmation when starting
+Image-Dired in a directory with many files.  Since Image-Dired creates
+thumbnails in the background in recent versions, this is not as
+important as it used to be.  You can now also customize this option to
+nil to disable this confirmation completely.
 
 ---
 *** 'image-dired-rotate-thumbnail-(left|right)' is now obsolete.
 Instead, use commands 'image-dired-refresh-thumb' to generate a new
 thumbnail, or 'image-rotate' to rotate the thumbnail without updating
 the thumbnail file.
+
+---
+*** HTML image gallery generation is now obsolete.
+The 'image-dired-gallery-generate' command and these user options are
+now obsolete: 'image-dired-gallery-thumb-image-root-url',
+'image-dired-gallery-hidden-tags', 'image-dired-gallery-dir',
+'image-dired-gallery-image-root-url'.
 
 ** Dired
 
@@ -2753,6 +2788,12 @@ request the name of the ".eln" file which defined a given symbol.
 
 +++
 ** New macro 'with-memoization' provides a very primitive form of memoization.
+
++++
+** 'max-char' can now report the maximum codepoint according to Unicode.
+When called with a new optional argument UNICODE non-nil, 'max-char'
+will now report the maximum valid codepoint defined by the Unicode
+Standard.
 
 ** Themes
 
