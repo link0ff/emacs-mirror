@@ -749,6 +749,15 @@ saved to the X primary selection, following the
 'select-active-regions' variable.  This support is enabled when
 'tty-select-active-regions' is non-nil.
 
+---
+*** New command to set up display of unsupported characters.
+The new command 'standard-display-by-replacement-char' produces Lisp
+code that sets up the 'standard-display-table' to use a replacement
+character for display of characters that the text-mode terminal
+doesn't support.  It is most useful with the Linux console and similar
+terminals, where Emacs has a reliable way of determining which
+characters have glyphs in the font loaded into the terminal's memory.
+
 ** ERT
 
 +++
@@ -2190,6 +2199,18 @@ the Galeon web browser was released in September, 2008.
 Note that this historical web browser is different from Mozilla
 Firefox; it is its predecessor.
 
+** Python Mode
+
++++
+*** Project shells and a new user option 'python-shell-dedicated'.
+When called with a prefix argument, 'run-python' now offers the choice
+of creating a shell dedicated to the current project.  This shell runs
+in the project root directory and is shared among all project buffers.
+
+Without a prefix argument, the kind of shell (buffer-dedicated,
+project-dedicated or global) is specified by the new
+'python-shell-dedicated' variable.
+
 ** Ruby Mode
 
 ---
@@ -2723,6 +2744,11 @@ These can be used for buttons in buffers and the like.  See the
 "(elisp) Icons" and "(emacs) Icons" nodes in the manuals for details.
 
 +++
+** New function 'seq-positions'.
+This returns a list of the (zero-based) indices of elements matching a
+given predicate in the specified sequence.
+
++++
 ** New arguments MESSAGE and TIMEOUT of 'set-transient-map'.
 MESSAGE specifies a message to display after activating the transient
 map, including a special formatting spec to list available keys.
@@ -2733,6 +2759,11 @@ The default timeout value can be defined by the new variable
 +++
 ** New function 'seq-split'.
 This returns a list of sub-sequences of the specified sequence.
+
++++
+** New function 'seq-remove-at-position'.
+This function returns a copy of the specified sequence where the
+element at a given (zero-based) index got removed.
 
 +++
 ** 'plist-get', 'plist-put' and 'plist-member' are no longer limited to 'eq'.
