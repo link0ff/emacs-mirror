@@ -454,6 +454,10 @@ Arguments FROM-STRING, TO-STRING, DELIMITED, START, END, BACKWARD, and
 REGION-NONCONTIGUOUS-P are passed to `perform-replace' (which see).
 
 To customize possible responses, change the bindings in `query-replace-map'."
+  (declare (interactive-args
+	    (start (use-region-beginning))
+	    (end (use-region-end))
+	    (region-noncontiguous-p (use-region-noncontiguous-p))))
   (interactive
    (let ((common
 	  (query-replace-read-args
@@ -467,10 +471,9 @@ To customize possible responses, change the bindings in `query-replace-map'."
 	   ;; These are done separately here
 	   ;; so that command-history will record these expressions
 	   ;; rather than the values they had this time.
-	   (if (use-region-p) (region-beginning))
-	   (if (use-region-p) (region-end))
+	   (use-region-beginning) (use-region-end)
 	   (nth 3 common)
-	   (if (use-region-p) (region-noncontiguous-p)))))
+	   (use-region-noncontiguous-p))))
   (perform-replace from-string to-string t nil delimited nil nil start end backward region-noncontiguous-p))
 
 (define-key esc-map "%" 'query-replace)
@@ -547,6 +550,10 @@ Use \\[repeat-complex-command] after this command for details.
 
 Arguments REGEXP, TO-STRING, DELIMITED, START, END, BACKWARD, and
 REGION-NONCONTIGUOUS-P are passed to `perform-replace' (which see)."
+  (declare (interactive-args
+	    (start (use-region-beginning))
+	    (end (use-region-end))
+	    (region-noncontiguous-p (use-region-noncontiguous-p))))
   (interactive
    (let ((common
 	  (query-replace-read-args
@@ -561,10 +568,9 @@ REGION-NONCONTIGUOUS-P are passed to `perform-replace' (which see)."
 	   ;; These are done separately here
 	   ;; so that command-history will record these expressions
 	   ;; rather than the values they had this time.
-	   (if (use-region-p) (region-beginning))
-	   (if (use-region-p) (region-end))
+	   (use-region-beginning) (use-region-end)
 	   (nth 3 common)
-	   (if (use-region-p) (region-noncontiguous-p)))))
+	   (use-region-noncontiguous-p))))
   (perform-replace regexp to-string t t delimited nil nil start end backward region-noncontiguous-p))
 
 (define-key esc-map [?\C-%] 'query-replace-regexp)
@@ -598,6 +604,10 @@ Fourth and fifth arg START and END specify the region to operate on.
 
 Arguments REGEXP, START, END, and REGION-NONCONTIGUOUS-P are passed to
 `perform-replace' (which see)."
+  (declare (interactive-args
+	    (start (use-region-beginning))
+	    (end (use-region-end))
+	    (region-noncontiguous-p (use-region-noncontiguous-p))))
   (interactive
    (let* ((from (read-regexp "Map query replace (regexp): " nil
 			     query-replace-from-history-variable))
@@ -609,9 +619,8 @@ Arguments REGEXP, START, END, and REGION-NONCONTIGUOUS-P are passed to
      (list from to
 	   (and current-prefix-arg
 		(prefix-numeric-value current-prefix-arg))
-	   (if (use-region-p) (region-beginning))
-	   (if (use-region-p) (region-end))
-	   (if (use-region-p) (region-noncontiguous-p)))))
+	   (use-region-beginning) (use-region-end)
+	   (use-region-noncontiguous-p))))
   (let (replacements)
     (if (listp to-strings)
 	(setq replacements to-strings)
@@ -671,9 +680,10 @@ which will run faster and will not set the mark or print anything.
 and TO-STRING is also null.)"
   (declare (interactive-only
 	    "use `search-forward' and `replace-match' instead.")
-           (interactive-args
+	   (interactive-args
 	    (start (use-region-beginning))
-	    (end (use-region-end))))
+	    (end (use-region-end))
+	    (region-noncontiguous-p (use-region-noncontiguous-p))))
   (interactive
    (let ((common
 	  (query-replace-read-args
@@ -687,7 +697,7 @@ and TO-STRING is also null.)"
      (list (nth 0 common) (nth 1 common) (nth 2 common)
 	   (use-region-beginning) (use-region-end)
 	   (nth 3 common)
-	   (if (use-region-p) (region-noncontiguous-p)))))
+	   (use-region-noncontiguous-p))))
   (perform-replace from-string to-string nil nil delimited nil nil start end backward region-noncontiguous-p))
 
 (defun replace-regexp (regexp to-string &optional delimited start end backward region-noncontiguous-p)
@@ -752,7 +762,11 @@ What you probably want is a loop like this:
     (replace-match TO-STRING nil nil))
 which will run faster and will not set the mark or print anything."
   (declare (interactive-only
-	    "use `re-search-forward' and `replace-match' instead."))
+	    "use `re-search-forward' and `replace-match' instead.")
+	   (interactive-args
+	    (start (use-region-beginning))
+	    (end (use-region-end))
+	    (region-noncontiguous-p (use-region-noncontiguous-p))))
   (interactive
    (let ((common
 	  (query-replace-read-args
@@ -764,10 +778,9 @@ which will run faster and will not set the mark or print anything."
 		   (if (use-region-p) " in region" ""))
 	   t)))
      (list (nth 0 common) (nth 1 common) (nth 2 common)
-	   (if (use-region-p) (region-beginning))
-	   (if (use-region-p) (region-end))
+	   (use-region-beginning) (use-region-end)
 	   (nth 3 common)
-	   (if (use-region-p) (region-noncontiguous-p)))))
+	   (use-region-noncontiguous-p))))
   (perform-replace regexp to-string nil t delimited nil nil start end backward region-noncontiguous-p))
 
 

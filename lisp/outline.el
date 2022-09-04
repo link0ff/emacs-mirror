@@ -288,8 +288,7 @@ The value should be a `buffer-match-p' condition.
 These buttons can be used to hide and show the body under the heading.
 Note that this feature is not meant to be used in editing
 buffers (yet) -- that will be amended in a future version."
-  ;; FIXME -- is there a `buffer-match-p' defcustom type somewhere?
-  :type 'sexp
+  :type 'buffer-predicate
   :safe #'booleanp
   :version "29.1")
 
@@ -1006,7 +1005,8 @@ If non-nil, EVENT should be a mouse event."
         (put-text-property (point) (1+ (point)) 'face (plist-get icon 'face)))
       (when-let ((image (plist-get icon 'image)))
         (overlay-put o 'display image))
-      (overlay-put o 'display (plist-get icon 'string))
+      (overlay-put o 'display (concat (plist-get icon 'string)
+                                      (string (char-after (point)))))
       (overlay-put o 'face (plist-get icon 'face)))
     o))
 
