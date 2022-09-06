@@ -30,6 +30,13 @@ This uses the popular sqlite3 library, and can be disabled by using
 the '--without-sqlite3' option to the 'configure' script.
 
 +++
+** Support for the WebP image format.
+This support is built by default when the libwebp library is
+available, and includes support for animated WebP images.  To disable
+WebP support, use the '--without-webp' configure flag.  Image
+specifiers can now use ':type webp'.
+
++++
 ** Emacs has been ported to the Haiku operating system.
 The configuration process should automatically detect and build for
 Haiku.  There is also an optional window-system port to Haiku, which
@@ -313,6 +320,10 @@ across all predicates/modifiers, the list of allowed delimiters has
 been restricted to "...", '...', /.../, |...|, (...), [...], <...>,
 and {...}.  See the "(eshell) Argument Predication and Modification"
 node in the Eshell manual for more details.
+
++++
+*** Eshell pipelines now only pipe stdout by default.
+To pipe both stdout and stderr, use the '|&' operator instead of '|'.
 
 ---
 ** The 'delete-forward-char' command now deletes by grapheme clusters.
@@ -930,14 +941,12 @@ If non-nil, Outline Minor Mode will use buttons to hide/show outlines
 in addition to the ellipsis.  The default is nil in editing modes, but
 non-nil in 'special-mode' and its derivatives.
 
-+++
-** Support for the WebP image format.
-This support is built by default when the libwebp library is
-available, and includes support for animated WebP images.  To disable
-WebP support, use the '--without-webp' configure flag.  Image
-specifiers can now use ':type webp'.
-
 ** Windows
+
++++
+*** New commands 'split-root-window-below' and 'split-root-window-right'.
+These commands split the root window in to, and are are bound to 'C-x
+7' and 'C-x 9' respectively.
 
 +++
 *** New user option 'display-buffer-avoid-small-windows'.
@@ -994,9 +1003,14 @@ suspicious and could be malicious.
 ** Emacs server and client changes
 
 +++
-*** New command-line option '-r' for emacsclient.
+*** New command-line option '-r'/'--reuse-frame' for emacsclient.
 With this command-line option, Emacs reuses an existing graphical client
 frame if one exists; otherwise it creates a new frame.
+
++++
+*** New command-line option '-w N'/'--timeout=N' for emacsclient.
+With this command-line option, emacsclient will exit if Emacs does not
+respond within N seconds.  The default is to wait forever.
 
 +++
 *** 'server-stop-automatically' can be used to automatically stop the server.
@@ -1640,6 +1654,12 @@ directory in "~/foo/bar", using 'C-x v v' on a new, unregistered file
 in the Git repository in "~/foo/bar".  This makes this command
 consistent with 'vc-responsible-backend'.
 
+---
+*** Log Edit now font locks long Git commit summary lines.
+Writing shorter summary lines avoids truncation in contexts in which
+Git commands display summary lines.  See the two new variables
+'vc-git-log-edit-summary-target-len' and 'vc-git-log-edit-summary-max-len'.
+
 ** Message
 
 ---
@@ -2236,6 +2256,13 @@ applies only when 'default-directory' is remote and the command is a
 Lisp function.  This frees you from having to keep track of whether
 commands are Lisp function or external when supplying absolute file
 name arguments.  See "Electric forward slash" in the Eshell manual.
+
++++
+*** Improved support for redirection operators in Eshell.
+Eshell now supports a wider variety of redirection operators.  For
+example, you can now redirect both stdout and stderr via '&>' or
+duplicate one output handle to another via 'NEW-FD>&OLD-FD'.  For more
+information, see "Redirections" in the Eshell manual.
 
 +++
 *** Double-quoting an Eshell expansion now treats the result as a single string.
