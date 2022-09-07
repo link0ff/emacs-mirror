@@ -22,8 +22,11 @@
 ;;; Commentary:
 
 ;; Most of these tests will only run in a GUI session, and not with
-;; "make check".  Run them manually in an interactive session with
-;; `M-x eval-buffer' followed by `M-x ert'.
+;; "make check".  You must run them manually in an interactive session
+;; with, for example, `M-x eval-buffer' followed by `M-x ert'.
+;;
+;; To run these tests from the command line, try:
+;;     ./src/emacs -Q -l test/src/image-tests.el -eval "(ert t)"
 
 ;;; Code:
 
@@ -33,11 +36,12 @@
   `(skip-unless (and (display-images-p)
                      (image-type-available-p ,format))))
 
-;;;; Images
+
+;;;; Image data
 
 (defconst image-tests--images
   `((gif . ,(expand-file-name "test/data/image/black.gif"
-                               source-directory))
+                              source-directory))
     (jpeg . ,(expand-file-name "test/data/image/black.jpg"
                                source-directory))
     (pbm . ,(find-image '((:file "splash.svg" :type svg))))
@@ -51,6 +55,34 @@
     (xbm . ,(find-image '((:file "gnus/gnus.xbm" :type xbm))))
     (xpm . ,(find-image '((:file "splash.xpm" :type xpm))))))
 
+
+;;;; Load image
+
+(defmacro image-tests-make-load-image-test (type)
+  `(ert-deftest ,(intern (format "image-tests-load-image/%s"
+                                 (eval type t)))
+       ()
+     (image-skip-unless ,type)
+     (let* ((img (cdr (assq ,type image-tests--images)))
+            (file (if (listp img)
+                      (plist-get (cdr img) :file)
+                    img)))
+       (find-file file))
+     (should (equal major-mode 'image-mode))
+     ;; Cleanup
+     (kill-buffer (current-buffer))))
+
+(image-tests-make-load-image-test 'gif)
+(image-tests-make-load-image-test 'jpeg)
+(image-tests-make-load-image-test 'pbm)
+(image-tests-make-load-image-test 'png)
+(image-tests-make-load-image-test 'svg)
+(image-tests-make-load-image-test 'tiff)
+(image-tests-make-load-image-test 'webp)
+(image-tests-make-load-image-test 'xbm)
+(image-tests-make-load-image-test 'xpm)
+
+
 ;;;; image-test-size
 
 (declare-function image-size "image.c" (spec &optional pixels frame))
@@ -126,6 +158,7 @@
   (skip-unless (not (display-images-p)))
   (should-error (image-size 'invalid-spec)))
 
+
 ;;;; image-mask-p
 
 (declare-function image-mask-p "image.c" (spec &optional frame))
@@ -178,6 +211,7 @@
   (skip-unless (not (display-images-p)))
   (should-error (image-mask-p (cdr (assq 'xpm image-tests--images)))))
 
+
 ;;;; image-metadata
 
 (declare-function image-metadata "image.c" (spec &optional frame))
@@ -187,8 +221,9 @@
 
 (ert-deftest image-tests-image-metadata/gif ()
   (image-skip-unless 'gif)
-  (should-not (image-metadata
-               (create-image (cdr (assq 'gif image-tests--images))))))
+  (should (memq 'delay
+                (image-metadata
+                 (create-image (cdr (assq 'gif image-tests--images)))))))
 
 (ert-deftest image-tests-image-metadata/jpeg ()
   (image-skip-unless 'jpeg)
@@ -214,8 +249,9 @@
 
 (ert-deftest image-tests-image-metadata/webp ()
   (image-skip-unless 'webp)
-  (should-not (image-metadata
-               (create-image (cdr (assq 'webp image-tests--images))))))
+  (should (memq 'delay
+                (image-metadata
+                 (create-image (cdr (assq 'webp image-tests--images)))))))
 
 (ert-deftest image-tests-image-metadata/xbm ()
   (image-skip-unless 'xbm)
@@ -233,6 +269,7 @@
   (skip-unless (not (display-images-p)))
   (should-error (image-metadata (cdr (assq 'xpm image-tests--images)))))
 
+
 ;;;; ImageMagick
 
 (ert-deftest image-tests-imagemagick-types ()
@@ -240,6 +277,7 @@
   (when (fboundp 'imagemagick-types)
     (should (listp (imagemagick-types)))))
 
+
 ;;;; Initialization
 
 (ert-deftest image-tests-init-image-library ()
