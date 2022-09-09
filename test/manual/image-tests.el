@@ -78,6 +78,19 @@
 (image-tests-make-load-image-test 'xbm)
 (image-tests-make-load-image-test 'xpm)
 
+(ert-deftest image-tests-load-image/svg-invalid ()
+  (with-temp-buffer
+    (let ((messages-buffer-name (buffer-name (current-buffer))))
+      (with-temp-buffer
+        (pop-to-buffer (current-buffer))
+        (insert (propertize " "
+                            'display '(image :data
+                                             "invalid foo bar"
+                                             :type svg)))
+        (redisplay))
+      ;; librsvg error: "... Start tag expected, '<' not found [3 times]"
+      (should (string-match "[Ee]rror.+Start tag expected" (buffer-string))))))
+
 
 ;;;; image-test-size
 
