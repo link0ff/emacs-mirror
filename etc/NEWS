@@ -145,6 +145,11 @@ reaches the end of the script, Emacs will exit with an exit code from
 the value of the final form.
 
 +++
+** New function 'substitute-quotes'.
+This function works like 'substitute-command-keys' but only
+substitutes quote characters.
+
++++
 ** Emacs now supports setting 'user-emacs-directory' via '--init-directory'.
 
 +++
@@ -2445,6 +2450,11 @@ when visiting JSON files.
 
 * Incompatible Lisp Changes in Emacs 29.1
 
++++
+** 'format-prompt' now uses 'substitute-command-keys'.
+This means that both the prompt and 'minibuffer-default-prompt-format'
+will have key definitions and single quotes handled specially.
+
 ---
 ** 'find-image' now uses 'create-image'.
 This means that images found through 'find-image' also have
@@ -3679,6 +3689,8 @@ to preserve the old behavior, apply
 '(take N LIST)' returns the first N elements of LIST; 'ntake' does
 the same but works by modifying LIST destructively.
 
+---
+** 'string-split' is now an alias for 'split-string'.
 
 
 * Changes in Emacs 29.1 on Non-Free Operating Systems
