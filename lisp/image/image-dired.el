@@ -138,6 +138,7 @@
 
 (eval-when-compile
   (require 'cl-lib)
+  (require 'subr-x) ; for string-join
   (require 'wid-edit))
 
 (require 'image-dired-external)
@@ -704,7 +705,7 @@ comment."
                                 image-dired-display-image-mode)))
     (let ((file-name (file-name-nondirectory (image-dired-original-file-name)))
           (dired-buf (buffer-name (image-dired-associated-dired-buffer)))
-          (props (mapconcat #'identity (get-text-property (point) 'tags) ", "))
+          (props (string-join (get-text-property (point) 'tags) ", "))
           (comment (get-text-property (point) 'comment))
           (message-log-max nil))
       (if file-name
@@ -1507,14 +1508,14 @@ Dired."
 
 (defun image-dired-display-current-image-full ()
   "Display current image in full size."
-  (declare (obsolete image-transform-original "29.1"))
+  (declare (obsolete image-transform-reset-to-original "29.1"))
   (interactive nil image-dired-thumbnail-mode)
   (let ((file (image-dired-original-file-name)))
     (if file
         (progn
           (image-dired-display-image file)
           (with-current-buffer image-dired-display-image-buffer
-            (image-transform-original)))
+            (image-transform-reset-to-original)))
       (error "No original file name at point"))))
 
 (defun image-dired-display-current-image-sized ()
