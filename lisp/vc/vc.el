@@ -1014,7 +1014,11 @@ responsible for the given file."
                           (lambda (backend)
                             (when-let ((dir (vc-call-backend
                                              backend 'responsible-p file)))
-                              (cons backend dir)))
+                              ;; We run DIR through `expand-file-name'
+                              ;; so that abbreviated directories, such
+                              ;; as "~/", wouldn't look "less specific"
+                              ;; due to their artificially shorter length.
+                              (cons backend (expand-file-name dir))))
                           vc-handled-backends))))
         ;; Just a single response (or none); use it.
         (if (< (length dirs) 2)
@@ -1623,7 +1627,9 @@ Type \\[vc-next-action] to check in changes.")
      (format "I stole the lock on %s, " file-description)
      (current-time-string)
      ".\n")
-    (message "Please explain why you stole the lock.  Type C-c C-c when done.")))
+    (message
+     (substitute-command-keys
+      "Please explain why you stole the lock.  Type \\`C-c C-c' when done"))))
 
 (defun vc-checkin (files backend &optional comment initial-contents rev patch-string)
   "Check in FILES. COMMENT is a comment string; if omitted, a
