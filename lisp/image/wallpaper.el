@@ -28,15 +28,21 @@
 ;; On GNU/Linux and other Unix-like systems, it uses an external
 ;; command to set the desktop background.
 ;;
-;; On Haiku, it uses the `haiku-set-wallpaper' function, which does
-;; not rely on any external commands.
-;;
 ;; Finding an external command to use is obviously a bit tricky to get
 ;; right, as there is no lack of platforms, window managers, desktop
 ;; environments and tools.  However, it should be detected
 ;; automatically in most cases.  If it doesn't work in your
 ;; environment, customize the user options `wallpaper-command' and
 ;; `wallpaper-command-args'.
+;;
+;; On MS-Windows, it uses the `w32-set-wallpaper' function, and on
+;; Haiku the `haiku-set-wallpaper' function, neither of which relies
+;; on any external commands.  The value of `wallpaper-command' and
+;; `wallpaper-command-args' are ignored on such systems.
+;;
+;; On macOS, the "osascript" command is used.  You might need to
+;; disable the option "Change picture" in the "Desktop & Screensaver"
+;; preferences for this to work (this was seen with macOS 10.13).
 
 ;;; Code:
 
@@ -57,6 +63,8 @@
     ("gsettings" "set" "org.gnome.desktop.background" "picture-uri" "file://%f")
     ;; KDE Plasma
     ("plasma-apply-wallpaperimage" "%f")
+    ;; macOS
+    ("osascript" "-e" "tell application \"Finder\" to set desktop picture to POSIX file \"%f\"")
     ;; Other / General X
     ("gm" "display" "-size" "%wx%h" "-window" "root" "%f")
     ("display" "-resize" "%wx%h" "-window" "root" "%f")
@@ -125,7 +133,7 @@ Used to set `wallpaper-command'."
                  (wallpaper--find-command-arguments))))
 
 (defcustom wallpaper-command (wallpaper--find-command)
-  "Executable used for setting the wallpaper.
+  "Executable used by `wallpaper-set' for setting the wallpaper.
 A suitable command for your environment should be detected
 automatically, so there is usually no need to customize this.
 
@@ -141,8 +149,8 @@ hear about it!  Please send an email to bug-gnu-emacs@gnu.org and
 tell us the command (and all options) that worked for you.  You
 can also use \\[report-emacs-bug].
 
-The value of this variable is ignored on Haiku systems, where a
-native API will be used instead (see `haiku-set-wallpaper')."
+The value of this variable is ignored on MS-Windows and Haiku
+systems, where a native API is used instead."
   :type
   '(choice
     (radio
@@ -157,8 +165,10 @@ native API will be used instead (see `haiku-set-wallpaper')."
      (const :tag "xwallpaper                  (X Window System)"  "xwallpaper")
      (const :tag "hsetroot                    (X Window System)"  "hsetroot")
      (const :tag "xloadimage                  (X Window System)"  "xloadimage")
-     (const :tag "xsetbg                      (X Window System)"  "xsetbg"))
-    (const :tag "Other (specify)"         string))
+     (const :tag "xsetbg                      (X Window System)"  "xsetbg")
+     (const :tag "osascript                   (macOS)"            "osascript"))
+    (const :tag "Other (specify)"         string)
+    (const :tag "None" nil))
   :set #'wallpaper--set-wallpaper-command
   :group 'image
   :version "29.1")
@@ -179,8 +189,8 @@ returned by `display-pixel-width').
 If `wallpaper-set' is run from a TTY frame, it will prompt for a
 height and width for \"%h\" and \"%w\" instead.
 
-The value of this variable is ignored on Haiku systems, where a
-native API will be used instead (see `haiku-set-wallpaper')."
+The value of this variable is ignored on MS-Windows and Haiku
+systems, where a native API is used instead."
   :type '(repeat string)
   :group 'image
   :version "29.1")
@@ -215,6 +225,7 @@ See also `wallpaper-default-width'.")
       (funcall fun)
     (read-number (format "Wallpaper %s in pixels: " desc) default)))
 
+(declare-function w32-set-wallpaper "w32fns.c")
 (declare-function haiku-set-wallpaper "term/haiku-win.el")
 
 (defun wallpaper-set (file)
@@ -225,24 +236,27 @@ external command.  Which command to use is automatically detected
 in most cases, but can be manually customized with the user
 options `wallpaper-command' and `wallpaper-command-args'.
 
-On Haiku, no external command is needed, so the value of
-`wallpaper-commands' is ignored."
-  (interactive (list (and
-                      (display-graphic-p)
-                      (read-file-name "Set desktop background to: "
-                                      default-directory nil t nil
-                                      (lambda (fn)
-                                        (or (file-directory-p fn)
-                                            (string-match (image-file-name-regexp) fn)))))))
+On MS-Windows and Haiku systems, no external command is needed,
+so the value of `wallpaper-commands' is ignored."
+  (interactive (list (read-file-name "Set desktop background to: "
+                                     default-directory nil t nil
+                                     (lambda (fn)
+                                       (or (file-directory-p fn)
+                                           (string-match (image-file-name-regexp) fn))))))
   (when (file-directory-p file)
     (error "Can't set wallpaper to a directory: %s" file))
   (unless (file-exists-p file)
     (error "No such file: %s" file))
   (unless (file-readable-p file)
     (error "File is not readable: %s" file))
-  (cond ((featurep 'haiku)
+  (wallpaper-debug "Using image %S:" file)
+  (cond ((eq system-type 'windows-nt)
+         (w32-set-wallpaper file))
+        ((featurep 'haiku)
          (haiku-set-wallpaper file))
         (t
+         (unless wallpaper-command
+           (error "Couldn't find a command to set the wallpaper with"))
          (let* ((fmt-spec `((?f . ,(expand-file-name file))
                             (?h . ,(wallpaper--get-height-or-width
                                     "height"
