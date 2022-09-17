@@ -425,6 +425,9 @@ option) and can be set to nil to disable Just-in-time Lock mode.
 * Changes in Emacs 29.1
 
 ---
+** Emacs now supports Unicode Standard version 15.0.
+
+---
 ** New user option 'electric-quote-replace-consecutive'.
 
 ---
@@ -773,6 +776,16 @@ character for display of characters that the text-mode terminal
 doesn't support.  It is most useful with the Linux console and similar
 terminals, where Emacs has a reliable way of determining which
 characters have glyphs in the font loaded into the terminal's memory.
+
+---
+*** New functions to set terminal output buffer size.
+The new functions 'tty--set-output-buffer-size' and
+'tty--output-buffer-size' allow setting and retrieving the output
+buffer size of a terminal device.  The default buffer size is and has
+always been BUFSIZ, which is defined in your system's stdio.h.  When
+you set a buffer size with 'tty--set-output-buffer-size', this also
+prevents Emacs from explicitly flushing the tty output stream, except
+at the end of display update.
 
 ** ERT
 
@@ -2051,6 +2064,11 @@ associated with Image-Dired.
 *** Image information is now shown in the header line.
 This replaces the message most navigation commands in the thumbnail
 buffer used to show at the bottom of the screen.
+
+---
+*** PDF support.
+Image-Dired now displays thumbnails for PDF files.  Type 'RET' on a
+PDF file in the thumbnail buffer to visit the corresponding PDF.
 
 ---
 *** Support GraphicsMagick command line tools.
