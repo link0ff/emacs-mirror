@@ -4,7 +4,7 @@
 
 ;; Author: Mathias Dahl <mathias.rem0veth1s.dahl@gmail.com>
 ;; Maintainer: Stefan Kangas <stefankangas@gmail.com>
-;; Version: 0.4.11
+;; Version: 0.5
 ;; Keywords: multimedia
 
 ;; This file is part of GNU Emacs.
@@ -47,7 +47,7 @@
 ;; browsing the thumbnail buffer was slow too.  image-dired.el will not
 ;; create thumbnails until they are needed and the browsing is done
 ;; quickly and easily in Dired.  I copied a great deal of ideas and
-;; code from there though... :)
+;; code from there though...  :)
 ;;
 ;;  `image-dired' stores the thumbnail files in `image-dired-dir'
 ;; using the file name format ORIGNAME.thumb.ORIGEXT.  For example
@@ -139,7 +139,6 @@
 
 (eval-when-compile
   (require 'cl-lib)
-  (require 'subr-x) ; for string-join
   (require 'wid-edit))
 
 (require 'image-dired-external)
@@ -158,35 +157,45 @@
 (defcustom image-dired-dir (locate-user-emacs-file "image-dired/")
   "Directory where thumbnail images are stored.
 
-The value of this option will be ignored if Image-Dired is
-customized to use the Thumbnail Managing Standard; they will be
-saved in \"$XDG_CACHE_HOME/thumbnails/\" instead.  See
+The value of this option is ignored if Image-Dired is customized
+to use the Thumbnail Managing Standard; they will be saved in
+\"$XDG_CACHE_HOME/thumbnails/\" instead.  See
 `image-dired-thumbnail-storage'."
   :type 'directory)
 
-(defcustom image-dired-thumbnail-storage 'use-image-dired-dir
+(defcustom image-dired-thumbnail-storage 'image-dired
   "How `image-dired' stores thumbnail files.
-There are two ways that Image-Dired can store and generate
-thumbnails.  If you set this variable to one of the two following
-values, they will be stored in the JPEG format:
+There are three ways that Image-Dired can store and generate
+thumbnails:
 
-- `use-image-dired-dir' means that the thumbnails are stored in a
-  central directory.
+ 1. According to the \"Thumbnail Managing Standard\", which allows
+    sharing of thumbnails across different programs.  Thumbnails
+    will be stored in \"$XDG_CACHE_HOME/thumbnails/\"
 
-- `per-directory' means that each thumbnail is stored in a
-  subdirectory called \".image-dired\" in the same directory
-  where the image file is.
+    Set this user option to one of the following values:
 
-It can also use the \"Thumbnail Managing Standard\", which allows
-sharing of thumbnails across different programs.  Thumbnails will
-be stored in \"$XDG_CACHE_HOME/thumbnails/\" instead of in
-`image-dired-dir'.  Thumbnails are saved in the PNG format, and
-can be one of the following sizes:
+    - `standard' means use thumbnails sized 128x128.
+    - `standard-large' means use thumbnails sized 256x256.
+    - `standard-x-large' means use thumbnails sized 512x512.
+    - `standard-xx-large' means use thumbnails sized 1024x1024.
 
-- `standard' means use thumbnails sized 128x128.
-- `standard-large' means use thumbnails sized 256x256.
-- `standard-x-large' means use thumbnails sized 512x512.
-- `standard-xx-large' means use thumbnails sized 1024x1024.
+ 2. In the Image-Dired specific directory indicated by
+    `image-dired-dir'.
+
+    Set this user option to `image-dired' to use it (or
+    `use-image-dired-dir', which means the same thing for
+    backwards-compatibility reasons).
+
+ 3. In a subdirectory \".image-dired\" in the same directory
+    where the image files are.
+
+    Set this user option to `per-directory' to use it.
+
+To change the default size of thumbnails with (2) and (3) above,
+customize `image-dired-thumb-size'.
+
+With Thumbnail Managing Standard, save thumbnails in the PNG
+format, as mandated by that standard, and otherwise as JPEG.
 
 For more information on the Thumbnail Managing Standard, see:
 https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html"
@@ -215,37 +224,30 @@ original file with `image-dired-temp-rotate-image-file'."
   :type 'boolean)
 
 (defcustom image-dired-thumb-size
-  (cond
-   ((eq 'standard image-dired-thumbnail-storage) 128)
-   ((eq 'standard-large image-dired-thumbnail-storage) 256)
-   ((eq 'standard-x-large image-dired-thumbnail-storage) 512)
-   ((eq 'standard-xx-large image-dired-thumbnail-storage) 1024)
-   (t 100))
-  "Size of thumbnails, in pixels.
-This is the default size for both `image-dired-thumb-width'
-and `image-dired-thumb-height'.
-
-The value of this option will be ignored if Image-Dired is
-customized to use the Thumbnail Managing Standard; the standard
-sizes will be used instead.  See `image-dired-thumbnail-storage'."
-  :type 'integer)
-
-(defcustom image-dired-thumb-width image-dired-thumb-size
-  "Width of thumbnails, in pixels."
-  :type 'integer)
-
-(defcustom image-dired-thumb-height image-dired-thumb-size
-  "Height of thumbnails, in pixels."
-  :type 'integer)
+  ;; This is ignored when using the Thumbnail Managing Standard, but
+  ;; this provides a better default (e.g., when 'image-dired-thumbnail-storage'
+  ;; is `image-dired' in a directory local variables).
+  (pcase image-dired-thumbnail-storage
+    ('standard 128)
+    ('standard-large 256)
+    ('standard-x-large 512)
+    ('standard-xx-large 1024)
+    (_ 128))
+  "Default size of thumbnails in pixels.
+The value of this option is ignored if Image-Dired is customized
+to use the Thumbnail Managing Standard; the standard sizes will
+be used instead.  See `image-dired-thumbnail-storage'."
+  :type 'natnum
+  :version "29.1")
 
 (defcustom image-dired-thumb-relief 2
   "Size of button-like border around thumbnails."
-  :type 'integer)
+  :type 'natnum)
 
 (defcustom image-dired-thumb-margin 2
   "Size of the margin around thumbnails.
 This is where you see the cursor."
-  :type 'integer)
+  :type 'natnum)
 
 (defcustom image-dired-thumb-visible-marks t
   "Make marks and flags visible in thumbnail buffer.
@@ -286,7 +288,7 @@ and No line-up means that no automatic line-up will be done."
 
 (defcustom image-dired-thumbs-per-row 3
   "Number of thumbnails to display per row in thumb buffer."
-  :type 'integer)
+  :type 'natnum)
 
 (defcustom image-dired-track-movement t
   "The current state of the tracking and mirroring.
@@ -669,10 +671,10 @@ On reaching end or beginning of buffer, stop and show a message."
   (let ((goal-column (current-column)))
     (forward-line -1)
     (move-to-column goal-column))
-  ;; If we end up in an empty spot, back up to the next
-  ;; thumbnail. This should only happen if the user deleted a
-  ;; thumbnail and did not refresh, so it is not very common. But we
-  ;; can handle it in a good manner, so why not?
+  ;; If we end up in an empty spot, back up to the next thumbnail.
+  ;; This should only happen if the user deleted a thumbnail and did
+  ;; not refresh, so it is not very common.  But we can handle it in a
+  ;; good manner, so why not?
   (if (not (image-dired-image-at-point-p))
       (image-dired-backward-image))
   (if image-dired-track-movement
@@ -874,17 +876,13 @@ You probably want to use this together with
 
   ;; Mouse
   "<mouse-2>"        #'image-dired-mouse-display-image
+  "<double-mouse-1>" #'image-dired-mouse-display-image
   "<mouse-1>"        #'image-dired-mouse-select-thumbnail
   "<mouse-3>"        #'image-dired-mouse-select-thumbnail
   "<down-mouse-1>"   #'image-dired-mouse-select-thumbnail
   "<down-mouse-2>"   #'image-dired-mouse-select-thumbnail
   "<down-mouse-3>"   #'image-dired-mouse-select-thumbnail
-  ;; Seems I must first set C-down-mouse-1 to undefined, or else it
-  ;; will trigger the buffer menu. If I try to instead bind
-  ;; C-down-mouse-1 to `image-dired-mouse-toggle-mark', I get a message
-  ;; about C-mouse-1 not being defined afterwards. Annoying, but I
-  ;; probably do not completely understand mouse events.
-  "C-<down-mouse-1>" #'undefined
+  "C-<down-mouse-1>" #'ignore           ; Don't open the buffer menu.
   "C-<mouse-1>"      #'image-dired-mouse-toggle-mark)
 
 (easy-menu-define image-dired-thumbnail-mode-menu image-dired-thumbnail-mode-map
@@ -993,7 +991,7 @@ With a negative prefix argument, prompt user for the delay."
                    (string-to-number
                     (let ((delay (number-to-string image-dired-slideshow-delay)))
                       (read-string
-                       (format-prompt "Delay, in seconds. Decimals are accepted" delay))
+                       (format-prompt "Delay, in seconds.  Decimals are accepted" delay))
                       delay))))))
     (setq image-dired--slideshow-timer
           (run-with-timer
@@ -1043,7 +1041,7 @@ See also `image-dired-line-up-dynamic'."
           (thumb-width-chars
            (ceiling (/ (+ (* 2 image-dired-thumb-relief)
                           (* 2 image-dired-thumb-margin)
-                          (image-dired-thumb-size 'width))
+                          (image-dired--thumb-size))
                        (float (frame-char-width))))))
       (while (not (eobp))
         (forward-char)
@@ -1070,7 +1068,7 @@ Calculate how many thumbnails fit."
           (/ width
              (+ (* 2 image-dired-thumb-relief)
                 (* 2 image-dired-thumb-margin)
-                (image-dired-thumb-size 'width)
+                (image-dired--thumb-size)
                 char-width))))
     (image-dired-line-up)))
 
@@ -1339,6 +1337,18 @@ Track this in associated Dired buffer if
 ;;;###autoload
 (define-obsolete-function-alias 'image-dired-setup-dired-keybindings
   #'image-dired-minor-mode "26.1")
+
+(make-obsolete-variable 'image-dired-thumb-width
+                        'image-dired-thumb-size "29.1")
+(defcustom image-dired-thumb-width image-dired-thumb-size
+  "Width of thumbnails, in pixels."
+  :type 'natnum)
+
+(make-obsolete-variable 'image-dired-thumb-height
+                        'image-dired-thumb-size "29.1")
+(defcustom image-dired-thumb-height image-dired-thumb-size
+  "Height of thumbnails, in pixels."
+  :type 'natnum)
 
 (defcustom image-dired-temp-image-file
   (expand-file-name ".image-dired_temp" image-dired-dir)
@@ -1841,7 +1851,7 @@ when using per-directory thumbnail file storage"))
 ;;                 `(,(file-attribute-access-time fattribs)
 ;;                   ,(file-attribute-size fattribs) ,f)))
 ;;             (directory-files (image-dired-dir) t ".+\\.thumb\\..+$"))
-;;            ;; Sort function. Compare time between two files.
+;;            ;; Sort function.  Compare time between two files.
 ;;            (lambda (l1 l2)
 ;;               (time-less-p (car l1) (car l2)))))
 ;;          (dirsize (apply '+ (mapcar (lambda (x) (cadr x)) files))))

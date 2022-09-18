@@ -2118,6 +2118,14 @@ important as it used to be.  You can now also customize this option to
 nil to disable this confirmation completely.
 
 ---
+*** 'image-dired-thumb-size' increased to 128.
+
+---
+*** 'image-dired-thumb-(height|width)' are now obsolete.
+Customize 'image-dired-thumb-size' instead, which will set both the
+height and width.
+
+---
 *** HTML image gallery generation is now obsolete.
 The 'image-dired-gallery-generate' command and these user options are
 now obsolete: 'image-dired-gallery-thumb-image-root-url',
@@ -2426,6 +2434,18 @@ manual for more details.
 Enabling this minor mode turns on hiding header material, like
 'elide-head' does; disabling it shows the header.  The commands
 'elide-head' and 'elide-head-show' are now obsolete.
+
+*** New package 'osc'.
+Support for OSC ("Operating System Command") escape sequences has been
+extracted from 'comint.el' in order to provide interpretation of OSC
+sequences in compilation buffers.
+
+Adding the new function 'osc-compilation-filter' to
+'compilation-filter-hook' enables interpretation of OSC escape
+sequences in compilation buffers.  By default, all sequences are
+filtered out.
+
+A handler for OSC 2, the command to set a window title, is provided.
 
 +++
 *** New user option 'project-vc-include-untracked'.

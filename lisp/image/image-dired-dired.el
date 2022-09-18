@@ -23,9 +23,9 @@
 
 ;;; Commentary:
 
-;;; Code:
+;; See the description of the `image-dired' package.
 
-(eval-when-compile (require 'subr-x)) ; for string-join
+;;; Code:
 
 (require 'image-dired)
 
