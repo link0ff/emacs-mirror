@@ -1015,7 +1015,20 @@ It is based on `log-edit-mode', and has Git-specific extensions."
                 (make-nearby-temp-file "git-msg")))))
     (when vc-git-patch-string
       (unless (zerop (vc-git-command nil t nil "diff" "--cached" "--quiet"))
-        (user-error "Index not empty"))
+        (with-temp-buffer
+          (vc-git-command (current-buffer) t nil "diff" "--cached")
+          (goto-char (point-min))
+          (let ((pos (point)) file-diff)
+            (forward-line 1)
+            (while (not (eobp))
+              (search-forward "diff --git" nil 'move)
+              (move-beginning-of-line 1)
+              (setq file-diff (buffer-substring pos (point)))
+              (if (string-search file-diff vc-git-patch-string)
+                  (setq vc-git-patch-string
+                        (string-replace file-diff "" vc-git-patch-string))
+                (user-error "Index not empty"))
+              (setq pos (point))))))
       (let ((patch-file (make-temp-file "git-patch")))
         (with-temp-file patch-file
           (insert vc-git-patch-string))
