@@ -295,7 +295,7 @@ buffers (yet) -- that will be amended in a future version."
 (defvar-local outline--use-buttons nil
   "Non-nil when buffer displays clickable buttons on the headings.")
 
-(defvar-local outline--button-right-direction nil
+(defvar-local outline--use-rtl nil
   "Non-nil when direction of clickable buttons is right-to-left.")
 
 (defcustom outline-minor-mode-use-margins '(derived-mode . special-mode)
@@ -329,26 +329,28 @@ Note that this feature is meant to be used in editing buffers."
   :version "29.1"
   :help-echo "Open this section")
 
-(define-icon outline-open-in-margins outline-open
-  '((image "outline-open.svg" "outline-open.pbm" :height 10))
-  "Icon used for buttons for opening a section in outline buffers."
-  :version "29.1"
-  :help-echo "Open this section")
-
-(define-icon outline-close-in-margins outline-close
-  '((image "outline-open.svg" "outline-open.pbm" :height 10 :rotation -90))
-  "Icon used for buttons for closing a section in outline buffers."
-  :version "29.1"
-  :help-echo "Close this section")
-
-(define-icon outline-close-right-in-margins outline-close
-  '((image "outline-open.svg" "outline-open.pbm" :height 10 :rotation 90)
+(define-icon outline-close-rtl outline-close
+  '((image "outline-close.svg" "outline-close.pbm" :height 15 :rotation 180)
     (emoji "◀️")
     (symbol " ◀ ")
     (text " < "))
-  "Right-to-left icon used for buttons for closing an outline section."
-  :version "29.1"
-  :help-echo "Close this section")
+  "Right-to-left icon used for buttons in closed outline sections."
+  :version "29.1")
+
+(define-icon outline-open-in-margins outline-open
+  '((image "outline-open.svg" "outline-open.pbm" :height 10))
+  "Icon used for buttons for opened sections in margins."
+  :version "29.1")
+
+(define-icon outline-close-in-margins outline-close
+  '((image "outline-open.svg" "outline-open.pbm" :height 10 :rotation -90))
+  "Icon used for buttons for closed sections in margins."
+  :version "29.1")
+
+(define-icon outline-close-rtl-in-margins outline-close-rtl
+  '((image "outline-open.svg" "outline-open.pbm" :height 10 :rotation 90))
+  "Right-to-left icon used for closed sections in margins."
+  :version "29.1")
 
 
 (defvar outline-level #'outline-level
@@ -499,9 +501,9 @@ See the command `outline-mode' for more information on this mode."
           (setq-local outline--use-buttons t)))
         (when (and (or outline--use-buttons outline--use-margins)
                    (eq (current-bidi-paragraph-direction) 'right-to-left))
-          (setq-local outline--button-right-direction t))
+          (setq-local outline--use-rtl t))
         (when outline--use-margins
-          (if outline--button-right-direction
+          (if outline--use-rtl
               (setq-local right-margin-width (1+ right-margin-width))
             (setq-local left-margin-width (1+ left-margin-width)))
           (setq-local fringes-outside-margins t))
@@ -526,7 +528,7 @@ See the command `outline-mode' for more information on this mode."
       (remove-overlays nil nil 'outline-overlay t)
       (font-lock-flush))
     (when outline--use-margins
-      (if outline--button-right-direction
+      (if outline--use-rtl
           (setq-local right-margin-width (1- right-margin-width))
         (setq-local left-margin-width (1- left-margin-width)))
       (setq-local fringes-outside-margins nil))
@@ -1050,8 +1052,11 @@ If non-nil, EVENT should be a mouse event."
       (overlay-put o 'follow-link 'mouse-face)
       (overlay-put o 'mouse-face 'highlight)
       (overlay-put o 'outline-button t))
-    (let ((icon
-           (icon-elements (if (eq type 'close) 'outline-close 'outline-open)))
+    (let ((icon (icon-elements (if (eq type 'close)
+                                   (if outline--use-rtl
+                                       'outline-close-rtl
+                                     'outline-close)
+                                 'outline-open)))
           (inhibit-read-only t))
       ;; In editing buffers we use overlays only, but in other buffers
       ;; we use a mix of text properties, text and overlays to make
@@ -1075,15 +1080,15 @@ If non-nil, EVENT should be a mouse event."
       (overlay-put o 'mouse-face 'highlight)
       (overlay-put o 'outline-margin t))
     (let ((icon (icon-elements (if (eq type 'close)
-                                   (if outline--button-right-direction
-                                       'outline-close-right-in-margins
+                                   (if outline--use-rtl
+                                       'outline-close-rtl-in-margins
                                      'outline-close-in-margins)
                                  'outline-open-in-margins)))
           (inhibit-read-only t))
       (overlay-put
        o 'before-string
        (propertize " " 'display
-                   `((margin ,(if outline--button-right-direction
+                   `((margin ,(if outline--use-rtl
                                   'right-margin 'left-margin))
                      ,(or (plist-get icon 'image)
                           (plist-get icon 'string))))))
