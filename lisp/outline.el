@@ -316,20 +316,20 @@ Note that this feature is meant to be used in editing buffers."
            :height 15 :ascent center)
     (emoji "🔽")
     (symbol " ▼ ")
-    (text " open "))
-  "Icon used for buttons for opening a section in outline buffers."
+    (text " v "))
+  "Icon used for buttons for opened sections in outline buffers."
   :version "29.1"
-  :help-echo "Open this section")
+  :help-echo "Close this section")
 
 (define-icon outline-close nil
   '((image "outline-close.svg" "outline-close.pbm"
            :height 15 :ascent center)
     (emoji "▶️")
     (symbol " ▶ ")
-    (text " close "))
-  "Icon used for buttons for closing a section in outline buffers."
+    (text " > "))
+  "Icon used for buttons for closed sections in outline buffers."
   :version "29.1"
-  :help-echo "Close this section")
+  :help-echo "Open this section")
 
 (define-icon outline-open-in-margins outline-open
   '((image "outline-open.svg" "outline-open.pbm"
