@@ -299,7 +299,7 @@ buffers (yet) -- that will be amended in a future version."
   "Non-nil when direction of clickable buttons is right-to-left.")
 
 (defcustom outline-minor-mode-use-margins '(derived-mode . special-mode)
-  "Whether to display clickable buttons on the margins.
+  "Whether to display clickable buttons in the margins.
 The value should be a `buffer-match-p' condition.
 
 These buttons can be used to hide and show the body under the heading.
@@ -309,7 +309,7 @@ Note that this feature is meant to be used in editing buffers."
   :version "29.1")
 
 (defvar-local outline--use-margins nil
-  "Non-nil when buffer displays clickable buttons on the margins.")
+  "Non-nil when buffer displays clickable buttons in the margins.")
 
 (define-icon outline-open nil
   '((image "outline-open.svg" "outline-open.pbm" :height 15)
