@@ -295,6 +295,9 @@ buffers (yet) -- that will be amended in a future version."
 (defvar-local outline--use-buttons nil
   "Non-nil when buffer displays clickable buttons on the headings.")
 
+(defvar-local outline--button-right-direction nil
+  "Non-nil when direction of clickable buttons is right-to-left.")
+
 (defcustom outline-minor-mode-use-margins '(derived-mode . special-mode)
   "Whether to display clickable buttons on the margins.
 The value should be a `buffer-match-p' condition.
@@ -342,10 +345,10 @@ Note that this feature is meant to be used in editing buffers."
   :version "29.1"
   :help-echo "Close this section")
 
-(define-icon outline-close-rtl-in-margins outline-close
+(define-icon outline-close-right-in-margins outline-close
   '((image "outline-open.svg" "outline-open.pbm"
            :height 10 :ascent center :rotation 90))
-  "Icon used for buttons for closing a section in outline buffers."
+  "Right-to-left icon used for buttons for closing an outline section."
   :version "29.1"
   :help-echo "Close this section")
 
@@ -496,8 +499,11 @@ See the command `outline-mode' for more information on this mode."
           (setq-local outline--use-margins t))
          ((buffer-match-p outline-minor-mode-use-buttons (current-buffer))
           (setq-local outline--use-buttons t)))
+        (when (and (or outline--use-buttons outline--use-margins)
+                   (eq (current-bidi-paragraph-direction) 'right-to-left))
+          (setq-local outline--button-right-direction t))
         (when outline--use-margins
-          (if (eq (current-bidi-paragraph-direction) 'right-to-left)
+          (if outline--button-right-direction
               (setq-local right-margin-width (1+ right-margin-width))
             (setq-local left-margin-width (1+ left-margin-width)))
           (setq-local fringes-outside-margins t))
@@ -522,7 +528,7 @@ See the command `outline-mode' for more information on this mode."
       (remove-overlays nil nil 'outline-overlay t)
       (font-lock-flush))
     (when outline--use-margins
-      (if (eq (current-bidi-paragraph-direction) 'right-to-left)
+      (if outline--button-right-direction
           (setq-local right-margin-width (1- right-margin-width))
         (setq-local left-margin-width (1- left-margin-width)))
       (setq-local fringes-outside-margins nil))
@@ -1070,19 +1076,16 @@ If non-nil, EVENT should be a mouse event."
       (overlay-put o 'follow-link 'mouse-face)
       (overlay-put o 'mouse-face 'highlight)
       (overlay-put o 'outline-margin t))
-    (let ((icon
-           (icon-elements (if (eq type 'close)
-                              (if (eq (current-bidi-paragraph-direction)
-                                      'right-to-left)
-                                  'outline-close-rtl-in-margins
-                                'outline-close-in-margins)
-                            'outline-open-in-margins)))
+    (let ((icon (icon-elements (if (eq type 'close)
+                                   (if outline--button-right-direction
+                                       'outline-close-right-in-margins
+                                     'outline-close-in-margins)
+                                 'outline-open-in-margins)))
           (inhibit-read-only t))
       (overlay-put
        o 'before-string
        (propertize " " 'display
-                   `((margin ,(if (eq (current-bidi-paragraph-direction)
-                                      'right-to-left)
+                   `((margin ,(if outline--button-right-direction
                                   'right-margin 'left-margin))
                      ,(or (plist-get icon 'image)
                           (plist-get icon 'string))))))
