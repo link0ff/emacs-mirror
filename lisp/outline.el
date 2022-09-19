@@ -506,7 +506,18 @@ See the command `outline-mode' for more information on this mode."
           (if outline--use-rtl
               (setq-local right-margin-width (1+ right-margin-width))
             (setq-local left-margin-width (1+ left-margin-width)))
-          (setq-local fringes-outside-margins t))
+          (setq-local fringes-outside-margins t)
+          ;; Force display of margins
+          (set-window-buffer nil (window-buffer)))
+        (when (or outline--use-buttons outline--use-margins)
+          (add-hook 'after-change-functions
+                    (lambda (beg end _len)
+                      (when outline--use-buttons
+                        (remove-overlays beg end 'outline-button t))
+                      (when outline--use-margins
+                        (remove-overlays beg end 'outline-margin t))
+                      (outline--fix-up-all-buttons beg end))
+                    nil t))
         (when outline-minor-mode-highlight
           (if (and global-font-lock-mode (font-lock-specified-p major-mode))
               (progn
@@ -531,7 +542,9 @@ See the command `outline-mode' for more information on this mode."
       (if outline--use-rtl
           (setq-local right-margin-width (1- right-margin-width))
         (setq-local left-margin-width (1- left-margin-width)))
-      (setq-local fringes-outside-margins nil))
+      (setq-local fringes-outside-margins nil)
+      ;; Force removal of margins
+      (set-window-buffer nil (window-buffer)))
     (setq line-move-ignore-invisible nil)
     ;; Cause use of ellipses for invisible text.
     (remove-from-invisibility-spec '(outline . t))
@@ -1113,7 +1126,8 @@ If non-nil, EVENT should be a mouse event."
           (overlay-put o 'keymap
                        (define-keymap
                          "RET" #'outline-hide-subtree
-                         "<mouse-2>" #'outline-hide-subtree)))))))
+                         "<mouse-2>" #'outline-hide-subtree
+                         "<left-margin> <mouse-1>" #'outline-hide-subtree)))))))
 
 (defun outline--insert-close-button (&optional use-margins)
   (with-silent-modifications
@@ -1134,7 +1148,8 @@ If non-nil, EVENT should be a mouse event."
           (overlay-put o 'keymap
                        (define-keymap
                          "RET" #'outline-show-subtree
-                         "<mouse-2>" #'outline-show-subtree)))))))
+                         "<mouse-2>" #'outline-show-subtree
+                         "<left-margin> <mouse-1>" #'outline-show-subtree)))))))
 
 (defun outline--fix-up-all-buttons (&optional from to)
   (when (or outline--use-buttons outline--use-margins)
