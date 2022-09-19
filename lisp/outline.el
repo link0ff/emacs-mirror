@@ -312,8 +312,7 @@ Note that this feature is meant to be used in editing buffers."
   "Non-nil when buffer displays clickable buttons on the margins.")
 
 (define-icon outline-open nil
-  '((image "outline-open.svg" "outline-open.pbm"
-           :height 15 :ascent center)
+  '((image "outline-open.svg" "outline-open.pbm" :height 15)
     (emoji "🔽")
     (symbol " ▼ ")
     (text " v "))
@@ -322,8 +321,7 @@ Note that this feature is meant to be used in editing buffers."
   :help-echo "Close this section")
 
 (define-icon outline-close nil
-  '((image "outline-close.svg" "outline-close.pbm"
-           :height 15 :ascent center)
+  '((image "outline-close.svg" "outline-close.pbm" :height 15)
     (emoji "▶️")
     (symbol " ▶ ")
     (text " > "))
@@ -332,22 +330,22 @@ Note that this feature is meant to be used in editing buffers."
   :help-echo "Open this section")
 
 (define-icon outline-open-in-margins outline-open
-  '((image "outline-open.svg" "outline-open.pbm"
-           :height 10 :ascent center))
+  '((image "outline-open.svg" "outline-open.pbm" :height 10))
   "Icon used for buttons for opening a section in outline buffers."
   :version "29.1"
   :help-echo "Open this section")
 
 (define-icon outline-close-in-margins outline-close
-  '((image "outline-open.svg" "outline-open.pbm"
-           :height 10 :ascent center :rotation -90))
+  '((image "outline-open.svg" "outline-open.pbm" :height 10 :rotation -90))
   "Icon used for buttons for closing a section in outline buffers."
   :version "29.1"
   :help-echo "Close this section")
 
 (define-icon outline-close-right-in-margins outline-close
-  '((image "outline-open.svg" "outline-open.pbm"
-           :height 10 :ascent center :rotation 90))
+  '((image "outline-open.svg" "outline-open.pbm" :height 10 :rotation 90)
+    (emoji "◀️")
+    (symbol " ◀ ")
+    (text " < "))
   "Right-to-left icon used for buttons for closing an outline section."
   :version "29.1"
   :help-echo "Close this section")
