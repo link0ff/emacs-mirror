@@ -5363,10 +5363,7 @@ These commands include \\[set-mark-command] and \\[start-kbd-macro]."
 The function is called with the same 3 arguments (BEG END DELETE)
 that `filter-buffer-substring' received.  It should return the
 buffer substring between BEG and END, after filtering.  If DELETE is
-non-nil, it should delete the text between BEG and END from the buffer.
-
-The default value is `buffer-substring--filter', and nil means
-the same as the default.")
+non-nil, it should delete the text between BEG and END from the buffer.")
 
 (defun filter-buffer-substring (beg end &optional delete)
   "Return the buffer substring between BEG and END, after filtering.
@@ -5382,9 +5379,7 @@ Use `filter-buffer-substring' instead of `buffer-substring',
 you want to allow filtering to take place.  For example, major or minor
 modes can use `filter-buffer-substring-function' to exclude text properties
 that are special to a buffer, and should not be copied into other buffers."
-  (funcall (or filter-buffer-substring-function
-               #'buffer-substring--filter)
-           beg end delete))
+  (funcall filter-buffer-substring-function beg end delete))
 
 (defun buffer-substring--filter (beg end &optional delete)
   "Default function to use for `filter-buffer-substring-function'.
@@ -6892,6 +6887,11 @@ The return value is t if Transient Mark mode is enabled and the
 mark is active; furthermore, if `use-empty-active-region' is nil,
 the region must not be empty.  Otherwise, the return value is nil.
 
+If `use-empty-active-region' is non-nil, there is one further
+caveat: If the user has used `mouse-1' to set point, but used the
+mouse to move point to a different character yet, this function
+returns nil.
+
 For some commands, it may be appropriate to ignore the value of
 `use-empty-active-region'; in that case, use `region-active-p'.
 
@@ -6899,8 +6899,10 @@ Also see the convenience functions `use-region-beginning' and
 `use-region-end', which may be handy when writing `interactive'
 specs."
   (and (region-active-p)
-       (or use-empty-active-region (> (region-end) (region-beginning)))
-       t))
+       (or (> (region-end) (region-beginning))
+           (and use-empty-active-region
+                (not (eq (car-safe last-input-event) 'down-mouse-1))
+                (not (mouse-movement-p last-input-event))))))
 
 (defun region-active-p ()
   "Return t if Transient Mark mode is enabled and the mark is active.
