@@ -390,6 +390,12 @@ The user options 'url-gateway-rlogin-host',
 are also obsolete.
 
 ---
+** The linum.el library is now obsolete.
+We recommend using either the built-in `display-line-numbers-mode', or
+the `nlinum' package from GNU ELPA instead.  The former has better
+performance, but the latter is closer to a drop-in replacement.
+
+---
 ** The autoarg.el library is now marked obsolete.
 This library provides the 'autoarg-mode' and 'autoarg-kp-mode' minor
 modes to emulate the behavior of the historical editor Twenex Emacs.
@@ -1059,6 +1065,22 @@ are met.  The conditions are given by the argument, which can be
 Rcirc will use the default 'completion-at-point' mechanism.  The
 conventional IRC behavior of completing by cycling through the
 available options can be restored by enabling this option.
+
++++
+*** New user option 'rcirc-bridge-bot-alist'.
+If you are in a channel where a bot is responsible for bridging
+between networks, you can use this variable to make these messages
+appear more native.  For example you might set the option to:
+
+    (setq rcirc-bridge-bot-alist '(("bridge" . "{\\(.+?\\)}[[:space:]]+")))
+
+for messages like
+
+    09:47 <bridge> {john} I am not on IRC
+
+to be reformatted into
+
+    09:47 <john> I am not on IRC
 
 ** Imenu
 
