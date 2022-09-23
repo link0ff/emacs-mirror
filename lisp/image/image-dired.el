@@ -98,7 +98,7 @@
 ;;   option `image-dired-thumbnail-storage'.
 ;;
 ;; * WARNING: The "database" format used might be changed so keep a
-;;   backup of `image-dired-db-file' when testing new versions.
+;;   backup of `image-dired-tags-db-file' when testing new versions.
 ;;
 ;; TODO
 ;; ====
@@ -133,7 +133,6 @@
 
 (require 'dired)
 (require 'image-mode)
-(require 'wallpaper)
 (require 'widget)
 (require 'xdg)
 
@@ -200,7 +199,7 @@ format, as mandated by that standard, and otherwise as JPEG.
 For more information on the Thumbnail Managing Standard, see:
 https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html"
   :type '(choice :tag "How to store thumbnail files"
-                 (const :tag "Use image-dired-dir" use-image-dired-dir)
+                 (const :tag "Use image-dired-dir" image-dired)
                  (const :tag "Thumbnail Managing Standard (normal 128x128)"
                         standard)
                  (const :tag "Thumbnail Managing Standard (large 256x256)"
@@ -212,7 +211,9 @@ https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html
                  (const :tag "Per-directory" per-directory))
   :version "29.1")
 
-(defcustom image-dired-db-file
+(define-obsolete-variable-alias 'image-dired-db-file
+  'image-dired-tags-db-file "29.1")
+(defcustom image-dired-tags-db-file
   (expand-file-name ".image-dired_db" image-dired-dir)
   "Database file where file names and their associated tags are stored."
   :type 'file)
@@ -407,6 +408,8 @@ Add text properties ORIGINAL-FILE-NAME and ASSOCIATED-DIRED-BUFFER."
     (add-text-properties
      beg end
      (list 'image-dired-thumbnail t
+           ;; Disable `image-map' on thumbnails.
+           'keymap nil
            'original-file-name original-file-name
            'associated-dired-buffer associated-dired-buffer
            'tags (image-dired-list-tags original-file-name)
@@ -552,7 +555,7 @@ If the number of image files in DIR exceeds
 `image-dired-show-all-from-dir-max-files', ask for confirmation
 before creating the thumbnail buffer.  If that variable is nil,
 never ask for confirmation."
-  (interactive "DImage-Dired: ")
+  (interactive "DImage-Dired (directory): ")
   (dired dir)
   (dired-mark-files-regexp (image-dired--file-name-regexp))
   (let ((files (dired-get-marked-files nil nil nil t)))
