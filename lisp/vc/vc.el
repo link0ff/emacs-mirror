@@ -1046,7 +1046,6 @@ Within directories, only files already under version control are noticed."
 (defvar log-edit-vc-backend)
 (defvar diff-vc-backend)
 (defvar diff-vc-revisions)
-(defvar vc-want-edit-command-p)
 
 (defun vc-deduce-backend ()
   (cond ((derived-mode-p 'vc-dir-mode)   vc-dir-backend)
@@ -2764,7 +2763,9 @@ log."
     (error "No branch specified"))
   (let* ((backend (vc-responsible-backend default-directory))
          (rootdir (vc-call-backend backend 'root default-directory))
-         (vc-want-edit-command-p arg))
+         (vc-filter-command-function (if arg
+                                         #'vc-user-edit-command
+                                       vc-filter-command-function)))
     (vc-print-log-internal backend
                            (list rootdir) branch t
                            (when (> vc-log-show-limit 0) vc-log-show-limit))))
