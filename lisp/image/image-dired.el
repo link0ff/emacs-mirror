@@ -209,8 +209,8 @@ https://specifications.freedesktop.org/thumbnail-spec/thumbnail-spec-latest.html
                  (const :tag "Thumbnail Managing Standard (extra large 1024x1024)"
                         standard-xx-large)
                  (const :tag "Per-directory" per-directory))
-  :safe (lambda (value) (eq value 'per-directory))
   :version "29.1")
+;;;###autoload(put 'image-dired-thumbnail-storage 'safe-local-variable (lambda (x) (eq x 'per-directory)))
 
 (define-obsolete-variable-alias 'image-dired-db-file
   'image-dired-tags-db-file "29.1")
@@ -469,7 +469,7 @@ thumbnail."
            (when (image-dired-thumb-file-marked-p)
              (setq found t)
              ,@body)
-           (forward-char)))
+           (forward-char 2)))
        (unless found
          ,@body))))
 
@@ -924,6 +924,7 @@ You probably want to use this together with
   "SPC"        #'image-dired-display-next-thumbnail-original
   "DEL"        #'image-dired-display-previous-thumbnail-original
   "c"          #'image-dired-comment-thumbnail
+  "w"          #'image-dired-copy-filename-as-kill
   "W"          #'image-dired-wallpaper-set
 
   ;; Mouse
@@ -1277,6 +1278,13 @@ overwritten.  This confirmation can be turned off using
     (image-dired-write-comments (list (cons file comment)))
     (image-dired-update-property 'comment comment))
   (image-dired--update-header-line))
+
+(defun image-dired-copy-filename-as-kill (&optional arg)
+  "Copy names of marked (or next ARG) files into the kill ring.
+This works as `dired-copy-filename-as-kill' (which see)."
+  (interactive "P" image-dired-thumbnail-mode)
+  (image-dired--with-dired-buffer
+    (dired-copy-filename-as-kill arg)))
 
 
 ;;; Mouse support

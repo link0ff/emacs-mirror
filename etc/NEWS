@@ -1089,6 +1089,15 @@ to be reformatted into
 
     09:47 <john> I am not on IRC
 
+---
+*** New formatting commands.
+Most IRC clients (including rcirc) support basic formatting using
+control codes.  Under the 'C-c C-f' prefix a few commands have been
+added to insert these automatically.  For example, if a region is
+active and 'C-c C-f C-b' is invoked, markup is inserted for the region
+to be highlighted bold.
+
+
 ** Imenu
 
 +++
@@ -1703,6 +1712,16 @@ This fills the region to be no wider than a specified pixel width.
 This will take you to the gnu.org web server's version of the current
 info node.  This command only works for the Emacs and Emacs Lisp manuals.
 
+** Shortdoc
+
+---
+*** New command 'shortdoc-copy-function-as-kill' bound to 'w'.
+It copies the name of the function near point into the kill ring.
+
+---
+*** 'N' and 'P' are now bound to 'shortdoc-(next|previous)-section'.
+This is in addition to the old keybindings 'C-c C-n' and 'C-c C-p'.
+
 ** VC
 
 ---
@@ -1746,6 +1765,11 @@ consistent with 'vc-responsible-backend'.
 Writing shorter summary lines avoids truncation in contexts in which
 Git commands display summary lines.  See the two new user options
 'vc-git-log-edit-summary-target-len' and 'vc-git-log-edit-summary-max-len'.
+
+---
+*** New 'log-edit-headers-separator' face
+It is used to style the line that separates the 'log-edit' headers
+from the 'log-edit' summary.
 
 ** Message
 
@@ -2088,6 +2112,11 @@ The following new bindings have been added:
 It removes all marks from all files in the thumbnail and the
 associated Dired buffer, and is bound to 'U' in the thumbnail and
 display buffer.
+
+---
+*** New command 'image-dired-copy-filename-as-kill'.
+It copies the name of the marked or current image to the kill ring,
+and is bound to "w" in the thumbnail buffer.
 
 ---
 *** New command 'image-dired-wallpaper-set'.
