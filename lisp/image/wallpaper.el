@@ -271,11 +271,13 @@ order in which they appear.")
 
 (defun wallpaper--find-command ()
   "Return a valid command to set the wallpaper in this environment."
-  (wallpaper-setter-command (wallpaper--find-setter)))
+  (when-let ((setter (wallpaper--find-setter)))
+    (wallpaper-setter-command setter)))
 
 (defun wallpaper--find-command-args ()
   "Return command line arguments matching `wallpaper-command'."
-  (wallpaper-setter-args (wallpaper--find-setter)))
+  (when-let ((setter (wallpaper--find-setter)))
+    (wallpaper-setter-args setter)))
 
 
 ;;; Customizable variables
@@ -402,7 +404,9 @@ On a graphical display, try using the same monitor as the current
 frame.
 On a non-graphical display, try to get the name by connecting to
 the display server directly, and run \"xrandr\" if that doesn't
-work.  Prompt for the monitor name if neither method works."
+work.  Prompt for the monitor name if neither method works.
+
+This function is meaningful only on X and is used only there."
   (if (or (display-graphic-p)
           noninteractive)
       (let-alist (car (display-monitor-attributes-list))
