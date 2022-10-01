@@ -1214,6 +1214,14 @@ When nil, this prevents comint from deleting the current input when
 inserting previous input using '<mouse-2>'.  The default is t, to
 preserve past behavior.
 
+---
+*** New minor mode 'comint-fontify-input-mode'.
+This minor mode is enabled by default in "*shell*" and "*ielm*"
+buffers.  It fontifies input text according to 'shell-mode' or
+'emacs-lisp-mode' font-lock rules.  Customize the user options
+'shell-fontify-input-enable' and 'ielm-fontify-input-enable' to nil if
+you don't want to enable input fontification by default.
+
 ** Mwheel
 
 ---
@@ -1753,6 +1761,13 @@ commands.
 *** New command '%' ('vc-dir-mark-by-regexp').
 This command marks files based on a regexp.  If given a prefix
 argument, unmark instead.
+
++++
+*** New command 'C-x v !' ('vc-edit-next-command')
+This prefix command requests editing of the next VC shell command
+before execution.  For example, in a Git repository, you can produce a
+log of more than one branch by typing 'C-x v ! C-x v b l' and then
+appending additional branch names to the 'git log' command.
 
 ---
 *** 'C-x v v' in a diffs buffer allows to commit only some of the changes.
@@ -2513,6 +2528,12 @@ behavior, customize the new 'eshell-lisp-form-nil-is-failure' option.
 Enabling this will automatically kill a "*shell*" buffer as soon as
 the shell session terminates.
 
+---
+*** New minor mode 'shell-highlight-undef-mode'
+Customize 'shell-highlight-undef-enable' to t if you want to enable
+this minor mode in "*shell*" buffers.  It will highlight undefined
+commands with a warning face as you type.
+
 ** Calc
 
 +++
@@ -2556,12 +2577,12 @@ Enabling this minor mode turns on hiding header material, like
 'elide-head' does; disabling it shows the header.  The commands
 'elide-head' and 'elide-head-show' are now obsolete.
 
-*** New package osc.el.
+*** New package ansi-osc.el.
 Support for OSC ("Operating System Command") escape sequences has been
 extracted from comint.el in order to provide interpretation of OSC
 sequences in compilation buffers.
 
-Adding the new function 'osc-compilation-filter' to
+Adding the new function 'ansi-osc-compilation-filter' to
 'compilation-filter-hook' enables interpretation of OSC escape
 sequences in compilation buffers.  By default, all sequences are
 filtered out.
