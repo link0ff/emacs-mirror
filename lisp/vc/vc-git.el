@@ -1015,16 +1015,27 @@ It is based on `log-edit-mode', and has Git-specific extensions."
                 (make-nearby-temp-file "git-msg")))))
     (when vc-git-patch-string
       (unless (zerop (vc-git-command nil t nil "diff" "--cached" "--quiet"))
+        ;; Check that all staged changes also exist in the patch.
+        ;; This is needed to allow adding/removing files that are
+        ;; currently staged to the index.  So remove the whole file diff
+        ;; from the patch because commit will take it from the index.
         (with-temp-buffer
           (vc-git-command (current-buffer) t nil "diff" "--cached")
           (goto-char (point-min))
-          (let ((pos (point)) file-diff)
-            (forward-line 1)
+          (let ((pos (point)) file-diff file-beg)
             (while (not (eobp))
+              (forward-line 1) ; skip current "diff --git" line
               (search-forward "diff --git" nil 'move)
               (move-beginning-of-line 1)
               (setq file-diff (buffer-substring pos (point)))
-              (if (string-search file-diff vc-git-patch-string)
+              (if (and (setq file-beg (string-search
+                                       file-diff vc-git-patch-string))
+                       ;; Check that file diff ends with an empty string
+                       ;; or the beginning of the next file diff.
+                       (string-match-p "\\`\\'\\|\\`diff --git"
+                                       (substring
+                                        vc-git-patch-string
+                                        (+ file-beg (length file-diff)))))
                   (setq vc-git-patch-string
                         (string-replace file-diff "" vc-git-patch-string))
                 (user-error "Index not empty"))
