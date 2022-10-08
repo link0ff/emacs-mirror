@@ -12758,11 +12758,21 @@ xi_focus_handle_for_device (struct x_display_info *dpyinfo,
   switch (event->evtype)
     {
     case XI_FocusIn:
+      /* The last-focus-change time of the device changed, so update the
+	 frame's user time.  */
+      x_display_set_last_user_time (dpyinfo, event->time,
+				    event->send_event);
+
       device->focus_frame = mentioned_frame;
       device->focus_frame_time = event->time;
       break;
 
     case XI_FocusOut:
+      /* The last-focus-change time of the device changed, so update the
+	 frame's user time.  */
+      x_display_set_last_user_time (dpyinfo, event->time,
+				    event->send_event);
+
       device->focus_frame = NULL;
 
       /* So, unfortunately, the X Input Extension is implemented such
@@ -18077,6 +18087,11 @@ handle_one_xevent (struct x_display_info *dpyinfo,
                   }
                 /* Not certain about handling scroll bars here */
 #endif
+		/* Set the provided time as the user time, which is
+		   required for SetInputFocus to work correctly after
+		   taking the input focus.  */
+		x_display_set_last_user_time (dpyinfo, event->xclient.data.l[1],
+					      true);
 		goto done;
               }
 
@@ -25511,6 +25526,39 @@ x_new_font (struct frame *f, Lisp_Object font_object, int fontset)
 
 #ifdef HAVE_X11R6
 
+/* If preedit text is set on F, cancel preedit, free the text, and
+   generate the appropriate events to cancel the preedit display.
+
+   This is mainly useful when the connection to the IM server is
+   dropped during preconversion.  */
+
+static void
+x_maybe_clear_preedit (struct frame *f)
+{
+  struct x_output *output;
+  struct input_event ie;
+
+  output = FRAME_X_OUTPUT (f);
+
+  if (!output->preedit_chars)
+    return;
+
+  EVENT_INIT (ie);
+  ie.kind = PREEDIT_TEXT_EVENT;
+  ie.arg = Qnil;
+  XSETFRAME (ie.frame_or_window, f);
+  XSETINT (ie.x, 0);
+  XSETINT (ie.y, 0);
+  kbd_buffer_store_event (&ie);
+
+  xfree (output->preedit_chars);
+
+  output->preedit_size = 0;
+  output->preedit_active = false;
+  output->preedit_chars = NULL;
+  output->preedit_caret = 0;
+}
+
 /* XIM destroy callback function, which is called whenever the
    connection to input method XIM dies.  CLIENT_DATA contains a
    pointer to the x_display_info structure corresponding to XIM.  */
@@ -25531,6 +25579,9 @@ xim_destroy_callback (XIM xim, XPointer client_data, XPointer call_data)
 	{
 	  FRAME_XIC (f) = NULL;
           xic_free_xfontset (f);
+
+	  /* Free the preedit text if necessary.  */
+	  x_maybe_clear_preedit (f);
 	}
     }
 
@@ -26985,8 +27036,22 @@ x_focus_frame (struct frame *f, bool noactivate)
 
       /* Ignore any BadMatch error this request might result in.  */
       x_ignore_errors_for_next_request (dpyinfo);
-      XSetInputFocus (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
-		      RevertToParent, CurrentTime);
+      if (NILP (Vx_no_window_manager))
+	XSetInputFocus (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
+			/* It is invalid to use CurrentTime according to
+			   the ICCCM:
+
+			   Clients that use a SetInputFocus request must
+			   set the time field to the timestamp of the
+			   event that caused them to make the
+			   attempt. [...] Note that clients must not use
+			   CurrentTime in the time field. */
+			RevertToParent, dpyinfo->last_user_time);
+      else
+	XSetInputFocus (FRAME_X_DISPLAY (f), FRAME_OUTER_WINDOW (f),
+			/* But when no window manager is in use, we
+			   don't care.  */
+			RevertToParent, CurrentTime);
       x_stop_ignoring_errors (dpyinfo);
     }
 }
