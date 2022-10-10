@@ -377,72 +377,6 @@ bind_values (sqlite3 *db, sqlite3_stmt *stmt, Lisp_Object values)
   return NULL;
 }
 
-DEFUN ("sqlite-execute", Fsqlite_execute, Ssqlite_execute, 2, 3, 0,
-       doc: /* Execute a non-select SQL statement.
-If VALUES is non-nil, it should be a vector or a list of values
-to bind when executing a statement like
-
-   insert into foo values (?, ?, ...)
-
-Value is the number of affected rows.  */)
-  (Lisp_Object db, Lisp_Object query, Lisp_Object values)
-{
-  check_sqlite (db, false);
-  CHECK_STRING (query);
-  if (!(NILP (values) || CONSP (values) || VECTORP (values)))
-    xsignal1 (Qerror, build_string ("VALUES must be a list or a vector"));
-
-  sqlite3 *sdb = XSQLITE (db)->db;
-  Lisp_Object retval = Qnil;
-  const char *errmsg = NULL;
-  Lisp_Object encoded = encode_string (query);
-  sqlite3_stmt *stmt = NULL;
-
-  /* We only execute the first statement -- if there's several
-     (separated by a semicolon), the subsequent statements won't be
-     done.  */
-  int ret = sqlite3_prepare_v2 (sdb, SSDATA (encoded), -1, &stmt, NULL);
-  if (ret != SQLITE_OK)
-    {
-      if (stmt != NULL)
-	{
-	  sqlite3_finalize (stmt);
-	  sqlite3_reset (stmt);
-	}
-
-      errmsg = sqlite3_errmsg (sdb);
-      goto exit;
-    }
-
-  /* Bind ? values.  */
-  if (!NILP (values)) {
-    const char *err = bind_values (sdb, stmt, values);
-    if (err != NULL)
-      {
-	errmsg = err;
-	goto exit;
-      }
-  }
-
-  ret = sqlite3_step (stmt);
-  sqlite3_finalize (stmt);
-  if (ret != SQLITE_OK && ret != SQLITE_DONE)
-    {
-      errmsg = sqlite3_errmsg (sdb);
-      goto exit;
-    }
-
-  retval = make_fixnum (sqlite3_changes (sdb));
-
- exit:
-  if (errmsg != NULL)
-    xsignal1 (ret == SQLITE_LOCKED || ret == SQLITE_BUSY?
-	      Qsqlite_locked_error: Qerror,
-	      build_string (errmsg));
-
-  return retval;
-}
-
 static Lisp_Object
 row_to_value (sqlite3_stmt *stmt)
 {
@@ -487,6 +421,81 @@ row_to_value (sqlite3_stmt *stmt)
   return Fnreverse (values);
 }
 
+DEFUN ("sqlite-execute", Fsqlite_execute, Ssqlite_execute, 2, 3, 0,
+       doc: /* Execute a non-select SQL statement.
+If VALUES is non-nil, it should be a vector or a list of values
+to bind when executing a statement like
+
+   insert into foo values (?, ?, ...)
+
+Value is the number of affected rows.  */)
+  (Lisp_Object db, Lisp_Object query, Lisp_Object values)
+{
+  check_sqlite (db, false);
+  CHECK_STRING (query);
+  if (!(NILP (values) || CONSP (values) || VECTORP (values)))
+    xsignal1 (Qerror, build_string ("VALUES must be a list or a vector"));
+
+  sqlite3 *sdb = XSQLITE (db)->db;
+  const char *errmsg = NULL;
+  Lisp_Object encoded = encode_string (query);
+  sqlite3_stmt *stmt = NULL;
+
+  /* We only execute the first statement -- if there's several
+     (separated by a semicolon), the subsequent statements won't be
+     done.  */
+  int ret = sqlite3_prepare_v2 (sdb, SSDATA (encoded), -1, &stmt, NULL);
+  if (ret != SQLITE_OK)
+    {
+      if (stmt != NULL)
+	{
+	  sqlite3_finalize (stmt);
+	  sqlite3_reset (stmt);
+	}
+
+      errmsg = sqlite3_errmsg (sdb);
+      goto exit;
+    }
+
+  /* Bind ? values.  */
+  if (!NILP (values))
+    {
+      const char *err = bind_values (sdb, stmt, values);
+      if (err != NULL)
+	{
+	  errmsg = err;
+	  goto exit;
+	}
+    }
+
+  ret = sqlite3_step (stmt);
+
+  if (ret == SQLITE_ROW)
+    {
+      Lisp_Object data = Qnil;
+      do
+	data = Fcons (row_to_value (stmt), data);
+      while (sqlite3_step (stmt) == SQLITE_ROW);
+
+      sqlite3_finalize (stmt);
+      return Fnreverse (data);
+    }
+  else if (ret == SQLITE_OK || ret == SQLITE_DONE)
+    {
+      Lisp_Object rows = make_fixnum (sqlite3_changes (sdb));
+      sqlite3_finalize (stmt);
+      return rows;
+    }
+  else
+    errmsg = sqlite3_errmsg (sdb);
+
+ exit:
+  sqlite3_finalize (stmt);
+  xsignal1 (ret == SQLITE_LOCKED || ret == SQLITE_BUSY?
+	    Qsqlite_locked_error: Qerror,
+	    build_string (errmsg));
+}
+
 static Lisp_Object
 column_names (sqlite3_stmt *stmt)
 {
@@ -521,9 +530,8 @@ which means that we return a set object that can be queried with
     xsignal1 (Qerror, build_string ("VALUES must be a list or a vector"));
 
   sqlite3 *sdb = XSQLITE (db)->db;
-  Lisp_Object retval = Qnil;
-  const char *errmsg = NULL;
-  Lisp_Object encoded = encode_string (query);
+  Lisp_Object retval = Qnil, errmsg = Qnil,
+    encoded = encode_string (query);
 
   sqlite3_stmt *stmt = NULL;
   int ret = sqlite3_prepare_v2 (sdb, SSDATA (encoded), SBYTES (encoded),
@@ -532,7 +540,12 @@ which means that we return a set object that can be queried with
     {
       if (stmt)
 	sqlite3_finalize (stmt);
-      errmsg = sqlite3_errstr (ret);
+      errmsg = build_string (sqlite3_errstr (ret));
+      /* More details about what went wrong.  */
+      const char *sql_error = sqlite3_errmsg (sdb);
+      if (sql_error)
+	errmsg = CALLN (Fformat, build_string ("%s (%s)"),
+			errmsg, build_string (sql_error));
       goto exit;
     }
 
@@ -543,7 +556,7 @@ which means that we return a set object that can be queried with
       if (err != NULL)
 	{
 	  sqlite3_finalize (stmt);
-	  errmsg = err;
+	  errmsg = build_string (err);
 	  goto exit;
 	}
     }
@@ -557,7 +570,7 @@ which means that we return a set object that can be queried with
 
   /* Return the data directly.  */
   Lisp_Object data = Qnil;
-  while ((ret = sqlite3_step (stmt)) == SQLITE_ROW)
+  while (sqlite3_step (stmt) == SQLITE_ROW)
     data = Fcons (row_to_value (stmt), data);
 
   if (EQ (return_type, Qfull))
@@ -567,8 +580,8 @@ which means that we return a set object that can be queried with
   sqlite3_finalize (stmt);
 
  exit:
-  if (errmsg != NULL)
-    xsignal1 (Qerror, build_string (errmsg));
+  if (! NILP (errmsg))
+    xsignal1 (Qerror, errmsg);
 
   return retval;
 }
