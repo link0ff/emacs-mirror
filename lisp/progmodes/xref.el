@@ -880,7 +880,7 @@ ITEMS is an xref item which " ; FIXME: Expand documentation.
                              nil nil nil t)))
     (unless did-it-once
       (user-error
-       "Cannot use subset of matches of identifier for global renaming"))
+       "Cannot perform global renaming of symbols using find-definition results"))
     (when (and continue (not buf-pairs))
       (message "All results processed"))))
 
