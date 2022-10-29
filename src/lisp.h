@@ -1,7 +1,6 @@
 /* Fundamental definitions for GNU Emacs Lisp interpreter. -*- coding: utf-8 -*-
 
-Copyright (C) 1985-1987, 1993-1995, 1997-2022 Free Software Foundation,
-Inc.
+Copyright (C) 1985-2022  Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -2606,10 +2605,9 @@ struct Lisp_Overlay
 */
   {
     union vectorlike_header header;
-    Lisp_Object start;
-    Lisp_Object end;
     Lisp_Object plist;
-    struct Lisp_Overlay *next;
+    struct buffer *buffer;        /* eassert (live buffer || NULL). */
+    struct itree_node *interval;
   } GCALIGNED_STRUCT;
 
 struct Lisp_Misc_Ptr
@@ -3185,10 +3183,11 @@ CHECK_SUBR (Lisp_Object x)
  `minargs' should be a number, the minimum number of arguments allowed.
  `maxargs' should be a number, the maximum number of arguments allowed,
     or else MANY or UNEVALLED.
-    MANY means pass a vector of evaluated arguments,
-	 in the form of an integer number-of-arguments
-	 followed by the address of a vector of Lisp_Objects
-	 which contains the argument values.
+    MANY means there are &rest arguments.  Here we pass a vector
+        of evaluated arguments in the form of an integer
+        number-of-arguments followed by the address of a vector of
+        Lisp_Objects which contains the argument values.  (We also use
+        this convention when calling a subr with more than 8 parameters.)
     UNEVALLED means pass the list of unevaluated arguments
  `intspec' says how interactive arguments are to be fetched.
     If the string starts with a `(', `intspec' is evaluated and the resulting
@@ -4420,7 +4419,6 @@ extern Lisp_Object make_float (double);
 extern void display_malloc_warning (void);
 extern specpdl_ref inhibit_garbage_collection (void);
 extern Lisp_Object build_symbol_with_pos (Lisp_Object, Lisp_Object);
-extern Lisp_Object build_overlay (Lisp_Object, Lisp_Object, Lisp_Object);
 extern void free_cons (struct Lisp_Cons *);
 extern void init_alloc_once (void);
 extern void init_alloc (void);
