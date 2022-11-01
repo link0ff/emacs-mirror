@@ -195,6 +195,7 @@ gnutls-boot (as returned by `gnutls-boot-parameters')."
 	(make-network-process :name name :buffer buffer
 			      :host (puny-encode-domain host) :service service
 			      :nowait (plist-get parameters :nowait)
+			      :noquery (plist-get parameters :noquery)
                               :tls-parameters
                               (plist-get parameters :tls-parameters)
                               :coding (plist-get parameters :coding))
