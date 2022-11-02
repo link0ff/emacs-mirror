@@ -507,15 +507,15 @@ See the command `outline-mode' for more information on this mode."
           (when (eq (current-bidi-paragraph-direction) 'right-to-left)
             (setq-local outline--use-rtl t))
           (setq-local outline--button-icons (outline--create-button-icons))
-          (when (eq outline-minor-mode-use-buttons 'in-margins)
-            (message "!!!1.enable outline-minor-mode left-margin-width=%S" left-margin-width)
+          (when (and (eq outline-minor-mode-use-buttons 'in-margins)
+                     (not (eq 1 (if outline--use-rtl right-margin-width
+                                  left-margin-width))))
             (if outline--use-rtl
-                (setq-local right-margin-width (min 1 (1+ right-margin-width)))
-              (setq-local left-margin-width (min 1 (1+ left-margin-width))))
+                (setq-local right-margin-width (1+ right-margin-width))
+              (setq-local left-margin-width (1+ left-margin-width)))
             (setq-local fringes-outside-margins t)
             ;; Force display of margins
             (when (eq (current-buffer) (window-buffer))
-              (message "!!!2.enable outline-minor-mode left-margin-width=%S" left-margin-width)
               (set-window-buffer nil (window-buffer)))))
         (when outline-minor-mode-highlight
           (if (and global-font-lock-mode (font-lock-specified-p major-mode))
@@ -544,16 +544,16 @@ See the command `outline-mode' for more information on this mode."
       (remove-overlays nil nil 'outline-highlight t))
     (when outline-minor-mode-use-buttons
       (remove-overlays nil nil 'outline-button t)
-      (when (eq outline-minor-mode-use-buttons 'in-margins)
-        (message "!!!1.disable outline-minor-mode left-margin-width=%S" left-margin-width)
+      (when (and (eq outline-minor-mode-use-buttons 'in-margins)
+                 (not (eq 0 (if outline--use-rtl right-margin-width
+                              left-margin-width))))
         (if outline--use-rtl
-            (setq-local right-margin-width (max 0 (1- right-margin-width)))
-          (setq-local left-margin-width (max 0 (1- left-margin-width))))
+            (setq-local right-margin-width (1- right-margin-width))
+          (setq-local left-margin-width (1- left-margin-width)))
         (setq-local fringes-outside-margins nil)
         ;; Force removal of margins
         (when (eq (current-buffer) (window-buffer))
-          (set-window-buffer nil (window-buffer))
-          (message "!!!2.disable outline-minor-mode left-margin-width=%S" left-margin-width))))))
+          (set-window-buffer nil (window-buffer)))))))
 
 (defvar-local outline-heading-alist ()
   "Alist associating a heading for every possible level.
