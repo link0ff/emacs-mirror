@@ -173,6 +173,9 @@ a greeting from the server.
 :nowait, if non-nil, says the connection should be made
 asynchronously, if possible.
 
+:noquery - when exiting Emacs and the network process is running,
+don't query the user if it's non-nil.
+
 :shell-command is a `format-spec' string that can be used if
 :type is `shell'.  It has two specs, %s for host and %p for port
 number.  Example: \"ssh gateway nc %s %p\".
