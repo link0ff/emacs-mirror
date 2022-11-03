@@ -963,7 +963,83 @@ on the tab bar instead."
 
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
-  (append tab-bar-map (tab-bar-format-list tab-bar-format)))
+  (let ((items (tab-bar-format-list tab-bar-format)))
+    (when tab-bar-auto-resize
+      (setq items (tab-bar-auto-resize items)))
+    (append tab-bar-map items)))
+
+
+(defcustom tab-bar-auto-resize t
+  "This option solves two problems.
+This option is useful in two cases: if you want to avoid tab resizing when
+the tab name changes after switching buffers - then you can customize the
+option `tab-bar-auto-resize-max' to a number.  Also this option is useful if
+you want to avoid overflowing the tab bar to the second line when there are
+too many tabs or tabs with long names - in this case you might want to
+customize the option `tab-bar-auto-resize-max' to nil."
+  :type 'boolean
+  :group 'tab-bar
+  :version "29.1")
+
+(defcustom tab-bar-auto-resize-max 220 ;; (if window-system 220 20)
+  "Maximum number of pixels (characters) allowed for the width of a tab name.
+When nil, there is no limit on maximum width."
+  :type '(choice (const :tag "No limit" nil)
+                 (integer :tag "Max width" :value 220))
+  :group 'tab-bar
+  :version "29.1")
+
+(defcustom tab-bar-auto-resize-min 20 ;; (if window-system 20 2)
+  "Minimum number of pixels (characters) allowed for the width of a tab name.
+When nil, there is no limit on minimum width."
+  :type '(choice (const :tag "No limit" nil)
+                 (integer :tag "Min width" :value 20))
+  :group 'tab-bar
+  :version "29.1")
+
+(defvar tab-bar-auto-resize-faces
+  '( tab-bar-tab tab-bar-tab-inactive
+     tab-bar-tab-ungrouped
+     tab-bar-tab-group-inactive)
+  "Resize tabs only with these faces.")
+
+(defun tab-bar-auto-resize (items)
+  (let ((tabs nil)    ;; list of resizable tabs
+        (non-tabs "") ;; concatenated names of non-resizable tabs
+        (set-width 0))
+    (dolist (item items)
+      (when (and (eq (nth 1 item) 'menu-item) (stringp (nth 2 item)))
+        (if (memq (get-text-property 0 'face (nth 2 item))
+                  tab-bar-auto-resize-faces)
+            (push item tabs)
+          (unless (eq (nth 0 item) 'align-right)
+            (setq non-tabs (concat non-tabs (nth 2 item)))))))
+    (when tabs
+      (setq set-width (/ (- (frame-pixel-width)
+                            (string-pixel-width
+                             (propertize non-tabs 'face 'tab-bar)))
+                         (length tabs)))
+      (when tab-bar-auto-resize-min
+        (setq set-width (max set-width tab-bar-auto-resize-min)))
+      (when tab-bar-auto-resize-max
+        (setq set-width (min set-width tab-bar-auto-resize-max)))
+      (dolist (item tabs)
+        (let* ((name (nth 2 item))
+               (len (length name))
+               (ins-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
+               del-pos)
+          (while (< (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
+            (setf (substring name ins-pos ins-pos)
+                  (apply 'propertize " " (text-properties-at 0 name))))
+          (while (> (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
+            (setq len (length name)
+                  del-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
+            (setf (substring name (1- del-pos) del-pos) "")
+            (add-face-text-property (max (- (length name) 3) 1)
+                                    (length name)
+                                    'shadow nil name))
+          (setf (nth 2 item) name))))
+    items))
 
 
 ;; Some window-configuration parameters don't need to be persistent.
