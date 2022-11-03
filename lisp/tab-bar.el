@@ -1003,7 +1003,16 @@ When nil, there is no limit on minimum width."
      tab-bar-tab-group-inactive)
   "Resize tabs only with these faces.")
 
+(defvar tab-bar--auto-resize-hash nil
+  "Memoization table for `tab-bar-auto-resize'.")
+
 (defun tab-bar-auto-resize (items)
+  (unless tab-bar--auto-resize-hash
+    (define-hash-table-test 'tab-bar--auto-resize-hash-test
+                            #'equal-including-properties
+                            #'sxhash-equal-including-properties)
+    (setq tab-bar--auto-resize-hash
+          (make-hash-table :test 'tab-bar--auto-resize-hash-test)))
   (let ((tabs nil)    ;; list of resizable tabs
         (non-tabs "") ;; concatenated names of non-resizable tabs
         (set-width 0))
@@ -1024,21 +1033,24 @@ When nil, there is no limit on minimum width."
       (when tab-bar-auto-resize-max
         (setq set-width (min set-width tab-bar-auto-resize-max)))
       (dolist (item tabs)
-        (let* ((name (nth 2 item))
-               (len (length name))
-               (ins-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
-               del-pos)
-          (while (< (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
-            (setf (substring name ins-pos ins-pos)
-                  (apply 'propertize " " (text-properties-at 0 name))))
-          (while (> (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
-            (setq len (length name)
-                  del-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
-            (setf (substring name (1- del-pos) del-pos) "")
-            (add-face-text-property (max (- (length name) 3) 1)
-                                    (length name)
-                                    'shadow nil name))
-          (setf (nth 2 item) name))))
+        (setf (nth 2 item)
+              (with-memoization (gethash (cons set-width (nth 2 item))
+                                         tab-bar--auto-resize-hash)
+                (let* ((name (nth 2 item))
+                       (len (length name))
+                       (ins-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
+                       del-pos)
+                  (while (< (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
+                    (setf (substring name ins-pos ins-pos)
+                          (apply 'propertize " " (text-properties-at 0 name))))
+                  (while (> (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
+                    (setq len (length name)
+                          del-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
+                    (setf (substring name (1- del-pos) del-pos) "")
+                    (add-face-text-property (max (- (length name) 3) 1)
+                                            (length name)
+                                            'shadow nil name))
+                  name)))))
     items))
 
 
