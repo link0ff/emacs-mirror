@@ -1026,45 +1026,18 @@ When nil, there is no limit on minimum width."
       (dolist (item tabs)
         (let* ((name (nth 2 item))
                (len (length name))
-               (cur-width (string-pixel-width (propertize name 'face 'tab-bar-tab))))
-          (cond
-           ((< cur-width set-width)
-            ;; Padding with spaces
-            (let* ((space-width (string-pixel-width (propertize " " 'face 'tab-bar)))
-                   (space-num (/ (- set-width cur-width) space-width))
-                   (ins-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0))))
-              (setf (substring name ins-pos ins-pos)
-                    (apply 'propertize (make-string space-num ?\s)
-                           (text-properties-at 0 name)))))
-           ((> cur-width set-width)
-            ;; Deleting from the right (skipping the close button)
-            (let* ((close-p (get-text-property (1- len) 'close-tab name))
-                   (close-width (if close-p
-                                    (string-pixel-width
-                                     (propertize (substring name (1- len) len)
-                                                 'face 'tab-bar-tab))
-                                  0))
-                   (del-pos
-                    ;; `set-window-buffer' calls `record-window-buffer'
-                    ;; that clobbers next-buffers for insignificant buffers
-                    (let ((next-buffers (window-next-buffers))
-                          ret)
-                      (with-current-buffer (get-buffer-create " *tab-bar-auto-resize*")
-                        (delete-region (point-min) (point-max))
-                        (insert (propertize name 'face 'tab-bar))
-                        (save-window-excursion
-                          (set-window-dedicated-p nil nil)
-                          (set-window-buffer nil (current-buffer))
-                          (setq ret (car (posn-actual-col-row
-                                          (posn-at-x-y (- set-width close-width)
-                                                       (car (posn-x-y (posn-at-point
-                                                                       (point-min)))))))))
-                        (set-window-next-buffers nil next-buffers))
-                      ret)))
-              (setf (substring name del-pos (- len (if close-p 1 0))) "")
-              (add-face-text-property (max 1 (- (length name) 3))
-                                      (length name)
-                                      'shadow nil name))))
+               (ins-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
+               del-pos)
+          (while (< (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
+            (setf (substring name ins-pos ins-pos)
+                  (apply 'propertize " " (text-properties-at 0 name))))
+          (while (> (string-pixel-width (propertize name 'face 'tab-bar-tab)) set-width)
+            (setq len (length name)
+                  del-pos (- len (if (get-text-property (1- len) 'close-tab name) 1 0)))
+            (setf (substring name (1- del-pos) del-pos) "")
+            (add-face-text-property (max (- (length name) 3) 1)
+                                    (length name)
+                                    'shadow nil name))
           (setf (nth 2 item) name))))
     items))
 
