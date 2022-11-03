@@ -981,19 +981,23 @@ customize the option `tab-bar-auto-resize-max' to nil."
   :group 'tab-bar
   :version "29.1")
 
-(defcustom tab-bar-auto-resize-max 220 ;; (if window-system 220 20)
+(defcustom tab-bar-auto-resize-max '(220 . 20)
   "Maximum number of pixels (characters) allowed for the width of a tab name.
 When nil, there is no limit on maximum width."
-  :type '(choice (const :tag "No limit" nil)
-                 (integer :tag "Max width" :value 220))
+  :type '(choice
+          (const :tag "No limit" nil)
+          (cons (integer :tag "Max width (pixels)" :value 220)
+                (integer :tag "Max width (chars)" :value 20)))
   :group 'tab-bar
   :version "29.1")
 
-(defcustom tab-bar-auto-resize-min 20 ;; (if window-system 20 2)
+(defcustom tab-bar-auto-resize-min '(20 . 2)
   "Minimum number of pixels (characters) allowed for the width of a tab name.
 When nil, there is no limit on minimum width."
-  :type '(choice (const :tag "No limit" nil)
-                 (integer :tag "Min width" :value 20))
+  :type '(choice
+          (const :tag "No limit" nil)
+          (cons (integer :tag "Min width (pixels)" :value 20)
+                (integer :tag "Min width (chars)" :value 2)))
   :group 'tab-bar
   :version "29.1")
 
@@ -1029,9 +1033,13 @@ When nil, there is no limit on minimum width."
                              (propertize non-tabs 'face 'tab-bar)))
                          (length tabs)))
       (when tab-bar-auto-resize-min
-        (setq set-width (max set-width tab-bar-auto-resize-min)))
+        (setq set-width (max set-width (if window-system
+                                           (car tab-bar-auto-resize-min)
+                                         (cdr tab-bar-auto-resize-min)))))
       (when tab-bar-auto-resize-max
-        (setq set-width (min set-width tab-bar-auto-resize-max)))
+        (setq set-width (min set-width (if window-system
+                                           (car tab-bar-auto-resize-max)
+                                         (cdr tab-bar-auto-resize-max)))))
       (dolist (item tabs)
         (setf (nth 2 item)
               (with-memoization (gethash (cons set-width (nth 2 item))
