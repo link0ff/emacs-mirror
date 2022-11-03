@@ -2207,7 +2207,7 @@ with those specified by the selected window configuration."
    ((framep all-frames) (list all-frames))
    (t (list (selected-frame)))))
 
-(defun tab-bar-get-buffer-tab (buffer-or-name &optional all-frames ignore-current-tab)
+(defun tab-bar-get-buffer-tab (buffer-or-name &optional all-frames ignore-current-tab all-tabs)
   "Return the tab that owns the window whose buffer is BUFFER-OR-NAME.
 BUFFER-OR-NAME may be a buffer or a buffer name, and defaults to
 the current buffer.
@@ -2228,11 +2228,14 @@ don't take into account the buffers in the currently selected tab.
 Otherwise, prefer buffers of the current tab."
   (let ((buffer (if buffer-or-name
                     (get-buffer buffer-or-name)
-                  (current-buffer))))
+                  (current-buffer)))
+        buffer-tabs)
     (when (bufferp buffer)
-      (seq-some
+      (funcall
+       (if all-tabs #'seq-each #'seq-some)
        (lambda (frame)
-         (seq-some
+         (funcall
+          (if all-tabs #'seq-each #'seq-some)
           (lambda (tab)
             (when (if (eq (car tab) 'current-tab)
                       (get-buffer-window buffer frame)
@@ -2244,8 +2247,9 @@ Otherwise, prefer buffers of the current tab."
                        (memq buffer buffers)
                        ;; writable window-state
                        (member (buffer-name buffer) buffers))))
-              (append tab `((index . ,(tab-bar--tab-index tab nil frame))
-                            (frame . ,frame)))))
+              (push (append tab `((index . ,(tab-bar--tab-index tab nil frame))
+                                  (frame . ,frame)))
+                    buffer-tabs)))
           (let* ((tabs (funcall tab-bar-tabs-function frame))
                  (current-tab (tab-bar--current-tab-find tabs)))
             (setq tabs (remq current-tab tabs))
@@ -2254,7 +2258,68 @@ Otherwise, prefer buffers of the current tab."
                 tabs
               ;; Make sure current-tab is at the beginning of tabs.
               (cons current-tab tabs)))))
-       (tab-bar--reusable-frames all-frames)))))
+       (tab-bar--reusable-frames all-frames))
+      (if all-tabs (nreverse buffer-tabs) (car (last buffer-tabs))))))
+
+;; (tab-bar-get-buffer-tab (get-buffer "*scratch*") nil t)
+;; (tab-bar-get-buffer-tab (get-buffer "*scratch*") nil t t)
+;; (tab-bar-get-buffer-tab (get-buffer "foo") nil t)
+;; (tab-bar-get-buffer-tab (get-buffer "foo") nil t t)
+;; (tab-bar-get-buffer-tab "*scratch*" nil t)
+;; (tab-bar-get-buffer-tab "*scratch*" nil t t)
+;; (tab-bar-get-buffer-tab "foo" nil t)
+;; (tab-bar-get-buffer-tab "foo" nil t t)
+
+;; (add-hook 'kill-buffer-hook
+;;           (lambda ()
+;;             (let ((tab nil))
+;;               (while (setq tab (tab-bar-get-buffer-tab (current-buffer) nil t))
+;;                 (tab-bar-select-tab (1+ (alist-get 'index tab)))
+;;                 (tab-bar-switch-to-recent-tab)))))
+
+;; (add-hook 'kill-buffer-hook
+;;           (lambda ()
+;;             (let ((clearfun
+;;                    (lambda ()
+;;                      (remove-hook 'pre-command-hook clearfun))))
+;;               (add-hook 'post-command-hook clearfun))
+;;             (let ((tab nil))
+;;               (while (setq tab (tab-bar-get-buffer-tab (current-buffer) nil t))
+;;                 (tab-bar-select-tab (1+ (alist-get 'index tab)))
+;;                 (tab-bar-switch-to-recent-tab)))))
+
+;; (add-hook 'kill-buffer-hook
+;;           (lambda ()
+;;             (let ((buffer (current-buffer)))
+;;               (run-with-timer
+;;                0 nil (lambda ()
+;;                        (let ((tab nil))
+;;                          (while (setq tab (tab-bar-get-buffer-tab buffer nil t))
+;;                            (tab-bar-select-tab (1+ (alist-get 'index tab)))
+;;                            (tab-bar-switch-to-recent-tab))))))))
+
+;; (defun update-tabs (buffer)
+;;   (let ((tab nil))
+;;     (while (setq tab (tab-bar-get-buffer-tab buffer nil t))
+;;       (tab-bar-select-tab (1+ (alist-get 'index tab)))
+;;       (tab-bar-switch-to-recent-tab))))
+
+;; (add-hook 'kill-buffer-hook
+;;           (lambda ()
+;;             (let ((buffer (current-buffer)))
+;;               (run-with-timer 0 nil 'update-tabs buffer))))
+
+;; https://old.reddit.com/r/emacs/comments/v2ifu3/updating_tab_titles_in_tabbarmode/
+
+;; (defun update-tabs ()
+;;   (let ((current (tab-bar--current-tab-index)))
+;;     (dolist (tab (nreverse (tab-bar--tabs-recent)))
+;;       (tab-bar-select-tab (1+ (tab-bar--tab-index tab))))
+;;     (tab-bar-select-tab (1+ current))))
+;;
+;; (add-hook 'kill-buffer-hook
+;;           (lambda ()
+;;             (run-with-timer 0 nil 'update-tabs)))
 
 (defun display-buffer-in-tab (buffer alist)
   "Display BUFFER in a tab using display actions in ALIST.
