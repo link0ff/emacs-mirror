@@ -964,24 +964,24 @@ on the tab bar instead."
 (defun tab-bar-make-keymap-1 ()
   "Generate an actual keymap from `tab-bar-map', without caching."
   (let ((items (tab-bar-format-list tab-bar-format)))
-    (when tab-bar-auto-resize
-      (setq items (tab-bar-auto-resize items)))
+    (when tab-bar-fixed-width
+      (setq items (tab-bar-fixed-width items)))
     (append tab-bar-map items)))
 
 
-(defcustom tab-bar-auto-resize t
-  "This option solves two problems.
-This option is useful in two cases: if you want to avoid tab resizing when
+(defcustom tab-bar-fixed-width t
+  "Automatically resize tabs on the tab bar to the fixed width.
+This variable is intended to solve two problems: if you want to avoid tab resizing when
 the tab name changes after switching buffers - then you can customize the
-option `tab-bar-auto-resize-max' to a number.  Also this option is useful if
+option `tab-bar-fixed-width-max' to a number.  Also this option is useful if
 you want to avoid overflowing the tab bar to the second line when there are
 too many tabs or tabs with long names - in this case you might want to
-customize the option `tab-bar-auto-resize-max' to nil."
+customize the option `tab-bar-fixed-width-max' to nil."
   :type 'boolean
   :group 'tab-bar
   :version "29.1")
 
-(defcustom tab-bar-auto-resize-max '(220 . 20)
+(defcustom tab-bar-fixed-width-max '(220 . 20)
   "Maximum number of pixels (characters) allowed for the width of a tab name.
 When nil, there is no limit on maximum width."
   :type '(choice
@@ -991,7 +991,7 @@ When nil, there is no limit on maximum width."
   :group 'tab-bar
   :version "29.1")
 
-(defcustom tab-bar-auto-resize-min '(20 . 2)
+(defcustom tab-bar-fixed-width-min '(20 . 2)
   "Minimum number of pixels (characters) allowed for the width of a tab name.
 When nil, there is no limit on minimum width."
   :type '(choice
@@ -1001,29 +1001,29 @@ When nil, there is no limit on minimum width."
   :group 'tab-bar
   :version "29.1")
 
-(defvar tab-bar-auto-resize-faces
+(defvar tab-bar-fixed-width-faces
   '( tab-bar-tab tab-bar-tab-inactive
      tab-bar-tab-ungrouped
      tab-bar-tab-group-inactive)
   "Resize tabs only with these faces.")
 
-(defvar tab-bar--auto-resize-hash nil
-  "Memoization table for `tab-bar-auto-resize'.")
+(defvar tab-bar--fixed-width-hash nil
+  "Memoization table for `tab-bar-fixed-width'.")
 
-(defun tab-bar-auto-resize (items)
-  (unless tab-bar--auto-resize-hash
-    (define-hash-table-test 'tab-bar--auto-resize-hash-test
+(defun tab-bar-fixed-width (items)
+  (unless tab-bar--fixed-width-hash
+    (define-hash-table-test 'tab-bar--fixed-width-hash-test
                             #'equal-including-properties
                             #'sxhash-equal-including-properties)
-    (setq tab-bar--auto-resize-hash
-          (make-hash-table :test 'tab-bar--auto-resize-hash-test)))
+    (setq tab-bar--fixed-width-hash
+          (make-hash-table :test 'tab-bar--fixed-width-hash-test)))
   (let ((tabs nil)    ;; list of resizable tabs
         (non-tabs "") ;; concatenated names of non-resizable tabs
         (set-width 0))
     (dolist (item items)
       (when (and (eq (nth 1 item) 'menu-item) (stringp (nth 2 item)))
         (if (memq (get-text-property 0 'face (nth 2 item))
-                  tab-bar-auto-resize-faces)
+                  tab-bar-fixed-width-faces)
             (push item tabs)
           (unless (eq (nth 0 item) 'align-right)
             (setq non-tabs (concat non-tabs (nth 2 item)))))))
@@ -1032,18 +1032,18 @@ When nil, there is no limit on minimum width."
                             (string-pixel-width
                              (propertize non-tabs 'face 'tab-bar)))
                          (length tabs)))
-      (when tab-bar-auto-resize-min
+      (when tab-bar-fixed-width-min
         (setq set-width (max set-width (if window-system
-                                           (car tab-bar-auto-resize-min)
-                                         (cdr tab-bar-auto-resize-min)))))
-      (when tab-bar-auto-resize-max
+                                           (car tab-bar-fixed-width-min)
+                                         (cdr tab-bar-fixed-width-min)))))
+      (when tab-bar-fixed-width-max
         (setq set-width (min set-width (if window-system
-                                           (car tab-bar-auto-resize-max)
-                                         (cdr tab-bar-auto-resize-max)))))
+                                           (car tab-bar-fixed-width-max)
+                                         (cdr tab-bar-fixed-width-max)))))
       (dolist (item tabs)
         (setf (nth 2 item)
               (with-memoization (gethash (cons set-width (nth 2 item))
-                                         tab-bar--auto-resize-hash)
+                                         tab-bar--fixed-width-hash)
                 (let* ((name (nth 2 item))
                        (len (length name))
                        (close-p (get-text-property (1- len) 'close-tab name))
