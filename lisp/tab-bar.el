@@ -1023,7 +1023,7 @@ tab bar might wrap to the second line.")
           (make-hash-table :test 'tab-bar--fixed-width-hash-test)))
   (let ((tabs nil)    ;; list of resizable tabs
         (non-tabs "") ;; concatenated names of non-resizable tabs
-        (set-width 0))
+        (width 0))    ;; resize tab names to this width
     (dolist (item items)
       (when (and (eq (nth 1 item) 'menu-item) (stringp (nth 2 item)))
         (if (memq (get-text-property 0 'face (nth 2 item))
@@ -1032,21 +1032,21 @@ tab bar might wrap to the second line.")
           (unless (eq (nth 0 item) 'align-right)
             (setq non-tabs (concat non-tabs (nth 2 item)))))))
     (when tabs
-      (setq set-width (/ (- (frame-pixel-width)
-                            (string-pixel-width
-                             (propertize non-tabs 'face 'tab-bar)))
-                         (length tabs)))
+      (setq width (/ (- (frame-pixel-width)
+                        (string-pixel-width
+                         (propertize non-tabs 'face 'tab-bar)))
+                     (length tabs)))
       (when tab-bar-fixed-width-min
-        (setq set-width (max set-width (if window-system
-                                           (car tab-bar-fixed-width-min)
-                                         (cdr tab-bar-fixed-width-min)))))
+        (setq width (max width (if window-system
+                                   (car tab-bar-fixed-width-min)
+                                 (cdr tab-bar-fixed-width-min)))))
       (when tab-bar-fixed-width-max
-        (setq set-width (min set-width (if window-system
-                                           (car tab-bar-fixed-width-max)
-                                         (cdr tab-bar-fixed-width-max)))))
+        (setq width (min width (if window-system
+                                   (car tab-bar-fixed-width-max)
+                                 (cdr tab-bar-fixed-width-max)))))
       (dolist (item tabs)
         (setf (nth 2 item)
-              (with-memoization (gethash (cons set-width (nth 2 item))
+              (with-memoization (gethash (cons width (nth 2 item))
                                          tab-bar--fixed-width-hash)
                 (let* ((name (nth 2 item))
                        (len (length name))
@@ -1054,11 +1054,11 @@ tab bar might wrap to the second line.")
                        (ins-pos (- len (if close-p 1 0)))
                        del-pos)
                   (while (< (string-pixel-width (propertize name 'face 'tab-bar-tab))
-                            set-width)
+                            width)
                     (setf (substring name ins-pos ins-pos)
                           (apply 'propertize " " (text-properties-at 0 name))))
                   (while (> (string-pixel-width (propertize name 'face 'tab-bar-tab))
-                            set-width)
+                            width)
                     (setq len (length name)
                           del-pos (- len (if close-p 1 0)))
                     (setf (substring name (1- del-pos) del-pos) "")
