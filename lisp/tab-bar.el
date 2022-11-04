@@ -971,19 +971,27 @@ on the tab bar instead."
 
 (defcustom tab-bar-fixed-width t
   "Automatically resize tabs on the tab bar to the fixed width.
-This variable is intended to solve two problems: if you want to avoid tab resizing when
-the tab name changes after switching buffers - then you can customize the
-option `tab-bar-fixed-width-max' to a number.  Also this option is useful if
-you want to avoid overflowing the tab bar to the second line when there are
-too many tabs or tabs with long names - in this case you might want to
-customize the option `tab-bar-fixed-width-max' to nil."
+This variable is intended to solve two problems.  When switching buffers
+on the current tab, the tab changes its name to buffer names of
+various lengths, thus resizing the tab and shifting the tab positions
+on the tab bar.  But with the fixed width, the size of the tab name
+doesn't change when the tab name changes, thus keeping the fixed
+tab bar layout.  The second problem solved by this variable is to prevent
+wrapping the long tab bar to the second line, thus keeping the height of
+the tab bar always fixed to one line.
+
+The maximum tab width is defined by the variable `tab-bar-fixed-width-max'."
   :type 'boolean
   :group 'tab-bar
   :version "29.1")
 
 (defcustom tab-bar-fixed-width-max '(220 . 20)
-  "Maximum number of pixels (characters) allowed for the width of a tab name.
-When nil, there is no limit on maximum width."
+  "Maximum number of pixels or characters allowed for the tab name width.
+The car of the cons cell is the maximum number of pixels when used on
+a GUI session.  The cdr of the cons cell defines the maximum number of
+characters when used on a tty.  When set to nil, there is no limit
+on maximum width, and tabs are resized evenly to the whole width
+of the tab bar when `tab-bar-fixed-width' is non-nil."
   :type '(choice
           (const :tag "No limit" nil)
           (cons (integer :tag "Max width (pixels)" :value 220)
@@ -991,15 +999,10 @@ When nil, there is no limit on maximum width."
   :group 'tab-bar
   :version "29.1")
 
-(defcustom tab-bar-fixed-width-min '(20 . 2)
-  "Minimum number of pixels (characters) allowed for the width of a tab name.
-When nil, there is no limit on minimum width."
-  :type '(choice
-          (const :tag "No limit" nil)
-          (cons (integer :tag "Min width (pixels)" :value 20)
-                (integer :tag "Min width (chars)" :value 2)))
-  :group 'tab-bar
-  :version "29.1")
+(defvar tab-bar-fixed-width-min '(20 . 2)
+  "Minimum number of pixels or characters allowed for the tab name width.
+It's not recommended to change this value since with a bigger value, the
+tab bar might wrap to the second line.")
 
 (defvar tab-bar-fixed-width-faces
   '( tab-bar-tab tab-bar-tab-inactive
@@ -1011,6 +1014,7 @@ When nil, there is no limit on minimum width."
   "Memoization table for `tab-bar-fixed-width'.")
 
 (defun tab-bar-fixed-width (items)
+  "Return tab-bar items with resized tab names."
   (unless tab-bar--fixed-width-hash
     (define-hash-table-test 'tab-bar--fixed-width-hash-test
                             #'equal-including-properties
