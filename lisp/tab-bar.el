@@ -985,7 +985,7 @@ The maximum tab width is defined by the variable `tab-bar-fixed-width-max'."
   :group 'tab-bar
   :version "29.1")
 
-(defcustom tab-bar-fixed-width-max '(220 . 20)
+(defcustom tab-bar-fixed-width-max '(220 . 20) ; '(220 440 20)
   "Maximum number of pixels or characters allowed for the tab name width.
 The car of the cons cell is the maximum number of pixels when used on
 a GUI session.  The cdr of the cons cell defines the maximum number of
@@ -2371,66 +2371,6 @@ Otherwise, prefer buffers of the current tab."
               (cons current-tab tabs)))))
        (tab-bar--reusable-frames all-frames))
       (if all-tabs (nreverse buffer-tabs) (car (last buffer-tabs))))))
-
-;; (tab-bar-get-buffer-tab (get-buffer "*scratch*") nil t)
-;; (tab-bar-get-buffer-tab (get-buffer "*scratch*") nil t t)
-;; (tab-bar-get-buffer-tab (get-buffer "foo") nil t)
-;; (tab-bar-get-buffer-tab (get-buffer "foo") nil t t)
-;; (tab-bar-get-buffer-tab "*scratch*" nil t)
-;; (tab-bar-get-buffer-tab "*scratch*" nil t t)
-;; (tab-bar-get-buffer-tab "foo" nil t)
-;; (tab-bar-get-buffer-tab "foo" nil t t)
-
-;; (add-hook 'kill-buffer-hook
-;;           (lambda ()
-;;             (let ((tab nil))
-;;               (while (setq tab (tab-bar-get-buffer-tab (current-buffer) nil t))
-;;                 (tab-bar-select-tab (1+ (alist-get 'index tab)))
-;;                 (tab-bar-switch-to-recent-tab)))))
-
-;; (add-hook 'kill-buffer-hook
-;;           (lambda ()
-;;             (let ((clearfun
-;;                    (lambda ()
-;;                      (remove-hook 'pre-command-hook clearfun))))
-;;               (add-hook 'post-command-hook clearfun))
-;;             (let ((tab nil))
-;;               (while (setq tab (tab-bar-get-buffer-tab (current-buffer) nil t))
-;;                 (tab-bar-select-tab (1+ (alist-get 'index tab)))
-;;                 (tab-bar-switch-to-recent-tab)))))
-
-;; (add-hook 'kill-buffer-hook
-;;           (lambda ()
-;;             (let ((buffer (current-buffer)))
-;;               (run-with-timer
-;;                0 nil (lambda ()
-;;                        (let ((tab nil))
-;;                          (while (setq tab (tab-bar-get-buffer-tab buffer nil t))
-;;                            (tab-bar-select-tab (1+ (alist-get 'index tab)))
-;;                            (tab-bar-switch-to-recent-tab))))))))
-
-;; (defun update-tabs (buffer)
-;;   (let ((tab nil))
-;;     (while (setq tab (tab-bar-get-buffer-tab buffer nil t))
-;;       (tab-bar-select-tab (1+ (alist-get 'index tab)))
-;;       (tab-bar-switch-to-recent-tab))))
-
-;; (add-hook 'kill-buffer-hook
-;;           (lambda ()
-;;             (let ((buffer (current-buffer)))
-;;               (run-with-timer 0 nil 'update-tabs buffer))))
-
-;; https://old.reddit.com/r/emacs/comments/v2ifu3/updating_tab_titles_in_tabbarmode/
-
-;; (defun update-tabs ()
-;;   (let ((current (tab-bar--current-tab-index)))
-;;     (dolist (tab (nreverse (tab-bar--tabs-recent)))
-;;       (tab-bar-select-tab (1+ (tab-bar--tab-index tab))))
-;;     (tab-bar-select-tab (1+ current))))
-;;
-;; (add-hook 'kill-buffer-hook
-;;           (lambda ()
-;;             (run-with-timer 0 nil 'update-tabs)))
 
 (defun display-buffer-in-tab (buffer alist)
   "Display BUFFER in a tab using display actions in ALIST.
