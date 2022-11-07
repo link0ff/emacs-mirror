@@ -1374,7 +1374,12 @@ If SAME-WINDOW, don't pop to a new window."
          (unless (bobp)
            (insert "\n"))
          (insert (propertize
-                  (concat (substitute-command-keys data) "\n\n")
+                  (substitute-command-keys data)
+                  'face 'shortdoc-heading
+                  'shortdoc-section t
+                  'outline-level 1))
+         (insert (propertize
+                  "\n\n"
                   'face 'shortdoc-heading
                   'shortdoc-section t)))
         ;; There may be functions not yet defined in the data.
@@ -1397,7 +1402,7 @@ If SAME-WINDOW, don't pop to a new window."
         (start-section (point))
         arglist-start)
     ;; Function calling convention.
-    (insert (propertize "(" 'shortdoc-function function))
+    (insert (propertize "(" 'shortdoc-function function 'outline-level 2))
     (if (plist-get data :no-manual)
         (insert-text-button
          (symbol-name function)
