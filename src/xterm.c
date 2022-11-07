@@ -5400,6 +5400,7 @@ xi_populate_device_from_info (struct x_display_info *dpyinfo,
       xi_device->valuators = NULL;
       xi_device->scroll_valuator_count = 0;
 
+      SAFE_FREE ();
       return;
     }
 
@@ -5472,7 +5473,9 @@ xi_populate_device_from_info (struct x_display_info *dpyinfo,
 	  if (xi_device->valuators[c].number == tem->number)
 	    {
 	      xi_device->valuators[c].invalid_p = false;
-	      xi_device->valuators[c].current_value = tem->current_value;
+	      xi_device->valuators[c].current_value
+		= tem->current_value;
+	      xi_device->valuators[c].emacs_value = 0.0;
 	    }
 	}
     }
