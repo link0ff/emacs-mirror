@@ -508,8 +508,8 @@ See the command `outline-mode' for more information on this mode."
             (setq-local outline--use-rtl t))
           (setq-local outline--button-icons (outline--create-button-icons))
           (when (and (eq outline-minor-mode-use-buttons 'in-margins)
-                     (not (eq 1 (if outline--use-rtl right-margin-width
-                                  left-margin-width))))
+                     (> 1 (if outline--use-rtl right-margin-width
+                            left-margin-width)))
             (if outline--use-rtl
                 (setq-local right-margin-width (1+ right-margin-width))
               (setq-local left-margin-width (1+ left-margin-width)))
@@ -545,8 +545,8 @@ See the command `outline-mode' for more information on this mode."
     (when outline-minor-mode-use-buttons
       (remove-overlays nil nil 'outline-button t)
       (when (and (eq outline-minor-mode-use-buttons 'in-margins)
-                 (not (eq 0 (if outline--use-rtl right-margin-width
-                              left-margin-width))))
+                 (< 0 (if outline--use-rtl right-margin-width
+                        left-margin-width)))
         (if outline--use-rtl
             (setq-local right-margin-width (1- right-margin-width))
           (setq-local left-margin-width (1- left-margin-width)))
