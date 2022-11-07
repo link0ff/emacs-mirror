@@ -1539,16 +1539,22 @@ Example:
   :interactive nil
   (setq-local outline-level (lambda () (if (eq (char-after) ?\() 2 1)))
   (setq-local outline-search-function
-              (lambda (&optional looking-at)
-                (save-excursion
-                  (let* ((prop-at (if looking-at
-                                      (get-text-property (point) 'shortdoc-section)
-                                    t))
-                         (prop-match (and prop-at (text-property-search-forward 'shortdoc-section))))
-                    (when prop-match
-                      (set-match-data (list (prop-match-beginning prop-match)
-                                            (prop-match-end prop-match)))
-                      t))))))
+              (lambda (&optional limit how)
+                (let* ((prop-at
+                        (if (eq how 'looking-at)
+                            (get-text-property (point) 'outline-level)
+                          t))
+                       (prop-match
+                        (when prop-at
+                          (if (eq how 'backward)
+                              (text-property-search-backward 'outline-level)
+                            (text-property-search-forward 'outline-level)))))
+                  (when prop-match
+                    (let ((beg (prop-match-beginning prop-match))
+                          (end (prop-match-end prop-match)))
+                      (when (or (null limit) (< end limit))
+                        (set-match-data (list beg end))
+                        t)))))))
 
 (defun shortdoc--goto-section (arg sym &optional reverse)
   (unless (natnump arg)
