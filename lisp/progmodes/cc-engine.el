@@ -10208,7 +10208,11 @@ This function might do hidden buffer changes."
 	(save-rec-ref-ids c-record-ref-identifiers)
 	;; Set when we parse a declaration which might also be an expression,
 	;; such as "a *b".  See CASE 16 and CASE 17.
-	maybe-expression)
+	maybe-expression
+	;; Set for the type when `c-forward-type' returned `maybe', and we
+	;; want to fontify it as a type, but aren't confident enough to enter
+	;; it into `c-found-types'.
+	unsafe-maybe)
 
     (save-excursion
       (goto-char preceding-token-end)
@@ -10769,7 +10773,15 @@ This function might do hidden buffer changes."
 			((eq at-decl-or-cast t)
 			 (throw 'at-decl-or-cast t))
 			((and c-has-bitfields
-			      (eq at-decl-or-cast 'ids)) ; bitfield.
+			      ;; Check for a bitfield.
+			      (eq at-decl-or-cast 'ids)
+			      (save-excursion
+				(forward-char) ; Over the :
+				(c-forward-syntactic-ws)
+				(and (looking-at "[[:alnum:]]")
+				     (progn (c-forward-token-2)
+					    (c-forward-syntactic-ws)
+					    (memq (char-after) '(?\; ?,))))))
 			 (setq backup-if-not-cast t)
 			 (throw 'at-decl-or-cast t)))
 
@@ -10904,7 +10916,7 @@ This function might do hidden buffer changes."
 	   ;; a statement beginning with an identifier.
 	   (when (and (eq at-type 'maybe)
 		      (not (eq context 'top)))
-	     (setq c-record-type-identifiers nil))
+	     (setq unsafe-maybe t))
 	   (throw 'at-decl-or-cast t))
 
 	 ;; CASE 11
@@ -11207,7 +11219,8 @@ This function might do hidden buffer changes."
 		 ;; fontification just because it's "a known type that can't
 		 ;; be a name or other expression".  2013-09-18.
 		 )
-	(let ((c-promote-possible-types t))
+	(let ((c-promote-possible-types
+	       (if unsafe-maybe 'just-one t)))
 	  (save-excursion
 	    (goto-char type-start)
 	    (c-forward-type))))
