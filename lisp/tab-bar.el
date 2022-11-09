@@ -2352,7 +2352,10 @@ selected frame and no others.
 
 When the optional argument IGNORE-CURRENT-TAB is non-nil,
 don't take into account the buffers in the currently selected tab.
-Otherwise, prefer buffers of the current tab."
+Otherwise, prefer buffers of the current tab.
+
+When the optional argument ALL-TABS is non-nil, return a list of all tabs
+that contain the buffer BUFFER-OR-NAME."
   (let ((buffer (if buffer-or-name
                     (get-buffer buffer-or-name)
                   (current-buffer)))
