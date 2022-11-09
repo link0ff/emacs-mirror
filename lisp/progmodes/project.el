@@ -713,6 +713,7 @@ DIRS must contain directory names."
     (define-key map "G" 'project-or-external-find-regexp)
     (define-key map "r" 'project-query-replace-regexp)
     (define-key map "x" 'project-execute-extended-command)
+    (define-key map "\C-b" 'project-list-buffers)
     map)
   "Keymap for project commands.")
 
@@ -1223,6 +1224,25 @@ displayed."
   (interactive (list (project--read-project-buffer)))
   (display-buffer-other-frame buffer-or-name))
 
+;;;###autoload
+(defun project-list-buffers (&optional arg)
+  "Display a list of project buffers.
+The list is displayed in a buffer named \"*Buffer List*\".
+
+By default, all buffers are listed except those whose names start
+with a space (which are for internal use).  With prefix argument
+ARG, show only buffers that are visiting files."
+  (interactive "P")
+  (let* ((pr (project-current t))
+         (bufs (mapcan
+                (lambda (buf)
+                  (when (and (project--buffer-check buf '("\\`[^ ]"))
+                             (or (not arg)
+                                 (project--buffer-check buf '(buffer-file-name))))
+                    (list buf)))
+                (project-buffers pr))))
+    (display-buffer (list-buffers-noselect arg bufs))))
+
 (defcustom project-kill-buffer-conditions
   '(buffer-file-name    ; All file-visiting buffers are included.
     ;; Most of temp and logging buffers (aside from hidden ones):
@@ -1283,6 +1303,7 @@ Used by `project-kill-buffers'."
   :package-version '(project . "0.8.2")
   :safe #'booleanp)
 
+;; UNUSED?
 (defun project--buffer-list (pr)
   "Return the list of all buffers in project PR."
   (let ((conn (file-remote-p (project-root pr)))
