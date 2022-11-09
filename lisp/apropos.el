@@ -493,7 +493,7 @@ Intended as a value for `revert-buffer-function'."
 \\{apropos-mode-map}"
   (make-local-variable 'apropos--current)
   (setq-local revert-buffer-function #'apropos--revert-buffer)
-  (setq-local outline-search-function #'outline-search-level-prop
+  (setq-local outline-search-function #'outline-search-level
               outline-level (lambda () 1)
               outline-minor-mode-cycle t
               outline-minor-mode-highlight t

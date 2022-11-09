@@ -376,7 +376,7 @@ data reflects the `outline-regexp'.")
   (save-excursion
     (goto-char (match-beginning 0))
     (if outline-search-function
-        (funcall outline-search-function nil 'looking-at)
+        (funcall outline-search-function nil nil t)
       (looking-at outline-regexp))
     (aref outline-font-lock-faces
           (% (1- (funcall outline-level))
@@ -485,17 +485,19 @@ outline font-lock faces to those of major mode."
   ;; Fallback to overlays when font-lock is unsupported.
   (save-excursion
     (goto-char (point-min))
-    (while (if outline-search-function
-               (funcall outline-search-function)
-             (re-search-forward outline-regexp nil t))
-      (let ((overlay (make-overlay (match-beginning 0) (pos-eol))))
-        (overlay-put overlay 'outline-highlight t)
-        ;; FIXME: Is it possible to override all underlying face attributes?
-        (when (or (memq outline-minor-mode-highlight '(append override))
-                  (and (eq outline-minor-mode-highlight t)
-                       (not (get-text-property (match-beginning 0) 'face))))
-          (overlay-put overlay 'face (outline-font-lock-face))))
-      (move-end-of-line 1))))
+    (let ((regexp (unless outline-search-function
+                    (concat "^\\(?:" outline-regexp "\\).*$"))))
+      (while (if outline-search-function
+                 (funcall outline-search-function)
+               (re-search-forward regexp nil t))
+        (let ((overlay (make-overlay (match-beginning 0) (match-end 0))))
+          (overlay-put overlay 'outline-highlight t)
+          ;; FIXME: Is it possible to override all underlying face attributes?
+          (when (or (memq outline-minor-mode-highlight '(append override))
+                    (and (eq outline-minor-mode-highlight t)
+                         (not (get-text-property (match-beginning 0) 'face))))
+            (overlay-put overlay 'face (outline-font-lock-face))))
+        (goto-char (match-end 0))))))
 
 ;;;###autoload
 (define-minor-mode outline-minor-mode
@@ -627,7 +629,7 @@ at the end of the buffer."
   "Move to the previous (possibly invisible) heading line."
   (interactive)
   (if outline-search-function
-      (funcall outline-search-function nil 'backward)
+      (funcall outline-search-function nil t)
     (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
 		        nil 'move)))
 
@@ -647,7 +649,7 @@ Only visible heading lines are considered, unless INVISIBLE-OK is non-nil."
 	(save-excursion
 	  (while (not found)
 	    (or (if outline-search-function
-                    (funcall outline-search-function nil 'backward)
+                    (funcall outline-search-function nil t)
                   (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
 				      nil t))
                 (signal 'outline-before-first-heading nil))
@@ -663,7 +665,7 @@ If INVISIBLE-OK is non-nil, an invisible heading line is ok too."
     (beginning-of-line)
     (and (bolp) (or invisible-ok (not (outline-invisible-p)))
 	 (if outline-search-function
-             (funcall outline-search-function nil 'looking-at)
+             (funcall outline-search-function nil nil t)
            (looking-at outline-regexp)))))
 
 (defun outline-insert-heading ()
@@ -777,7 +779,7 @@ nil for WHICH, or do not pass any argument)."
 				  (<= (funcall outline-level) level))))
 		    (unless (eobp)
 		      (if outline-search-function
-                          (funcall outline-search-function nil 'looking-at)
+                          (funcall outline-search-function nil nil t)
                         (looking-at outline-regexp))
 		      (match-string-no-properties 0))))
                 ;; Bummer!! There is no higher-level heading in the buffer.
@@ -899,15 +901,15 @@ A heading line is one that starts with a `*' (or that
   (if (< arg 0)
       (beginning-of-line)
     (end-of-line))
-  (let (found-heading-p)
+  (let ((regexp (unless outline-search-function
+                  (concat "^\\(?:" outline-regexp "\\)")))
+        found-heading-p)
     (while (and (not (bobp)) (< arg 0))
       (while (and (not (bobp))
 		  (setq found-heading-p
 			(if outline-search-function
-                            (funcall outline-search-function nil 'backward)
-                          (re-search-backward
-			   (concat "^\\(?:" outline-regexp "\\)")
-			   nil 'move)))
+                            (funcall outline-search-function nil t)
+                          (re-search-backward regexp nil 'move)))
 		  (outline-invisible-p)))
       (setq arg (1+ arg)))
     (while (and (not (eobp)) (> arg 0))
@@ -915,9 +917,7 @@ A heading line is one that starts with a `*' (or that
 		  (setq found-heading-p
 			(if outline-search-function
                             (funcall outline-search-function)
-                          (re-search-forward
-			   (concat "^\\(?:" outline-regexp "\\)")
-			   nil 'move)))
+                          (re-search-forward regexp nil 'move)))
 		  (outline-invisible-p (match-beginning 0))))
       (setq arg (1- arg)))
     (if found-heading-p (beginning-of-line))))
@@ -1139,7 +1139,7 @@ of the current heading, or to 1 if the current line is not a heading."
 		 (current-prefix-arg (prefix-numeric-value current-prefix-arg))
 		 ((save-excursion (beginning-of-line)
 				  (if outline-search-function
-                                      (funcall outline-search-function nil 'looking-at)
+                                      (funcall outline-search-function nil nil t)
                                     (looking-at outline-regexp)))
 		  (funcall outline-level))
 		 (t 1))))
@@ -1288,7 +1288,7 @@ If INVISIBLE-OK is non-nil, also consider invisible lines."
 	(setq start-level level))
       (setq arg (- arg 1))))
   (if outline-search-function
-      (funcall outline-search-function nil 'looking-at)
+      (funcall outline-search-function nil nil t)
     (looking-at outline-regexp)))
 
 (defun outline-forward-same-level (arg)
@@ -1383,23 +1383,23 @@ convenient way to make a table of contents of the buffer."
 
 ;;; Search text-property for outline headings
 
-;; (defun outline-search-text-property (&optional property)
-;;   )
+;;;###autoload
+(defun outline-search-level (&optional limit backward looking-at)
+  (outline-search-text-property 'outline-level limit backward looking-at))
 
-(defun outline-search-level-prop (&optional limit how)
-  (let* ((prop 'outline-level)
-         (prop-at
-          (if (eq how 'looking-at)
+(defun outline-search-text-property (prop &optional limit backward looking-at)
+  (let* ((prop-at
+          (if looking-at
               (get-text-property (point) prop)
             (when (get-text-property (point) prop)
               ;; Go to the end of the current heading
-              (if (eq how 'backward)
+              (if backward
                   (text-property-search-backward prop)
                 (text-property-search-forward prop)))
             t))
          (prop-match
           (when prop-at
-            (if (eq how 'backward)
+            (if backward
                 (text-property-search-backward prop)
               (text-property-search-forward prop)))))
     (if prop-match

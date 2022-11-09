@@ -1537,7 +1537,7 @@ Example:
 (define-derived-mode shortdoc-mode special-mode "shortdoc"
   "Mode for shortdoc."
   :interactive nil
-  (setq-local outline-search-function #'outline-search-level-prop)
+  (setq-local outline-search-function #'outline-search-level)
   (setq-local outline-level (lambda () (get-text-property (point) 'outline-level))))
 
 (defun shortdoc--goto-section (arg sym &optional reverse)
