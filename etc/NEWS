@@ -112,7 +112,8 @@ efficient than the original one, and should speed up all the
 operations that involve overlays, especially when there are lots of
 them in a buffer.  However, no changes in behavior of overlays should
 be visible on the Lisp or user level, with the exception of better
-performance.
+performance and the order of overlays returned by functions that don't
+promise any particular order.
 
 ---
 ** The docstrings of preloaded files are not in "etc/DOC" any more.
@@ -1480,6 +1481,10 @@ This controls how statements like the following are indented:
 *** New Flymake backend using the ShellCheck program.
 It is enabled by default, but requires that the external "shellcheck"
 command is installed.
+
+** CC Mode
+---
+*** C++ Mode now supports most of the new features in the C++20 standard.
 
 ** Cperl Mode
 
