@@ -1229,19 +1229,13 @@ displayed."
   "Display a list of project buffers.
 The list is displayed in a buffer named \"*Buffer List*\".
 
-By default, all buffers are listed except those whose names start
-with a space (which are for internal use).  With prefix argument
+By default, all project buffers are listed except those whose names
+start with a space (which are for internal use).  With prefix argument
 ARG, show only buffers that are visiting files."
   (interactive "P")
   (let* ((pr (project-current t))
-         (bufs (mapcan
-                (lambda (buf)
-                  (when (and (project--buffer-check buf '("\\`[^ ]"))
-                             (or (not arg)
-                                 (project--buffer-check buf '(buffer-file-name))))
-                    (list buf)))
-                (project-buffers pr))))
-    (display-buffer (list-buffers-noselect arg bufs))))
+         (filter-predicate (lambda (buf) (memq buf (project-buffers pr)))))
+    (display-buffer (list-buffers-noselect arg nil filter-predicate))))
 
 (defcustom project-kill-buffer-conditions
   '(buffer-file-name    ; All file-visiting buffers are included.
