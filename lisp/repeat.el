@@ -588,9 +588,34 @@ Used in `repeat-mode'."
                                           (when (and (symbolp (car a))
                                                      (symbolp (car b)))
                                             (string-lessp (car a) (car b))))))
-            (insert (format-message
-                     "`%s' keymap is repeatable by these commands:\n"
-                     (car keymap)))
+            (insert (format-message "* `%s'\n" (car keymap)))
+
+            (let* ((map (if (symbolp (car keymap))
+                               (symbol-value (car keymap))
+                             (car keymap)))
+                   (repeat-commands (cdr keymap))
+                   map-commands commands-enter commands-exit)
+              (map-keymap (lambda (key cmd) (when (symbolp cmd) (push cmd map-commands))) map)
+              (setq map-commands (seq-uniq map-commands))
+              (setq commands-enter (seq-difference repeat-commands map-commands))
+              (setq commands-exit (seq-difference map-commands repeat-commands))
+
+              (when (or commands-enter commands-exit) (insert "\n"))
+              (when commands-enter
+                (insert (concat "Entered with: "
+                                (mapconcat (lambda (cmd) (format-message "`%s'" cmd))
+                                           commands-enter ", ")
+                                "\n")))
+              (when commands-exit
+                (insert (concat "Exited with: "
+                                (mapconcat (lambda (cmd) (format-message "`%s'" cmd))
+                                           commands-exit ", ")
+                                "\n"))))
+
+            (when (symbolp (car keymap))
+              (insert (substitute-command-keys (format-message "\\{%s}" (car keymap)))))
+
+            (insert "\nOld:\n")
             (dolist (command (sort (cdr keymap) #'string-lessp))
               (let* ((info (help-fns--analyze-function command))
                      (map (list (if (symbolp (car keymap))
