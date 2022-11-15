@@ -1232,8 +1232,7 @@ By default, all project buffers are listed except those whose names
 start with a space (which are for internal use).  With prefix argument
 ARG, show only buffers that are visiting files."
   (interactive "P")
-  (let* ((pr (project-current t))
-         (filter-predicate (lambda (buf) (memq buf (project-buffers pr)))))
+  (let ((pr (project-current t)))
     (display-buffer
      (if (version< emacs-version "29.0.50")
          (let ((buf (list-buffers-noselect arg (project-buffers pr))))
@@ -1243,7 +1242,8 @@ ARG, show only buffers that are visiting files."
                            (list-buffers--refresh (project-buffers pr))
                            (tabulated-list-print t))))
            buf)
-       (list-buffers-noselect arg nil filter-predicate)))))
+       (list-buffers-noselect
+        arg nil (lambda (buf) (memq buf (project-buffers pr))))))))
 
 (defcustom project-kill-buffer-conditions
   '(buffer-file-name    ; All file-visiting buffers are included.
