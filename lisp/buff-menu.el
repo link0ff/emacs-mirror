@@ -1,7 +1,6 @@
 ;;; buff-menu.el --- Interface for viewing and manipulating buffers -*- lexical-binding: t -*-
 
-;; Copyright (C) 1985-1987, 1993-1995, 2000-2022 Free Software
-;; Foundation, Inc.
+;; Copyright (C) 1985-2022 Free Software Foundation, Inc.
 
 ;; Maintainer: emacs-devel@gnu.org
 ;; Keywords: convenience
@@ -140,9 +139,11 @@ then the buffer will be displayed in the buffer list.")
   "M-s a C-s"   #'Buffer-menu-isearch-buffers
   "M-s a C-M-s" #'Buffer-menu-isearch-buffers-regexp
   "M-s a C-o"   #'Buffer-menu-multi-occur
-
   "<mouse-2>"     #'Buffer-menu-mouse-select
   "<follow-link>" 'mouse-face)
+
+(put 'Buffer-menu-delete :advertised-binding "d")
+(put 'Buffer-menu-this-window :advertised-binding "f")
 
 (easy-menu-define Buffer-menu-mode-menu Buffer-menu-mode-map
   "Menu for `Buffer-menu-mode' buffers."
@@ -243,6 +244,26 @@ In Buffer Menu mode, the following commands are defined:
               (lambda (&optional _noconfirm) 'fast))
   (add-hook 'tabulated-list-revert-hook 'list-buffers--refresh nil t))
 
+(defun buffer-menu--display-help ()
+  (message "%s"
+           (substitute-command-keys
+            (concat
+             "Commands: "
+             "\\<Buffer-menu-mode-map>"
+             "\\[Buffer-menu-delete], "
+             "\\[Buffer-menu-save], "
+             "\\[Buffer-menu-execute], "
+             "\\[Buffer-menu-unmark]; "
+             "\\[Buffer-menu-this-window], "
+             "\\[Buffer-menu-other-window], "
+             "\\[Buffer-menu-1-window], "
+             "\\[Buffer-menu-2-window], "
+             "\\[Buffer-menu-mark], "
+             "\\[Buffer-menu-select]; "
+             "\\[Buffer-menu-not-modified], "
+             "\\[Buffer-menu-toggle-read-only]; "
+             "\\[quit-window] to quit; \\[describe-mode] for help"))))
+
 (defun buffer-menu (&optional arg)
   "Switch to the Buffer Menu.
 By default, the Buffer Menu lists all buffers except those whose
@@ -268,8 +289,7 @@ the `Buffer-menu-name-width', `Buffer-menu-size-width' and
 `Buffer-menu-mode-width' variables."
   (interactive "P")
   (switch-to-buffer (list-buffers-noselect arg))
-  (message
-   "Commands: d, s, x, u; f, o, 1, 2, m, v; ~, %%; q to quit; ? for help."))
+  (buffer-menu--display-help))
 
 (defun buffer-menu-other-window (&optional arg)
   "Display the Buffer Menu in another window.
@@ -280,8 +300,7 @@ with a space (which are for internal use).  With prefix argument
 ARG, show only buffers that are visiting files."
   (interactive "P")
   (switch-to-buffer-other-window (list-buffers-noselect arg))
-  (message
-   "Commands: d, s, x, u; f, o, 1, 2, m, v; ~, %%; q to quit; ? for help."))
+  (buffer-menu--display-help))
 
 ;;;###autoload
 (defun list-buffers (&optional arg)
