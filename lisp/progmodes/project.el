@@ -1234,7 +1234,16 @@ ARG, show only buffers that are visiting files."
   (interactive "P")
   (let* ((pr (project-current t))
          (filter-predicate (lambda (buf) (memq buf (project-buffers pr)))))
-    (display-buffer (list-buffers-noselect arg nil filter-predicate))))
+    (display-buffer
+     (if (version< emacs-version "29.0.50")
+         (let ((buf (list-buffers-noselect arg (project-buffers pr))))
+           (with-current-buffer buf
+             (setq-local revert-buffer-function
+                         (lambda (&rest _ignored)
+                           (list-buffers--refresh (project-buffers pr))
+                           (tabulated-list-print t))))
+           buf)
+       (list-buffers-noselect arg nil filter-predicate)))))
 
 (defcustom project-kill-buffer-conditions
   '(buffer-file-name    ; All file-visiting buffers are included.
