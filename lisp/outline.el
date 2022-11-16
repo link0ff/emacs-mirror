@@ -1348,6 +1348,37 @@ If there is no such heading, return nil."
       (if (< (funcall outline-level) level)
 	  nil
         (point)))))
+
+
+;;; Search text-property for outline headings
+
+;;;###autoload
+(defun outline-search-level (&optional limit backward looking-at)
+  (outline-search-text-property 'outline-level limit backward looking-at))
+
+(defun outline-search-text-property (prop &optional limit backward looking-at)
+  (if looking-at
+      (get-text-property (point) prop)
+    ;; Go to the end when in the middle of heading
+    ;; (when (get-text-property (point) prop)
+    ;;   (if backward
+    ;;       (text-property-search-backward prop)
+    ;;     (text-property-search-forward prop)))
+    (let ((prop-match (if backward
+                          (text-property-search-backward prop)
+                        (text-property-search-forward prop))))
+      (if prop-match
+          (let ((beg (prop-match-beginning prop-match))
+                (end (prop-match-end prop-match)))
+            (if (or (not (numberp limit)) (<= end limit))
+                (progn (set-match-data (list beg end))
+                       t)
+              (goto-char limit)
+              nil))
+        (when limit
+          (goto-char (if (numberp limit) limit (point-max))))
+        nil))))
+
 
 (defun outline-headers-as-kill (beg end)
   "Save the visible outline headers between BEG and END to the kill ring.
@@ -1380,36 +1411,6 @@ convenient way to make a table of contents of the buffer."
                     (insert-buffer-substring buffer start end)
                     (insert "\n\n"))))))
           (kill-new (buffer-string)))))))
-
-
-;;; Search text-property for outline headings
-
-;;;###autoload
-(defun outline-search-level (&optional limit backward looking-at)
-  (outline-search-text-property 'outline-level limit backward looking-at))
-
-(defun outline-search-text-property (prop &optional limit backward looking-at)
-  (if looking-at
-      (get-text-property (point) prop)
-    ;; Go to the end when in the middle of heading
-    ;; (when (get-text-property (point) prop)
-    ;;   (if backward
-    ;;       (text-property-search-backward prop)
-    ;;     (text-property-search-forward prop)))
-    (let ((prop-match (if backward
-                          (text-property-search-backward prop)
-                        (text-property-search-forward prop))))
-      (if prop-match
-          (let ((beg (prop-match-beginning prop-match))
-                (end (prop-match-end prop-match)))
-            (if (or (not (numberp limit)) (<= end limit))
-                (progn (set-match-data (list beg end))
-                       t)
-              (goto-char limit)
-              nil))
-        (when limit
-          (goto-char (if (numberp limit) limit (point-max))))
-        nil))))
 
 
 ;;; Initial visibility
