@@ -376,7 +376,7 @@ data reflects the `outline-regexp'.")
   (save-excursion
     (goto-char (match-beginning 0))
     (if outline-search-function
-        (funcall outline-search-function nil nil t)
+        (funcall outline-search-function nil nil nil t)
       (looking-at outline-regexp))
     (aref outline-font-lock-faces
           (% (1- (funcall outline-level))
@@ -607,7 +607,7 @@ or else the number of characters matched by `outline-regexp'."
 If there's no following heading line, stop before the newline
 at the end of the buffer."
   (when (if outline-search-function
-            (funcall outline-search-function 'move)
+            (funcall outline-search-function nil t)
           (re-search-forward (concat "\n\\(?:" outline-regexp "\\)")
 			     nil 'move))
     (goto-char (match-beginning 0))
@@ -622,7 +622,7 @@ at the end of the buffer."
   ;; Make sure we don't match the heading we're at.
   (when (and (bolp) (not (eobp))) (forward-char 1))
   (when (if outline-search-function
-            (funcall outline-search-function 'move)
+            (funcall outline-search-function nil t)
           (re-search-forward (concat "^\\(?:" outline-regexp "\\)")
 			     nil 'move))
     (goto-char (match-beginning 0))))
@@ -631,7 +631,7 @@ at the end of the buffer."
   "Move to the previous (possibly invisible) heading line."
   (interactive)
   (if outline-search-function
-      (funcall outline-search-function 'move t)
+      (funcall outline-search-function nil t t)
     (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
 		        nil 'move)))
 
@@ -651,7 +651,7 @@ Only visible heading lines are considered, unless INVISIBLE-OK is non-nil."
 	(save-excursion
 	  (while (not found)
 	    (or (if outline-search-function
-                    (funcall outline-search-function nil t)
+                    (funcall outline-search-function nil nil t)
                   (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
 				      nil t))
                 (signal 'outline-before-first-heading nil))
@@ -667,7 +667,7 @@ If INVISIBLE-OK is non-nil, an invisible heading line is ok too."
     (beginning-of-line)
     (and (bolp) (or invisible-ok (not (outline-invisible-p)))
 	 (if outline-search-function
-             (funcall outline-search-function nil nil t)
+             (funcall outline-search-function nil nil nil t)
            (looking-at outline-regexp)))))
 
 (defun outline-insert-heading ()
@@ -781,7 +781,7 @@ nil for WHICH, or do not pass any argument)."
 				  (<= (funcall outline-level) level))))
 		    (unless (eobp)
 		      (if outline-search-function
-                          (funcall outline-search-function nil nil t)
+                          (funcall outline-search-function nil nil nil t)
                         (looking-at outline-regexp))
 		      (match-string-no-properties 0))))
                 ;; Bummer!! There is no higher-level heading in the buffer.
@@ -910,7 +910,7 @@ A heading line is one that starts with a `*' (or that
       (while (and (not (bobp))
 		  (setq found-heading-p
 			(if outline-search-function
-                            (funcall outline-search-function 'move t)
+                            (funcall outline-search-function nil t t)
                           (re-search-backward regexp nil 'move)))
 		  (outline-invisible-p)))
       (setq arg (1+ arg)))
@@ -918,7 +918,7 @@ A heading line is one that starts with a `*' (or that
       (while (and (not (eobp))
 		  (setq found-heading-p
 			(if outline-search-function
-                            (funcall outline-search-function 'move)
+                            (funcall outline-search-function nil t)
                           (re-search-forward regexp nil 'move)))
 		  (outline-invisible-p (match-beginning 0))))
       (setq arg (1- arg)))
@@ -1142,7 +1142,7 @@ of the current heading, or to 1 if the current line is not a heading."
 		 ((save-excursion
                     (beginning-of-line)
 		    (if outline-search-function
-                        (funcall outline-search-function nil nil t)
+                        (funcall outline-search-function nil nil nil t)
                       (looking-at outline-regexp)))
 		  (funcall outline-level))
 		 (t 1))))
@@ -1291,7 +1291,7 @@ If INVISIBLE-OK is non-nil, also consider invisible lines."
 	(setq start-level level))
       (setq arg (- arg 1))))
   (if outline-search-function
-      (funcall outline-search-function nil nil t)
+      (funcall outline-search-function nil nil nil t)
     (looking-at outline-regexp)))
 
 (defun outline-forward-same-level (arg)
@@ -1355,12 +1355,19 @@ If there is no such heading, return nil."
 ;;; Search text-property for outline headings
 
 ;;;###autoload
-(defun outline-search-level (&optional limit backward looking-at)
-  (outline-search-text-property 'outline-level limit backward looking-at))
+(defun outline-search-level (&optional bound move backward looking-at)
+  "Search for the next text property `outline-level'.
+The arguments are the same as in `outline-search-text-property',
+except the property name `outline-level'.
+This function is intended to be used in `outline-search-function'."
+  (outline-search-text-property 'outline-level bound move backward looking-at))
 
-(defun outline-search-text-property (prop &optional limit backward looking-at)
+(defun outline-search-text-property (prop &optional bound move backward looking-at)
+  "Search for the next text property PROP.
+The optional arguments BOUND has the same meaning as in "
   (if looking-at
-      (get-text-property (point) prop)
+      (when (get-text-property (point) prop)
+        (set-match-data (list (pos-bol) (pos-eol))))
     ;; Go to the end when in the middle of heading
     (when (and (not backward)
                (get-text-property (point) prop)
@@ -1372,13 +1379,12 @@ If there is no such heading, return nil."
       (if prop-match
           (let ((beg (prop-match-beginning prop-match))
                 (end (prop-match-end prop-match)))
-            (if (or (not (numberp limit)) (<= end limit))
+            (if (or (null bound) (<= end bound))
                 (progn (set-match-data (list beg end))
                        t)
-              (goto-char limit)
+              (when move (goto-char bound))
               nil))
-        (when limit
-          (goto-char (if (numberp limit) limit (point-max))))
+        (when move (goto-char (or bound (point-max))))
         nil))))
 
 
