@@ -610,7 +610,9 @@ at the end of the buffer."
             (funcall outline-search-function 'move)
           (re-search-forward (concat "\n\\(?:" outline-regexp "\\)")
 			     nil 'move))
-    (goto-char (match-beginning 0)))
+    (goto-char (match-beginning 0))
+    ;; Compensate "\n" from the beginning of regexp
+    (when (and outline-search-function (not (bobp))) (forward-char -1)))
   (when (and (bolp) (or outline-blank-line (eobp)) (not (bobp)))
     (forward-char -1)))
 
@@ -1360,10 +1362,10 @@ If there is no such heading, return nil."
   (if looking-at
       (get-text-property (point) prop)
     ;; Go to the end when in the middle of heading
-    ;; (when (get-text-property (point) prop)
-    ;;   (if backward
-    ;;       (text-property-search-backward prop)
-    ;;     (text-property-search-forward prop)))
+    (when (and (not backward)
+               (get-text-property (point) prop)
+               (not (or (bobp) (not (get-text-property (1- (point)) prop)))))
+      (text-property-search-forward prop))
     (let ((prop-match (if backward
                           (text-property-search-backward prop)
                         (text-property-search-forward prop))))
