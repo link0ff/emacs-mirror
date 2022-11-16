@@ -607,7 +607,7 @@ or else the number of characters matched by `outline-regexp'."
 If there's no following heading line, stop before the newline
 at the end of the buffer."
   (when (if outline-search-function
-            (funcall outline-search-function)
+            (funcall outline-search-function 'move)
           (re-search-forward (concat "\n\\(?:" outline-regexp "\\)")
 			     nil 'move))
     (goto-char (match-beginning 0)))
@@ -620,7 +620,7 @@ at the end of the buffer."
   ;; Make sure we don't match the heading we're at.
   (when (and (bolp) (not (eobp))) (forward-char 1))
   (when (if outline-search-function
-            (funcall outline-search-function)
+            (funcall outline-search-function 'move)
           (re-search-forward (concat "^\\(?:" outline-regexp "\\)")
 			     nil 'move))
     (goto-char (match-beginning 0))))
@@ -629,7 +629,7 @@ at the end of the buffer."
   "Move to the previous (possibly invisible) heading line."
   (interactive)
   (if outline-search-function
-      (funcall outline-search-function nil t)
+      (funcall outline-search-function 'move t)
     (re-search-backward (concat "^\\(?:" outline-regexp "\\)")
 		        nil 'move)))
 
@@ -832,7 +832,7 @@ the match data is set appropriately."
     (setq end (copy-marker end))
     (goto-char beg)
     (when (if outline-search-function
-              (funcall outline-search-function)
+              (funcall outline-search-function end)
             (re-search-forward (concat "^\\(?:" outline-regexp "\\)") end t))
       (goto-char (match-beginning 0))
       (funcall fun)
@@ -908,7 +908,7 @@ A heading line is one that starts with a `*' (or that
       (while (and (not (bobp))
 		  (setq found-heading-p
 			(if outline-search-function
-                            (funcall outline-search-function nil t)
+                            (funcall outline-search-function 'move t)
                           (re-search-backward regexp nil 'move)))
 		  (outline-invisible-p)))
       (setq arg (1+ arg)))
@@ -916,7 +916,7 @@ A heading line is one that starts with a `*' (or that
       (while (and (not (eobp))
 		  (setq found-heading-p
 			(if outline-search-function
-                            (funcall outline-search-function)
+                            (funcall outline-search-function 'move)
                           (re-search-forward regexp nil 'move)))
 		  (outline-invisible-p (match-beginning 0))))
       (setq arg (1- arg)))
@@ -1137,10 +1137,11 @@ of the current heading, or to 1 if the current line is not a heading."
   (interactive (list
 		(cond
 		 (current-prefix-arg (prefix-numeric-value current-prefix-arg))
-		 ((save-excursion (beginning-of-line)
-				  (if outline-search-function
-                                      (funcall outline-search-function nil nil t)
-                                    (looking-at outline-regexp)))
+		 ((save-excursion
+                    (beginning-of-line)
+		    (if outline-search-function
+                        (funcall outline-search-function nil nil t)
+                      (looking-at outline-regexp)))
 		  (funcall outline-level))
 		 (t 1))))
   (if (< levels 1)
@@ -1388,29 +1389,27 @@ convenient way to make a table of contents of the buffer."
   (outline-search-text-property 'outline-level limit backward looking-at))
 
 (defun outline-search-text-property (prop &optional limit backward looking-at)
-  (let* ((prop-at
-          (if looking-at
-              (get-text-property (point) prop)
-            (when (get-text-property (point) prop)
-              ;; Go to the end of the current heading
-              (if backward
-                  (text-property-search-backward prop)
-                (text-property-search-forward prop)))
-            t))
-         (prop-match
-          (when prop-at
-            (if backward
-                (text-property-search-backward prop)
-              (text-property-search-forward prop)))))
-    (if prop-match
-        (let ((beg (prop-match-beginning prop-match))
-              (end (prop-match-end prop-match)))
-          (if (or (null limit) (< end limit))
-              (set-match-data (list beg end))
-            (goto-char (or limit (point-max))))
-          t)
-      (goto-char (point-max))
-      nil)))
+  (if looking-at
+      (get-text-property (point) prop)
+    ;; Go to the end when in the middle of heading
+    ;; (when (get-text-property (point) prop)
+    ;;   (if backward
+    ;;       (text-property-search-backward prop)
+    ;;     (text-property-search-forward prop)))
+    (let ((prop-match (if backward
+                          (text-property-search-backward prop)
+                        (text-property-search-forward prop))))
+      (if prop-match
+          (let ((beg (prop-match-beginning prop-match))
+                (end (prop-match-end prop-match)))
+            (if (or (not (numberp limit)) (<= end limit))
+                (progn (set-match-data (list beg end))
+                       t)
+              (goto-char limit)
+              nil))
+        (when limit
+          (goto-char (if (numberp limit) limit (point-max))))
+        nil))))
 
 
 ;;; Initial visibility
