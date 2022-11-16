@@ -1360,27 +1360,35 @@ If there is no such heading, return nil."
 The arguments are the same as in `outline-search-text-property',
 except the property name `outline-level'.
 This function is intended to be used in `outline-search-function'."
-  (outline-search-text-property 'outline-level bound move backward looking-at))
+  (outline-search-text-property 'outline-level nil bound move backward looking-at))
 
-(defun outline-search-text-property (prop &optional bound move backward looking-at)
-  "Search for the next text property PROP.
+(defun outline-search-text-property (property &optional value bound move backward looking-at)
+  "Search for the next text PROPERTY with VALUE.
 The optional arguments BOUND has the same meaning as in "
   (if looking-at
-      (when (get-text-property (point) prop)
-        (set-match-data (list (pos-bol) (pos-eol))))
+      (when (if value (eq (get-text-property (point) property) value)
+              (get-text-property (point) property))
+        (set-match-data (list (pos-bol) (pos-eol)))
+        t)
     ;; Go to the end when in the middle of heading
     (when (and (not backward)
-               (get-text-property (point) prop)
-               (not (or (bobp) (not (get-text-property (1- (point)) prop)))))
-      (text-property-search-forward prop))
+               (if value (eq (get-text-property (point) property) value)
+                 (get-text-property (point) property))
+               (not (or (bobp)
+                        (not (if value
+                                 (eq (get-text-property (1- (point)) property) value)
+                               (get-text-property (1- (point)) property))))))
+      (goto-char (pos-eol)))
     (let ((prop-match (if backward
-                          (text-property-search-backward prop)
-                        (text-property-search-forward prop))))
+                          (text-property-search-backward property value (and value t))
+                        (text-property-search-forward property value (and value t)))))
       (if prop-match
           (let ((beg (prop-match-beginning prop-match))
                 (end (prop-match-end prop-match)))
             (if (or (null bound) (<= end bound))
-                (progn (set-match-data (list beg end))
+                (progn (goto-char end)
+                       (goto-char (pos-eol))
+                       (set-match-data (list beg (point)))
                        t)
               (when move (goto-char bound))
               nil))
