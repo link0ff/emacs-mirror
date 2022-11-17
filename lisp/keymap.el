@@ -589,6 +589,7 @@ symbol property on its symbol.
              (push (pop defs) opts)))))
     (unless (zerop (% (length defs) 2))
       (error "Uneven number of key/definition pairs: %s" defs))
+
     (let ((defs defs)
           key seen-keys)
       (while defs
@@ -599,6 +600,7 @@ symbol property on its symbol.
               (error "Duplicate definition for key '%s' in keymap '%s'"
                      key variable-name)
             (push key seen-keys)))))
+
     (when repeat
       (let ((defs defs)
             def)
@@ -610,6 +612,7 @@ symbol property on its symbol.
           (when (and (memq (car def) '(function quote))
                      (not (memq (cadr def) (plist-get repeat :exit))))
             (push `(put ,def 'repeat-map ',variable-name) props)))))
+
     (let ((defvar-form
            `(defvar ,variable-name
               (define-keymap ,@(nreverse opts) ,@defs)
