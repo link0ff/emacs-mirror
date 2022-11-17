@@ -557,26 +557,25 @@ See `define-keymap' for an explanation of the keywords and KEY/DEFINITION.
 
 In addition to the keywords accepted by `define-keymap', this
 macro also accepts a `:doc' keyword, which (if present) is used
-as the variable documentation string.  Also it accepts:
+as the variable documentation string.
 
-:repeat-map   If non-nil, put the `repeat-map' symbol properties
-              on commands in this map for `repeat-mode'.
+When a `:repeat' keyword is non-nil, put `repeat-map' symbol properties
+on commands in this map for `repeat-mode'.  The value could also be
+a property list with properties `:enter' and `:exit', for example,
+:repeat \\='(:enter (enter-commands ...) :exit (exit-commands ...)).
+`:enter' is a list of additional commands that only enter
+`repeat-mode'.  When the list is empty then by default all commands
+in the map enter `repeat-mode'.  This is applicable when a command has
+the `repeat-map' symbol property on its symbol, but doesn't exist
+in the map.  `:exit' is a list of commands that exit `repeat-mode'.
+When the list is empty, no commands in the map exit `repeat-mode'.
+This is applicable when a command exists in the map, but doesn't have
+the `repeat-map' symbol property on its symbol.
 
-:repeat-enter A list of additional commands that only enter `repeat-mode'.
-              When the list is empty then by default all commands in the
-              map enter `repeat-mode'.  This is applicable when a command
-              has the `repeat-map' symbol property on its symbol, but
-              doesn't exist in the map.
-
-:repeat-exit A list of commands that exit `repeat-mode'.  When the
-             list is empty, no commands in the map exit `repeat-mode'.
-             This is applicable when a command exists in the map, but
-             doesn't have the `repeat-map' symbol property on its symbol.
-
-\(fn VARIABLE-NAME &key DOC FULL PARENT SUPPRESS NAME PREFIX KEYMAP REPEAT-MAP REPEAT-ENTER REPEAT-EXIT &rest [KEY DEFINITION]...)"
+\(fn VARIABLE-NAME &key DOC FULL PARENT SUPPRESS NAME PREFIX KEYMAP REPEAT &rest [KEY DEFINITION]...)"
   (declare (indent 1))
   (let ((opts nil)
-        doc repeat-map repeat-enter repeat-exit props)
+        doc repeat props)
     (while (and defs
                 (keywordp (car defs))
                 (not (eq (car defs) :menu)))
@@ -585,9 +584,7 @@ as the variable documentation string.  Also it accepts:
           (error "Uneven number of keywords"))
         (pcase keyword
           (:doc (setq doc (pop defs)))
-          (:repeat-map   (setq repeat-map   (pop defs)))
-          (:repeat-enter (setq repeat-enter (pop defs)))
-          (:repeat-exit  (setq repeat-exit  (pop defs)))
+          (:repeat (setq repeat (pop defs)))
           (_ (push keyword opts)
              (push (pop defs) opts)))))
     (unless (zerop (% (length defs) 2))
@@ -602,7 +599,7 @@ as the variable documentation string.  Also it accepts:
               (error "Duplicate definition for key '%s' in keymap '%s'"
                      key variable-name)
             (push key seen-keys)))))
-    (when repeat-map
+    (when repeat
       (let ((defs defs)
             def)
         (while defs
@@ -610,10 +607,9 @@ as the variable documentation string.  Also it accepts:
           (setq def (pop defs))
           (when (and (or (eq (car def) 'function)
                          (eq (car def) 'quote))
-                     (or (null repeat-exit)
-                         (not (memq def repeat-exit))))
+                     (not (memq def (plist-get repeat :exit))))
             (push `(put ,def 'repeat-map ',variable-name) props)))
-        (dolist (def repeat-enter)
+        (dolist (def (plist-get repeat :enter))
           (push `(put ',def 'repeat-map ',variable-name) props))))
     `(progn
        (defvar ,variable-name
