@@ -557,22 +557,39 @@ See `define-keymap' for an explanation of the keywords and KEY/DEFINITION.
 
 In addition to the keywords accepted by `define-keymap', this
 macro also accepts a `:doc' keyword, which (if present) is used
-as the variable documentation string.
+as the variable documentation string.  Also it accepts:
 
-\(fn VARIABLE-NAME &key DOC FULL PARENT SUPPRESS NAME PREFIX KEYMAP &rest [KEY DEFINITION]...)"
+:repeat-map   If non-nil, put the `repeat-map' symbol properties
+              on commands in this map for `repeat-mode'.
+
+:repeat-enter A list of additional commands that only enter `repeat-mode'.
+              When the list is empty then by default all commands in the
+              map enter `repeat-mode'.  This is applicable when a command
+              has the `repeat-map' symbol property on its symbol, but
+              doesn't exist in the map.
+
+:repeat-exit A list of commands that exit `repeat-mode'.  When the
+             list is empty, no commands in the map exit `repeat-mode'.
+             This is applicable when a command exists in the map, but
+             doesn't have the `repeat-map' symbol property on its symbol.
+
+\(fn VARIABLE-NAME &key DOC FULL PARENT SUPPRESS NAME PREFIX KEYMAP REPEAT-MAP REPEAT-ENTER REPEAT-EXIT &rest [KEY DEFINITION]...)"
   (declare (indent 1))
   (let ((opts nil)
-        doc)
+        doc repeat-map repeat-enter repeat-exit props)
     (while (and defs
                 (keywordp (car defs))
                 (not (eq (car defs) :menu)))
       (let ((keyword (pop defs)))
         (unless defs
           (error "Uneven number of keywords"))
-        (if (eq keyword :doc)
-            (setq doc (pop defs))
-          (push keyword opts)
-          (push (pop defs) opts))))
+        (pcase keyword
+          (:doc (setq doc (pop defs)))
+          (:repeat-map   (setq repeat-map   (pop defs)))
+          (:repeat-enter (setq repeat-enter (pop defs)))
+          (:repeat-exit  (setq repeat-exit  (pop defs)))
+          (_ (push keyword opts)
+             (push (pop defs) opts)))))
     (unless (zerop (% (length defs) 2))
       (error "Uneven number of key/definition pairs: %s" defs))
     (let ((defs defs)
@@ -585,9 +602,24 @@ as the variable documentation string.
               (error "Duplicate definition for key '%s' in keymap '%s'"
                      key variable-name)
             (push key seen-keys)))))
-    `(defvar ,variable-name
-       (define-keymap ,@(nreverse opts) ,@defs)
-       ,@(and doc (list doc)))))
+    (when repeat-map
+      (let ((defs defs)
+            def)
+        (while defs
+          (pop defs)
+          (setq def (pop defs))
+          (when (and (or (eq (car def) 'function)
+                         (eq (car def) 'quote))
+                     (or (null repeat-exit)
+                         (not (memq def repeat-exit))))
+            (push `(put ,def 'repeat-map ',variable-name) props)))
+        (dolist (def repeat-enter)
+          (push `(put ',def 'repeat-map ',variable-name) props))))
+    `(progn
+       (defvar ,variable-name
+         (define-keymap ,@(nreverse opts) ,@defs)
+         ,@(and doc (list doc)))
+       ,@props)))
 
 (defun make-non-key-event (symbol)
   "Mark SYMBOL as an event that shouldn't be returned from `where-is'."
