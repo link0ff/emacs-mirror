@@ -61,11 +61,15 @@ in the file it applies to.")
 
 (defvar outline-search-function nil
   "Function to search the next outline heading.
-The function is called with two arguments: the limit of the search
-and the optional argument for the backward search; it should return
-non-nil, move point (to the end of the buffer when search fails),
-and set match-data appropriately if it succeeds;
-like re-search-forward with `outline-regexp' would.")
+The function is called with four optional arguments: BOUND, MOVE, BACKWARD,
+LOOKING-AT.  The first two arguments BOUND and MOVE are almost the same as
+the BOUND and NOERROR arguments of `re-search-forward', with the difference
+that MOVE accepts only a boolean, either nil or non-nil.  When the argument
+BACKWARD is non-nil, the search should search backward like
+`re-search-backward' does.  When the argument LOOKING-AT is non-nil,
+it should imitate the function `looking-at'.  In case of a successful
+search, the function should return non-nil, move point, and set
+match-data appropriately.")
 
 (defvar outline-mode-prefix-map
   (let ((map (make-sparse-keymap)))
@@ -1358,13 +1362,13 @@ If there is no such heading, return nil."
 (defun outline-search-level (&optional bound move backward looking-at)
   "Search for the next text property `outline-level'.
 The arguments are the same as in `outline-search-text-property',
-except the property name `outline-level'.
+except the hard-coded property name `outline-level'.
 This function is intended to be used in `outline-search-function'."
   (outline-search-text-property 'outline-level nil bound move backward looking-at))
 
 (defun outline-search-text-property (property &optional value bound move backward looking-at)
-  "Search for the next text PROPERTY with VALUE.
-The optional arguments BOUND has the same meaning as in "
+  "Search for the next text property PROPERTY with VALUE.
+The rest of arguments are described in `outline-search-function'."
   (if looking-at
       (when (if value (eq (get-text-property (point) property) value)
               (get-text-property (point) property))
@@ -1378,7 +1382,7 @@ The optional arguments BOUND has the same meaning as in "
                         (not (if value
                                  (eq (get-text-property (1- (point)) property) value)
                                (get-text-property (1- (point)) property))))))
-      (goto-char (pos-eol)))
+      (goto-char (1+ (pos-eol))))
     (let ((prop-match (if backward
                           (text-property-search-backward property value (and value t))
                         (text-property-search-forward property value (and value t)))))
