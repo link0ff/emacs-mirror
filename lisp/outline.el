@@ -611,7 +611,10 @@ or else the number of characters matched by `outline-regexp'."
 If there's no following heading line, stop before the newline
 at the end of the buffer."
   (when (if outline-search-function
-            (funcall outline-search-function nil t)
+            (progn
+              ;; Emulate "\n" to force finding the next preface
+              (unless (eobp) (forward-char 1))
+              (funcall outline-search-function nil t))
           (re-search-forward (concat "\n\\(?:" outline-regexp "\\)")
 			     nil 'move))
     (goto-char (match-beginning 0))
@@ -1389,14 +1392,20 @@ The rest of arguments are described in `outline-search-function'."
       (if prop-match
           (let ((beg (prop-match-beginning prop-match))
                 (end (prop-match-end prop-match)))
-            (if (or (null bound) (<= end bound))
-                (progn (goto-char end)
-                       (goto-char (pos-eol))
-                       (set-match-data (list beg (point)))
+            (if (or (null bound) (if backward (>= beg bound) (<= end bound)))
+                (cond (backward
+                       (goto-char beg)
+                       (goto-char (pos-bol))
+                       (set-match-data (list (point) end))
                        t)
+                      (t
+                       (goto-char end)
+                       (goto-char (if (bolp) (1- (point)) (pos-eol)))
+                       (set-match-data (list beg (point)))
+                       t))
               (when move (goto-char bound))
               nil))
-        (when move (goto-char (or bound (point-max))))
+        (when move (goto-char (or bound (if backward (point-min) (point-max)))))
         nil))))
 
 

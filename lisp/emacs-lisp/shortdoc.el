@@ -1385,7 +1385,8 @@ If SAME-WINDOW, don't pop to a new window."
         ;; There may be functions not yet defined in the data.
         ((fboundp (car data))
          (when prev
-           (insert (make-separator-line)))
+           (insert (make-separator-line)
+                   (propertize "\n" 'face '(:height 0))))
          (setq prev t)
          (shortdoc--display-function data))))
      (cdr (assq group shortdoc--groups))))
@@ -1537,8 +1538,8 @@ Example:
 (define-derived-mode shortdoc-mode special-mode "shortdoc"
   "Mode for shortdoc."
   :interactive nil
-  (setq-local outline-search-function #'outline-search-level)
-  (setq-local outline-level (lambda () (get-text-property (point) 'outline-level))))
+  (setq-local outline-search-function #'outline-search-level
+              outline-level (lambda () (get-text-property (point) 'outline-level))))
 
 (defun shortdoc--goto-section (arg sym &optional reverse)
   (unless (natnump arg)
