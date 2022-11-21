@@ -1386,6 +1386,7 @@ If SAME-WINDOW, don't pop to a new window."
         ((fboundp (car data))
          (when prev
            (insert (make-separator-line)
+                   ;; This helps with hidden outlines (bug#53981)
                    (propertize "\n" 'face '(:height 0))))
          (setq prev t)
          (shortdoc--display-function data))))
@@ -1539,7 +1540,8 @@ Example:
   "Mode for shortdoc."
   :interactive nil
   (setq-local outline-search-function #'outline-search-level
-              outline-level (lambda () (get-text-property (point) 'outline-level))))
+              outline-level (lambda ()
+                              (get-text-property (point) 'outline-level))))
 
 (defun shortdoc--goto-section (arg sym &optional reverse)
   (unless (natnump arg)
