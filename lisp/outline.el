@@ -548,11 +548,13 @@ See the command `outline-mode' for more information on this mode."
 		  nil t)
         (setq-local line-move-ignore-invisible t)
 	;; Cause use of ellipses for invisible text.
-	(add-to-invisibility-spec '(outline . t))
+	(add-to-invisibility-spec
+         (if outline-minor-mode-use-buttons 'outline '(outline . t)))
 	(outline-apply-default-state))
     (setq line-move-ignore-invisible nil)
     ;; Cause use of ellipses for invisible text.
-    (remove-from-invisibility-spec '(outline . t))
+    (remove-from-invisibility-spec
+     (if outline-minor-mode-use-buttons 'outline '(outline . t)))
     ;; When turning off outline mode, get rid of any outline hiding.
     (outline-show-all)
     (when outline-minor-mode-highlight
@@ -1368,6 +1370,9 @@ The arguments are the same as in `outline-search-text-property',
 except the hard-coded property name `outline-level'.
 This function is intended to be used in `outline-search-function'."
   (outline-search-text-property 'outline-level nil bound move backward looking-at))
+
+(autoload 'text-property-search-forward "text-property-search")
+(autoload 'text-property-search-backward "text-property-search")
 
 (defun outline-search-text-property (property &optional value bound move backward looking-at)
   "Search for the next text property PROPERTY with VALUE.
