@@ -66,10 +66,10 @@ LOOKING-AT.  The first two arguments BOUND and MOVE are almost the same as
 the BOUND and NOERROR arguments of `re-search-forward', with the difference
 that MOVE accepts only a boolean, either nil or non-nil.  When the argument
 BACKWARD is non-nil, the search should search backward like
-`re-search-backward' does.  When the argument LOOKING-AT is non-nil,
-it should imitate the function `looking-at'.  In case of a successful
-search, the function should return non-nil, move point, and set
-match-data appropriately.")
+`re-search-backward' does.  In case of a successful search, the
+function should return non-nil, move point, and set match-data
+appropriately.  When the argument LOOKING-AT is non-nil, it should
+imitate the function `looking-at'.")
 
 (defvar outline-mode-prefix-map
   (let ((map (make-sparse-keymap)))
