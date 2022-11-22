@@ -95,7 +95,12 @@ indent, imenu, etc."
   :group 'tools
   :version "29.1")
 
-(defcustom treesit-max-buffer-size (* 4 1024 1024)
+(defcustom treesit-max-buffer-size
+  (let ((mb (* 1024 1024)))
+    ;; 40MB for 64-bit systems, 15 for 32-bit.
+    (if (> most-positive-fixnum (* 4 1024 mb))
+        (* 40 mb)
+      (* 15 mb)))
   "Maximum buffer size for enabling tree-sitter parsing (in bytes)."
   :type 'integer
   :version "29.1")
@@ -689,16 +694,23 @@ name, it is ignored."
   "If non-nil, print debug messages when fontifying.")
 
 (defun treesit-font-lock-recompute-features (&optional add-list remove-list)
-  "Enable/disable font-lock settings according to decoration level.
+  "Enable/disable font-lock features.
 
-First compute the enabled features according to
-`treesit-font-lock-feature-list' and `font-lock-maximum-decoration',
-then, if ADD-LIST or REMOVE-LIST are not omitted, further add and
-remove features accordingly.
+Enable each feature in ADD-LIST, disable each feature in
+REMOVE-LIST.
+
+If both ADD-LIST and REMOVE-LIST are omitted, recompute each
+feature according to `treesit-font-lock-feature-list' and
+`font-lock-maximum-decoration'.  Let N be the value of
+`font-lock-maximum-decoration', features in the first Nth sublist
+of `treesit-font-lock-feature-list' are enabled, and the rest
+features are disabled.  If `font-lock-maximum-decoration' is t,
+all features in `treesit-font-lock-feature-list' are enabled, and
+the rest are disabled.
 
 ADD-LIST and REMOVE-LIST are each a list of feature symbols.  The
 same feature symbol cannot appear in both lists; the function
-signals the `treesit-font-lock-error' error if so."
+signals the `treesit-font-lock-error' error if that happens."
   (when-let ((intersection (cl-intersection add-list remove-list)))
     (signal 'treesit-font-lock-error
             (list "ADD-LIST and REMOVE-LIST contain the same feature"
@@ -712,13 +724,23 @@ signals the `treesit-font-lock-error' error if so."
                                 (>= level (1+ idx)))
                          append features))
          (features (cl-set-difference (cl-union base-features add-list)
-                                      remove-list)))
+                                      remove-list))
+         ;; If additive non-nil, we are configuring on top of the
+         ;; existing configuration, if nil, we are resetting
+         ;; everything according to `treesit-font-lock-feature-list'.
+         (additive (or add-list remove-list)))
     (cl-loop for idx = 0 then (1+ idx)
              for setting in treesit-font-lock-settings
              for feature = (nth 2 setting)
+             for current-value = (nth 1 setting)
              ;; Set the ENABLE flag for the setting.
              do (setf (nth 1 (nth idx treesit-font-lock-settings))
-                      (if (memq feature features) t nil)))))
+                      (cond
+                       ((not additive)
+                        (if (memq feature features) t nil))
+                       ((memq feature add-list) t)
+                       ((memq feature remove-list) nil)
+                       (t current-value))))))
 
 (defun treesit-fontify-with-override (start end face override)
   "Apply FACE to the region between START and END.
@@ -1760,10 +1782,11 @@ to the offending pattern and highlight the pattern."
 
 (defun treesit--explorer--nodes-to-highlight (language)
   "Return nodes for LANGUAGE covered in region.
-This function tries to return the largest node possible.  So it
-will return a single large node rather than a bunch of small
-nodes.  If it end up returning multiple small nodes, it only
-returns the first and last node, and omits the ones in between."
+This function tries to return the largest node possible.  If the
+region covers exactly one node, that node is returned (in a
+list).  If the region covers more than one node, two nodes are
+returned: the very first one in the region and the very last one
+in the region."
   (let* ((beg (region-beginning))
          (end (region-end))
          (node (treesit-node-on beg end language))
@@ -1882,13 +1905,10 @@ Return the start of the syntax tree text corresponding to NODE."
 
 (defun treesit--explorer-draw-node (node)
   "Draw the syntax tree of NODE.
-If NODE and NODE-HIGHLIGHT are the same node, highlight it.
 
-When this function is called, point should be at an empty line,
-when appropriate indent in front of point.  When this function
-returns, it leaves point at the end of the last line of NODE.
-
-Return the start position of NODE-HIGHLIGHT in the buffer, if any."
+When this function is called, point should be at the position
+where the node should start.  When this function returns, it
+leaves point at the end of the last line of NODE."
   (let* ((type (treesit-node-type node))
          (field-name (treesit-node-field-name node))
          (children (treesit-node-children node))
