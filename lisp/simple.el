@@ -9754,16 +9754,17 @@ means move backward).
 
 Also see the `completion-auto-wrap' variable."
   (interactive "p")
-  (catch 'bound
-    (while (> n 0)
-      (let (pos)
+  (let ((column (current-column))
+        pos)
+    (catch 'bound
+      (while (> n 0)
+        (setq pos nil)
         (save-excursion
-          (condition-case nil
-              (while (and (not pos) (not (eobp)))
-                (with-no-warnings (next-line))
-                (when (get-text-property (point) 'mouse-face)
-                  (setq pos (point))))
-            (end-of-buffer)))
+          (while (and (not pos) (not (eobp)))
+            (forward-line 1)
+            (when (and (eq (move-to-column column) column)
+                       (get-text-property (point) 'mouse-face))
+              (setq pos (point)))))
         (if pos
             (goto-char pos)
           ;; If at the last completion option, wrap or skip
@@ -9774,27 +9775,23 @@ Also see the `completion-auto-wrap' variable."
                 (throw 'bound nil)
               (let ((column (current-column)))
                 (goto-char (point-min))
-                (move-to-column column)
                 (save-excursion
-                  (condition-case nil
-                      (while (and (not pos) (not (eobp)))
-                        (with-no-warnings (next-line))
-                        (when (get-text-property (point) 'mouse-face)
-                          (setq pos (point))))
-                    (end-of-buffer)))
-                (when pos
-                  (goto-char pos))))))
-        (setq n (1- n))))
+                  (while (and (not pos) (not (eobp)))
+                    (forward-line 1)
+                    (when (and (eq (move-to-column column) column)
+                               (get-text-property (point) 'mouse-face))
+                      (setq pos (point)))))
+                (if pos (goto-char pos))))))
+        (setq n (1- n)))
 
-    (while (< n 0)
-      (let (pos)
+      (while (< n 0)
+        (setq pos nil)
         (save-excursion
-          (condition-case nil
-              (while (and (not pos) (not (bobp)))
-                (with-no-warnings (previous-line))
-                (when (get-text-property (point) 'mouse-face)
-                  (setq pos (point))))
-            (beginning-of-buffer)))
+          (while (and (not pos) (not (bobp)))
+            (forward-line -1)
+            (when (and (eq (move-to-column column) column)
+                       (get-text-property (point) 'mouse-face))
+              (setq pos (point)))))
         (if pos
             (goto-char pos)
           (when completion-auto-wrap
@@ -9804,16 +9801,13 @@ Also see the `completion-auto-wrap' variable."
                   (throw 'bound nil))
               (let ((column (current-column)))
                 (goto-char (point-max))
-                (move-to-column column)
                 (save-excursion
-                  (condition-case nil
-                      (while (and (not pos) (not (bobp)))
-                        (with-no-warnings (previous-line))
-                        (when (get-text-property (point) 'mouse-face)
-                          (setq pos (point))))
-                    (beginning-of-buffer)))
-                (when pos
-                  (goto-char pos))))))
+                  (while (and (not pos) (not (bobp)))
+                    (forward-line -1)
+                    (when (and (eq (move-to-column column) column)
+                               (get-text-property (point) 'mouse-face))
+                      (setq pos (point)))))
+                (if pos (goto-char pos))))))
         (setq n (1+ n)))))
 
   (when (/= 0 n)
