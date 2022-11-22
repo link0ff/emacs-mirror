@@ -9572,6 +9572,8 @@ makes it easier to edit it."
     (define-key map "\C-m" 'choose-completion)
     (define-key map "\e\e\e" 'delete-completion-window)
     (define-key map [remap keyboard-quit] #'delete-completion-window)
+    (define-key map [up] 'previous-line-completion)
+    (define-key map [down] 'next-line-completion)
     (define-key map [left] 'previous-completion)
     (define-key map [right] 'next-completion)
     (define-key map [?\t] 'next-completion)
@@ -9735,6 +9737,87 @@ Also see the `completion-auto-wrap' variable."
 
     (when (/= 0 n)
       (switch-to-minibuffer))))
+
+(defun previous-line-completion (&optional n)
+  "Move to the item on the previous line in the completion list.
+With prefix argument N, move back N line-wise items (negative N
+means move forward).
+
+Also see the `completion-auto-wrap' variable."
+  (interactive "p")
+  (next-line-completion (- n)))
+
+(defun next-line-completion (&optional n)
+  "Move to the item on the next line in the completion list.
+With prefix argument N, move N line-wise items (negative N
+means move backward).
+
+Also see the `completion-auto-wrap' variable."
+  (interactive "p")
+  (catch 'bound
+    (while (> n 0)
+      (let (pos)
+        (save-excursion
+          (condition-case nil
+              (while (and (not pos) (not (eobp)))
+                (with-no-warnings (next-line))
+                (when (get-text-property (point) 'mouse-face)
+                  (setq pos (point))))
+            (end-of-buffer)))
+        (if pos
+            (goto-char pos)
+          ;; If at the last completion option, wrap or skip
+          ;; to the minibuffer, if requested.
+          (when completion-auto-wrap
+            (if (and (eq completion-auto-select t)
+                     (minibufferp completion-reference-buffer))
+                (throw 'bound nil)
+              (let ((column (current-column)))
+                (goto-char (point-min))
+                (move-to-column column)
+                (save-excursion
+                  (condition-case nil
+                      (while (and (not pos) (not (eobp)))
+                        (with-no-warnings (next-line))
+                        (when (get-text-property (point) 'mouse-face)
+                          (setq pos (point))))
+                    (end-of-buffer)))
+                (when pos
+                  (goto-char pos))))))
+        (setq n (1- n))))
+
+    (while (< n 0)
+      (let (pos)
+        (save-excursion
+          (condition-case nil
+              (while (and (not pos) (not (bobp)))
+                (with-no-warnings (previous-line))
+                (when (get-text-property (point) 'mouse-face)
+                  (setq pos (point))))
+            (beginning-of-buffer)))
+        (if pos
+            (goto-char pos)
+          (when completion-auto-wrap
+            (if (and (eq completion-auto-select t)
+                     (minibufferp completion-reference-buffer))
+                (progn
+                  (throw 'bound nil))
+              (let ((column (current-column)))
+                (goto-char (point-max))
+                (move-to-column column)
+                (save-excursion
+                  (condition-case nil
+                      (while (and (not pos) (not (bobp)))
+                        (with-no-warnings (previous-line))
+                        (when (get-text-property (point) 'mouse-face)
+                          (setq pos (point))))
+                    (beginning-of-buffer)))
+                (when pos
+                  (goto-char pos))))))
+        (setq n (1+ n)))))
+
+  (when (/= 0 n)
+    (switch-to-minibuffer)))
 
 (defun choose-completion (&optional event no-exit no-quit)
   "Choose the completion at point.
