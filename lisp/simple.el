@@ -9762,26 +9762,25 @@ Also see the `completion-auto-wrap' variable."
         (save-excursion
           (while (and (not pos) (not (eobp)))
             (forward-line 1)
-            (when (and (eq (move-to-column column) column)
+            (when (and (not (eobp))
+                       (eq (move-to-column column) column)
                        (get-text-property (point) 'mouse-face))
               (setq pos (point)))))
         (if pos
             (goto-char pos)
-          ;; If at the last completion option, wrap or skip
-          ;; to the minibuffer, if requested.
           (when completion-auto-wrap
-            (if (and (eq completion-auto-select t)
-                     (minibufferp completion-reference-buffer))
-                (throw 'bound nil)
-              (let ((column (current-column)))
+            (let ((column (current-column)))
+              (save-excursion
                 (goto-char (point-min))
-                (save-excursion
-                  (while (and (not pos) (not (eobp)))
-                    (forward-line 1)
-                    (when (and (eq (move-to-column column) column)
-                               (get-text-property (point) 'mouse-face))
-                      (setq pos (point)))))
-                (if pos (goto-char pos))))))
+                (when (and (eq (move-to-column column) column)
+                           (get-text-property (point) 'mouse-face))
+                  (setq pos (point)))
+                (while (and (not pos) (not (eobp)))
+                  (forward-line 1)
+                  (when (and (eq (move-to-column column) column)
+                             (get-text-property (point) 'mouse-face))
+                    (setq pos (point)))))
+              (if pos (goto-char pos)))))
         (setq n (1- n)))
 
       (while (< n 0)
@@ -9789,29 +9788,26 @@ Also see the `completion-auto-wrap' variable."
         (save-excursion
           (while (and (not pos) (not (bobp)))
             (forward-line -1)
-            (when (and (eq (move-to-column column) column)
+            (when (and (not (bobp))
+                       (eq (move-to-column column) column)
                        (get-text-property (point) 'mouse-face))
               (setq pos (point)))))
         (if pos
             (goto-char pos)
           (when completion-auto-wrap
-            (if (and (eq completion-auto-select t)
-                     (minibufferp completion-reference-buffer))
-                (progn
-                  (throw 'bound nil))
-              (let ((column (current-column)))
+            (let ((column (current-column)))
+              (save-excursion
                 (goto-char (point-max))
-                (save-excursion
-                  (while (and (not pos) (not (bobp)))
-                    (forward-line -1)
-                    (when (and (eq (move-to-column column) column)
-                               (get-text-property (point) 'mouse-face))
-                      (setq pos (point)))))
-                (if pos (goto-char pos))))))
-        (setq n (1+ n)))))
-
-  (when (/= 0 n)
-    (switch-to-minibuffer)))
+                (when (and (eq (move-to-column column) column)
+                           (get-text-property (point) 'mouse-face))
+                  (setq pos (point)))
+                (while (and (not pos) (not (bobp)))
+                  (forward-line -1)
+                  (when (and (eq (move-to-column column) column)
+                             (get-text-property (point) 'mouse-face))
+                    (setq pos (point)))))
+              (if pos (goto-char pos)))))
+        (setq n (1+ n))))))
 
 (defun choose-completion (&optional event no-exit no-quit)
   "Choose the completion at point.
