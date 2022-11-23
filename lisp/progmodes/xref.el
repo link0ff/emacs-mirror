@@ -912,7 +912,9 @@ ITEMS is an xref item which " ; FIXME: Expand documentation.
         #'xref--imenu-prev-index-position)
   (setq imenu-extract-index-name-function
         #'xref--imenu-extract-index-name)
-  (setq-local outline-search-function
+  (setq-local outline-minor-mode-cycle t
+              outline-minor-mode-use-buttons t
+              outline-search-function
               (lambda (&optional bound move backward looking-at)
                 (outline-search-text-property
                  'xref-group nil bound move backward looking-at))
