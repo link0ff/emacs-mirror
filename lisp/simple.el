@@ -9633,8 +9633,10 @@ Go to the window from which completion was requested."
 
 (defcustom completion-auto-wrap t
   "Non-nil means to wrap around when selecting completion options.
-This affects the commands `next-completion' and `previous-completion'.
-When `completion-auto-select' is t, it wraps through the minibuffer."
+This affects the commands `next-completion', `previous-completion',
+`next-line-completion' and `previous-line-completion'.
+When `completion-auto-select' is t, it wraps through the minibuffer
+for the commands bound to the TAB key."
   :type 'boolean
   :version "29.1"
   :group 'completion)
@@ -9740,7 +9742,7 @@ Also see the `completion-auto-wrap' variable."
 
 (defun previous-line-completion (&optional n)
   "Move to the item on the previous line in the completion list.
-With prefix argument N, move back N line-wise items (negative N
+With prefix argument N, move back N items line-wise (negative N
 means move forward).
 
 Also see the `completion-auto-wrap' variable."
@@ -9749,7 +9751,7 @@ Also see the `completion-auto-wrap' variable."
 
 (defun next-line-completion (&optional n)
   "Move to the item on the next line in the completion list.
-With prefix argument N, move N line-wise items (negative N
+With prefix argument N, move N items line-wise (negative N
 means move backward).
 
 Also see the `completion-auto-wrap' variable."
@@ -9766,21 +9768,19 @@ Also see the `completion-auto-wrap' variable."
                        (eq (move-to-column column) column)
                        (get-text-property (point) 'mouse-face))
               (setq pos (point)))))
-        (if pos
-            (goto-char pos)
+        (if pos (goto-char pos)
           (when completion-auto-wrap
-            (let ((column (current-column)))
-              (save-excursion
-                (goto-char (point-min))
+            (save-excursion
+              (goto-char (point-min))
+              (when (and (eq (move-to-column column) column)
+                         (get-text-property (point) 'mouse-face))
+                (setq pos (point)))
+              (while (and (not pos) (not (eobp)))
+                (forward-line 1)
                 (when (and (eq (move-to-column column) column)
                            (get-text-property (point) 'mouse-face))
-                  (setq pos (point)))
-                (while (and (not pos) (not (eobp)))
-                  (forward-line 1)
-                  (when (and (eq (move-to-column column) column)
-                             (get-text-property (point) 'mouse-face))
-                    (setq pos (point)))))
-              (if pos (goto-char pos)))))
+                  (setq pos (point)))))
+            (if pos (goto-char pos))))
         (setq n (1- n)))
 
       (while (< n 0)
@@ -9792,21 +9792,19 @@ Also see the `completion-auto-wrap' variable."
                        (eq (move-to-column column) column)
                        (get-text-property (point) 'mouse-face))
               (setq pos (point)))))
-        (if pos
-            (goto-char pos)
+        (if pos (goto-char pos)
           (when completion-auto-wrap
-            (let ((column (current-column)))
-              (save-excursion
-                (goto-char (point-max))
+            (save-excursion
+              (goto-char (point-max))
+              (when (and (eq (move-to-column column) column)
+                         (get-text-property (point) 'mouse-face))
+                (setq pos (point)))
+              (while (and (not pos) (not (bobp)))
+                (forward-line -1)
                 (when (and (eq (move-to-column column) column)
                            (get-text-property (point) 'mouse-face))
-                  (setq pos (point)))
-                (while (and (not pos) (not (bobp)))
-                  (forward-line -1)
-                  (when (and (eq (move-to-column column) column)
-                             (get-text-property (point) 'mouse-face))
-                    (setq pos (point)))))
-              (if pos (goto-char pos)))))
+                  (setq pos (point)))))
+            (if pos (goto-char pos))))
         (setq n (1+ n))))))
 
 (defun choose-completion (&optional event no-exit no-quit)
