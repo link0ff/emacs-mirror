@@ -126,7 +126,11 @@ moving point in the minibuffer.")
   "<left>"    (zcomplete-bind-arrows #'zcomplete-previous-completion)
   "<right>"   (zcomplete-bind-arrows #'zcomplete-next-completion)
   "<up>"      (zcomplete-bind-arrows #'zcomplete-previous-line-completion)
-  "<down>"    (zcomplete-bind-arrows #'zcomplete-next-line-completion))
+  "<down>"    (zcomplete-bind-arrows #'zcomplete-next-line-completion)
+  "<home>"    (zcomplete-bind-arrows #'zcomplete-first-completion)
+  "<end>"     (zcomplete-bind-arrows #'zcomplete-last-completion)
+  "<next>"    (zcomplete-bind-arrows #'scroll-other-window)
+  "<prior>"   (zcomplete-bind-arrows #'scroll-other-window-down))
 
 (defun zcomplete-ret ()
   "Exit minibuffer for zcomplete."
@@ -139,32 +143,44 @@ moving point in the minibuffer.")
   (minibuffer-hide-completions))
 
 (defun zcomplete-next-completion (&optional n)
-  "Run `next-completion' from the minibuffer in its completions window."
+  "Run `minibuffer-next-completion' without auto choosing."
   (interactive "p")
   (let ((minibuffer-completion-auto-choose nil))
     (minibuffer-next-completion n)))
 
 (defun zcomplete-previous-completion (&optional n)
-  "Run `previous-completion' from the minibuffer in its completions window."
+  "Run `minibuffer-previous-completion' without auto choosing."
   (interactive "p")
   (let ((minibuffer-completion-auto-choose nil))
     (minibuffer-previous-completion n)))
 
 (defun zcomplete-next-line-completion (&optional n)
-  "Run `next-line' from the minibuffer in its completions window."
+  "Run `minibuffer-next-line-completion' without auto choosing."
   (interactive "p")
-  (with-minibuffer-completions-window
-    (when completions-highlight-face
-      (setq-local cursor-face-highlight-nonselected-window t))
-    (next-line n)))
+  (let ((minibuffer-completion-auto-choose nil))
+    (minibuffer-next-line-completion n)))
 
 (defun zcomplete-previous-line-completion (&optional n)
-  "Run `previous-line' from the minibuffer in its completions window."
+  "Run `minibuffer-previous-line-completion' without auto choosing."
   (interactive "p")
+  (let ((minibuffer-completion-auto-choose nil))
+    (minibuffer-previous-line-completion n)))
+
+(defun zcomplete-first-completion ()
+  "Run `first-completion' from the minibuffer in its completions window."
+  (interactive)
   (with-minibuffer-completions-window
     (when completions-highlight-face
       (setq-local cursor-face-highlight-nonselected-window t))
-    (previous-line n)))
+    (first-completion)))
+
+(defun zcomplete-last-completion ()
+  "Run `last-completion' from the minibuffer in its completions window."
+  (interactive)
+  (with-minibuffer-completions-window
+    (when completions-highlight-face
+      (setq-local cursor-face-highlight-nonselected-window t))
+    (last-completion)))
 
 
 ;;;###autoload
@@ -262,8 +278,18 @@ See `zcomplete-mode' and `minibuffer-setup-hook'."
         (goto-char (point-max))
         (setq-local zcomplete--previous-input (zcomplete--field-string))
         (minibuffer-completion-help)
-        (let ((minibuffer-completion-auto-choose nil))
-          (minibuffer-next-completion 1))))))
+        (zcomplete-first-completion)))))
+
+(let ((keymap completion-in-region-mode-map))
+  (keymap-set keymap "<left>"  #'zcomplete-previous-completion)
+  (keymap-set keymap "<right>" #'zcomplete-next-completion)
+  (keymap-set keymap "<up>"    #'zcomplete-previous-line-completion)
+  (keymap-set keymap "<down>"  #'zcomplete-next-line-completion)
+  (keymap-set keymap "<home>"  #'zcomplete-first-completion)
+  (keymap-set keymap "<end>"   #'zcomplete-last-completion)
+  (keymap-set keymap "<next>"  #'scroll-other-window)
+  (keymap-set keymap "<prior>" #'scroll-other-window-down)
+  (keymap-set keymap "RET"     #'zcomplete-ret))
 
 
 (provide 'zcomplete)

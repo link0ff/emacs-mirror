@@ -2625,9 +2625,11 @@ Also respects the obsolete wrapper hook `completion-in-region-functions'.
   ;; completion-at-point called directly.
   "M-?" #'completion-help-at-point
   "TAB" #'completion-at-point
-  "M-<up>"   #'minibuffer-previous-completion
-  "M-<down>" #'minibuffer-next-completion
-  "M-RET"    #'minibuffer-choose-completion)
+  "M-<left>"  #'minibuffer-previous-completion
+  "M-<right>" #'minibuffer-next-completion
+  "M-<up>"    #'minibuffer-previous-line-completion
+  "M-<down>"  #'minibuffer-next-line-completion
+  "M-RET"     #'minibuffer-choose-completion)
 
 ;; It is difficult to know when to exit completion-in-region-mode (i.e. hide
 ;; the *Completions*).  Here's how previous packages did it:
@@ -2837,8 +2839,10 @@ The completion method is determined by `completion-at-point-functions'."
   "<prior>"   #'switch-to-completions
   "M-v"       #'switch-to-completions
   "M-g M-c"   #'switch-to-completions
-  "M-<up>"    #'minibuffer-previous-completion
-  "M-<down>"  #'minibuffer-next-completion
+  "M-<left>"  #'minibuffer-previous-completion
+  "M-<right>" #'minibuffer-next-completion
+  "M-<up>"    #'minibuffer-previous-line-completion
+  "M-<down>"  #'minibuffer-next-line-completion
   "M-RET"     #'minibuffer-choose-completion)
 
 (defvar-keymap minibuffer-local-must-match-map
@@ -4452,8 +4456,9 @@ selected by these commands to the minibuffer."
   :type 'boolean
   :version "29.1")
 
-(defun minibuffer-next-completion (&optional n)
+(defun minibuffer-next-completion (&optional n vertical)
   "Move to the next item in its completions window from the minibuffer.
+When the optional argument VERTICAL is non-nil, move vertically.
 When `minibuffer-completion-auto-choose' is non-nil, then also
 insert the selected completion to the minibuffer."
   (interactive "p")
@@ -4461,7 +4466,9 @@ insert the selected completion to the minibuffer."
     (with-minibuffer-completions-window
       (when completions-highlight-face
         (setq-local cursor-face-highlight-nonselected-window t))
-      (next-completion (or n 1))
+      (if vertical
+          (next-line-completion (or n 1))
+        (next-completion (or n 1)))
       (when auto-choose
         (let ((completion-use-base-affixes t))
           (choose-completion nil t t))))))
@@ -4472,6 +4479,20 @@ When `minibuffer-completion-auto-choose' is non-nil, then also
 insert the selected completion to the minibuffer."
   (interactive "p")
   (minibuffer-next-completion (- (or n 1))))
+
+(defun minibuffer-next-line-completion (&optional n)
+  "Move to the next completion line from the minibuffer.
+When `minibuffer-completion-auto-choose' is non-nil, then also
+insert the selected completion to the minibuffer."
+  (interactive "p")
+  (minibuffer-next-completion (or n 1) t))
+
+(defun minibuffer-previous-line-completion (&optional n)
+  "Move to the previous completion line from the minibuffer.
+When `minibuffer-completion-auto-choose' is non-nil, then also
+insert the selected completion to the minibuffer."
+  (interactive "p")
+  (minibuffer-next-completion (- (or n 1)) t))
 
 (defun minibuffer-choose-completion (&optional no-exit no-quit)
   "Run `choose-completion' from the minibuffer in its completions window.
