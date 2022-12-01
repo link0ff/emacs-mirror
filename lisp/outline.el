@@ -308,6 +308,7 @@ in the buffer before the headings.  The values `t' and
 don't modify the buffer."
   :type '(choice (const :tag "Do not use outline buttons" nil)
                  (const :tag "Show outline buttons in margins" in-margins)
+                 (const :tag "Show outline buttons as ellipses" ellipsis)
                  (const :tag "Show outline buttons in buffer" t))
   :safe #'symbolp
   :version "29.1")
@@ -973,6 +974,8 @@ If FLAG is nil then text is shown, while if FLAG is t the text is hidden."
     ;; belongs to the heading rather than to the entry.
     (let ((o (make-overlay from to nil 'front-advance)))
       (overlay-put o 'evaporate t)
+      (when (eq outline-minor-mode-use-buttons 'ellipsis)
+        (overlay-put o 'after-string (apply 'propertize "…" (text-properties-at (save-excursion (goto-char from) (goto-char (1+ (pos-bol))) (point))))))
       (overlay-put o 'invisible 'outline)
       (overlay-put o 'isearch-open-invisible
 		   (or outline-isearch-open-invisible-function
@@ -1749,6 +1752,7 @@ With a prefix argument, show headings up to that LEVEL."
 
 (defun outline--create-button-icons ()
   (pcase outline-minor-mode-use-buttons
+    ('ellipsis)
     ('in-margins
      (mapcar
       (lambda (icon-name)
@@ -1794,16 +1798,25 @@ With a prefix argument, show headings up to that LEVEL."
       (beginning-of-line)
       (let ((icon (nth (if (eq type 'close) 1 0) outline--button-icons))
             (o (seq-find (lambda (o) (overlay-get o 'outline-button))
+                         ;; (overlays-at (if (eq outline-minor-mode-use-buttons 'ellipsis)
+                         ;;                  (1- (pos-eol)) (point)))
                          (overlays-at (point)))))
         (unless o
           (when (eq outline-minor-mode-use-buttons 'insert)
             (let ((inhibit-read-only t))
               (insert "  ")
               (beginning-of-line)))
+          ;; (if (eq outline-minor-mode-use-buttons 'ellipsis)
+          ;;     (setq o (make-overlay (1- (pos-eol)) (pos-eol)))
+          ;;   (setq o (make-overlay (point) (1+ (point)))))
           (setq o (make-overlay (point) (1+ (point))))
           (overlay-put o 'outline-button t)
           (overlay-put o 'evaporate t))
         (pcase outline-minor-mode-use-buttons
+          ('ellipsis
+           ;; (overlay-put o 'after-string (when (eq type 'close) "…"))
+           ;; (overlay-put o 'after-string "…")
+           )
           ('insert
            (overlay-put o 'display (or (plist-get icon 'image)
                                        (plist-get icon 'string)))
