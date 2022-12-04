@@ -11578,7 +11578,7 @@ x_new_focus_frame (struct x_display_info *dpyinfo, struct frame *frame)
   x_frame_rehighlight (dpyinfo);
 }
 
-#ifdef HAVE_XFIXES
+#if defined HAVE_XFIXES && XFIXES_VERSION >= 40000
 
 /* True if the display in DPYINFO supports a version of Xfixes
    sufficient for pointer blanking.  */
@@ -11590,11 +11590,12 @@ x_fixes_pointer_blanking_supported (struct x_display_info *dpyinfo)
 	  && dpyinfo->xfixes_major >= 4);
 }
 
-#endif /* HAVE_XFIXES */
+#endif /* HAVE_XFIXES && XFIXES_VERSION >= 40000 */
 
 /* Toggle mouse pointer visibility on frame F using the XFixes
    extension.  */
-#ifdef HAVE_XFIXES
+#if defined HAVE_XFIXES && XFIXES_VERSION >= 40000
+
 static void
 xfixes_toggle_visible_pointer (struct frame *f, bool invisible)
 
@@ -11605,6 +11606,7 @@ xfixes_toggle_visible_pointer (struct frame *f, bool invisible)
     XFixesShowCursor (FRAME_X_DISPLAY (f), FRAME_X_WINDOW (f));
   f->pointer_invisible = invisible;
 }
+
 #endif /* HAVE_XFIXES */
 
 /* Create invisible cursor on the X display referred by DPYINFO.  */
@@ -11653,7 +11655,7 @@ x_toggle_visible_pointer (struct frame *f, bool invisible)
   if (dpyinfo->invisible_cursor == None)
     dpyinfo->invisible_cursor = make_invisible_cursor (dpyinfo);
 
-#ifndef HAVE_XFIXES
+#if !defined HAVE_XFIXES || XFIXES_VERSION < 40000
   if (dpyinfo->invisible_cursor == None)
     invisible = false;
 #else
@@ -11686,7 +11688,7 @@ static void
 XTtoggle_invisible_pointer (struct frame *f, bool invisible)
 {
   block_input ();
-#ifdef HAVE_XFIXES
+#if defined HAVE_XFIXES && XFIXES_VERSION >= 40000
   if (FRAME_DISPLAY_INFO (f)->fixes_pointer_blanking
       && x_fixes_pointer_blanking_supported (FRAME_DISPLAY_INFO (f)))
     xfixes_toggle_visible_pointer (f, invisible);
@@ -27202,13 +27204,12 @@ do_ewmh_fullscreen (struct frame *f)
 static void
 XTfullscreen_hook (struct frame *f)
 {
-  if (FRAME_VISIBLE_P (f))
-    {
-      block_input ();
-      x_check_fullscreen (f);
-      x_sync (f);
-      unblock_input ();
-    }
+  if (!FRAME_VISIBLE_P (f))
+    return;
+
+  block_input ();
+  x_check_fullscreen (f);
+  unblock_input ();
 }
 
 
@@ -27302,10 +27303,7 @@ x_check_fullscreen (struct frame *f)
       if (FRAME_VISIBLE_P (f))
 	x_wait_for_event (f, ConfigureNotify);
       else
-	{
-	  change_frame_size (f, width, height, false, true, false);
-	  x_sync (f);
-	}
+	change_frame_size (f, width, height, false, true, false);
     }
 
   /* `x_net_wm_state' might have reset the fullscreen frame parameter,
@@ -27519,8 +27517,6 @@ x_set_window_size_1 (struct frame *f, bool change_gravity,
       adjust_frame_size (f, FRAME_PIXEL_TO_TEXT_WIDTH (f, width),
 			 FRAME_PIXEL_TO_TEXT_HEIGHT (f, height),
 			 5, 0, Qx_set_window_size_1);
-
-      x_sync (f);
     }
 }
 
@@ -28873,6 +28869,53 @@ x_get_atom_name (struct x_display_info *dpyinfo, Atom atom,
     }
 
   return value;
+}
+
+/* Intern an array of atoms, and do so quickly, avoiding extraneous
+   roundtrips to the X server.
+
+   Avoid sending atoms that have already been found to the X server.
+   This cannot do anything that will end up triggering garbage
+   collection.  */
+
+void
+x_intern_atoms (struct x_display_info *dpyinfo, char **names, int count,
+		Atom *atoms_return)
+{
+  int i, j, indices[256];
+  char *new_names[256];
+  Atom results[256], candidate;
+
+  if (count > 256)
+    /* Atoms array too big to inspect reasonably, just send it to the
+       server and back.  */
+    XInternAtoms (dpyinfo->display, new_names, count, False, atoms_return);
+  else
+    {
+      for (i = 0, j = 0; i < count; ++i)
+	{
+	  candidate = x_intern_cached_atom (dpyinfo, names[i],
+					    true);
+
+	  if (candidate)
+	    atoms_return[i] = candidate;
+	  else
+	    {
+	      indices[j++] = i;
+	      new_names[j - 1] = names[i];
+	    }
+	}
+
+      if (!j)
+	return;
+
+      /* Now, get the results back from the X server.  */
+      XInternAtoms (dpyinfo->display, new_names, j, False,
+		    results);
+
+      for (i = 0; i < j; ++i)
+	atoms_return[indices[i]] = results[i];
+    }
 }
 
 #ifndef USE_GTK
@@ -30286,7 +30329,7 @@ x_term_init (Lisp_Object display_name, char *xrm_option, char *resource_name)
 				   1, 0, 1);
 
   dpyinfo->invisible_cursor = make_invisible_cursor (dpyinfo);
-#ifdef HAVE_XFIXES
+#if defined HAVE_XFIXES && XFIXES_VERSION >= 40000
   dpyinfo->fixes_pointer_blanking = egetenv ("EMACS_XFIXES");
 #endif
 
