@@ -39,6 +39,8 @@
 ;;      For commands which do a yank; ensures the region about to be
 ;;      deleted isn't immediately yanked back, which would make the
 ;;      command a no-op.
+;;  `yank-on-region'
+;;      Like `yank' but applied only when clicked on the region.
 ;;  `supersede'
 ;;      Delete the active region and ignore the current command,
 ;;      i.e. the command will just delete the region.  This is for
@@ -176,6 +178,8 @@ Just `\\[universal-argument]' means repeat until the end of the buffer's accessi
      For commands which do a yank; ensures the region about to be
      deleted isn't immediately yanked back, which would make the
      command a no-op.
+ `yank-on-region'
+     Like `yank' but applied only when clicked on the region.
  `supersede'
      Delete the active region and ignore the current command,
      i.e. the command will just delete the region.  This is for
@@ -220,6 +224,12 @@ Just `\\[universal-argument]' means repeat until the end of the buffer's accessi
                ;; If the region was, say, rectangular, make sure we yank
                ;; from the top, to "replace".
                (goto-char pos)))
+            ((eq type 'yank-on-region)
+             (let ((pos (posn-point (event-end last-nonmenu-event))))
+               (when (and (>= pos (region-beginning))
+                          (<= pos (region-end)))
+                 (delete-selection-helper 'yank)
+                 (setf (nth 5 (nth 1 last-nonmenu-event)) (region-beginning)))))
 	    ((eq type 'supersede)
 	     (let ((empty-region (= (point) (mark))))
 	       (delete-active-region)
@@ -300,6 +310,12 @@ to `delete-selection-mode'."
 (put 'yank-pop 'delete-selection 'yank)
 (put 'yank-from-kill-ring 'delete-selection 'yank)
 (put 'clipboard-yank 'delete-selection 'yank)
+
+(put 'mouse-yank-primary 'delete-selection 'yank-on-region)
+(put 'mouse-yank-secondary 'delete-selection 'yank-on-region)
+(put 'mouse-yank-at-click 'delete-selection 'yank-on-region)
+(put 'menu-bar-select-yank 'delete-selection 'yank-on-region)
+
 (put 'insert-register 'delete-selection t)
 ;; delete-backward-char and delete-forward-char already delete the selection by
 ;; default, but not delete-char.
