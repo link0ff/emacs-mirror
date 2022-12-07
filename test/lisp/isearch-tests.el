@@ -39,6 +39,46 @@
   (isearch-done))
 
 
+;; Search invisible.
+
+(declare-function outline-hide-sublevels "outline")
+
+;; (ert-deftest isearch--test-invisible ()
+(defun z () (interactive)
+  (require 'outline)
+  (let ((inhibit-message t)
+        ;; (search-invisible t)
+        ;; (lazy-highlight-cleanup nil)
+        (isearch-lazy-count t))
+    (with-temp-buffer
+      (set-window-buffer nil (current-buffer))
+      (insert "\na\n" (propertize "a" 'invisible t) "\n* h\na\n\n")
+      (outline-mode)
+      (outline-hide-sublevels 1)
+      (goto-char (point-min))
+      (isearch-forward nil 1)
+      (isearch-process-search-string "a" "a")
+      (should (eq (point) 3))
+      ;; (isearch-repeat-forward 1)
+      ;; (should (eq (point) 5))
+      (isearch-repeat-forward 1)
+      (should (eq (point) 11))
+      (should (eq (get-text-property (point) 'face) 'lazy-highlight))
+      (should-not (get-char-property (point) 'invisible))
+
+      (isearch-lazy-highlight-new-loop)
+      ;; (isearch-lazy-highlight-start)
+      (lazy-highlight-cleanup t)
+      (isearch-lazy-highlight-buffer-update)
+      ;; (message "%S" (list isearch-lazy-count isearch-lazy-count-total))
+      ;; (should (equal (isearch-message-prefix) "3/3 I-search: "))
+      (should (equal (isearch-message-prefix) "2/2 (invisible 1) I-search: "))
+
+      (message "! %S" (overlays-at (point)))
+
+      (isearch-done))))
+
+
 ;; Search functions.
 
 (defun isearch--test-search-within-boundaries (pairs)

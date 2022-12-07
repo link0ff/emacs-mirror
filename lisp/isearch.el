@@ -4185,7 +4185,7 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    ;; Count all invisible matches, but highlight only
 	    ;; matches that can be opened by visiting them later
 	    (search-invisible (or (not (null isearch-lazy-count))
-				  'can-be-opened))
+				  (and isearch-invisible 'can-be-opened)))
 	    (retry t)
 	    (success nil))
 	;; Use a loop like in `isearch-search'.
@@ -4354,9 +4354,9 @@ Attempt to do the search exactly the way the pending Isearch would."
 			  ;; value `open' since then lazy-highlight
 			  ;; will open all overlays with matches.
 			  (if (not (let ((search-invisible
-					  (if (eq search-invisible 'open)
+					  (if (eq isearch-invisible 'open)
 					      'can-be-opened
-					    search-invisible)))
+					    isearch-invisible)))
 				     (funcall isearch-filter-predicate mb me)))
 			      (setq isearch-lazy-count-invisible
 				    (1+ (or isearch-lazy-count-invisible 0)))
