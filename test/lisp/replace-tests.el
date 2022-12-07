@@ -447,7 +447,7 @@ Each element has the format:
       (dolist (case tests)
         ;; Ensure empty input means empty string to replace:
         (setq query-replace-defaults nil)
-        (delete-region (point-min) (point-max))
+        (erase-buffer)
         (insert (nth 0 case))
         (goto-char (point-min))
         (execute-kbd-macro (kbd (nth 1 case)))
@@ -469,6 +469,16 @@ Each element has the format:
             )))
     (query-replace--run-tests tests)))
 
+;; (ert-deftest query-replace-search-noncontiguous-region-tests ()
+;;   (let* ((tests
+;;           '(
+;;             ;; ("aaa\naaa\n" "<right> C-x SPC <right> <down>" "a1a\na1a\n")
+;;             ("aaa\naaa\n" "<right> C-x SPC <right> <down> C-M-% .* RET 1 RET !" "a1a\na1a\n")
+;;             ;; ("aaa\naaa\n" "C-M-% .* RET 1 RET !" "a1a\na1a\n")
+;;             ;; ("aaa\naaa\n" "C-M-% a RET 1 RET !" "a1a\na1a\n")
+;;             )))
+;;     (query-replace--run-tests tests)))
+
 
 ;;; General tests for `perform-replace'.
 
@@ -485,7 +495,7 @@ Each element has the format:
 (defun perform-replace--run-tests (tests)
   (with-temp-buffer
     (dolist (case tests)
-      (delete-region (point-min) (point-max))
+      (erase-buffer)
       (insert (pop case))
       (goto-char (point-min))
       (apply 'perform-replace (butlast case))
@@ -493,6 +503,11 @@ Each element has the format:
 
 (ert-deftest perform-replace-tests ()
   (perform-replace--run-tests perform-replace-tests))
+
+(ert-deftest perform-replace-noncontiguous-region-tests ()
+  (let ((region-extract-function (lambda (_) '((2 . 3) (6 . 7)))))
+    (perform-replace--run-tests
+     '(("aaa\naaa\n" ".*" "1" nil t nil nil nil nil nil nil t "a1a\na1a\n")))))
 
 
 ;;; Tests for `query-replace' undo feature.
