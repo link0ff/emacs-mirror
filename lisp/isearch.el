@@ -181,6 +181,7 @@ When t (by default), signal an error when no more matches are found.
 Then after repeating the search, wrap with `isearch-wrap-function'.
 When `no', wrap immediately after reaching the last match.
 When `no-ding', wrap immediately without flashing the screen.
+COPY HERE from Info about typing a character.
 When nil, never wrap, just stop at the last match."
   :type '(choice (const :tag "Pause before wrapping" t)
                  (const :tag "No pause before wrapping" no)
@@ -1382,7 +1383,9 @@ The last thing is to trigger a new round of lazy highlighting."
 	  (let ((current-scroll (window-hscroll))
 		visible-p)
 	    (set-window-hscroll (selected-window) isearch-start-hscroll)
-	    (setq visible-p (pos-visible-in-window-group-p nil nil t))
+	    (setq visible-p (unless (long-line-optimizations-p)
+                              ;; This call is slow on long truncated lines
+                              (pos-visible-in-window-group-p nil nil t)))
 	    (if (or (not visible-p)
 		    ;; When point is not visible because of hscroll,
 		    ;; pos-visible-in-window-group-p returns non-nil, but
@@ -2807,6 +2810,7 @@ The command accepts Unicode names like \"smiling face\" or
 		   (if (and (eq case-fold-search t) search-upper-case)
 		       (setq case-fold-search
 			     (isearch-no-upper-case-p isearch-string isearch-regexp)))
+                   ;; on the second line of *scratch*: C-M-r ^ ;
 		   (looking-at (cond
 				((functionp isearch-regexp-function)
 				 (funcall isearch-regexp-function isearch-string t))
