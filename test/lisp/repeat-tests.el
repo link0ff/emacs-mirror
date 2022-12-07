@@ -36,12 +36,14 @@
 
 (defvar-keymap repeat-tests-map
   :doc "Keymap for keys that initiate repeating sequences."
+  ;; :repeat t
   "C-x w a" 'repeat-tests-call-a
   "C-M-a"   'repeat-tests-call-a
   "C-M-z"   'repeat-tests-call-a)
 
 (defvar-keymap repeat-tests-repeat-map
   :doc "Keymap for repeating sequences."
+  ;; :repeat t
   "a" 'repeat-tests-call-a
   "b" 'repeat-tests-call-b)
 (put 'repeat-tests-call-a 'repeat-map 'repeat-tests-repeat-map)
@@ -76,27 +78,27 @@
         "C-x w a b a c"
         '((1 a) (1 b) (1 a)) "c")
        (repeat-tests--check
-        "M-C-a b a c"
+        "C-M-a b a c"
         '((1 a) (1 b) (1 a)) "c")
        (repeat-tests--check
-        "M-C-z b a c"
+        "C-M-z b a c"
         '((1 a)) "bac")
        (unwind-protect
            (progn
              (put 'repeat-tests-call-a 'repeat-check-key 'no)
              (repeat-tests--check
-              "M-C-z b a c"
+              "C-M-z b a c"
               '((1 a) (1 b) (1 a)) "c"))
          (put 'repeat-tests-call-a 'repeat-check-key nil)))
      (let ((repeat-check-key nil))
        (repeat-tests--check
-        "M-C-z b a c"
+        "C-M-z b a c"
         '((1 a) (1 b) (1 a)) "c")
        (unwind-protect
            (progn
              (put 'repeat-tests-call-a 'repeat-check-key t)
              (repeat-tests--check
-              "M-C-z b a c"
+              "C-M-z b a c"
               '((1 a)) "bac"))
          (put 'repeat-tests-call-a 'repeat-check-key nil))))))
 

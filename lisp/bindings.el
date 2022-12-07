@@ -1003,7 +1003,7 @@ if `inhibit-field-text-motion' is non-nil."
 ;; New binding analogous to M-:.
 (define-key ctl-x-map "\M-:" 'repeat-complex-command)
 (define-key ctl-x-map "u" 'undo)
-(put 'undo :advertised-binding [?\C-x ?u]) ; use same format for repeat-allow-keys
+(put 'undo :advertised-binding [?\C-x ?u]) ; use same format for repeat-allow-keys, but maybe better kbd?
 ;; Many people are used to typing C-/ on GUI frames and getting C-_.
 (define-key global-map [?\C-/] 'undo)
 (define-key global-map "\C-_" 'undo)
@@ -1014,8 +1014,9 @@ if `inhibit-field-text-motion' is non-nil."
   :doc "Keymap to repeat undo key sequences \\`C-x u u'.  Used in `repeat-mode'."
   "u" #'undo)
 (put 'undo 'repeat-map 'undo-repeat-map)
-(put 'undo 'repeat-ignore-keys '([?\C-x ?u]))
-(put 'undo 'repeat-allow-keys '([?\C-x ?u]))
+;; (put 'undo 'repeat-ignore-keys '([?\C-x ?u]))
+;; (put 'undo 'repeat-allow-keys '([?\C-x ?u]))
+(put 'undo 'repeat-enter-keys '([?\C-x ?u]))
 (put 'undo 'repeat-exit-keys '([?\C-x ?u]))
 ;; maybe better combined `repeat-exit-map'?
 
@@ -1037,11 +1038,9 @@ if `inhibit-field-text-motion' is non-nil."
 
 (defvar-keymap buffer-navigation-repeat-map
   :doc "Keymap to repeat `next-buffer' and `previous-buffer'.  Used in `repeat-mode'."
+  :repeat t
   "<right>" #'next-buffer
   "<left>"  #'previous-buffer)
-
-(put 'next-buffer 'repeat-map 'buffer-navigation-repeat-map)
-(put 'previous-buffer 'repeat-map 'buffer-navigation-repeat-map)
 
 (let ((map minibuffer-local-map))
   (define-key map "\en"   'next-history-element)
