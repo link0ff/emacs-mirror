@@ -58,11 +58,43 @@
       (outline-hide-sublevels 1)
       (goto-char (point-min))
 
+      (let ((search-invisible t))
+        (isearch-forward-regexp nil 1)
+        (isearch-process-search-string "[0-9]" "[0-9]")
+        (should (eq (point) 3))
+
+        (setq isearch-lazy-count-invisible nil isearch-lazy-count-total nil)
+        (isearch-lazy-highlight-start)
+        (isearch-lazy-highlight-buffer-update)
+        (should (eq isearch-lazy-count-invisible nil))
+        (should (eq isearch-lazy-count-total 3))
+        (should (equal (mapcar #'overlay-start isearch-lazy-highlight-overlays) '(2 11 2)))
+
+        (isearch-repeat-forward)
+        (should (eq (point) 5))
+        (should (get-char-property 4 'invisible))
+        (isearch-repeat-forward)
+        (should (eq (point) 12))
+        (should (get-char-property 11 'invisible))
+
+        (isearch-beginning-of-buffer)
+        (setq isearch-invisible (if isearch-invisible nil (or search-invisible 'open)))
+
+        (setq isearch-lazy-count-invisible nil isearch-lazy-count-total nil)
+        (isearch-lazy-highlight-start)
+        (isearch-lazy-highlight-buffer-update)
+        (should (eq isearch-lazy-count-invisible 2))
+        (should (eq isearch-lazy-count-total 1))
+        (should (equal (mapcar #'overlay-start isearch-lazy-highlight-overlays) nil))
+
+        (isearch-cancel))
+
       (let ((search-invisible 'open))
         (isearch-forward-regexp nil 1)
         (isearch-process-search-string "[0-9]" "[0-9]")
         (should (eq (point) 3))
 
+        (setq isearch-lazy-count-invisible nil isearch-lazy-count-total nil)
         (isearch-lazy-highlight-start)
         (isearch-lazy-highlight-buffer-update)
         (should (eq isearch-lazy-count-invisible 1))
@@ -72,19 +104,19 @@
         (let ((isearch-hide-immediately t))
           (isearch-repeat-forward)
           (should (eq (point) 12))
-          (should-not (get-char-property 12 'invisible))
+          (should-not (get-char-property 11 'invisible))
           (isearch-delete-char)
-          (should (get-char-property 12 'invisible)))
+          (should (get-char-property 11 'invisible)))
 
         (let ((isearch-hide-immediately nil))
           (isearch-repeat-forward)
           (should (eq (point) 12))
-          (should-not (get-char-property 12 'invisible))
+          (should-not (get-char-property 11 'invisible))
           (isearch-delete-char)
-          (should-not (get-char-property 12 'invisible)))
+          (should-not (get-char-property 11 'invisible)))
 
         (isearch-cancel)
-        (should (get-char-property 12 'invisible))))))
+        (should (get-char-property 11 'invisible))))))
 
 
 ;; Search functions.
