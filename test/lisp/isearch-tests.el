@@ -69,13 +69,22 @@
         (should (eq isearch-lazy-count-total 2))
         (should (equal (mapcar #'overlay-start isearch-lazy-highlight-overlays) '(2 11 2)))
 
-        (isearch-repeat-forward)
-        (should (eq (point) 12))
-        (should-not (get-char-property 12 'invisible))
-        (isearch-beginning-of-buffer)
-        (should (get-char-property 12 'invisible))
+        (let ((isearch-hide-immediately t))
+          (isearch-repeat-forward)
+          (should (eq (point) 12))
+          (should-not (get-char-property 12 'invisible))
+          (isearch-delete-char)
+          (should (get-char-property 12 'invisible)))
 
-        (isearch-cancel)))))
+        (let ((isearch-hide-immediately nil))
+          (isearch-repeat-forward)
+          (should (eq (point) 12))
+          (should-not (get-char-property 12 'invisible))
+          (isearch-delete-char)
+          (should-not (get-char-property 12 'invisible)))
+
+        (isearch-cancel)
+        (should (get-char-property 12 'invisible))))))
 
 
 ;; Search functions.
