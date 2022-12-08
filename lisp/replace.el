@@ -2750,6 +2750,7 @@ to a regexp that is actually used for the search.")
 	    (isearch-regexp-lax-whitespace
 	     replace-regexp-lax-whitespace)
 	    (isearch-case-fold-search case-fold)
+	    (isearch-invisible search-invisible)
 	    (isearch-forward (not backward))
 	    (isearch-other-end match-beg)
 	    (isearch-error nil)
