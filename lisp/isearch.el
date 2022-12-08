@@ -2528,10 +2528,11 @@ If no input items have been entered yet, just beep."
       (ding)
     (isearch-pop-state))
   ;; When going back to the hidden match, reopen it and close other overlays.
-  (when (and (eq search-invisible 'open) isearch-hide-immediately)
+  (when (and (eq isearch-invisible 'open) isearch-hide-immediately)
     (if isearch-other-end
-        (isearch-range-invisible (min (point) isearch-other-end)
-                                 (max (point) isearch-other-end))
+        (let ((search-invisible isearch-invisible))
+          (isearch-range-invisible (min (point) isearch-other-end)
+                                   (max (point) isearch-other-end)))
       (isearch-close-unnecessary-overlays (point) (point))))
   (isearch-update))
 
@@ -4067,6 +4068,8 @@ by other Emacs features."
 			  isearch-regexp-lax-whitespace))
 		 (not (eq isearch-forward
 			  isearch-lazy-highlight-forward))
+		 ;; (not (eq isearch-invisible
+		 ;;          isearch-lazy-highlight-invisible))
 		 ;; In case we are recovering from an error.
 		 (not (equal isearch-error
 			     isearch-lazy-highlight-error))
@@ -4185,7 +4188,8 @@ Attempt to do the search exactly the way the pending Isearch would."
 	    ;; Count all invisible matches, but highlight only
 	    ;; matches that can be opened by visiting them later
 	    (search-invisible (or (not (null isearch-lazy-count))
-				  (and isearch-invisible 'can-be-opened)))
+				  (and (eq isearch-invisible 'open)
+                                       'can-be-opened)))
 	    (retry t)
 	    (success nil))
 	;; Use a loop like in `isearch-search'.
@@ -4205,7 +4209,8 @@ Attempt to do the search exactly the way the pending Isearch would."
   (when (or (not isearch-lazy-count)
             ;; Recheck the match that possibly was intended
             ;; for counting only, but not for highlighting
-            (let ((search-invisible 'can-be-opened))
+            (let ((search-invisible (and (eq isearch-invisible 'open)
+                                         'can-be-opened)))
               (funcall isearch-filter-predicate mb me)))
     (let ((ov (make-overlay mb me)))
       (push ov isearch-lazy-highlight-overlays)
