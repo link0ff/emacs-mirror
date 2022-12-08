@@ -47,7 +47,6 @@
 (defun z () (interactive)
   (require 'outline)
   (let ((inhibit-message t)
-        ;; (search-invisible t)
         (isearch-lazy-count t))
     (with-temp-buffer
       (set-window-buffer nil (current-buffer))
@@ -58,32 +57,25 @@
       (outline-mode)
       (outline-hide-sublevels 1)
       (goto-char (point-min))
-      (isearch-forward-regexp nil 1)
-      (isearch-process-search-string "[0-9]" "[0-9]")
-      (should (eq (point) 3))
-      ;; (isearch-repeat-forward 1)
-      ;; (should (eq (point) 5))
-      (isearch-repeat-forward 1)
-      (should (eq (point) 12))
-      (should (eq (get-char-property (1- (point)) 'face) 'isearch))
-      (should-not (get-char-property (point) 'invisible))
 
-      (isearch-lazy-highlight-start)
-      (isearch-lazy-highlight-buffer-update)
-      ;; (message "%S" (list isearch-lazy-count isearch-lazy-count-total))
-      ;; (should (equal (isearch-message-prefix) "3/3 I-search: "))
-      ;; (should (equal (isearch-message-prefix)
-      ;;                "2/2 (invisible 1) Regexp I-search: "))
+      (let ((search-invisible 'open))
+        (isearch-forward-regexp nil 1)
+        (isearch-process-search-string "[0-9]" "[0-9]")
+        (should (eq (point) 3))
 
-      (message "!7 %S %S %S" isearch-lazy-count-invisible isearch-lazy-count-total (isearch-message-prefix))
-      (message "!8 %S" (seq-map (lambda (o)
-                                  (overlay-properties o))
-                                isearch-lazy-highlight-overlays))
-      (message "!9 %S" (seq-map (lambda (o)
-                                  (overlay-properties o))
-                                (overlays-in (point-min) (point-max))))
+        (isearch-lazy-highlight-start)
+        (isearch-lazy-highlight-buffer-update)
+        (should (eq isearch-lazy-count-invisible 1))
+        (should (eq isearch-lazy-count-total 2))
+        (should (equal (mapcar #'overlay-start isearch-lazy-highlight-overlays) '(2 11 2)))
 
-      (isearch-done))))
+        (isearch-repeat-forward)
+        (should (eq (point) 12))
+        (should-not (get-char-property 12 'invisible))
+        (isearch-beginning-of-buffer)
+        (should (get-char-property 12 'invisible))
+
+        (isearch-cancel)))))
 
 
 ;; Search functions.
