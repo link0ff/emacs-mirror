@@ -12308,6 +12308,13 @@ x_dnd_begin_drag_and_drop (struct frame *f, Time time, Atom xaction,
   struct xi_device_t *device;
 #endif
 
+  if (FRAME_DISPLAY_INFO (f)->untrusted)
+    /* Untrusted clients cannot send messages to trusted clients or
+       read the window tree, so drag and drop will likely not work at
+       all.  */
+    error ("Drag-and-drop is not possible when the client is"
+	   " not trusted by the X server.");
+
   base = SPECPDL_INDEX ();
 
   /* Bind this here to avoid juggling bindings and SAFE_FREE in
@@ -26041,9 +26048,11 @@ For details, see etc/PROBLEMS.\n",
 	  if (!ioerror && dpyinfo)
 	    {
 	      /* Dump the list of error handlers for debugging
-		 purposes.  */
+		 purposes if the list exists.  */
 
-	      fprintf (stderr, "X error handlers currently installed:\n");
+	      if ((dpyinfo->failable_requests
+		   != dpyinfo->next_failable_request) || x_error_message)
+		fprintf (stderr, "X error handlers currently installed:\n");
 
 	      for (failable = dpyinfo->failable_requests;
 		   failable < dpyinfo->next_failable_request;
@@ -27949,11 +27958,16 @@ x_focus_frame (struct frame *f, bool noactivate)
   struct x_display_info *dpyinfo;
   Time time;
 
+  dpyinfo = FRAME_DISPLAY_INFO (f);
+
+  if (dpyinfo->untrusted)
+    /* The X server ignores all input focus related requests from
+       untrusted clients.  */
+    return;
+
   /* The code below is not reentrant wrt to dpyinfo->x_focus_frame and
      friends being set.  */
   block_input ();
-
-  dpyinfo = FRAME_DISPLAY_INFO (f);
 
   if (FRAME_X_EMBEDDED_P (f))
     /* For Xembedded frames, normally the embedder forwards key
