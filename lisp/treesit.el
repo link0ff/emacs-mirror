@@ -1047,7 +1047,6 @@ See `treesit-simple-indent-presets'.")
                        (or (null node-index-max)
                            (<= (treesit-node-index node)
                                node-index-max))))))
-        ;; TODO: Document if genuinely useful.
         (cons 'n-p-gp
               (lambda (node-t parent-t grand-parent-t)
                 (lambda (node parent &rest _)
@@ -1107,12 +1106,6 @@ See `treesit-simple-indent-presets'.")
                   (goto-char (treesit-node-start parent))
                   (re-search-forward comment-start-skip)
                   (skip-syntax-backward "-")
-                  (point))))
-        (cons 'comment-start-skip
-              (lambda (_n parent &rest _)
-                (save-excursion
-                  (goto-char (treesit-node-start parent))
-                  (re-search-forward comment-start-skip)
                   (point))))
         ;; TODO: Document.
         (cons 'grand-parent
@@ -1188,6 +1181,10 @@ no-node
 
     Checks that NODE's type matches regexp TYPE.
 
+\(n-p-gp NODE-TYPE PARENT-TYPE GRANDPARENT-TYPE)
+
+    Checks that NODE, its parent, and its grandparent's type.
+
 \(query QUERY)
 
     Queries PARENT with QUERY, and checks if NODE is
@@ -1230,14 +1227,9 @@ point-min
 
 comment-start
 
-    Returns the position after a match for `treesit-comment-start'.
-    Assumes PARENT is a comment node.
-
-comment-start-skip
-
-    Goes to the position that comment-start would return, skips
-    whitespace after that, and returns the resulting position.
-    Assumes PARENT is a comment node.")
+    Goes to the position that `comment-start-skip' would return,
+    skips whitespace backwards, and returns the resulting
+    position.  Assumes PARENT is a comment node.")
 
 (defun treesit--simple-indent-eval (exp)
   "Evaluate EXP.
@@ -1591,38 +1583,6 @@ newline after a defun, or the beginning of a defun.
 
 If the value is nil, no skipping is performed.")
 
-(defvar-local treesit-defun-prefer-top-level nil
-  "When non-nil, Emacs prefers top-level defun.
-
-In some languages, a defun could be nested in another one.
-Normally Emacs stops at the first defun it encounters.  If this
-variable's value is t, Emacs tries to find the top-level defun,
-and ignores nested ones.
-
-This variable can also be a list of cons cells of the
-form (FROM . TO), where FROM and TO are tree-sitter node type
-regexps.  When Emacs finds a defun node whose type matches any of
-the FROM regexps in the list, it then tries to find a
-higher-level node matching the corresponding TO regexp.")
-
-(defun treesit--defun-maybe-top-level (node)
-  "Maybe return the top-level equivalent of NODE.
-For the detailed semantic see `treesit-defun-prefer-top-level'."
-  (pcase treesit-defun-prefer-top-level
-    ('nil node)
-    ('t (or (treesit-node-top-level
-             node treesit-defun-type-regexp)
-            node))
-    ((pred consp)
-     (cl-loop
-      for con in treesit-defun-prefer-top-level
-      for from = (car con)
-      for to = (cdr con)
-      if (string-match-p from (treesit-node-type node))
-      return (or (treesit-node-top-level node to)
-                 node)
-      finally return node))))
-
 (defun treesit-beginning-of-defun (&optional arg)
   "Move backward to the beginning of a defun.
 
@@ -1635,7 +1595,8 @@ This is a tree-sitter equivalent of `beginning-of-defun'.
 Behavior of this function depends on `treesit-defun-type-regexp'
 and `treesit-defun-skipper'."
   (interactive "^p")
-  (when-let ((dest (treesit--navigate-defun (point) (- arg) 'beg)))
+  (when-let* ((arg (or arg 1))
+              (dest (treesit--navigate-defun (point) (- arg) 'beg)))
     (goto-char dest)
     (when treesit-defun-skipper
       (funcall treesit-defun-skipper))
@@ -1651,7 +1612,8 @@ This is a tree-sitter equivalent of `end-of-defun'.  Behavior of
 this function depends on `treesit-defun-type-regexp' and
 `treesit-defun-skipper'."
   (interactive "^p\nd")
-  (when-let ((dest (treesit--navigate-defun (point) arg 'end)))
+  (when-let* ((arg (or arg 1))
+              (dest (treesit--navigate-defun (point) arg 'end)))
     (goto-char dest)
     (when treesit-defun-skipper
       (funcall treesit-defun-skipper))))
@@ -2076,8 +2038,8 @@ to the offending pattern and highlight the pattern."
              (goto-char (point-min))
              (insert (format "%s: %d\n" message start))
              (forward-char start)))
-         (pop-to-buffer buf)))))
-  (view-mode))
+         (pop-to-buffer buf)
+         (view-mode))))))
 
 ;;; Explorer
 
