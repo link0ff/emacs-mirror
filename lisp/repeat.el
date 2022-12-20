@@ -507,8 +507,8 @@ See `describe-repeat-maps' for a list of all repeatable commands."
                       'ignore))
 
         (setq repeat-in-progress t)
+        (repeat--exit)
         (let ((exitfun (set-transient-map map)))
-          (repeat--exit)
           (setq repeat-exit-function exitfun)
 
           (let* ((prop (repeat--command-property 'repeat-exit-timeout))

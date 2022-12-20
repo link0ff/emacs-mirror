@@ -127,14 +127,17 @@
        (repeat-tests--check
         "C-2 C-x w a C-3 c"
         '((2 a)) "ccc"))
-     ;; TODO: fix and uncomment
-     ;; (let ((repeat-keep-prefix t))
-     ;;   (repeat-tests--check
-     ;;    "C-2 C-x w a b a b c"
-     ;;    '((2 a) (2 b) (2 a) (2 b)) "c")
-     ;;   (repeat-tests--check
-     ;;    "C-2 C-x w a C-1 C-2 b a C-3 C-4 b c"
-     ;;    '((2 a) (12 b) (12 a) (34 b)) "c"))
+     ;; Fixed in bug# and bug#
+     (let ((repeat-keep-prefix t))
+       ;; Re-enable to take effect.
+       (repeat-mode -1) (repeat-mode +1)
+       (repeat-tests--check
+        "C-2 C-x w a b a b c"
+        '((2 a) (2 b) (2 a) (2 b)) "c")
+       ;; (repeat-tests--check
+       ;;  "C-2 C-x w a C-1 C-2 b a C-3 C-4 b c"
+       ;;  '((2 a) (12 b) (12 a) (34 b)) "c")
+       )
      )))
 
 ;; TODO: :tags '(:expensive-test)  for repeat-exit-timeout
