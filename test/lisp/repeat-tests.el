@@ -127,7 +127,7 @@
        (repeat-tests--check
         "C-2 C-x w a C-3 c"
         '((2 a)) "ccc"))
-     ;; Fixed in bug# and bug#
+     ;; Fixed in bug#51281 and bug#55986
      (let ((repeat-keep-prefix t))
        ;; Re-enable to take effect.
        (repeat-mode -1) (repeat-mode +1)
@@ -137,8 +137,7 @@
        ;; (repeat-tests--check
        ;;  "C-2 C-x w a C-1 C-2 b a C-3 C-4 b c"
        ;;  '((2 a) (12 b) (12 a) (34 b)) "c")
-       )
-     )))
+       ))))
 
 ;; TODO: :tags '(:expensive-test)  for repeat-exit-timeout
 

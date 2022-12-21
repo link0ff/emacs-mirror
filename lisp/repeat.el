@@ -427,8 +427,7 @@ See `describe-repeat-maps' for a list of all repeatable commands."
   :global t :group 'repeat
   (if (not repeat-mode)
       (progn
-        (when repeat-keep-prefix
-          (remove-hook 'pre-command-hook 'repeat-pre-hook))
+        (remove-hook 'pre-command-hook 'repeat-pre-hook)
         (remove-hook 'post-command-hook 'repeat-post-hook))
     (when repeat-keep-prefix
       (add-hook 'pre-command-hook 'repeat-pre-hook))
@@ -483,11 +482,17 @@ See `describe-repeat-maps' for a list of all repeatable commands."
 
 (defun repeat-pre-hook ()
   "Function run before commands to handle repeatable keys."
-  (when (and repeat-mode repeat-keep-prefix
-             (not prefix-arg) current-prefix-arg
-             ;; Only when repeat-post-hook will activate the same map
-             (repeat-check-map (repeat-get-map)))
-    (setq prefix-arg current-prefix-arg)))
+  (when (and repeat-mode repeat-keep-prefix repeat-in-progress
+             (not prefix-arg) current-prefix-arg)
+    (let ((map (repeat-get-map)))
+      ;; Only when repeat-post-hook will activate the same map
+      (when (repeat-check-map map)
+        ;; Optimize to use less logic in the function `repeat-get-map'
+        ;; for the next call: when called again from `repeat-post-hook'
+        ;; it will use the variable `repeat-map'.
+        (setq repeat-map map)
+        ;; Preserve universal argument
+        (setq prefix-arg current-prefix-arg)))))
 
 (defun repeat-post-hook ()
   "Function run after commands to set transient keymap for repeatable keys."
