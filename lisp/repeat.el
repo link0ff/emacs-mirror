@@ -610,6 +610,7 @@ Used in `repeat-mode'."
                          (push s (alist-get (get s 'repeat-map) keymaps)))))
       (with-help-window (help-buffer)
         (with-current-buffer standard-output
+          (setq-local outline-regexp "[*]+")
           (insert "A list of keymaps used by commands with the symbol property `repeat-map'.\n")
 
           (dolist (keymap (sort keymaps (lambda (a b)
