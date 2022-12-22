@@ -36,14 +36,12 @@
 
 (defvar-keymap repeat-tests-map
   :doc "Keymap for keys that initiate repeating sequences."
-  ;; :repeat t
   "C-x w a" 'repeat-tests-call-a
   "C-M-a"   'repeat-tests-call-a
   "C-M-z"   'repeat-tests-call-a)
 
 (defvar-keymap repeat-tests-repeat-map
   :doc "Keymap for repeating sequences."
-  ;; :repeat t
   "a" 'repeat-tests-call-a
   "b" 'repeat-tests-call-b)
 (put 'repeat-tests-call-a 'repeat-map 'repeat-tests-repeat-map)
@@ -134,6 +132,7 @@
        (repeat-tests--check
         "C-2 C-x w a b a b c"
         '((2 a) (2 b) (2 a) (2 b)) "c")
+       ;; TODO:
        ;; (repeat-tests--check
        ;;  "C-2 C-x w a C-1 C-2 b a C-3 C-4 b c"
        ;;  '((2 a) (12 b) (12 a) (34 b)) "c")
