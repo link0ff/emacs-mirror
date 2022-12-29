@@ -181,7 +181,6 @@ When t (by default), signal an error when no more matches are found.
 Then after repeating the search, wrap with `isearch-wrap-function'.
 When `no', wrap immediately after reaching the last match.
 When `no-ding', wrap immediately without flashing the screen.
-COPY HERE from Info about typing a character.
 When nil, never wrap, just stop at the last match."
   :type '(choice (const :tag "Pause before wrapping" t)
                  (const :tag "No pause before wrapping" no)
