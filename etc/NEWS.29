@@ -1,6 +1,6 @@
 GNU Emacs NEWS -- history of user-visible changes.
 
-Copyright (C) 2021-2022 Free Software Foundation, Inc.
+Copyright (C) 2021-2023 Free Software Foundation, Inc.
 See the end of the file for license conditions.
 
 Please send Emacs bug reports to 'bug-gnu-emacs@gnu.org'.
@@ -2832,7 +2832,11 @@ project-dedicated or global) is specified by the new
 *** Support for endless methods.
 
 ---
-*** New user option 'ruby-method-params-indent'.
+*** New user options that determine indentation logic.
+'ruby-method-params-indent', 'ruby-block-indent',
+'ruby-after-operator-indent', 'ruby-method-call-indent',
+'ruby-parenless-call-arguments-indent'.  See the docstrings for
+explanations and examples.
 
 ** Eshell
 

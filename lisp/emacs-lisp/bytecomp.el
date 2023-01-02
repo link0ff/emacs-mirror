@@ -1,6 +1,6 @@
 ;;; bytecomp.el --- compilation of Lisp code into byte code -*- lexical-binding: t -*-
 
-;; Copyright (C) 1985-1987, 1992, 1994, 1998, 2000-2022 Free Software
+;; Copyright (C) 1985-1987, 1992, 1994, 1998, 2000-2023 Free Software
 ;; Foundation, Inc.
 
 ;; Author: Jamie Zawinski <jwz@lucid.com>
@@ -5526,7 +5526,7 @@ and corresponding effects."
   (macroexp-warn-and-return
    (format "`%s' called with literal %s that may never match (%s)"
            (car form) type parenthesis)
-   form '(suspicious eq) t))
+   form (list 'suspicious (car form)) t))
 
 (defun bytecomp--check-eq-args (form &optional a b &rest _ignore)
   (let* ((number-ok (eq (car form) 'eql))
