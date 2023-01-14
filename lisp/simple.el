@@ -2709,7 +2709,16 @@ function as needed."
        (let ((doc (car body)))
 	 (when (funcall docstring-p doc)
            doc)))
-      (_ (signal 'invalid-function (list function))))))
+      ((pred symbolp)
+       (let ((f (indirect-function function)))
+         (if f (function-documentation f)
+           (signal 'void-function (list function)))))
+      (`(macro . ,f) (function-documentation f))
+      (_
+       (let ((doc (internal-subr-documentation function)))
+         (if (eq t doc)
+             (signal 'invalid-function (list function))
+           doc))))))
 
 (cl-defmethod function-documentation ((function accessor))
   (oclosure--accessor-docstring function)) ;; FIXME: η-reduce!
@@ -9767,6 +9776,14 @@ Also see the `completion-auto-wrap' variable."
   (let ((tabcommand (member (this-command-keys) '("\t" [backtab])))
         pos)
     (catch 'bound
+      (when (and (bobp)
+                 (> n 0)
+                 (get-text-property (point) 'mouse-face)
+                 (not (get-text-property (point) 'first-completion)))
+        (let ((inhibit-read-only t))
+          (add-text-properties (point) (1+ (point)) '(first-completion t)))
+        (setq n (1- n)))
+
       (while (> n 0)
         (setq pos (point))
         ;; If in a completion, move to the end of it.
