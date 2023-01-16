@@ -78,6 +78,7 @@
      ((parent-is "comment") prev-adaptive-prefix 0)
      ((parent-is "text_block") no-indent)
      ((parent-is "class_body") parent-bol java-ts-mode-indent-offset)
+     ((parent-is "annotation_type_body") parent-bol java-ts-mode-indent-offset)
      ((parent-is "interface_body") parent-bol java-ts-mode-indent-offset)
      ((parent-is "constructor_body") parent-bol java-ts-mode-indent-offset)
      ((parent-is "enum_body") parent-bol java-ts-mode-indent-offset)
@@ -225,7 +226,10 @@
    :language 'java
    :override t
    :feature 'definition
-   `((method_declaration
+   `((annotation_type_element_declaration
+      name: (identifier) @font-lock-function-name-face)
+
+     (method_declaration
       name: (identifier) @font-lock-function-name-face)
 
      (variable_declarator
@@ -312,8 +316,17 @@ Return nil if there is no name or if NODE is not a defun node."
                             "enum_declaration"
                             "import_declaration"
                             "package_declaration"
-                            "module_declaration")))
+                            "module_declaration"
+                            "constructor_declaration")))
   (setq-local treesit-defun-name-function #'java-ts-mode--defun-name)
+
+  (setq-local treesit-sentence-type-regexp
+              (regexp-opt '("statement"
+                            "local_variable_declaration"
+                            "field_declaration"
+                            "module_declaration"
+                            "package_declaration"
+                            "import_declaration")))
 
   ;; Font-lock.
   (setq-local treesit-font-lock-settings java-ts-mode--font-lock-settings)
