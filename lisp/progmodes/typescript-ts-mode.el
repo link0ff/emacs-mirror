@@ -30,7 +30,7 @@
 (require 'treesit)
 (require 'js)
 (eval-when-compile (require 'rx))
-(require 'c-ts-mode) ; For comment indent and filling.
+(require 'c-ts-common) ; For comment indent and filling.
 
 (declare-function treesit-parser-create "treesit.c")
 
@@ -69,13 +69,13 @@
   "Rules used for indentation.
 Argument LANGUAGE is either `typescript' or `tsx'."
   `((,language
-     ((parent-is "program") parent-bol 0)
+     ((parent-is "program") point-min 0)
      ((node-is "}") parent-bol 0)
      ((node-is ")") parent-bol 0)
      ((node-is "]") parent-bol 0)
      ((node-is ">") parent-bol 0)
-     ((and (parent-is "comment") c-ts-mode--looking-at-star)
-      c-ts-mode--comment-start-after-first-star -1)
+     ((and (parent-is "comment") c-ts-common-looking-at-star)
+      c-ts-common-comment-start-after-first-star -1)
      ((parent-is "comment") prev-adaptive-prefix 0)
      ((parent-is "ternary_expression") parent-bol typescript-ts-mode-indent-offset)
      ((parent-is "member_expression") parent-bol typescript-ts-mode-indent-offset)
@@ -361,19 +361,13 @@ See `treesit-sentence-type-regexp' for more information.")
 See `treesit-sexp-type-regexp' for more information.")
 
 ;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode))
-
-;;;###autoload
-(add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode))
-
-;;;###autoload
 (define-derived-mode typescript-ts-base-mode prog-mode "TypeScript"
   "Major mode for editing TypeScript."
   :group 'typescript
   :syntax-table typescript-ts-mode--syntax-table
 
   ;; Comments.
-  (c-ts-mode-comment-setup)
+  (c-ts-common-comment-setup)
   (setq-local treesit-defun-prefer-top-level t)
 
   (setq-local treesit-text-type-regexp
@@ -432,6 +426,9 @@ See `treesit-sexp-type-regexp' for more information.")
 
     (treesit-major-mode-setup)))
 
+(if (treesit-ready-p 'typescript)
+    (add-to-list 'auto-mode-alist '("\\.ts\\'" . typescript-ts-mode)))
+
 ;;;###autoload
 (define-derived-mode tsx-ts-mode typescript-ts-base-mode "TypeScript[TSX]"
   "Major mode for editing TypeScript."
@@ -478,6 +475,9 @@ See `treesit-sexp-type-regexp' for more information.")
                   (function bracket delimiter)))
 
     (treesit-major-mode-setup)))
+
+(if (treesit-ready-p 'tsx)
+    (add-to-list 'auto-mode-alist '("\\.tsx\\'" . tsx-ts-mode)))
 
 (provide 'typescript-ts-mode)
 
