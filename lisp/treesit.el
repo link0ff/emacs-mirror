@@ -86,7 +86,9 @@
 
 (declare-function treesit-search-subtree "treesit.c")
 (declare-function treesit-search-forward "treesit.c")
+(declare-function treesit-subtree-stat "treesit.c")
 (declare-function treesit-induce-sparse-tree "treesit.c")
+(declare-function treesit-subtree-stat "treesit.c")
 
 (declare-function treesit-available-p "treesit.c")
 
@@ -265,12 +267,14 @@ If INCLUDE-NODE is non-nil, return NODE if it satisfies PRED."
 Use the first parser in the parser list if LANGUAGE is omitted.
 If LANGUAGE is non-nil, use the first parser for LANGUAGE in the
 parser list, or create one if none exists."
-  (if-let ((parser
-            (if language
-                (treesit-parser-create language)
-              (or (car (treesit-parser-list))
-                  (signal 'treesit-no-parser (list (current-buffer)))))))
-      (treesit-parser-root-node parser)))
+  ;; Otherwise the incremental build is broken without tree-sitter.
+  (when (treesit-available-p)
+    (if-let ((parser
+              (if language
+                  (treesit-parser-create language)
+                (or (car (treesit-parser-list))
+                    (signal 'treesit-no-parser (list (current-buffer)))))))
+        (treesit-parser-root-node parser))))
 
 (defun treesit-filter-child (node pred &optional named)
   "Return children of NODE that satisfies predicate PRED.
@@ -557,20 +561,22 @@ omitted, default END to BEG."
 (defun treesit--font-lock-level-setter (sym val)
   "Custom setter for `treesit-font-lock-level'."
   (set-default sym val)
-  (named-let loop ((res nil)
-                   (buffers (buffer-list)))
-    (if (null buffers)
-        (mapc (lambda (b)
-                (with-current-buffer b
-                  (setq-local treesit-font-lock-level val)
-                  (treesit-font-lock-recompute-features)
-                  (treesit-font-lock-fontify-region (point-min) (point-max))))
-              res)
-      (let ((buffer (car buffers)))
-        (with-current-buffer buffer
-          (if (treesit-parser-list)
-              (loop (append res (list buffer)) (cdr buffers))
-            (loop res (cdr buffers))))))))
+  (and (treesit-available-p)
+       (named-let loop ((res nil)
+                        (buffers (buffer-list)))
+         (if (null buffers)
+             (mapc (lambda (b)
+                     (with-current-buffer b
+                       (setq-local treesit-font-lock-level val)
+                       (treesit-font-lock-recompute-features)
+                       (treesit-font-lock-fontify-region (point-min)
+                                                         (point-max))))
+                   res)
+           (let ((buffer (car buffers)))
+             (with-current-buffer buffer
+               (if (treesit-parser-list)
+                   (loop (append res (list buffer)) (cdr buffers))
+                 (loop res (cdr buffers)))))))))
 
 (defcustom treesit-font-lock-level 3
   "Decoration level to be used by tree-sitter fontifications.
