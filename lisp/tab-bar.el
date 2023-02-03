@@ -2653,7 +2653,7 @@ When `switch-to-buffer-obey-display-actions' is non-nil,
 (keymap-set tab-prefix-map "t"   #'other-tab-prefix)
 
 (defvar-keymap tab-bar-switch-repeat-map
-  :doc "Keymap to repeat tab switch key sequences \\`C-x t o o O'.
+  :doc "Keymap to repeat tab switch commands `tab-next' and `tab-previous'.
 Used in `repeat-mode'."
   :repeat t
   "o" #'tab-next
@@ -2662,7 +2662,7 @@ Used in `repeat-mode'."
 ;; (put 'tab-next 'repeat-start-keys '([?\C-x ?t ?o]))
 
 (defvar-keymap tab-bar-move-repeat-map
-  :doc "Keymap to repeat tab move key sequences \\`C-x t m m M'.
+  :doc "Keymap to repeat tab move commands `tab-move' and `tab-bar-move-tab-backward'.
 Used in `repeat-mode'."
   :repeat t
   "m" #'tab-move
