@@ -221,7 +221,8 @@ chosen (interactively or automatically)."
                                 ((java-mode java-ts-mode) . ("jdtls"))
                                 (dart-mode . ("dart" "language-server"
                                               "--client-id" "emacs.eglot-dart"))
-                                ((elixir-ts-mode elixir-mode) . ("language_server.sh"))
+                                ((elixir-mode elixir-ts-mode heex-ts-mode)
+                                 . ("language_server.sh"))
                                 (ada-mode . ("ada_language_server"))
                                 (scala-mode . ,(eglot-alternatives
                                                 '("metals" "metals-emacs")))
@@ -1313,6 +1314,7 @@ This docstring appeases checkdoc, that's all."
                                         (eq (jsonrpc-process-type server)
                                             'network))
                               (emacs-pid))
+                            :clientInfo '(:name "Eglot")
                             ;; Maybe turn trampy `/ssh:foo@bar:/path/to/baz.py'
                             ;; into `/path/to/baz.py', so LSP groks it.
                             :rootPath (file-local-name
