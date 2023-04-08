@@ -107,6 +107,7 @@
   (require 'subr-x))
 (require 'filenotify)
 (require 'ert)
+(require 'text-property-search nil t)
 
 ;; These dependencies are also GNU ELPA core packages.  Because of
 ;; bug#62576, since there is a risk that M-x package-install, despite
@@ -402,7 +403,7 @@ done by `eglot-reconnect'."
 If set to `messages', use *Messages* buffer, else use Eglot's
 mode line indicator."
   :type 'boolean
-  :version "29.1")
+  :version "1.10")
 
 (defvar eglot-withhold-process-id nil
   "If non-nil, Eglot will not send the Emacs process id to the language server.
@@ -1479,11 +1480,11 @@ Unless IMMEDIATE, send pending changes before making request."
 ;;; Encoding fever
 ;;;
 (define-obsolete-function-alias
-  'eglot-lsp-abiding-column 'eglot-utf-16-linepos "29.1")
+  'eglot-lsp-abiding-column 'eglot-utf-16-linepos "1.12")
 (define-obsolete-function-alias
-  'eglot-current-column 'eglot-utf-32-linepos "29.1")
+  'eglot-current-column 'eglot-utf-32-linepos "1.12")
 (define-obsolete-variable-alias
-  'eglot-current-column-function 'eglot-current-linepos-function "29.1")
+  'eglot-current-column-function 'eglot-current-linepos-function "1.12")
 
 (defvar eglot-current-linepos-function #'eglot-utf-16-linepos
   "Function calculating position relative to line beginning.
@@ -1524,11 +1525,11 @@ LBP defaults to `eglot--bol'."
                            (funcall eglot-current-linepos-function)))))
 
 (define-obsolete-function-alias
-  'eglot-move-to-current-column 'eglot-move-to-utf-32-linepos "29.1")
+  'eglot-move-to-current-column 'eglot-move-to-utf-32-linepos "1.12")
 (define-obsolete-function-alias
-  'eglot-move-to-lsp-abiding-column 'eglot-move-to-utf-16-linepos "29.1")
+  'eglot-move-to-lsp-abiding-column 'eglot-move-to-utf-16-linepos "1.12")
 (define-obsolete-variable-alias
-'eglot-move-to-column-function 'eglot-move-to-linepos-function "29.1")
+'eglot-move-to-column-function 'eglot-move-to-linepos-function "1.12")
 
 (defvar eglot-move-to-linepos-function #'eglot-move-to-utf-16-linepos
   "Function to move to a position within a line reported by the LSP server.
@@ -1672,9 +1673,11 @@ Doubles as an indicator of snippet support."
         (ignore-errors (delay-mode-hooks (funcall mode)))
         (font-lock-ensure)
         (goto-char (point-min))
-        (while (setq match (text-property-search-forward 'invisible))
-          (delete-region (prop-match-beginning match)
-                         (prop-match-end match)))
+        (let ((inhibit-read-only t))
+          (when (fboundp 'text-property-search-forward) ;; FIXME: use compat
+            (while (setq match (text-property-search-forward 'invisible))
+              (delete-region (prop-match-beginning match)
+                             (prop-match-end match)))))
         (string-trim (buffer-string))))))
 
 (define-obsolete-variable-alias 'eglot-ignored-server-capabilites
@@ -1985,8 +1988,8 @@ If it is activated, also signal textDocument/didOpen."
                                            (when update-mode-line
                                              (force-mode-line-update t)))))))
 
-(defun eglot-manual () "Open documentation."
-       (declare (obsolete info "29.1"))
+(defun eglot-manual () "Read Eglot's manual."
+       (declare (obsolete info "1.10"))
        (interactive) (info "(eglot)"))
 
 (easy-menu-define eglot-menu nil "Eglot"
@@ -3244,7 +3247,8 @@ for which LSP on-type-formatting should be requested."
          (let ((elems (mapcar
                        (eglot--lambda ((SymbolInformation) kind name location)
                          (let ((reg (eglot--range-region
-                                     (plist-get location :range))))
+                                     (plist-get location :range)))
+                               (kind (alist-get kind eglot--symbol-kind-names)))
                            (cons (propertize name
                                              'breadcrumb-region reg
                                              'breadcrumb-kind kind)
@@ -3259,13 +3263,14 @@ for which LSP on-type-formatting should be requested."
   "Compute `imenu--index-alist' for RES vector of DocumentSymbol."
   (cl-labels ((dfs (&key name children range kind &allow-other-keys)
                 (let* ((reg (eglot--range-region range))
+                       (kind (alist-get kind eglot--symbol-kind-names))
                        (name (propertize name
                                          'breadcrumb-region reg
                                          'breadcrumb-kind kind)))
-                  (if children
-                      (cons name
-                            (mapcar (lambda (c) (apply #'dfs c)) children))
-                    (cons name (car reg))))))
+                  (if (seq-empty-p children)
+                      (cons name (car reg))
+                    (cons name
+                            (mapcar (lambda (c) (apply #'dfs c)) children))))))
     (mapcar (lambda (s) (apply #'dfs s)) res)))
 
 (defun eglot-imenu ()
