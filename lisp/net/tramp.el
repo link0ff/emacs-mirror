@@ -3527,29 +3527,29 @@ BODY is the backend specific code."
 
 	     ;; Set the ownership.
              (when need-chown
-               (tramp-set-file-uid-gid filename uid gid)))
+               (tramp-set-file-uid-gid filename uid gid))
 
-	   ;; Set extended attributes.  We ignore possible errors,
-	   ;; because ACL strings could be incompatible.
-	   (when attributes
-	     (ignore-errors
-	       (set-file-extended-attributes filename attributes)))
+	     ;; Set extended attributes.  We ignore possible errors,
+	     ;; because ACL strings could be incompatible.
+	     (when attributes
+	       (ignore-errors
+		 (set-file-extended-attributes filename attributes)))
 
-	   ;; Unlock file.
-	   (when file-locked
-	     ;; `unlock-file' exists since Emacs 28.1.
-	     (tramp-compat-funcall 'unlock-file lockname))
+	     ;; Unlock file.
+	     (when file-locked
+	       ;; `unlock-file' exists since Emacs 28.1.
+	       (tramp-compat-funcall 'unlock-file lockname))
 
-	   ;; Sanity check.
-	   (unless (equal curbuf (current-buffer))
-	     (tramp-error
-	      v 'file-error
-	      "Buffer has changed from `%s' to `%s'" curbuf (current-buffer)))
+	     ;; Sanity check.
+	     (unless (equal curbuf (current-buffer))
+	       (tramp-error
+		v 'file-error
+		"Buffer has changed from `%s' to `%s'" curbuf (current-buffer)))
 
-	   (when (and (null noninteractive)
-		      (or (eq ,visit t) (string-or-null-p ,visit)))
-	     (tramp-message v 0 "Wrote %s" filename))
-	   (run-hooks 'tramp-handle-write-region-hook))))))
+	     (when (and (null noninteractive)
+			(or (eq ,visit t) (string-or-null-p ,visit)))
+	       (tramp-message v 0 "Wrote %s" filename))
+	     (run-hooks 'tramp-handle-write-region-hook)))))))
 
 ;;; Common file name handler functions for different backends:
 
@@ -6055,6 +6055,13 @@ to cache the result.  Return the modified ATTR."
 		 ;; Set virtual device number.
 		 (setcar (nthcdr 11 attr)
 			 (tramp-get-device ,vec))
+		 ;; Set SELinux context.
+		 (when (stringp (nth 12 attr))
+		   (tramp-set-file-property
+		    ,vec ,localname  "file-selinux-context"
+		    (split-string (nth 12 attr) ":" 'omit)))
+		 ;; Remove optional entries.
+		 (setcdr (nthcdr 11 attr) nil)
 		 attr)))))
 
        ;; Return normalized result.
