@@ -156,6 +156,25 @@ whereas if the mouse pointer is in the left half of a glyph, point
 will be put in front the buffer position corresponding to that glyph.
 By default this is disabled.
 
+** Internationalization
+
+---
+*** Users in CJK locales can control width of some non-CJK characters.
+Some characters are considered by Unicode as "ambiguous" with respect
+to their display width: either "full-width" (i.e. taking 2 columns on
+display) or "narrow" (taking 1 column).  The actual width depends on
+the fonts used for these characters by Emacs or (for text-mode frames)
+by the terminal emulator.  Traditionally, font sets in CJK locales
+were set up so as to display these characters as full-width, and thus
+Emacs modified the char-width table in those locales to follow suit.
+Lately, the tendency is to display these characters as narrow.  The
+new user option 'cjk-ambiguous-chars-are-wide' allows users to control
+whether Emacs considers these characters as full-width (the default)
+or narrow (if the variable is customized to the nil value).
+
+This setting affects the results of 'string-width' and similar
+functions in CJK locales.
+
 
 * Changes in Specialized Modes and Packages in Emacs 30.1
 
@@ -681,6 +700,11 @@ tokens like 0.0e+NaN and 1.0e+INF are no longer read as symbols.
 Instead, the Lisp reader approximates an infinity with the nearest
 finite value, and a NaN with some other non-numeric object that
 provokes an error if used numerically.
+
++++
+** X color support compatibility aliases are now marked obsolete.
+The compatibility aliases 'x-defined-colors', 'x-color-defined-p',
+'x-color-values', and 'x-display-color-p' are now obsolete.
 
 
 * Lisp Changes in Emacs 30.1
