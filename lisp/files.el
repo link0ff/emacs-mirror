@@ -5796,9 +5796,14 @@ Before and after saving the buffer, this function runs
 	          (run-hook-with-args-until-success 'write-file-functions)
 	          ;; If a hook returned t, file is already "written".
 	          ;; Otherwise, write it the usual way now.
-	          (let ((dir (file-name-directory
+	          (let ((file (buffer-file-name))
+                        (dir (file-name-directory
 			      (expand-file-name buffer-file-name))))
-		    (unless (file-exists-p dir)
+                    ;; Some systems have directories (like /content on
+                    ;; Android) in which files can exist without a
+                    ;; corresponding parent directory.
+		    (unless (or (file-exists-p file)
+                                (file-exists-p dir))
 		      (if (y-or-n-p
 		           (format-message
                             "Directory `%s' does not exist; create? " dir))
@@ -5867,8 +5872,10 @@ Before and after saving the buffer, this function runs
 		     buffer-file-name)))
 		  (setq tempsetmodes t)
 		(error "Attempt to save to a file that you aren't allowed to write"))))))
-    (or buffer-backed-up
-	(setq setmodes (backup-buffer)))
+    (with-demoted-errors
+        "Backing up buffer: %s"
+      (or buffer-backed-up
+	  (setq setmodes (backup-buffer))))
     (let* ((dir (file-name-directory buffer-file-name))
            (dir-writable (file-writable-p dir)))
       (if (or (and file-precious-flag dir-writable)
@@ -6890,9 +6897,9 @@ an auto-save file."
       (if revert-buffer-preserve-modes
           (let ((buffer-file-format buffer-file-format))
             (insert-file-contents file-name (not auto-save-p)
-                                  nil nil t))
+                                  nil nil 'if-regular))
         (insert-file-contents file-name (not auto-save-p)
-                              nil nil t))))))
+                              nil nil 'if-regular))))))
 
 (defvar revert-buffer-with-fine-grain-max-seconds 2.0
   "Maximum time that `revert-buffer-with-fine-grain' should use.
