@@ -183,7 +183,7 @@ otherwise it defaults to t, used for times when the buffer is not displayed."
     ;; Beware: this call to image-mode-winprops can't be optimized away,
     ;; because it not only gets the winprops data but sets it up if needed
     ;; (e.g. it's used by doc-view to display the image in a new window).
-    (let* ((winprops (image-mode-winprops nil t))
+    (let* ((winprops (image-mode-winprops nil nil))
            (hscroll (image-mode-window-get 'hscroll winprops))
            (vscroll (image-mode-window-get 'vscroll winprops)))
       (when (image-get-display-property) ;Only do it if we display an image!
