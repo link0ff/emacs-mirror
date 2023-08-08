@@ -2175,7 +2175,8 @@ The `temp-buffer-window-setup-hook' hook is called."
     (setq-local help-mode--current-data nil)
     (buffer-disable-undo)
     (let ((inhibit-read-only t)
-	  (inhibit-modification-hooks t))
+	  (inhibit-modification-hooks t)
+	  window)
       (erase-buffer)
       (delete-all-overlays)
       (prog1
@@ -2186,7 +2187,12 @@ The `temp-buffer-window-setup-hook' hook is called."
         (help-make-xrefs (current-buffer))
         ;; This must be done after the buffer has been completely
         ;; generated, since `temp-buffer-resize-mode' may be enabled.
-        (help-window-setup (temp-buffer-window-show (current-buffer)))))))
+        (help-window-setup
+         (setq window (temp-buffer-window-show (current-buffer) nil t)))
+        (help-make-xrefs (current-buffer))
+        (when (and window temp-buffer-resize-mode)
+          (let (resize-temp-buffer-window-inhibit)
+            (resize-temp-buffer-window window)))))))
 
 ;; Called from C, on encountering `help-char' when reading a char.
 ;; Don't print to *Help*; that would clobber Help history.

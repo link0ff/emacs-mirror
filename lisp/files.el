@@ -3803,7 +3803,8 @@ i  -- to ignore the local variables list, and permanently mark these
 
       ;; Display the buffer and read a choice.
       (save-window-excursion
-	(pop-to-buffer buf '(display-buffer--maybe-at-bottom))
+	(pop-to-buffer buf '(display-buffer--maybe-at-bottom
+			     (window-height . fit-window-to-buffer)))
 	(let* ((exit-chars '(?y ?n ?\s))
 	       (prompt (format "Please type %s%s: "
 			       (if offer-save

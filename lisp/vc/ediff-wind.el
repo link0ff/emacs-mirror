@@ -443,7 +443,8 @@ keyboard input to go into icons."
 
     (select-window (display-buffer-in-direction
                     control-buffer
-                    '((direction . bottom))))
+                    '((direction . bottom)
+                      (window-height . fit-window-to-buffer))))
     (ediff-setup-control-buffer control-buffer)
     ))
 
