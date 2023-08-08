@@ -180,6 +180,7 @@ For easier selection of tabs by their numbers, consider customizing
     (define-icon tab-bar-close nil
       `((image "symbols/cross_16.svg" "tabs/close.xpm"
                :face shadow
+               :height (1.0 . em)
                :margin ,tab-bar-button-margin
                :ascent center)
         ;; (emoji " ❌")
