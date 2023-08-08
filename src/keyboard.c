@@ -1501,7 +1501,19 @@ command_loop_1 (void)
 	    update_redisplay_ticks (0, NULL);
 	    display_working_on_window_p = false;
 
+            Lisp_Object next_dir = Vnext_default_directory;
+            specpdl_ref count = SPECPDL_INDEX ();
+            if (!NILP (next_dir))
+              specbind (Qdefault_directory, next_dir);
+
             call1 (Qcommand_execute, Vthis_command);
+
+            if (!NILP (next_dir))
+              {
+                unbind_to (count, Qnil);
+                Vnext_default_directory = Qnil;
+              }
+
 	    display_working_on_window_p = false;
 
 #ifdef HAVE_WINDOW_SYSTEM

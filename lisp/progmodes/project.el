@@ -835,7 +835,7 @@ DIRS must contain directory names."
     (define-key map "c" 'project-compile)
     (define-key map "e" 'project-eshell)
     (define-key map "k" 'project-kill-buffers)
-    (define-key map "p" 'project-switch-project)
+    (define-key map "p" 'other-project-prefix)
     (define-key map "g" 'project-find-regexp)
     (define-key map "G" 'project-or-external-find-regexp)
     (define-key map "r" 'project-query-replace-regexp)
@@ -882,9 +882,13 @@ The following commands are available:
 \\{project-prefix-map}
 \\{project-other-window-map}"
   (interactive)
-  (project--other-place-command '((display-buffer-pop-up-window)
-                                  (inhibit-same-window . t))
-                                project-other-window-map))
+  (other-window-prefix)
+  (set-transient-map (make-composed-keymap project-prefix-map
+                                           project-other-window-map))
+  ;; (project--other-place-command '((display-buffer-pop-up-window)
+  ;;                                 (inhibit-same-window . t))
+  ;;                               project-other-window-map)
+  )
 
 ;;;###autoload (define-key ctl-x-4-map "p" #'project-other-window-command)
 
@@ -910,7 +914,11 @@ The following commands are available:
 
 \\{project-prefix-map}"
   (interactive)
-  (project--other-place-command '((display-buffer-in-new-tab))))
+  (let ((inhibit-message t)) (other-tab-prefix))
+  (message "Display next project command buffer in a new tab...")
+  (set-transient-map project-prefix-map)
+  ;; (project--other-place-command '((display-buffer-in-new-tab)))
+  )
 
 ;;;###autoload
 (when (bound-and-true-p tab-prefix-map)
@@ -1868,19 +1876,79 @@ listed in the dispatch menu produced from `project-switch-commands'."
     command))
 
 ;;;###autoload
-(defun project-switch-project (dir)
-  "\"Switch\" to another project by running an Emacs command.
-The available commands are presented as a dispatch menu
-made from `project-switch-commands'.
+;; (defun project-switch-project (dir)
+;;   "\"Switch\" to another project by running an Emacs command.
+;; The available commands are presented as a dispatch menu
+;; made from `project-switch-commands'.
 
-When called in a program, it will use the project corresponding
-to directory DIR."
+;; When called in a program, it will use the project corresponding
+;; to directory DIR."
+;;   (interactive (list (funcall project-prompter)))
+;;   (let ((command (if (symbolp project-switch-commands)
+;;                      project-switch-commands
+;;                    (project--switch-project-command))))
+;;     (let ((project-current-directory-override dir))
+;;       (call-interactively command))))
+
+;;;###autoload
+(defun other-project-prefix (dir)
   (interactive (list (funcall project-prompter)))
-  (let ((command (if (symbolp project-switch-commands)
-                     project-switch-commands
-                   (project--switch-project-command))))
-    (let ((project-current-directory-override dir))
-      (call-interactively command))))
+  (if (symbolp project-switch-commands)
+      (let ((default-directory dir))
+        (call-interactively project-switch-commands))
+    (let* ((echofun (lambda () "[switch-project]"))
+           (postfun (lambda () (remove-hook
+                                'prefix-command-echo-keystrokes-functions
+                                echofun))))
+      (setq next-default-directory dir)
+      (message (project--keymap-prompt))
+      (add-hook 'prefix-command-echo-keystrokes-functions echofun)
+      (prefix-command-preserve-state)
+      (set-transient-map project-prefix-map nil postfun))))
+
+;;; Project mode
+
+;; Tell Emacs about this new kind of minor mode
+;; (add-to-list 'minor-mode-alist '(project-mode project-name))
+
+(defvar project-name nil
+  "The project name of the current buffer when it belongs to a project.")
+
+;;;###autoload
+(put 'project-name 'risky-local-variable t)
+(put 'project-name 'permanent-local t)
+
+(defvar project-menu-entry
+  `(menu-item "Project" ,menu-bar-project-menu))
+
+(defconst project-mode-line-map
+  (let ((map (make-sparse-keymap)))
+    (define-key map [mode-line down-mouse-1] project-menu-entry)
+    map))
+
+;;;###autoload
+(define-minor-mode project-mode
+  "Toggle display of project menu in the project-aware buffers."
+  :lighter nil
+  ;; :keymap (define-keymap "<menu-bar>" project-mode-menu)
+  (if project-mode
+      (setq-local project-name (concat
+	                        " "
+	                        (propertize
+	                         (project-name (project-current))
+	                         'mouse-face 'mode-line-highlight
+	                         'local-map project-mode-line-map)))))
+
+(defun project-mode--turn-on ()
+  "Turn on `project-mode' in all pertinent buffers."
+  (when (project-current)
+    (project-mode 1)))
+
+;;;###autoload
+(define-globalized-minor-mode global-project-mode
+  project-mode project-mode--turn-on
+  :group 'project
+  :version "30.1")
 
 ;;;###autoload
 (defun project-uniquify-dirname-transform (dirname)

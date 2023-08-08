@@ -150,7 +150,33 @@ visited and a warning displayed."
 Otherwise, not displayed."
   :type 'boolean
   :group 'vc)
+(make-obsolete-variable 'vc-display-status 'vc-mode-line-format "30.1")
 
+(defcustom vc-mode-line-format '(backend status revision)
+  "What items to display on the mode line.
+Possible values:
+`project' - the current project name;
+`backend' - backend name;
+`status' - a character that denotes the vc status;
+`revision' - revision number and/or lock status;
+`commit' - commit name;
+`commit-abbr' - abbreviated commit name;
+`branch' - branch name;
+`separator' - a string between items.
+See more at Info node (emacs) VC Mode Line."
+  :type '(repeat
+          (choice
+           (const :tag "Project name" project)
+           (const :tag "Backend name" backend)
+           (const :tag "Status character" status)
+           (const :tag "Revision number/Lock status" revision)
+           (const :tag "Commit name" commit)
+           (const :tag "Abbreviated commit name" commit-abbr)
+           (const :tag "Branch name" branch)
+           (function :tag "Custom function")
+           (string :tag "Separator")))
+  :version "30.1"
+  :group 'vc)
 
 (defcustom vc-consult-headers t
   "If non-nil, identify work files by searching for version headers."
@@ -713,7 +739,10 @@ Format:
   \"BACKEND?REV\"        if the file is under VC, but is missing
 
 This function assumes that the file is registered."
-  (let* ((backend-name (symbol-name backend))
+  (let* ((backend-name (if-let ((project (and (featurep 'project) ;; use new option here
+                                              (project-current nil))))
+                           (project-name project)
+                         (symbol-name backend)))
 	 (state   (vc-state file backend))
 	 (state-echo nil)
 	 (face nil)
