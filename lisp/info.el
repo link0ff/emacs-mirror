@@ -3336,6 +3336,30 @@ If FILE is nil, check the current Info file."
               (concat "The Info directory node has no index; "
                       "type \\[Info-menu] to select a manual")))))
 
+;; (defun info-window ()
+;;   (get-window-with-predicate (lambda (w) (equal (buffer-name (window-buffer w)) "*info*")) nil t))
+
+;; (defmacro with-selected-window-frame (window &rest body)
+;;   `(let ((old-frame (selected-frame))
+;;          (frame (window-frame ,window)))
+;;      (unless (eq frame old-frame)
+;;        (select-frame frame 'norecord)
+;;        (select-frame-set-input-focus frame 'norecord))
+;;      (prog1 (with-selected-window ,window
+;;               ,@body)
+;;        (select-frame old-frame 'norecord)
+;;        (select-frame-set-input-focus old-frame 'norecord))))
+
+;; (defun Info-index-any-window (topic &optional window)
+;;   (interactive
+;;    (with-selected-window-frame (info-window)
+;;      (append (eval (cadr (interactive-form 'Info-index)))
+;;              (list (selected-window)))))
+;;   (with-selected-window (or window (info-window))
+;;     (Info-index topic)))
+
+;; (Info-index-any-window "ffap" (info-window))
+
 ;;;###autoload
 (defun Info-index (topic)
   "Look up a string TOPIC in the index for this manual and go to that entry.
@@ -4099,8 +4123,8 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
     (define-key map [follow-link] 'mouse-face)
     (define-key map [XF86Back] 'Info-history-back)
     (define-key map [XF86Forward] 'Info-history-forward)
-    (define-key map [tool-bar C-Back\ in\ history] 'Info-history-back-menu)
-    (define-key map [tool-bar C-Forward\ in\ history] 'Info-history-forward-menu)
+    (define-key map [tool-bar C-back-in-history] 'Info-history-back-menu)
+    (define-key map [tool-bar C-forward-in-history] 'Info-history-forward-menu)
     map)
   "Keymap containing Info commands.")
 
@@ -4110,6 +4134,29 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
   (condition-case nil
       (Info-extract-pointer item)
     (error nil)))
+
+;; (intern "Back in History") Back\ in\ History
+;; (make-symbol "Back in History") #:Back\ in\ History
+;; (intern-soft "Back in History") Back\ in\ History
+;; (downcase "Back in History") "back in history"
+
+;; (defvar-keymap Info-mode-map2
+;;   "<tool-bar> C-<Back in history>"    'Info-history-back-menu
+;;   "<tool-bar> C-<Forward in history>" 'Info-history-forward-menu
+;;   )
+
+;; (defvar-keymap Info-mode-map3
+;;   "<tool-bar> C-<back-in-history>" 'Info-history-back-menu
+;;   )
+
+;; (kbd "<tool-bar> C-<back-in-history>")
+;; [tool-bar C-back-in-history]
+;; [tool-bar C-Back\ in\ history]
+;; (kbd "<tool-bar> C-<Back\\ in\\ history>")
+
+;; (kbd "<tool-bar> <C-Back in history>")
+;; [tool-bar C-Back\ in\ history]
+;; (kbd "<tool-bar> C-<Back in history>")
 
 (easy-menu-define
  Info-mode-menu Info-mode-map

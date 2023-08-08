@@ -33,7 +33,7 @@
 ;;; Code:
 
 (defsubst easy-menu-intern (s)
-  (if (stringp s) (intern s) s))
+  (if (stringp s) (intern (string-replace " " "-" (downcase s))) s))
 
 (defmacro easy-menu-define (symbol maps doc menu)
   "Define a pop-up menu and/or menu bar menu specified by MENU.
