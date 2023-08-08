@@ -5201,6 +5201,11 @@ nil means to not handle the buffer in a particular way.  This
 	 (quit-restore-2 (nth 2 quit-restore))
          (prev-buffer (catch 'prev-buffer
                         (dolist (buf (window-prev-buffers window))
+                          ;; ADDED LATER: actually I think that after
+                          ;; switching buffers should still not close
+                          ;; when non-quitted next-buffers exist.
+                          ;; (unless (or (eq (car buf) buffer)
+                          ;;             (memq (car buf) (window-next-buffers window)))
                           (unless (eq (car buf) buffer)
                             (throw 'prev-buffer (car buf))))))
          (dedicated (window-dedicated-p window))
@@ -5270,14 +5275,14 @@ nil means to not handle the buffer in a particular way.  This
 	(set-window-prev-buffers
 	 window (append (window-prev-buffers window) (list entry))))
       ;; Reset the quit-restore parameter.
-      (set-window-parameter window 'quit-restore nil)
+      ;; (set-window-parameter window 'quit-restore nil)
       ;; Select old window.
       ;; If the previously selected window is still alive, select it.
       (window--quit-restore-select-window quit-restore-2))
      (t
       ;; Show some other buffer in WINDOW and reset the quit-restore
       ;; parameter.
-      (set-window-parameter window 'quit-restore nil)
+      ;; (set-window-parameter window 'quit-restore nil)
       ;; Make sure that WINDOW is no more dedicated.
       (set-window-dedicated-p window nil)
       ;; Try to switch to a previous buffer.  Delete the window only if
