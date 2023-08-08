@@ -139,6 +139,12 @@ If `tabulated-list-entries' is a function, it is called with no
 arguments and must return a list of the above form.")
 (put 'tabulated-list-entries 'permanent-local t)
 
+;; TODO: actually instead of groups better to allow inserting strings, e.g.
+;; ((string "* Editable buffers")
+;;  (#<buffer *scratch*>  ["." " " "*scratch*" "145" "Lisp Interaction"])
+;;  (string "** Other buffers")
+;;  (#<buffer *Messages*> [" " "%" "*" "*Messages*" "147" "Messages"]))
+
 (defvar-local tabulated-list-groups nil
   "Groups displayed in the current Tabulated List buffer.")
 (put 'tabulated-list-groups 'permanent-local t)
