@@ -91,6 +91,7 @@
   (setq-local outline-minor-mode-cycle t
               outline-minor-mode-highlight 'append
               outline-minor-mode-use-buttons 'in-margins
+              ;; outline-minor-mode-use-buttons 'ellipsis
               ;; outline-search-function
               ;; (lambda (&optional bound move backward looking-at)
               ;;   (cond

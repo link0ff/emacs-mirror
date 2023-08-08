@@ -579,14 +579,17 @@ See the command `outline-mode' for more information on this mode."
         (setq-local line-move-ignore-invisible t)
 	;; Cause use of ellipses for invisible text.
 	(add-to-invisibility-spec
-         (if outline-minor-mode-use-buttons 'outline '(outline . t)))
+         ;; !!! ellipses can't be removed because otherwise
+         ;; (current-indentation) gives wrong value in outline-level!!!
+         ;; (if outline-minor-mode-use-buttons 'outline '(outline . t))
+         '(outline . t))
 	(outline-apply-default-state))
     (setq line-move-ignore-invisible nil)
     ;; Cause use of ellipses for invisible text.
-    (remove-from-invisibility-spec
-     (if outline-minor-mode-use-buttons 'outline '(outline . t)))
+    (remove-from-invisibility-spec '(outline . t))
     ;; When turning off outline mode, get rid of any outline hiding.
     (outline-show-all)
+    (kill-local-variable 'outline--cycle-buffer-state)
     (when outline-minor-mode-highlight
       (if font-lock-fontified
           (font-lock-remove-keywords nil outline-font-lock-keywords))
@@ -1006,7 +1009,7 @@ If FLAG is nil then text is shown, while if FLAG is t the text is hidden."
     (let ((o (make-overlay from to nil 'front-advance)))
       (overlay-put o 'evaporate t)
       (when (eq outline-minor-mode-use-buttons 'ellipsis)
-        (overlay-put o 'after-string (apply 'propertize "…" (text-properties-at (save-excursion (goto-char from) (goto-char (1+ (pos-bol))) (point))))))
+        (overlay-put o 'after-string (apply #'propertize "…" (text-properties-at (save-excursion (goto-char from) (goto-char (1+ (pos-bol))) (point))))))
       (overlay-put o 'invisible 'outline)
       (overlay-put o 'isearch-open-invisible
 		   (or outline-isearch-open-invisible-function
