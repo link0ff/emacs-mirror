@@ -47,6 +47,8 @@ the `minibuffer-depth-indicator' face."
   :group 'minibuffer
   :version "28.1")
 
+;; TODO: better try to use something like `buffer-face-mode',
+;; or use `define-derived-mode' from it
 (defface minibuffer-depth-nonselected
   '((t (:background "yellow" :foreground "dark red" :weight bold)))
   "Face for non-selected minibuffer prompts.
