@@ -3932,12 +3932,15 @@ android_saf_exception_check (int n, ...)
 /* Return file status for the document designated by ID_NAME within
    the document tree identified by URI_NAME.
 
+   If NO_CACHE, don't cache the resulting file status.  Enable this
+   option if the file status is subject to imminent change.
+
    If the file status is available, place it within *STATB and return
    0.  If not, return -1 and set errno to EPERM.  */
 
 static int
 android_saf_stat (const char *uri_name, const char *id_name,
-		  struct stat *statb)
+		  struct stat *statb, bool no_cache)
 {
   jmethodID method;
   jstring uri, id;
@@ -3969,10 +3972,12 @@ android_saf_stat (const char *uri_name, const char *id_name,
   /* Try to retrieve the file status.  */
   method = service_class.stat_document;
   inside_saf_critical_section = true;
-  status = (*android_java_env)->CallNonvirtualObjectMethod (android_java_env,
-							    emacs_service,
-							    service_class.class,
-							    method, uri, id);
+  status
+    = (*android_java_env)->CallNonvirtualObjectMethod (android_java_env,
+						       emacs_service,
+						       service_class.class,
+						       method, uri, id,
+						       (jboolean) no_cache);
   inside_saf_critical_section = false;
 
   /* Check for exceptions and release unneeded local references.  */
@@ -4013,6 +4018,7 @@ android_saf_stat (const char *uri_name, const char *id_name,
   memset (statb, 0, sizeof *statb);
   statb->st_size = MAX (0, MIN (TYPE_MAXIMUM (off_t), size));
   statb->st_mode = mode;
+  statb->st_dev = -4;
 #ifdef STAT_TIMESPEC
   STAT_TIMESPEC (statb, st_mtim).tv_sec = mtim / 1000;
   STAT_TIMESPEC (statb, st_mtim).tv_nsec = (mtim % 1000) * 1000000;
@@ -5075,7 +5081,7 @@ android_saf_tree_stat (struct android_vnode *vnode,
   vp = (struct android_saf_tree_vnode *) vnode;
 
   return android_saf_stat (vp->tree_uri, vp->document_id,
-			   statb);
+			   statb, false);
 }
 
 static int
@@ -5715,10 +5721,15 @@ android_saf_file_open (struct android_vnode *vnode, int flags,
   ANDROID_DELETE_LOCAL_REF (descriptor);
 
   /* Try to retrieve the modification time of this file from the
-     content provider.  */
+     content provider.
+
+     Refrain from introducing the file status into the file status
+     cache if FLAGS & O_RDWR or FLAGS & O_WRONLY: the cached file
+     status will contain a size and modification time inconsistent
+     with the result of any modifications that later transpire.  */
 
   if (!android_saf_stat (vp->tree_uri, vp->document_id,
-			 &statb))
+			 &statb, write))
     info->mtime = get_stat_mtime (&statb);
   else
     info->mtime = invalid_timespec ();
@@ -6169,7 +6180,14 @@ NATIVE_NAME (safPostRequest) (JNIEnv *env, jobject object)
 JNIEXPORT jboolean JNICALL
 NATIVE_NAME (ftruncate) (JNIEnv *env, jobject object, jint fd)
 {
-  return ftruncate (fd, 0) != -1;
+  if (ftruncate (fd, 0) < 0)
+    return false;
+
+  /* Reset the file pointer.  */
+  if (lseek (fd, 0, SEEK_SET) < 0)
+    return false;
+
+  return true;
 }
 
 #ifdef __clang__
@@ -6722,6 +6740,11 @@ android_fstat (int fd, struct stat *statb)
   parcel_fd = open_parcel_fds;
   for (; parcel_fd; parcel_fd = parcel_fd->next)
     {
+      if (parcel_fd->fd == fd)
+	/* Set STATB->st_dev to a negative device number, signifying
+	   that it's contained within a content provider.  */
+	statb->st_dev = -4;
+
       if (parcel_fd->fd == fd
 	  && timespec_valid_p (parcel_fd->mtime))
 	{
