@@ -289,6 +289,7 @@ TYPE should be nil to find a function, or `defvar' to find a variable."
 		      (indirect-function
 		       (find-function-advised-original fun-or-var)))))
   (with-current-buffer (find-file-noselect file)
+    (widen)
     (goto-char (point-min))
     (unless (re-search-forward
 	     (if type

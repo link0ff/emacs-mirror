@@ -2862,6 +2862,8 @@ characters."
          ;; If non-nil, it is marker saying where in the buffer to stop.
          (limit nil)
 
+         ;; FIXME: currently this change skips too much with 'Y' in multi-file 'C-x p g r'
+
          ;; Unless a single contiguous chunk is selected, operate on multiple chunks.
          (noncontiguous-region-bounds
           (when region-noncontiguous-p

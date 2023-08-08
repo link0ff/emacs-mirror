@@ -411,6 +411,9 @@ of a defun, nil if it failed to find one."
 	   (funcall end-of-defun-function))))))
 
    ((or defun-prompt-regexp open-paren-in-column-0-is-defun-start)
+    ;; This helps to find beginning-of-defun for 'C-x 4 a',
+    ;; and not the nearest ###autoload.
+    (syntax-ppss)
     (and (< arg 0) (not (eobp)) (forward-char 1))
     (and (let (found)
            (while
