@@ -59,12 +59,6 @@ along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 #include <utmp.h>
 #endif
 
-/* A file whose last-modified time is just after the most recent boot.
-   Define this to be NULL to disable checking for this file.  */
-#ifndef BOOT_TIME_FILE
-#define BOOT_TIME_FILE "/var/run/random-seed"
-#endif
-
 /* Boot time is not available on Android.  */
 
 #if defined HAVE_ANDROID && !defined ANDROID_STUBIFY
@@ -165,7 +159,7 @@ get_boot_time (void)
   }
 #endif /* defined (CTL_KERN) && defined (KERN_BOOTTIME) */
 
-  if (BOOT_TIME_FILE)
+#ifdef BOOT_TIME_FILE
     {
       struct stat st;
       if (stat (BOOT_TIME_FILE, &st) == 0)
@@ -174,6 +168,7 @@ get_boot_time (void)
 	  return boot_time;
 	}
     }
+#endif /* BOOT_TIME_FILE */
 
 #if defined (BOOT_TIME)
   /* The utmp routines maintain static state.  Don't touch that state

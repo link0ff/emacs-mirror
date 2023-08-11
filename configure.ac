@@ -345,22 +345,13 @@ AC_ARG_WITH([mailutils],
       options are irrelevant; this is the default if GNU Mailutils is
       installed])],
   [],
-  [with_mailutils=$with_features
-   AS_IF([test "$with_mailutils" = yes],
-     [AS_IF([test "x$XCONFIGURE" != "xandroid" \
-             && test "$with_android" = "no"],
-       [(movemail --version) >/dev/null 2>&1 || with_mailutils=no],
-       [dnl Don't check for movemail if cross-compiling.
-        dnl instead, default to false.
-        with_mailutils=no])])])
-AS_IF([test "$with_mailutils" = no],
-  [with_mailutils=])
-
-AS_IF([test x"$with_mailutils" = xyes],
-  [AC_DEFINE([HAVE_MAILUTILS], [1],
-     [Define to 1 if Emacs was configured with mailutils])])
-
-AC_SUBST([with_mailutils])
+  [AS_IF([test "$with_features" != "no"],
+   [with_mailutils=yes-unless-android
+    AS_IF([test "x$XCONFIGURE" != "xandroid"],
+     [(movemail --version) >/dev/null 2>&1 || with_mailutils=no],
+     [dnl Don't check for movemail if cross-compiling.
+      dnl instead, default to false.
+      with_mailutils=no])])])
 
 AC_ARG_WITH([pop],
   [AS_HELP_STRING([--with-pop],
@@ -596,6 +587,25 @@ OPTION_DEFAULT_ON([xinput2],[don't use version 2 of the X Input Extension for in
 OPTION_DEFAULT_OFF([small-ja-dic],[generate a smaller-size Japanese dictionary])
 OPTION_DEFAULT_OFF([android],[cross-compile Android application package])
 OPTION_DEFAULT_ON([android-debug],[don't build Emacs as a debug package on Android])
+
+# Find out of Android support is enabled and mailutils has defaulted
+# to `yes-unless-android'.  Disable it if so.
+
+AS_IF([test "x$with_mailutils" = "xyes-unless-android"],
+  [AS_IF([test "x$with_android" != "xno"],
+     [with_mailutils=no],
+     [with_mailutils=yes])])
+
+# Clear with_mailutils if it's set to no.
+
+AS_IF([test "$with_mailutils" = no],
+  [with_mailutils=])
+
+AS_IF([test x"$with_mailutils" = xyes],
+  [AC_DEFINE([HAVE_MAILUTILS], [1],
+     [Define to 1 if Emacs was configured with mailutils])])
+
+AC_SUBST([with_mailutils])
 
 AC_ARG_WITH([shared-user-id],
   [AS_HELP_STRING([--with-shared-user-id=ID],
@@ -2624,6 +2634,51 @@ if test "$GCC" = yes && test "$ac_enable_autodepend" = yes; then
    fi
 fi
 AC_SUBST([AUTO_DEPEND])
+
+BOOT_TIME_FILE=
+AC_CACHE_CHECK([for old but post-boot file],
+  [emacs_cv_boot_time_file],
+  [AS_CASE([$opsys],
+     [gnu-linux],
+     [emacs_cv_boot_time_file=unknown
+      AS_IF([test $cross_compiling = no],
+	[# systemd puts it in /var/lib/systemd.
+	 # initscripts puts it in /var/lib/urandom (previously /var/lib).
+	 # Linux drivers/char/random.c before 2022-02-21 suggests /var/run.
+	 for file in \
+	     /var/lib/systemd/random-seed \
+	     /var/lib/urandom/random-seed \
+	     /var/lib/random-seed \
+	     /var/run/random-seed
+	 do
+	   test -f $file && { emacs_cv_boot_time_file=$file; break; }
+	 done])],
+     # This isn't perfect, as some systems might have the page file in
+     # another place.  Also, I suspect that the time stamp of that
+     # file might also change when Windows enlarges the file due to
+     # insufficient VM.  Still, this seems to be the most reliable
+     # way; the alternative (of using GetSystemTimes) won't work on
+     # laptops that hibernate, because the system clock is stopped
+     # then.  Other possibility would be to run "net statistics
+     # workstation" and parse the output, but that's gross.  So this
+     # should do; if the file is not there, the boot time will be
+     # returned as zero, and filelock.c already handles that.
+     [mingw32], [emacs_cv_boot_time_file=C:/pagefile.sys],
+     [*], [emacs_cv_boot_time_file=not-needed])])
+
+AS_CASE([$emacs_cv_boot_time_file],
+  [/*|*:*], [BOOT_TIME_FILE=\"$emacs_cv_boot_time_file\"],
+  [not-needed], [BOOT_TIME_FILE=],
+  [# Guess systemd if unknown.
+   # If guess is wrong, Emacs falls back on something else.
+   BOOT_TIME_FILE=\"/var/lib/systemd/random-seed\"])
+
+AS_IF([test -n "$BOOT_TIME_FILE"],
+  [AC_DEFINE_UNQUOTED([BOOT_TIME_FILE], [$BOOT_TIME_FILE],
+    [Name of file that, if it exists, postdates boot and predates
+     the first Emacs invocation; or a null pointer if no such file is known.
+     This file is used only on GNU/Linux and other systems
+     that lack the FreeBSD-style sysctl with KERN_BOOTTIME.])])
 
 #### Choose a window system.
 

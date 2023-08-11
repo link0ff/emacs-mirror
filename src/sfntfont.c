@@ -1104,7 +1104,12 @@ sfnt_enum_font (const char *file)
 
 	  subtables = sfnt_read_table_directory (fd);
 
-	  if (!subtables)
+	  if (!subtables
+	      /* This value means that FD was pointing at a TTC
+		 header.  Since FD should already have been moved to
+		 the beginning of the TrueType header above, it
+		 follows that the font format is invalid.  */
+	      || (subtables == (struct sfnt_offset_subtable *) -1))
 	    continue;
 
 	  sfnt_enum_font_1 (fd, file, subtables,
@@ -1341,9 +1346,22 @@ sfntfont_read_cmap (struct sfnt_font_desc *desc,
   if (fd < 0)
     return;
 
+  /* Seek to the start of the font itself within its collection.  */
+
+  if (desc->offset
+      && lseek (fd, desc->offset, SEEK_SET) != desc->offset)
+    {
+      emacs_close (fd);
+      return;
+    }
+
   font = sfnt_read_table_directory (fd);
 
-  if (!font)
+  /* Return if FONT is a TrueType collection: the file pointer should
+     already have been moved to the start of the table directory if
+     so.  */
+
+  if (!font || (font == (struct sfnt_offset_subtable *) -1))
     {
       emacs_close (fd);
       return;
@@ -2723,7 +2741,7 @@ sfnt_open_tables (struct sfnt_font_desc *desc)
   /* Read the offset subtable.  */
   subtable = sfnt_read_table_directory (fd);
 
-  if (!subtable)
+  if (!subtable || (subtable == (struct sfnt_offset_subtable *) -1))
     goto bail1;
 
   /* Read required tables.  This font backend is supposed to be used
