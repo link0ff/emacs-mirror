@@ -8212,7 +8212,6 @@ png_load_body (struct frame *f, struct image *img, struct png_load_context *c)
      simple transparency, we prefer a clipping mask.  */
   if (!transparent_p)
     {
-      /* png_color_16 *image_bg; */
       Lisp_Object specified_bg
 	= image_spec_value (img->spec, QCbackground, NULL);
       Emacs_Color color;
@@ -8838,7 +8837,8 @@ jpeg_load_body (struct frame *f, struct image *img,
       jpeg_destroy_decompress (&mgr->cinfo);
 
       /* If we already have an XImage, free that.  */
-      image_destroy_x_image (ximg);
+      if (ximg)
+	image_destroy_x_image (ximg);
       /* Free pixmap and colors.  */
       image_clear_image (f, img);
       return 0;
@@ -12834,8 +12834,10 @@ non-numeric, there is no explicit limit on the size of images.  */);
   add_image_type (Qpng);
 #endif
 
-#if defined (HAVE_WEBP) || (defined (HAVE_NATIVE_IMAGE_API) \
-			    && defined (HAVE_HAIKU))
+#if defined (HAVE_WEBP)						\
+  || (defined (HAVE_NATIVE_IMAGE_API)				\
+      && ((defined (HAVE_NS) && defined (NS_IMPL_COCOA))	\
+	  || defined (HAVE_HAIKU)))
   DEFSYM (Qwebp, "webp");
   DEFSYM (Qwebpdemux, "webpdemux");
   add_image_type (Qwebp);

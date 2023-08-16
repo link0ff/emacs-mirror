@@ -15,8 +15,7 @@ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with GNU Emacs.  If not, write to the Free Software Foundation,
-Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.  */
+along with GNU Emacs.  If not, see <https://www.gnu.org/licenses/>.  */
 
 #ifndef _SFNT_H_
 #define _SFNT_H_
@@ -624,16 +623,16 @@ struct sfnt_compound_glyph_component
 
   /* Various scale formats.  */
   union {
-    uint16_t scale;
+    int16_t scale;
     struct {
-      uint16_t xscale;
-      uint16_t yscale;
+      int16_t xscale;
+      int16_t yscale;
     } a;
     struct {
-      uint16_t xscale;
-      uint16_t scale01;
-      uint16_t scale10;
-      uint16_t yscale;
+      int16_t xscale;
+      int16_t scale01;
+      int16_t scale10;
+      int16_t yscale;
     } b;
   } u;
 };

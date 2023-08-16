@@ -1013,7 +1013,7 @@ for VCS directories listed in `vc-directory-exclusion-list'."
          (dirs (list root)))
     (project-find-file-in
      (or (thing-at-point 'filename)
-         (and buffer-file-name (file-relative-name buffer-file-name root)))
+         buffer-file-name)
      dirs pr include-all)))
 
 ;;;###autoload
@@ -1066,6 +1066,11 @@ by the user at will."
                          (setq all-files
                                (delete common-parent-directory all-files))
                          t))
+         (mb-default (if (and common-parent-directory
+                              mb-default
+                              (file-name-absolute-p mb-default))
+                         (file-relative-name mb-default common-parent-directory)
+                       mb-default))
          (substrings (mapcar (lambda (s) (substring s cpd-length)) all-files))
          (_ (when included-cpd
               (setq substrings (cons "./" substrings))))
@@ -1836,9 +1841,13 @@ listed in the dispatch menu produced from `project-switch-commands'."
      (let ((key (if key
                     (vector key)
                   (where-is-internal cmd (list project-prefix-map) t))))
-       (format "[%s] %s"
-               (propertize (key-description key) 'face 'bold)
-               label)))
+       (if (facep 'help-key-binding)
+           (format "%s %s"
+                   (propertize (key-description key) 'face 'help-key-binding)
+                   label)
+         (format "[%s] %s"
+                 (propertize (key-description key) 'face 'bold)
+                 label))))
    project-switch-commands
    "  "))
 

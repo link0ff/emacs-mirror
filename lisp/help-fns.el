@@ -229,11 +229,11 @@ interactive command."
                (lambda (f) (if want-command
                           (commandp f)
                         (or (fboundp f) (get f 'function-documentation))))
-               ;; We use 'confirm' here, unlike in other describe-*
-               ;; commands, for cases like a function that is advised
-               ;; but not yet defined (e.g., if 'advice-add' is called
-               ;; before defining the function).
-               'confirm nil nil
+               ;; We used `confirm' for a while because we may want to see the
+               ;; meta-info about a function even if the function itself is not
+               ;; defined, but this use case is too marginal and rarely tested,
+               ;; not worth the trouble (bug#64902).
+               t nil nil
                (and fn (symbol-name fn)))))
     (unless (equal val "")
       (setq fn (intern val)))
@@ -715,7 +715,8 @@ the C sources, too."
           (unless (and (symbolp function)
                        (get function 'reader-construct))
             (insert high-usage "\n")
-            (when-let* ((res (comp-function-type-spec function))
+            (when-let* ((res (and (native-comp-available-p)
+                                  (comp-function-type-spec function)))
                         (type-spec (car res))
                         (kind (cdr res)))
               (insert (format
