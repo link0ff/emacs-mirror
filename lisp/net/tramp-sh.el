@@ -1077,10 +1077,10 @@ characters need to be doubled.")
   "echo \"(\"
 while read file; do
     quoted=`echo \"$file\" | sed -e \"s/\\\"/\\\\\\\\\\\\\\\\\\\"/\"`
-    echo -n \"(\\\"$quoted\\\"\"
-    if %s \"$file\"; then echo -n \" t\"; else echo -n \" nil\"; fi
-    if %s \"$file\"; then echo -n \" t\"; else echo -n \" nil\"; fi
-    if %s \"$file\"; then echo \" t)\"; else echo \" nil)\"; fi
+    printf \"(%%b\" \"\\\"$quoted\\\"\"
+    if %s \"$file\"; then printf \" %%b\" t; else printf \" %%b\" nil; fi
+    if %s \"$file\"; then printf \" %%b\" t; else printf \" %%b\" nil; fi
+    if %s \"$file\"; then printf \" %%b)\n\" t; else printf \" %%b)\n\" nil; fi
 done
 echo \")\""
   "Script to check file attributes of a bundle of files.
@@ -1088,7 +1088,8 @@ It must be sent formatted with three strings; the tests for file
 existence, file readability, and file directory.  Input shall be
 read via here-document, otherwise the command could exceed
 maximum length of command line.
-Format specifiers \"%s\" are replaced before the script is used.")
+Format specifiers \"%s\" are replaced before the script is used,
+percent characters need to be doubled.")
 
 ;; New handlers should be added here.
 ;;;###tramp-autoload
@@ -4255,8 +4256,10 @@ file exists and nonzero exit status otherwise."
 		     vec (format "%s %s" result existing))
 		    (not (tramp-send-command-and-check
 			  vec (format "%s %s" result nonexistent)))))
+	     ;; We cannot use `tramp-get-ls-command', this results in an infloop.
+	     ;; (Bug#65321)
 	     (ignore-errors
-	       (and (setq result (format "%s -d" (tramp-get-ls-command vec)))
+	       (and (setq result (format "ls -d >%s" (tramp-get-remote-null-device vec)))
 		    (tramp-send-command-and-check
 		     vec (format "%s %s" result existing))
 		    (not (tramp-send-command-and-check

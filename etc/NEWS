@@ -70,9 +70,9 @@ example, as part of preview for iconified frames.
 
 ---
 ** New user option 'menu-bar-close-window'.
-When non-nil, selecting Close from the File menu or clicking Close in
-the tool bar will result in the current window being closed, if
-possible.
+When non-nil, selecting "Close" from the "File" menu or clicking
+"Close" in the tool bar will result in the current window being
+closed, if possible.
 
 +++
 ** 'write-region-inhibit-fsync' now defaults to t in interactive mode,
@@ -294,6 +294,15 @@ You can now configure how to display the "*buffer-selection*" buffer
 using this new option.  (Or set 'display-buffer-alist' directly.)
 
 ** Eshell
+
++++
+*** New builtin Eshell command 'compile'.
+This command runs another command, sending its output to a compilation
+buffer when the command would output interactively.  This can be useful
+when defining aliases so that they produce a compilation buffer when
+appropriate, but still allow piping the output elsewhere if desired.
+For more information, see the "(eshell) Built-ins" node in the Eshell
+manual.
 
 +++
 *** New splice operator for Eshell dollar expansions.
@@ -646,12 +655,12 @@ of the accessibility of remote files can now time out if
 ** Notifications
 
 +++
-*** Allow to use Icon Naming Specification for app-icon
+*** Allow to use Icon Naming Specification for ':app-icon'.
 You can use a symbol as the value for ':app-icon' to provide icon name
 without specifying a file, like this:
 
-  (notifications-notify
-    :title "I am playing music" :app-icon 'multimedia-player)
+    (notifications-notify
+      :title "I am playing music" :app-icon 'multimedia-player)
 
 ** Image Dired
 
@@ -764,15 +773,21 @@ The compatibility aliases 'x-defined-colors', 'x-color-defined-p',
 'x-color-values', and 'x-display-color-p' are now obsolete.
 
 +++
-** 'easy-mmode-define-{minor-mode,global-mode}' aliases are now obsolete.
+** 'easy-mmode-define-{minor,global}-mode' aliases are now obsolete.
 Use 'define-minor-mode' and 'define-globalized-minor-mode' instead.
 
 
 * Lisp Changes in Emacs 30.1
 
 ** 'defadvice' is marked as obsolete.
-See (info "(elisp)Porting Old Advice") for help converting them
-to use `advice-add` or `define-advice instead.
+See the "(elisp) Porting Old Advice" node for help converting them
+to use 'advice-add' or 'define-advice' instead.
+
++++
+** Desktop notifications are now supported on the Haiku operating system.
+The new function 'haiku-notifications-notify' provides a subset of the
+capabilities of the 'notifications-notify' function in a manner
+analogous to 'w32-notification-notify'.
 
 +++
 ** New value 'if-regular' for the REPLACE argument to 'insert-file-contents'.
@@ -783,7 +798,7 @@ rather than signaling an error.
 +++
 ** New variable 'current-key-remap-sequence'.
 It is bound to the key sequence that caused a call to a function bound
-within `function-key-map' or `input-decode-map' around those calls.
+within 'function-key-map' or 'input-decode-map' around those calls.
 
 +++
 ** New variables describing the names of built in programs.
