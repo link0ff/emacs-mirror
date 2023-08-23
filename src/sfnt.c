@@ -1262,6 +1262,19 @@ sfnt_lookup_glyph_6 (sfnt_char character,
   return format6->glyph_index_array[character - format6->first_code];
 }
 
+/* Compare the sfnt_char A with B's end code.  Employed to bisect
+   through a format 8 or 12 table.  */
+
+static int
+sfnt_compare_char (const void *a, const void *b)
+{
+  struct sfnt_cmap_format_8_or_12_group *group;
+
+  group = (struct sfnt_cmap_format_8_or_12_group *) b;
+
+  return ((int) *((sfnt_char *) a)) - group->end_char_code;
+}
+
 /* Look up the glyph corresponding to CHARACTER in the format 8 cmap
    FORMAT8.  Return 0 if no glyph was found.  */
 
@@ -1270,9 +1283,34 @@ sfnt_lookup_glyph_8 (sfnt_char character,
 		     struct sfnt_cmap_format_8 *format8)
 {
   uint32_t i;
+  struct sfnt_cmap_format_8_or_12_group *group;
 
   if (character > 0xffffffff)
     return 0;
+
+  if (format8->num_groups > 64)
+    {
+      /* This table is large, likely supplied by a CJK or similar
+	 font.  Perform a binary search.  */
+
+      /* Find the group whose END_CHAR_CODE is greater than or equal
+	 to CHARACTER.  */
+
+      group = sfnt_bsearch_above (&character, format8->groups,
+				  format8->num_groups,
+				  sizeof format8->groups[0],
+				  sfnt_compare_char);
+
+      if (group->start_char_code > character)
+	/* No glyph matches this group.  */
+	return 0;
+
+      /* Otherwise, use this group to map the character to a
+	 glyph.  */
+      return (group->start_glyph_code
+	      + character
+	      - group->start_char_code);
+    }
 
   for (i = 0; i < format8->num_groups; ++i)
     {
@@ -1294,9 +1332,34 @@ sfnt_lookup_glyph_12 (sfnt_char character,
 		      struct sfnt_cmap_format_12 *format12)
 {
   uint32_t i;
+  struct sfnt_cmap_format_8_or_12_group *group;
 
   if (character > 0xffffffff)
     return 0;
+
+  if (format12->num_groups > 64)
+    {
+      /* This table is large, likely supplied by a CJK or similar
+	 font.  Perform a binary search.  */
+
+      /* Find the group whose END_CHAR_CODE is greater than or equal
+	 to CHARACTER.  */
+
+      group = sfnt_bsearch_above (&character, format12->groups,
+				  format12->num_groups,
+				  sizeof format12->groups[0],
+				  sfnt_compare_char);
+
+      if (group->start_char_code > character)
+	/* No glyph matches this group.  */
+	return 0;
+
+      /* Otherwise, use this group to map the character to a
+	 glyph.  */
+      return (group->start_glyph_code
+	      + character
+	      - group->start_char_code);
+    }
 
   for (i = 0; i < format12->num_groups; ++i)
     {
@@ -1971,7 +2034,7 @@ sfnt_read_simple_glyph (struct sfnt_glyph *glyph,
 	  /* The next byte is a delta to apply to the previous
 	     value.  Make sure it is in bounds.  */
 
-	  if (vec_start + 1 >= glyf->glyphs + glyf->size)
+	  if (vec_start + 1 > glyf->glyphs + glyf->size)
 	    {
 	      glyph->simple = NULL;
 	      xfree (simple);
@@ -1988,7 +2051,7 @@ sfnt_read_simple_glyph (struct sfnt_glyph *glyph,
 	  /* The next word is a delta to apply to the previous value.
 	     Make sure it is in bounds.  */
 
-	  if (vec_start + 2 >= glyf->glyphs + glyf->size)
+	  if (vec_start + 2 > glyf->glyphs + glyf->size)
 	    {
 	      glyph->simple = NULL;
 	      xfree (simple);
@@ -2023,7 +2086,7 @@ sfnt_read_simple_glyph (struct sfnt_glyph *glyph,
 	  /* The next byte is a delta to apply to the previous
 	     value.  Make sure it is in bounds.  */
 
-	  if (vec_start + 1 >= glyf->glyphs + glyf->size)
+	  if (vec_start + 1 > glyf->glyphs + glyf->size)
 	    {
 	      glyph->simple = NULL;
 	      xfree (simple);
@@ -2040,7 +2103,7 @@ sfnt_read_simple_glyph (struct sfnt_glyph *glyph,
 	  /* The next word is a delta to apply to the previous value.
 	     Make sure it is in bounds.  */
 
-	  if (vec_start + 2 >= glyf->glyphs + glyf->size)
+	  if (vec_start + 2 > glyf->glyphs + glyf->size)
 	    {
 	      glyph->simple = NULL;
 	      xfree (simple);
@@ -11828,7 +11891,7 @@ sfnt_interpret_compound_glyph_1 (struct sfnt_glyph *glyph,
 	  /* The offset is determined by matching a point location in
 	     a preceeding component with a point location in the
 	     current component.  The index of the point in the
-	     previous component can be determined by adding
+	     previous component is established by adding
 	     component->argument1.a or component->argument1.c to
 	     point.  argument2 contains the index of the point in the
 	     current component.  */
@@ -11857,30 +11920,29 @@ sfnt_interpret_compound_glyph_1 (struct sfnt_glyph *glyph,
 
 	  if (!subglyph->compound)
 	    {
+	      /* Detect invalid child anchor points within simple
+		 glyphs in advance.  */
+
 	      if (point2 >= subglyph->simple->number_of_points + 2)
 		{
-		  /* If POINT2 is placed within a phantom point, use
-		     that.  */
-
 		  if (need_free)
 		    free_glyph (subglyph, dcontext);
 
 		  return "Invalid component anchor point";
 		}
-
-	      /* First, set offsets to 0, because it is not yet
-		 possible to ascertain the position of the anchor
-		 point in the child.  That position cannot be
-		 established prior to the completion of
-		 grid-fitting.  */
-	      x = 0;
-	      y = 0;
-
-	      /* Set a flag which indicates that offsets must be
-		 resolved from the child glyph after it is loaded, but
-		 before it is incorporated into the parent glyph.  */
-	      defer_offsets = true;
 	    }
+
+	  /* First, set offsets to 0, because it is not yet possible
+	     to ascertain the position of the anchor point in the
+	     child.  That position cannot be established prior to the
+	     completion of grid-fitting.  */
+	  x = 0;
+	  y = 0;
+
+	  /* Set a flag which indicates that offsets must be resolved
+	     from the child glyph after it is loaded, but before it is
+	     incorporated into the parent glyph.  */
+	  defer_offsets = true;
 	}
 
       /* Obtain the glyph metrics.  If doing so fails, then cancel
@@ -13146,7 +13208,8 @@ sfnt_read_gvar_table (int fd, struct sfnt_offset_subtable *subtable)
 
   /* Start reading shared coordinates.  */
 
-  gvar->global_coords = ((sfnt_f2dot14 *) ((char *) gvar + off_size));
+  gvar->global_coords = ((sfnt_f2dot14 *) ((char *) (gvar + 1)
+					   + off_size));
 
   if (gvar->shared_coord_count)
     {
@@ -13161,7 +13224,7 @@ sfnt_read_gvar_table (int fd, struct sfnt_offset_subtable *subtable)
 	  != coordinate_size)
 	goto bail;
 
-      for (i = 0; i <= coordinate_size / sizeof *gvar->global_coords; ++i)
+      for (i = 0; i < coordinate_size / sizeof *gvar->global_coords; ++i)
 	sfnt_swap16 (&gvar->global_coords[i]);
     }
 
