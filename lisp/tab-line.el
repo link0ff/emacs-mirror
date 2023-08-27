@@ -778,7 +778,7 @@ the selected tab visible."
       (erase-buffer)
       (apply 'insert strings)
       (goto-char (point-min))
-      (add-face-text-property (point-min) (point-max) 'tab-line t) ;; TRY
+      (add-face-text-property (point-min) (point-max) 'tab-line t)
       ;; Continuation means tab-line doesn't fit completely,
       ;; thus scroll arrows are needed for scrolling.
       (setq show-arrows (> (vertical-motion 1) 0))
