@@ -25,55 +25,6 @@
 
 ;; To enable this mode, run `M-x global-tab-line-mode'.
 
-;; (progn
-;;   (custom-set-variables
-;;    '(custom-enabled-themes '(modus-vivendi))
-;;    '(global-tab-line-mode t)
-;;    '(scroll-margin 1)
-;;    '(scroll-conservatively 101))
-;;   (info-emacs-manual)
-;;   (end-of-buffer)
-;;   (goto-line 500))
-
-;; (insert (propertize
-;;          (concat "123 "
-;;                  (propertize " x"
-;;                              'display '(image :type svg ;; xpm
-;;                                               :file "symbols/cross_16.svg" ;; "tabs/close.xpm"
-;;                                               :margin (2 . 0)
-;;                                               :ascent center)))
-;;          'face 'match
-;;          'mouse-face 'highlight))
-
-;; (let ((tab-line
-;;        (concat
-;;         " "
-;;         (propertize "TODO"
-;;                     'face 'tab-line-tab-inactive
-;;                     'mouse-face 'tab-line-highlight
-;;                     'follow-link 'ignore
-;;                     'help-echo "Click to select tab"
-;;                     )
-;;         " ")))
-;;   (add-face-text-property 0 (length tab-line) 'tab-line nil tab-line)
-;;   (insert tab-line))
-
-;; (let ((str (concat " " (propertize
-;;                         "TODO" 'mouse-face
-;;                         '(:box (:line-width 1 :style released-button)))
-;;                    " ")))
-;;   (add-face-text-property 0 (length str) '(:inherit variable-pitch) nil str)
-;;   (insert str))
-
-;; (insert " " (propertize
-;;              "TODO"
-;;              'face '(:inherit variable-pitch)
-;;              'mouse-face '(:box (:line-width 1 :style released-button))))
-
-;; (insert " " (propertize "TODO"
-;;                         'face '(:inherit variable-pitch)
-;;                         'mouse-face 'highlight))
-
 ;;; Code:
 
 (require 'cl-lib)
@@ -168,8 +119,7 @@ function `tab-line-tab-face-group'."
   :group 'tab-line-faces)
 
 (defface tab-line-highlight
-  '(;;(default :inherit tab-line)
-    (((class color) (min-colors 88))
+  '((((class color) (min-colors 88))
      :box (:line-width 1 :style released-button)
      :background "grey85"
      :foreground "black")
