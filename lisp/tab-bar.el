@@ -687,6 +687,8 @@ from all windows in the window configuration."
                         tab-bar-tab-name-current)
                  (const :tag "Selected window buffer with window count"
                         tab-bar-tab-name-current-with-count)
+                 (const :tag "Truncated buffer name"
+                        tab-bar-tab-name-truncated)
                  (const :tag "All window buffers"
                         tab-bar-tab-name-all)
                  (function  :tag "Function"))
@@ -744,10 +746,6 @@ Append ellipsis `tab-bar-tab-name-ellipsis' in this case."
                    tab-name tab-bar-tab-name-truncated-max nil nil
                    tab-bar-tab-name-ellipsis)
                   'help-echo tab-name))))
-(make-obsolete
- 'tab-bar-tab-name-truncated
- "instead, add `tab-bar-tab-name-format-truncated' to `tab-bar-tab-name-format-functions'"
- "30.1")
 
 
 (defvar tab-bar-tabs-function #'tab-bar-tabs
@@ -784,36 +782,6 @@ Return its existing value or a new value."
   (set-frame-parameter frame 'tabs tabs))
 
 
-(defcustom tab-bar-tab-face-function #'tab-bar-tab-face-default
-  "Function to define a tab face.
-Function gets one argument: a tab."
-  :type 'function
-  :group 'tab-bar
-  :version "28.1")
-
-(defun tab-bar-tab-face-default (tab)
-  (if (eq (car tab) 'current-tab) 'tab-bar-tab 'tab-bar-tab-inactive))
-
-(defcustom tab-bar-tab-name-format-function #'tab-bar-tab-name-format-default
-  "Function to format a tab name.
-Function gets two arguments, the tab and its number, and should return
-the formatted tab name to display in the tab bar."
-  :type 'function
-  :initialize #'custom-initialize-default
-  :set (lambda (sym val)
-         (set-default sym val)
-         (force-mode-line-update))
-  :group 'tab-bar
-  :version "28.1")
-
-(defun tab-bar-tab-name-format-default (tab i)
-  (let ((name (alist-get 'name tab)))
-    (run-hook-wrapped 'tab-bar-tab-name-format-functions
-                      (lambda (fun)
-                        (setq name (funcall fun name tab i))
-                        nil))
-    name))
-
 (defun tab-bar-tab-name-format-truncated (name _tab _i)
   "Truncate the tab name.
 The maximal length is specified by `tab-bar-tab-name-truncated-max'.
@@ -839,6 +807,16 @@ The variable `tab-bar-close-button-show' defines where to show it."
       (concat name tab-bar-close-button)
     name))
 
+(defcustom tab-bar-tab-face-function #'tab-bar-tab-face-default
+  "Function to define a tab face.
+Function gets one argument: a tab."
+  :type 'function
+  :group 'tab-bar
+  :version "28.1")
+
+(defun tab-bar-tab-face-default (tab)
+  (if (eq (car tab) 'current-tab) 'tab-bar-tab 'tab-bar-tab-inactive))
+
 (defun tab-bar-tab-name-format-face (name tab _i)
   "Apply the face to the tab name.
 It uses the function `tab-bar-tab-face-function'."
@@ -862,6 +840,26 @@ It should return the formatted tab name to display in the tab bar."
                   (function :tag "Custom function")))
   :group 'tab-bar
   :version "30.1")
+
+(defun tab-bar-tab-name-format-default (tab i)
+  (let ((name (alist-get 'name tab)))
+    (run-hook-wrapped 'tab-bar-tab-name-format-functions
+                      (lambda (fun)
+                        (setq name (funcall fun name tab i))
+                        nil))
+    name))
+
+(defcustom tab-bar-tab-name-format-function #'tab-bar-tab-name-format-default
+  "Function to format a tab name.
+Function gets two arguments, the tab and its number, and should return
+the formatted tab name to display in the tab bar."
+  :type 'function
+  :initialize #'custom-initialize-default
+  :set (lambda (sym val)
+         (set-default sym val)
+         (force-mode-line-update))
+  :group 'tab-bar
+  :version "28.1")
 
 (defcustom tab-bar-format '(tab-bar-format-history
                             tab-bar-format-tabs
