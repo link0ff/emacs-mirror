@@ -785,7 +785,7 @@ Return its existing value or a new value."
 (defun tab-bar-tab-name-format-truncated (name _tab _i)
   "Truncate the tab name.
 The maximal length is specified by `tab-bar-tab-name-truncated-max'.
-Append ellipsis `tab-bar-tab-name-ellipsis' in this case."
+Append ellipsis `tab-bar-tab-name-ellipsis' at the end."
   (if (< (length name) tab-bar-tab-name-truncated-max)
       name
     (truncate-string-to-width
@@ -799,7 +799,7 @@ It has effect when `tab-bar-tab-hints' is non-nil."
 
 (defun tab-bar-tab-name-format-close-button (name tab _i)
   "Show the close tab button.
-The variable `tab-bar-close-button-show' defines where to show it."
+The variable `tab-bar-close-button-show' defines whether to show it."
   (if (and tab-bar-close-button-show
            (not (eq tab-bar-close-button-show
                     (if (eq (car tab) 'current-tab) 'non-selected 'selected)))
@@ -828,7 +828,7 @@ It uses the function `tab-bar-tab-face-function'."
   '(tab-bar-tab-name-format-hints
     tab-bar-tab-name-format-close-button
     tab-bar-tab-name-format-face)
-  "Functions called to modify tab name.
+  "Functions called to modify the tab name.
 Each function is called with three arguments: the name returned
 by the previously called modifier, the tab and its number.
 It should return the formatted tab name to display in the tab bar."
@@ -842,7 +842,7 @@ It should return the formatted tab name to display in the tab bar."
   :version "30.1")
 
 (defun tab-bar-tab-name-format-default (tab i)
-  (let ((name (alist-get 'name tab)))
+  (let ((name (copy-sequence (alist-get 'name tab))))
     (run-hook-wrapped 'tab-bar-tab-name-format-functions
                       (lambda (fun)
                         (setq name (funcall fun name tab i))
