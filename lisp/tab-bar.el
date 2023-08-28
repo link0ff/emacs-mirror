@@ -798,8 +798,8 @@ It has effect when `tab-bar-tab-hints' is non-nil."
   (if tab-bar-tab-hints (concat (format "%d " i) name) name))
 
 (defun tab-bar-tab-name-format-close-button (name tab _i)
-  "Show the close tab button.
-The variable `tab-bar-close-button-show' defines whether to show it."
+  "Show the tab close button.
+The variable `tab-bar-close-button-show' defines when to show it."
   (if (and tab-bar-close-button-show
            (not (eq tab-bar-close-button-show
                     (if (eq (car tab) 'current-tab) 'non-selected 'selected)))
