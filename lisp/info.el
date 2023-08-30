@@ -3336,30 +3336,6 @@ If FILE is nil, check the current Info file."
               (concat "The Info directory node has no index; "
                       "type \\[Info-menu] to select a manual")))))
 
-;; (defun info-window ()
-;;   (get-window-with-predicate (lambda (w) (equal (buffer-name (window-buffer w)) "*info*")) nil t))
-
-;; (defmacro with-selected-window-frame (window &rest body)
-;;   `(let ((old-frame (selected-frame))
-;;          (frame (window-frame ,window)))
-;;      (unless (eq frame old-frame)
-;;        (select-frame frame 'norecord)
-;;        (select-frame-set-input-focus frame 'norecord))
-;;      (prog1 (with-selected-window ,window
-;;               ,@body)
-;;        (select-frame old-frame 'norecord)
-;;        (select-frame-set-input-focus old-frame 'norecord))))
-
-;; (defun Info-index-any-window (topic &optional window)
-;;   (interactive
-;;    (with-selected-window-frame (info-window)
-;;      (append (eval (cadr (interactive-form 'Info-index)))
-;;              (list (selected-window)))))
-;;   (with-selected-window (or window (info-window))
-;;     (Info-index topic)))
-
-;; (Info-index-any-window "ffap" (info-window))
-
 ;;;###autoload
 (defun Info-index (topic)
   "Look up a string TOPIC in the index for this manual and go to that entry.
