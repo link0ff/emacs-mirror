@@ -5362,10 +5362,6 @@ It should be an absolute directory name; on GNU and Unix systems,
 these names start with `/' or `~' and end with `/'.
 To interactively change the default directory, use command `cd'. */);
 
-  DEFVAR_LISP ("next-default-directory", Vnext_default_directory,
-	       doc: /* Default directory for the next command.  */);
-  Vnext_default_directory = Qnil;
-
   DEFVAR_PER_BUFFER ("auto-fill-function", &BVAR (current_buffer, auto_fill_function),
 		     Qnil,
 		     doc: /* Function called (if non-nil) to perform auto-fill.

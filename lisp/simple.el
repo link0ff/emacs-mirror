@@ -2752,6 +2752,9 @@ instead."
   (let ((if (cconv--interactive-helper--if f)))
     `(interactive ,(if (functionp if) `(funcall ',if) if))))
 
+(defvar next-default-directory nil
+  "Default directory for the next command.")
+
 (defun command-execute (cmd &optional record-flag keys special)
   ;; BEWARE: Called directly from the C code.
   "Execute CMD as an editor command.
@@ -2803,7 +2806,11 @@ don't clear it."
           (execute-kbd-macro final prefixarg))
          (t
           ;; Pass `cmd' rather than `final', for the backtrace's sake.
-          (prog1 (call-interactively cmd record-flag keys)
+          (prog1 (if next-default-directory
+                     (let ((default-directory next-default-directory))
+                       (prog1 (call-interactively cmd record-flag keys)
+                         (setq next-default-directory nil)))
+                   (call-interactively cmd record-flag keys))
             (when-let ((info
                         (and (symbolp cmd)
                              (not (get cmd 'command-execute-obsolete-warned))

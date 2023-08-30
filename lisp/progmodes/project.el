@@ -193,9 +193,10 @@ CL struct.")
   'project-current-directory-override
   "29.1")
 
-(defvar project-current-directory-override nil
-  "Value to use instead of `default-directory' when detecting the project.
-When it is non-nil, `project-current' will always skip prompting too.")
+(define-obsolete-variable-alias
+  'project-current-directory-override
+  'next-default-directory
+  "30.1")
 
 (defcustom project-prompter #'project-prompt-project-dir
   "Function to call to prompt for a project.
@@ -227,12 +228,11 @@ in `vc-directory-exclusion-list' or `grep-find-ignored-files'.
 
 See the doc string of `project-find-functions' for the general form
 of the project instance object."
-  (unless directory (setq directory (or project-current-directory-override
-                                        default-directory)))
+  (unless directory (setq directory default-directory))
   (let ((pr (project--find-in-directory directory)))
     (cond
      (pr)
-     ((unless project-current-directory-override
+     ((unless next-default-directory
         maybe-prompt)
       (setq directory (funcall project-prompter)
             pr (project--find-in-directory directory))))
@@ -835,7 +835,7 @@ DIRS must contain directory names."
     (define-key map "c" 'project-compile)
     (define-key map "e" 'project-eshell)
     (define-key map "k" 'project-kill-buffers)
-    (define-key map "p" 'other-project-prefix)
+    (define-key map "p" 'project-switch-project)
     (define-key map "g" 'project-find-regexp)
     (define-key map "G" 'project-or-external-find-regexp)
     (define-key map "r" 'project-query-replace-regexp)
@@ -846,8 +846,8 @@ DIRS must contain directory names."
 
 ;;;###autoload (define-key ctl-x-map "p" project-prefix-map)
 
-;; We can't have these place-specific maps inherit from
-;; project-prefix-map because project--other-place-command needs to
+;; Maybe we can have these place-specific maps inherit from
+;; project-prefix-map because set-transient-map maybe needs to
 ;; know which map the key binding came from, as if it came from one of
 ;; these maps, we don't want to set display-buffer-overriding-action
 
@@ -863,16 +863,6 @@ DIRS must contain directory names."
     map)
   "Keymap for project commands that display buffers in other frames.")
 
-(defun project--other-place-command (action &optional map)
-  (let* ((key (read-key-sequence-vector nil t))
-         (place-cmd (lookup-key map key))
-         (generic-cmd (lookup-key project-prefix-map key))
-         (switch-to-buffer-obey-display-actions t)
-         (display-buffer-overriding-action (unless place-cmd action)))
-    (if-let ((cmd (or place-cmd generic-cmd)))
-        (call-interactively cmd)
-      (user-error "%s is undefined" (key-description key)))))
-
 ;;;###autoload
 (defun project-other-window-command ()
   "Run project command, displaying resultant buffer in another window.
@@ -882,13 +872,10 @@ The following commands are available:
 \\{project-prefix-map}
 \\{project-other-window-map}"
   (interactive)
-  (other-window-prefix)
+  (let ((inhibit-message t)) (other-window-prefix))
+  (message "Display next project command buffer in a new window...")
   (set-transient-map (make-composed-keymap project-prefix-map
-                                           project-other-window-map))
-  ;; (project--other-place-command '((display-buffer-pop-up-window)
-  ;;                                 (inhibit-same-window . t))
-  ;;                               project-other-window-map)
-  )
+                                           project-other-window-map)))
 
 ;;;###autoload (define-key ctl-x-4-map "p" #'project-other-window-command)
 
@@ -901,8 +888,10 @@ The following commands are available:
 \\{project-prefix-map}
 \\{project-other-frame-map}"
   (interactive)
-  (project--other-place-command '((display-buffer-pop-up-frame))
-                                project-other-frame-map))
+  (let ((inhibit-message t)) (other-frame-prefix))
+  (message "Display next project command buffer in a new frame...")
+  (set-transient-map (make-composed-keymap project-prefix-map
+                                           project-other-frame-map)))
 
 ;;;###autoload (define-key ctl-x-5-map "p" #'project-other-frame-command)
 
@@ -916,9 +905,7 @@ The following commands are available:
   (interactive)
   (let ((inhibit-message t)) (other-tab-prefix))
   (message "Display next project command buffer in a new tab...")
-  (set-transient-map project-prefix-map)
-  ;; (project--other-place-command '((display-buffer-in-new-tab)))
-  )
+  (set-transient-map project-prefix-map))
 
 ;;;###autoload
 (when (bound-and-true-p tab-prefix-map)
@@ -1001,13 +988,13 @@ pattern to search for."
   "Ensure FILENAME is in PROJECT.
 
 Usually, just return FILENAME.  But if
-`project-current-directory-override' is set, adjust it to be
+`next-default-directory' is set, adjust it to be
 relative to PROJECT instead.
 
 This supports using a relative file name from the current buffer
 when switching projects with `project-switch-project' and then
 using a command like `project-find-file'."
-  (if-let (filename-proj (and project-current-directory-override
+  (if-let (filename-proj (and next-default-directory
                             (project-current nil default-directory)))
       ;; file-name-concat requires Emacs 28+
       (concat (file-name-as-directory (project-root project))
@@ -1901,16 +1888,17 @@ invoked immediately without any dispatch menu."
                     (character :tag "Explicit key"))))
           (symbol :tag "Single command")))
 
-(defcustom project-switch-use-entire-map nil
-  "Whether `project-switch-project' will use the entire `project-prefix-map'.
-If nil, `project-switch-project' will only recognize commands
-listed in `project-switch-commands', and will signal an error
-when other commands are invoked.  If this is non-nil, all the
-keys in `project-prefix-map' are valid even if they aren't
-listed in the dispatch menu produced from `project-switch-commands'."
-  :type 'boolean
-  :group 'project
-  :version "28.1")
+;; OBSOLETE?
+;; (defcustom project-switch-use-entire-map nil
+;;   "Whether `project-switch-project' will use the entire `project-prefix-map'.
+;; If nil, `project-switch-project' will only recognize commands
+;; listed in `project-switch-commands', and will signal an error
+;; when other commands are invoked.  If this is non-nil, all the
+;; keys in `project-prefix-map' are valid even if they aren't
+;; listed in the dispatch menu produced from `project-switch-commands'."
+;;   :type 'boolean
+;;   :group 'project
+;;   :version "28.1")
 
 (defcustom project-key-prompt-style (if (facep 'help-key-binding)
                                         t
@@ -1946,56 +1934,14 @@ Otherwise, use the face `help-key-binding' in the prompt."
    project-switch-commands
    "  "))
 
-(defun project--switch-project-command ()
-  (let* ((commands-menu
-          (mapcar
-           (lambda (row)
-             (if (characterp (car row))
-                 ;; Deprecated format.
-                 ;; XXX: Add a warning about it?
-                 (reverse row)
-               row))
-           project-switch-commands))
-         (commands-map
-          (let ((temp-map (make-sparse-keymap)))
-            (set-keymap-parent temp-map project-prefix-map)
-            (dolist (row commands-menu temp-map)
-              (when-let ((cmd (nth 0 row))
-                         (keychar (nth 2 row)))
-                (define-key temp-map (vector keychar) cmd)))))
-         command)
-    (while (not command)
-      (let* ((overriding-local-map commands-map)
-             (choice (read-key-sequence (project--keymap-prompt))))
-        (when (setq command (lookup-key commands-map choice))
-          (unless (or project-switch-use-entire-map
-                      (assq command commands-menu))
-            ;; TODO: Add some hint to the prompt, like "key not
-            ;; recognized" or something.
-            (setq command nil)))
-        (let ((global-command (lookup-key (current-global-map) choice)))
-          (when (memq global-command
-                      '(keyboard-quit keyboard-escape-quit))
-            (call-interactively global-command)))))
-    command))
-
 ;;;###autoload
-;; (defun project-switch-project (dir)
-;;   "\"Switch\" to another project by running an Emacs command.
-;; The available commands are presented as a dispatch menu
-;; made from `project-switch-commands'.
+(defun project-switch-project (dir)
+  "\"Switch\" to another project by running an Emacs command.
+The available commands are presented as a dispatch menu
+made from `project-switch-commands'.
 
-;; When called in a program, it will use the project corresponding
-;; to directory DIR."
-;;   (interactive (list (funcall project-prompter)))
-;;   (let ((command (if (symbolp project-switch-commands)
-;;                      project-switch-commands
-;;                    (project--switch-project-command))))
-;;     (let ((project-current-directory-override dir))
-;;       (call-interactively command))))
-
-;;;###autoload
-(defun other-project-prefix (dir)
+When called in a program, it will use the project corresponding
+to directory DIR."
   (interactive (list (funcall project-prompter)))
   (if (symbolp project-switch-commands)
       (let ((default-directory dir))
