@@ -1620,7 +1620,9 @@ This command is intended to be bound to a mouse event."
            (mouse-set-point event)
            (xref-backend-identifier-at-point (xref-find-backend)))))
     (if identifier
-        (xref-find-definitions identifier)
+        (progn
+          (mouse-set-point event)
+          (xref-find-definitions identifier))
       (user-error "No identifier here"))))
 
 ;;;###autoload
@@ -1634,6 +1636,7 @@ This command is intended to be bound to a mouse event."
            (xref-backend-identifier-at-point (xref-find-backend)))))
     (if identifier
         (let ((xref-prompt-for-identifier nil))
+          (mouse-set-point event)
           (xref-find-references identifier))
       (user-error "No identifier here"))))
 
