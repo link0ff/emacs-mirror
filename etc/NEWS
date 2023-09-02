@@ -711,6 +711,23 @@ without specifying a file, like this:
 *** New user option 'image-dired-thumb-naming'.
 You can now configure how a thumbnail is named using this option.
 
+** checkdoc
+
+---
+*** New checkdock warning if not using lexical-binding.
+Checkdoc now warns if the first line of an Emacs Lisp file does not
+end with a "-*- lexical-binding: t -*-" cookie.  Customize the user
+option 'checkdoc-lexical-binding-flag' to nil to disable this warning.
+
+** url
+
++++
+*** 'url-gateway-broken-resolution' is now obsolete.
+This option was intended for use on SunOS 4.x and Ultrix systems,
+neither of which have been supported by Emacs since version 23.1.
+The user option 'url-gateway-nslookup-program' and the function
+'url-gateway-nslookup-host' are consequently also obsolete.
+
 
 * New Modes and Packages in Emacs 30.1
 
@@ -919,24 +936,17 @@ Major modes can now set this variable to customize the behavior of the
 The previous implementation of 'forward-sentence' is moved into its
 own function, to be bound by 'forward-sentence-function'.
 
-*** New buffer-local variable 'treesit-sentence-type-regexp'.
-Similarly to 'treesit-defun-type-regexp', this variable is used to
-define "sentences" in tree-sitter enabled modes.
-
 *** New function 'treesit-forward-sentence'.
-All tree-sitter enabled modes that define 'treesit-sentence-type-regexp'
-now set 'forward-sentence-function' to call 'treesit-forward-sentence'.
+All tree-sitter enabled modes that define 'sentence' in
+'treesit-thing-settings' now set 'forward-sentence-function' to call
+'treesit-forward-sentence'.
 
 ** Functions and variables to move by program sexps
 
-*** New buffer-local variable 'treesit-sexp-type-regexp'.
-Similarly to 'treesit-defun-type-regexp', this variable is used to
-define "sexps" in tree-sitter enabled modes.
-
 *** New function 'treesit-forward-sexp'.
 Tree-sitter conditionally sets 'forward-sexp-function' for major modes
-that have defined 'treesit-sexp-type-regexp' to enable sexp-related
-motion commands.
+that have defined 'sexp' in 'treesit-thing-settings' to enable
+sexp-related motion commands.
 
 ** New or changed byte-compilation warnings
 
