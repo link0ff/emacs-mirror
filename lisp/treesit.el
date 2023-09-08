@@ -56,6 +56,7 @@
 (declare-function treesit-parser-list "treesit.c")
 (declare-function treesit-parser-buffer "treesit.c")
 (declare-function treesit-parser-language "treesit.c")
+(declare-function treesit-parser-tag "treesit.c")
 
 (declare-function treesit-parser-root-node "treesit.c")
 
@@ -250,7 +251,7 @@ parser first."
          (root (if (treesit-parser-p parser-or-lang)
                    (treesit-parser-root-node parser-or-lang)
                  (or (when-let ((parser
-                                 (car (treesit-local-parsers-in
+                                 (car (treesit-local-parsers-on
                                        beg end (or parser-or-lang
                                                    lang-at-point)))))
                        (treesit-parser-root-node parser))
@@ -602,7 +603,7 @@ If LANGUAGE is non-nil, only return parsers for LANGUAGE."
           (push parser res))))
     (nreverse res)))
 
-(defun treesit-local-parsers-in (&optional beg end language)
+(defun treesit-local-parsers-on (&optional beg end language)
   "Return all the local parsers between BEG END.
 
 BEG and END default to the beginning and end of the buffer's
@@ -680,7 +681,7 @@ region."
                             (treesit--merge-ranges
                              old-ranges new-ranges beg end)
                             (point-min) (point-max))))
-          (dolist (parser (treesit-parser-list language))
+          (dolist (parser (treesit-parser-list nil language))
             (treesit-parser-set-included-ranges
              parser set-ranges))))))))
 
@@ -1134,7 +1135,7 @@ If LOUDLY is non-nil, display some debugging information."
     (message "Fontifying region: %s-%s" start end))
   (treesit-update-ranges start end)
   (font-lock-unfontify-region start end)
-  (let* ((local-parsers (treesit-local-parsers-in start end))
+  (let* ((local-parsers (treesit-local-parsers-on start end))
          (global-parsers (treesit-parser-list))
          (root-nodes
           (mapcar (lambda (parser)
@@ -2063,7 +2064,9 @@ If LANGUAGE is nil, return the first definition for THING in
   (if language
       (car (alist-get thing (alist-get language
                                        treesit-thing-settings)))
-    (car (alist-get thing (mapcan #'cdr treesit-thing-settings)))))
+    (car (alist-get thing (mapcan (lambda (entry)
+                                    (copy-tree (cdr entry)))
+                                  treesit-thing-settings)))))
 
 (defalias 'treesit-thing-defined-p 'treesit-thing-definition
   "Return non-nil if THING is defined.")
