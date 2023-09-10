@@ -918,6 +918,7 @@ The following commands are available:
     (set-transient-map (make-composed-keymap project-prefix-map
                                              project-other-window-map))))
 
+;; TODO: maybe rename to project-other-window-prefix
 ;;;###autoload (define-key ctl-x-4-map "p" #'project-other-window-command)
 
 ;;;###autoload
@@ -1040,8 +1041,10 @@ relative to PROJECT instead.
 This supports using a relative file name from the current buffer
 when switching projects with `project-switch-project' and then
 using a command like `project-find-file'."
-  (if-let (filename-proj (and project-current-directory-old
-                              (project-current nil project-current-directory-old)))
+  (if-let (filename-proj (or (and project-current-directory-override
+                                  (project-current nil default-directory))
+                             (and project-current-directory-old
+                                  (project-current nil project-current-directory-old))))
       ;; file-name-concat requires Emacs 28+
       (concat (file-name-as-directory (project-root project))
               (file-relative-name filename (project-root filename-proj)))
@@ -2040,6 +2043,7 @@ to directory DIR."
       (let* ((project-current-directory-old default-directory)
              (default-directory dir))
         (call-interactively project-switch-commands))
+    (prefix-command-preserve-state)
     (letrec ((minibuffer-depth (minibuffer-depth))
              (command this-command)
              (old-buffer (current-buffer))
@@ -2061,9 +2065,16 @@ to directory DIR."
       (setq-local project-current-directory-old default-directory)
       (setq-local default-directory dir)
       (message (project--keymap-prompt))
-      (set-transient-map project-prefix-map)
-      ;; (prefix-command-preserve-state)
+      (let ((commands-map
+             (let ((temp-map (make-sparse-keymap)))
+               (set-keymap-parent temp-map project-prefix-map)
+               (dolist (row project-switch-commands temp-map)
+                 (when-let ((cmd (nth 0 row))
+                            (keychar (nth 2 row)))
+                   (define-key temp-map (vector keychar) cmd))))))
+        (set-transient-map commands-map))
       ;; (set-transient-map project-prefix-map nil postfun)
+      ;; also try KEEP-PRED to keep keymap until key in map is pressed
       )))
 
 ;;;###autoload
