@@ -193,10 +193,14 @@ CL struct.")
   'project-current-directory-override
   "29.1")
 
-(define-obsolete-variable-alias
-  'project-current-directory-override
-  'project-current-directory-old
-  "30.1")
+(defvar project-current-directory-override nil
+  "Value to use instead of `default-directory' when detecting the project.
+When it is non-nil, `project-current' will always skip prompting too.")
+
+(make-obsolete-variable
+ 'project-current-directory-override
+ 'project-current-directory-old
+ "30.1")
 
 (defvar-local project-current-directory-old nil
   "Value to use instead of `default-directory' when detecting the project.
@@ -236,11 +240,13 @@ in `vc-directory-exclusion-list' or `grep-find-ignored-files'.
 
 See the doc string of `project-find-functions' for the general form
 of the project instance object."
-  (unless directory (setq directory default-directory))
+  (unless directory (setq directory (or project-current-directory-override
+                                        default-directory)))
   (let ((pr (project--find-in-directory directory)))
     (cond
      (pr)
-     ((unless project-current-directory-old
+     ((unless (or project-current-directory-override
+                  project-current-directory-old)
         maybe-prompt)
       (setq directory (funcall project-prompter)
             pr (project--find-in-directory directory))))
@@ -854,9 +860,9 @@ DIRS must contain directory names."
     (define-key map "c" 'project-compile)
     (define-key map "e" 'project-eshell)
     (define-key map "k" 'project-kill-buffers)
-    (define-key map "p" (if (fboundp 'other-project-prefix)
-                            'other-project-prefix
-                          'project-switch-project))
+    (define-key map "p" (if (< emacs-major-version 30)
+                            'project-switch-project
+                          'other-project-prefix))
     (define-key map "g" 'project-find-regexp)
     (define-key map "G" 'project-or-external-find-regexp)
     (define-key map "r" 'project-query-replace-regexp)
@@ -867,8 +873,8 @@ DIRS must contain directory names."
 
 ;;;###autoload (define-key ctl-x-map "p" project-prefix-map)
 
-;; Maybe we can have these place-specific maps inherit from
-;; project-prefix-map because set-transient-map maybe needs to
+;; We can't have these place-specific maps inherit from
+;; project-prefix-map because project--other-place-command needs to
 ;; know which map the key binding came from, as if it came from one of
 ;; these maps, we don't want to set display-buffer-overriding-action
 
@@ -903,10 +909,14 @@ The following commands are available:
 \\{project-prefix-map}
 \\{project-other-window-map}"
   (interactive)
-  (let ((inhibit-message t)) (other-window-prefix))
-  (message "Display next project command buffer in a new window...")
-  (set-transient-map (make-composed-keymap project-prefix-map
-                                           project-other-window-map)))
+  (if (< emacs-major-version 30)
+      (project--other-place-command '((display-buffer-pop-up-window)
+                                      (inhibit-same-window . t))
+                                    project-other-window-map)
+    (let ((inhibit-message t)) (other-window-prefix))
+    (message "Display next project command buffer in a new window...")
+    (set-transient-map (make-composed-keymap project-prefix-map
+                                             project-other-window-map))))
 
 ;;;###autoload (define-key ctl-x-4-map "p" #'project-other-window-command)
 
@@ -919,10 +929,13 @@ The following commands are available:
 \\{project-prefix-map}
 \\{project-other-frame-map}"
   (interactive)
-  (let ((inhibit-message t)) (other-frame-prefix))
-  (message "Display next project command buffer in a new frame...")
-  (set-transient-map (make-composed-keymap project-prefix-map
-                                           project-other-frame-map)))
+  (if (< emacs-major-version 30)
+      (project--other-place-command '((display-buffer-pop-up-frame))
+                                    project-other-frame-map)
+    (let ((inhibit-message t)) (other-frame-prefix))
+    (message "Display next project command buffer in a new frame...")
+    (set-transient-map (make-composed-keymap project-prefix-map
+                                             project-other-frame-map))))
 
 ;;;###autoload (define-key ctl-x-5-map "p" #'project-other-frame-command)
 
@@ -934,9 +947,11 @@ The following commands are available:
 
 \\{project-prefix-map}"
   (interactive)
-  (let ((inhibit-message t)) (other-tab-prefix))
-  (message "Display next project command buffer in a new tab...")
-  (set-transient-map project-prefix-map))
+  (if (< emacs-major-version 30)
+      (project--other-place-command '((display-buffer-in-new-tab)))
+    (let ((inhibit-message t)) (other-tab-prefix))
+    (message "Display next project command buffer in a new tab...")
+    (set-transient-map project-prefix-map)))
 
 ;;;###autoload
 (when (bound-and-true-p tab-prefix-map)
@@ -2025,16 +2040,31 @@ to directory DIR."
       (let* ((project-current-directory-old default-directory)
              (default-directory dir))
         (call-interactively project-switch-commands))
-    (let* ((echofun (lambda () "[switch-project]"))
-           (postfun (lambda () (remove-hook
-                                'prefix-command-echo-keystrokes-functions
-                                echofun))))
+    (letrec ((minibuffer-depth (minibuffer-depth))
+             (command this-command)
+             (old-buffer (current-buffer))
+             (echofun (lambda () "[switch-project]"))
+             (postfun
+              (lambda ()
+                (unless (or (eq this-command command)
+                            (> (minibuffer-depth) minibuffer-depth))
+                  (remove-hook 'post-command-hook postfun)
+                  (remove-hook 'prefix-command-echo-keystrokes-functions
+                               echofun)
+                  (when (buffer-live-p old-buffer)
+                    (with-current-buffer old-buffer
+                      (when project-current-directory-old
+                        (setq-local default-directory project-current-directory-old)
+                        (kill-local-variable 'project-current-directory-old))))))))
+      (add-hook 'post-command-hook postfun)
+      (add-hook 'prefix-command-echo-keystrokes-functions echofun)
       (setq-local project-current-directory-old default-directory)
       (setq-local default-directory dir)
       (message (project--keymap-prompt))
-      (add-hook 'prefix-command-echo-keystrokes-functions echofun)
-      (prefix-command-preserve-state)
-      (set-transient-map project-prefix-map nil postfun))))
+      (set-transient-map project-prefix-map)
+      ;; (prefix-command-preserve-state)
+      ;; (set-transient-map project-prefix-map nil postfun)
+      )))
 
 ;;;###autoload
 (defun project-uniquify-dirname-transform (dirname)
@@ -2080,11 +2110,11 @@ would otherwise have the same name."
   ;; :keymap (define-keymap "<menu-bar>" project-mode-menu)
   (if project-mode
       (setq-local project-name (concat
-	                        " "
-	                        (propertize
-	                         (project-name (project-current))
-	                         'mouse-face 'mode-line-highlight
-	                         'local-map project-mode-line-map)))))
+                                " "
+                                (propertize
+                                 (project-name (project-current))
+                                 'mouse-face 'mode-line-highlight
+                                 'local-map project-mode-line-map)))))
 
 (defun project-mode--turn-on ()
   "Turn on `project-mode' in all pertinent buffers."
