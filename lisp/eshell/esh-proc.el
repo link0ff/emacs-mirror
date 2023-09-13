@@ -112,6 +112,7 @@ To add or remove elements of this list, see
 `eshell-record-process-object' and `eshell-remove-process-entry'.")
 
 (declare-function eshell-send-eof-to-process "esh-mode")
+(declare-function eshell-interactive-filter "esh-mode" (buffer string))
 (declare-function eshell-tail-process "esh-cmd")
 
 (defvar-keymap eshell-proc-mode-map
@@ -350,6 +351,13 @@ Used only on systems which do not support async subprocesses.")
        'process (format-message "started external process `%s'" proc))
       (eshell-record-process-object proc)
       (eshell-record-process-properties proc)
+      (when stderr-proc
+        ;; Provide a shared flag between the primary and stderr
+        ;; processes.  This lets the primary process wait to clean up
+        ;; until stderr is totally finished (see `eshell-sentinel').
+        (let ((stderr-live (list t)))
+          (process-put proc :eshell-stderr-live stderr-live)
+          (process-put stderr-proc :eshell-stderr-live stderr-live)))
       (run-hook-with-args 'eshell-exec-hook proc)
       (when (fboundp 'process-coding-system)
 	(let ((coding-systems (process-coding-system proc)))
@@ -430,8 +438,6 @@ This is done after all necessary filtering has been done."
      'process (format-message "received output from process `%s'\n\n%s"
                               process string))
     (eshell--mark-as-output 0 (length string) string)
-    (require 'esh-mode)
-    (declare-function eshell-interactive-filter "esh-mode" (buffer string))
     (eshell-interactive-filter (if process (process-buffer process)
                                  (current-buffer))
                                string)))
@@ -485,44 +491,53 @@ PROC is the process that's exiting.  STRING is the exit message."
   (eshell-debug-command
    'process (format-message "sentinel for external process `%s': %S"
                             proc string))
-  (when (buffer-live-p (process-buffer proc))
+  (when (and (buffer-live-p (process-buffer proc))
+             (not (string= string "run")))
     (with-current-buffer (process-buffer proc)
       (unwind-protect
-          (unless (string= string "run")
-            ;; Write the exit message if the status is abnormal and
-            ;; the process is already writing to the terminal.
+          (let* ((handles (process-get proc :eshell-handles))
+                 (index (process-get proc :eshell-handle-index))
+                 (primary (= index eshell-output-handle))
+                 (data (process-get proc :eshell-pending))
+                 ;; Only get the status for the primary subprocess,
+                 ;; not the pipe process (if any).
+                 (status (when primary (process-exit-status proc)))
+                 (stderr-live (process-get proc :eshell-stderr-live)))
+            ;; Write the exit message for the last process in the
+            ;; foreground pipeline if its status is abnormal and
+            ;; stderr is already writing to the terminal.
             (when (and (eq proc (eshell-tail-process))
+                       (eshell-interactive-output-p eshell-error-handle handles)
                        (not (string-match "^\\(finished\\|exited\\)"
                                           string)))
-              (funcall (process-filter proc) proc string))
-            (let* ((handles (process-get proc :eshell-handles))
-                   (index (process-get proc :eshell-handle-index))
-                   (data (process-get proc :eshell-pending))
-                   ;; Only get the status for the primary subprocess,
-                   ;; not the pipe process (if any).
-                   (status (when (= index eshell-output-handle)
-                            (process-exit-status proc))))
-              (process-put proc :eshell-pending nil)
-              ;; If we're in the middle of handling output from this
-              ;; process then schedule the EOF for later.
-              (letrec ((finish-io
-                        (lambda ()
-                          (if (process-get proc :eshell-busy)
-                              (run-at-time 0 nil finish-io)
-                            (when data
-                              (ignore-error eshell-pipe-broken
-                                (eshell-output-object
-                                 data index handles)))
-                            (eshell-close-handles
-                             status
-                             (when status (list 'quote (= status 0)))
-                             handles)
-                            (eshell-kill-process-function proc string)
-                            (eshell-debug-command
-                             'process
-                             (format-message
-                              "finished external process `%s'" proc))))))
-                (funcall finish-io))))
+              (eshell--mark-as-output 0 (length string) string)
+              (eshell-interactive-filter (process-buffer proc) string))
+            (process-put proc :eshell-pending nil)
+            ;; If we're in the middle of handling output from this
+            ;; process then schedule the EOF for later.
+            (letrec ((wait-for-stderr (and primary
+                                           (not (process-live-p proc))))
+                     (finish-io
+                      (lambda ()
+                        (if (or (process-get proc :eshell-busy)
+                                (and wait-for-stderr (car stderr-live)))
+                            (run-at-time 0 nil finish-io)
+                          (when data
+                            (ignore-error eshell-pipe-broken
+                              (eshell-output-object
+                               data index handles)))
+                          (eshell-close-handles
+                           status
+                           (when status (list 'quote (= status 0)))
+                           handles)
+                          (eshell-debug-command
+                           'process
+                           (format-message
+                            "finished external process `%s'" proc))
+                          (if primary
+                              (eshell-kill-process-function proc string)
+                            (setcar stderr-live nil))))))
+              (funcall finish-io)))
         (when-let ((entry (assq proc eshell-process-list)))
           (eshell-remove-process-entry entry))))))
 
