@@ -1173,14 +1173,14 @@ have been replaced by constants."
 	(eval form))
        ((eq (car form) 'setq)
 	(if (cddr args) (error "Unsupported form (setq X1 E1 X2 E2..)"))
-        (eshell-manipulate "evaluating arguments to setq"
+        (eshell-manipulate form "evaluating arguments to setq"
           (setcar (cdr args) (eshell-do-eval (cadr args) synchronous-p)))
 	(list 'quote (eval form)))
        (t
 	(if (and args (not (memq (car form) '(run-hooks))))
             (eshell-manipulate form
 		(format-message "evaluating arguments to `%s'"
-				(symbol-name (car form)))
+				(car form))
 	      (while args
 		(setcar args (eshell-do-eval (car args) synchronous-p))
 		(setq args (cdr args)))))
