@@ -437,10 +437,11 @@ specify labels to use for file names."
   (let ((inhibit-message t)
         (diff-buffer (get-buffer-create "*replace-diff*")))
     (with-current-buffer diff-buffer
-      (buffer-disable-undo (current-buffer))
-      (let ((inhibit-read-only t))
-        (erase-buffer))
-      (diff-mode))
+      (setq-local buffer-read-only t)
+      (erase-buffer)
+      (diff-mode)
+      (setq-local buffer-read-only nil)
+      (buffer-disable-undo (current-buffer)))
     (dolist (file-or-buffer files-or-buffers)
       (let ((file-name (if (bufferp file-or-buffer) buffer-file-name file-or-buffer)))
         (when file-name
@@ -453,14 +454,14 @@ specify labels to use for file names."
             (multi-file-diff-no-select file-or-buffer (current-buffer) nil diff-buffer
                                        (concat file-name "~") file-name)))))
     (with-current-buffer diff-buffer
+      (diff-setup-whitespace)
+      (font-lock-ensure)
+      (buffer-enable-undo (current-buffer))
       (setq-local buffer-read-only t)
       (setq-local revert-buffer-function
                   (lambda (_ignore-auto _noconfirm)
                     (multi-file-replace-as-diff
                      files-or-buffers from-string replacements regexp-flag delimited-flag)))
-      (diff-setup-whitespace)
-      (font-lock-ensure)
-      (buffer-enable-undo (current-buffer))
       (goto-char (point-min)))
     (pop-to-buffer diff-buffer)))
 
@@ -499,6 +500,22 @@ whose names match the specified regexp."
            t t)))
      (list buffers (nth 0 common) (nth 1 common) (nth 2 common))))
   (multi-file-replace-as-diff buffers regexp to-string t delimited))
+
+;;;###autoload
+(defun replace-regexp-as-diff (regexp to-string &optional delimited)
+  "Show replacements in the current file buffer matching REGEXP with TO-STRING as diff.
+With a prefix argument, ask for a regexp, and replace in file buffers
+whose names match the specified regexp."
+  (interactive
+   (let ((common
+          (query-replace-read-args
+           (concat "Replace"
+                   (if current-prefix-arg " word" "")
+                   " regexp as diff in buffers")
+           t t)))
+     (list (nth 0 common) (nth 1 common) (nth 2 common))))
+  (multi-file-replace-as-diff
+   (list (current-buffer)) regexp to-string t delimited))
 
 
 (defvar unload-function-defs-list)
