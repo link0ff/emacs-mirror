@@ -390,6 +390,19 @@ whose file names match the specified wildcard."
 
 ;;; Global multi-file and multi-buffer replacements as diff
 
+(defcustom multi-file-diff-unsaved 'use-file
+  "A choice defining what to do with unsaved changes.
+If the value is `use-file', use text from the file.
+If the value is `use-buffer', use text from the file-visiting buffer
+to be able to use unsaved changes.  However, when the file is
+not visited in a buffer, read contents from the file.
+If the value is `save-buffers', save unsaved buffers before creating diff."
+  :type '(choice
+          (const :tag "Use file" use-file)
+          (const :tag "Use buffer" use-buffer)
+          (const :tag "Save buffers" save-buffers))
+  :version "30.1")
+
 (defun multi-file-diff-no-select (old new &optional switches buf label-old label-new)
   ;; Based on `diff-no-select' tailored to multi-file diffs.
   "Compare the OLD and NEW file/buffer.
@@ -436,6 +449,13 @@ specify labels to use for file names."
   (require 'diff)
   (let ((inhibit-message t)
         (diff-buffer (get-buffer-create "*replace-diff*")))
+    (when (eq multi-file-diff-unsaved 'save-buffers)
+      (save-some-buffers t (lambda ()
+                             (seq-some (lambda (f-or-b)
+                                         (if (bufferp f-or-b)
+                                             (eq f-or-b (current-buffer))
+                                           (equal f-or-b (buffer-file-name))))
+                                       files-or-buffers))))
     (with-current-buffer diff-buffer
       (setq-local buffer-read-only t)
       (erase-buffer)
@@ -448,7 +468,10 @@ specify labels to use for file names."
           (with-temp-buffer
             (if (bufferp file-or-buffer)
                 (insert-buffer-substring file-or-buffer)
-              (insert-file-contents file-or-buffer))
+              (if (or (eq multi-file-diff-unsaved 'use-file)
+                      (not (find-buffer-visiting file-or-buffer)))
+                  (insert-file-contents file-or-buffer)
+                (insert-buffer-substring (find-buffer-visiting file-or-buffer))))
             (goto-char (point-min))
             (perform-replace from-string replacements nil regexp-flag delimited-flag)
             (multi-file-diff-no-select file-or-buffer (current-buffer) nil diff-buffer
