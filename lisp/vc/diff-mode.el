@@ -216,6 +216,7 @@ The default \"-b\" means to ignore whitespace-only changes,
   "C-x 4 A" #'diff-add-change-log-entries-other-window
   ;; Misc operations.
   "C-c C-a" #'diff-apply-hunk
+  "C-c C-m a" #'diff-apply-buffer
   "C-c C-e" #'diff-ediff-patch
   "C-c C-n" #'diff-restrict-view
   "C-c C-s" #'diff-split-hunk
@@ -2053,6 +2054,41 @@ With a prefix argument, try to REVERSE the hunk."
       (if (and line-offset switched)
           (diff-hunk-kill)
         (diff-hunk-next)))))
+
+(defun diff-apply-buffer ()
+  "Apply the diff in the entire diff buffer.
+When applying all hunks was successful, then save the changed buffers."
+  (interactive)
+  (let ((buffers-hash (make-hash-table :test 'equal))
+        (failures 0)
+        (diff-refine nil))
+    (save-excursion
+      (goto-char (point-min))
+      (diff-beginning-of-hunk t)
+      (while (pcase-let ((`(,buf ,line-offset ,pos ,_src ,dst ,switched)
+                          (diff-find-source-location nil nil)))
+               (cond ((and line-offset (not switched))
+                      (with-current-buffer buf
+                        (goto-char (car pos))
+                        (delete-region (car pos) (cdr pos))
+                        (insert (car dst))
+                        (when buffer-file-name
+                          (puthash (current-buffer) t buffers-hash))))
+                     (t (setq failures (1+ failures))))
+               (not (or (eobp)
+                        (eq (prog1 (point) (diff-hunk-next)) (point))
+                        (eobp)))))
+      (let ((buffers (hash-table-keys buffers-hash)))
+        (cond ((zerop failures)
+               (dolist (buf buffers)
+                 (with-current-buffer buf
+                   (save-buffer)))
+               (message "Saved %d buffers" (length buffers)))
+              (t
+               (dolist (buf buffers)
+                 (with-current-buffer buf
+                   (display-buffer buf)))
+               (message "%d hunks skipped; no buffers saved" failures)))))))
 
 (defalias 'diff-mouse-goto-source #'diff-goto-source)
 
