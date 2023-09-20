@@ -2059,7 +2059,7 @@ With a prefix argument, try to REVERSE the hunk."
   "Apply the diff in the entire diff buffer.
 When applying all hunks was successful, then save the changed buffers."
   (interactive)
-  (let ((buffers-hash (make-hash-table :test 'equal))
+  (let ((buffers nil)
         (failures 0)
         (diff-refine nil))
     (save-excursion
@@ -2073,22 +2073,21 @@ When applying all hunks was successful, then save the changed buffers."
                         (delete-region (car pos) (cdr pos))
                         (insert (car dst))
                         (when buffer-file-name
-                          (puthash (current-buffer) t buffers-hash))))
+                          (push (current-buffer) buffers))))
                      (t (setq failures (1+ failures))))
-               (not (or (eobp)
-                        (eq (prog1 (point) (diff-hunk-next)) (point))
-                        (eobp)))))
-      (let ((buffers (hash-table-keys buffers-hash)))
-        (cond ((zerop failures)
-               (dolist (buf buffers)
-                 (with-current-buffer buf
-                   (save-buffer)))
-               (message "Saved %d buffers" (length buffers)))
-              (t
-               (dolist (buf buffers)
-                 (with-current-buffer buf
-                   (display-buffer buf)))
-               (message "%d hunks skipped; no buffers saved" failures)))))))
+               (not (or (eq (prog1 (point) (diff-hunk-next)) (point))
+                        (eobp))))))
+    (setq buffers (delete-dups buffers))
+    (cond ((zerop failures)
+           (dolist (buf (reverse buffers))
+             (with-current-buffer buf
+               (save-buffer)))
+           (message "Saved %d buffers" (length buffers)))
+          (t
+           (dolist (buf buffers)
+             (with-current-buffer buf
+               (display-buffer buf)))
+           (message "%d hunks failed; no buffers saved" failures)))))
 
 (defalias 'diff-mouse-goto-source #'diff-goto-source)
 
