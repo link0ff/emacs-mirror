@@ -197,7 +197,7 @@ CL struct.")
   "Value to use instead of `default-directory' when detecting the project.
 When it is non-nil, `project-current' will always skip prompting too.")
 
-(defvar-local project-current-directory-old nil
+(defvar-local project-default-directory nil
   "Value to use instead of `default-directory' when detecting the project.
 For the next command after switching the project, this buffer-local
 variable contains the original value of `default-directory'.
@@ -241,7 +241,7 @@ of the project instance object."
     (cond
      (pr)
      ((unless (or project-current-directory-override
-                  project-current-directory-old)
+                  project-default-directory)
         maybe-prompt)
       (setq directory (funcall project-prompter)
             pr (project--find-in-directory directory))))
@@ -408,7 +408,7 @@ the buffer's value of `default-directory'."
     (dolist (buf (buffer-list))
       (when (string-prefix-p
              root (expand-file-name
-                   (or (buffer-local-value 'project-current-directory-old buf)
+                   (or (buffer-local-value 'project-default-directory buf)
                        (buffer-local-value 'default-directory buf))))
         (push buf bufs)))
     (nreverse bufs)))
@@ -825,7 +825,7 @@ DIRS must contain directory names."
          bufs)
     (dolist (buf (buffer-list))
       (setq dd (expand-file-name
-                (or (buffer-local-value 'project-current-directory-old buf)
+                (or (buffer-local-value 'project-default-directory buf)
                     (buffer-local-value 'default-directory buf))))
       (when (and (string-prefix-p root dd)
                  (not (cl-find-if (lambda (module) (string-prefix-p module dd))
@@ -1030,7 +1030,7 @@ pattern to search for."
   "Ensure FILENAME is in PROJECT.
 
 Usually, just return FILENAME.  But if
-`project-current-directory-old' is set, adjust it to be
+`project-default-directory' is set, adjust it to be
 relative to PROJECT instead.
 
 This supports using a relative file name from the current buffer
@@ -1038,8 +1038,8 @@ when switching projects with `project-switch-project' and then
 using a command like `project-find-file'."
   (if-let (filename-proj (or (and project-current-directory-override
                                   (project-current nil default-directory))
-                             (and project-current-directory-old
-                                  (project-current nil project-current-directory-old))))
+                             (and project-default-directory
+                                  (project-current nil project-default-directory))))
       ;; file-name-concat requires Emacs 28+
       (concat (file-name-as-directory (project-root project))
               (file-relative-name filename (project-root filename-proj)))
@@ -2035,7 +2035,7 @@ When called in a program, it will use the project corresponding
 to directory DIR."
   (interactive (list (funcall project-prompter)))
   (if (symbolp project-switch-commands)
-      (let* ((project-current-directory-old default-directory)
+      (let* ((project-default-directory default-directory)
              (default-directory dir))
         (call-interactively project-switch-commands))
     (prefix-command-preserve-state)
@@ -2052,12 +2052,12 @@ to directory DIR."
                                echofun)
                   (when (buffer-live-p old-buffer)
                     (with-current-buffer old-buffer
-                      (when project-current-directory-old
-                        (setq-local default-directory project-current-directory-old)
-                        (kill-local-variable 'project-current-directory-old))))))))
+                      (when project-default-directory
+                        (setq-local default-directory project-default-directory)
+                        (kill-local-variable 'project-default-directory))))))))
       (add-hook 'post-command-hook postfun)
       (add-hook 'prefix-command-echo-keystrokes-functions echofun)
-      (setq-local project-current-directory-old default-directory)
+      (setq-local project-default-directory default-directory)
       (setq-local default-directory dir)
       (message (concat (project--keymap-prompt) " or any global key."))
       (let ((map (make-sparse-keymap)))
