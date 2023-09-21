@@ -356,7 +356,10 @@ otherwise if BEG is non-nil and END is nil, consider only
 diagnostics at BEG."
   (save-restriction
     (widen)
-    (cl-loop for o in (overlays-in (or beg (point-min)) (or end (point-max)))
+    (cl-loop for o in
+             (cond (end (overlays-in beg end))
+                   (beg (overlays-at beg))
+                   (t (overlays-in (point-min) (point-max))))
              when (overlay-get o 'flymake-diagnostic) collect it)))
 
 (defmacro flymake--diag-accessor (public internal thing)
@@ -433,7 +436,7 @@ verify FILTER, a function, and sort them by COMPARE (using KEY)."
   :package-version '(Flymake . "1.3.4"))
 
 (defface flymake-note-echo
-  '((t :inherit flymake-note))
+  '((t :inherit compilation-info))
   "Face used for showing summarized descriptions of notes."
   :package-version '(Flymake . "1.3.4"))
 
@@ -454,7 +457,7 @@ See variable `flymake-show-diagnostics-at-end-of-line'."
   :package-version '(Flymake . "1.3.5"))
 
 (defface flymake-note-echo-at-eol
-  '((t :inherit (flymake-end-of-line-diagnostics-face flymake-note)))
+  '((t :inherit (flymake-end-of-line-diagnostics-face compilation-info)))
   "Face like `flymake-note-echo', but for end-of-line overlays."
   :package-version '(Flymake . "1.3.5"))
 
@@ -696,12 +699,11 @@ associated `flymake-category' return DEFAULT."
   (let ((eolov (overlay-get ov 'eol-ov)))
     (when eolov
       (let ((src-ovs (delq ov (overlay-get eolov 'flymake-eol-source-overlays))))
-        (if src-ovs (overlay-put eolov 'flymake-eol-source-overlays src-ovs)
-          (delete-overlay eolov))))
+        (overlay-put eolov 'flymake-eol-source-overlays src-ovs)))
     (delete-overlay ov)))
 
-(defun flymake--eol-overlay-summary (_eolov src-ovs)
-  "Helper function for `flymake--highlight-line'."
+(defun flymake--eol-overlay-summary (src-ovs)
+  "Helper function for `flymake--eol-overlay-update'."
   (cl-loop
    for s in src-ovs
    for d = (overlay-get s 'flymake-diagnostic)
@@ -710,14 +712,19 @@ associated `flymake-category' return DEFAULT."
    concat (propertize (flymake-diagnostic-oneliner d t) 'face eol-face) into retval
    concat " "
    into retval
-   finally (cl-return (concat "  " retval))))
+   finally
+   (setq retval (concat "  " retval))
+   (put-text-property 0 1 'cursor t retval)
+   (cl-return retval)))
 
 (defun flymake--eol-overlay-update ()
   (save-excursion
     (widen)
     (cl-loop for o in (overlays-in (point-min) (point-max))
-             when (overlay-get o 'flymake--eol-overlay-summary)
-             do (overlay-put o 'before-string it))))
+             for src-ovs = (overlay-get o 'flymake-eol-source-overlays)
+             if src-ovs
+             do (overlay-put o 'before-string (flymake--eol-overlay-summary src-ovs))
+             else do (delete-overlay o))))
 
 (cl-defun flymake--highlight-line (diagnostic &optional foreign)
   "Attempt to overlay DIAGNOSTIC in current buffer.
@@ -754,9 +761,9 @@ Return nil or the overlay created."
              (setq beg a end b))))
     (setf (flymake--diag-beg diagnostic) beg
           (flymake--diag-end diagnostic) end)
-    ;; Try to fix the remedy the situation if there is the same
-    ;; diagnostic is already registered in the same place, which only
-    ;; happens for clashes between domestic and foreign diagnostics
+    ;; Try to remedy the situation if the same diagnostic is already
+    ;; registered in the same place.  This happens for clashes between
+    ;; domestic and foreign diagnostics
     (cl-loop for e in (flymake-diagnostics beg end)
              for eov = (flymake--diag-overlay e)
              when (flymake--equal-diagnostic-p e diagnostic)
@@ -775,7 +782,12 @@ Return nil or the overlay created."
                         (flymake--diag-end e)
                         (flymake--diag-orig-end e))
                   (flymake--delete-overlay eov)))
-    (setq ov (make-overlay end beg))
+    (setq ov (make-overlay beg end))
+    (when (= (overlay-start ov) (overlay-end ov))
+      ;; Some backends report diagnostics with invalid bounds.  Don't
+      ;; bother.
+      (delete-overlay ov)
+      (cl-return-from flymake--highlight-line nil))
     (setf (flymake--diag-beg diagnostic) (overlay-start ov)
           (flymake--diag-end diagnostic) (overlay-end ov))
     ;; First set `category' in the overlay
@@ -836,21 +848,17 @@ Return nil or the overlay created."
                (eolov (car
                        (cl-remove-if-not
                         (lambda (o) (overlay-get o 'flymake-eol-source-overlays))
-                        (overlays-in start end))))
-               src-ovs
-               summary)
+                        (overlays-in start end)))))
           ;; FIXME: 1. no checking if there are unexpectedly more than
           ;; one eolov at point.
           (if eolov
-              (setq src-ovs (push ov (overlay-get eolov 'flymake-eol-source-overlays)))
+              (push ov (overlay-get eolov 'flymake-eol-source-overlays))
             (setq eolov (make-overlay start end nil t nil))
             (overlay-put eolov 'flymake-overlay t)
-            (setq src-ovs (overlay-put eolov 'flymake-eol-source-overlays (list ov)))
+            (overlay-put eolov 'flymake--eol-overlay t)
+            (overlay-put eolov 'flymake-eol-source-overlays (list ov))
             (overlay-put eolov 'evaporate (not (= start end)))) ; FIXME: fishy
-          (overlay-put ov 'eol-ov eolov)
-          (setq summary (flymake--eol-overlay-summary eolov src-ovs))
-          (put-text-property 0 1 'cursor t summary)
-          (overlay-put eolov 'flymake--eol-overlay-summary summary))))
+          (overlay-put ov 'eol-ov eolov))))
     ov))
 
 ;; Nothing in Flymake uses this at all any more, so this is just for
@@ -963,8 +971,9 @@ report applies to that region."
     ;; a call to update them.  But check running and reporting
     ;; backends first to flickering when multiple backends touch the
     ;; same eol overlays.
-    (unless (cl-set-difference (flymake-running-backends)
-                               (flymake-reporting-backends))
+    (when (and flymake-show-diagnostics-at-end-of-line
+               (not (cl-set-difference (flymake-running-backends)
+                                       (flymake-reporting-backends))))
       (flymake--eol-overlay-update))
     (flymake--update-diagnostics-listings (current-buffer))))
 
@@ -1112,15 +1121,7 @@ with a report function."
       (setf (flymake--state-running state) run-token
             (flymake--state-disabled state) nil
             (flymake--state-reported-p state) nil))
-    ;; FIXME: Should use `condition-case-unless-debug' here, but don't
-    ;; for two reasons: (1) that won't let me catch errors from inside
-    ;; `ert-deftest' where `debug-on-error' appears to be always
-    ;; t. (2) In cases where the user is debugging elisp somewhere
-    ;; else, and using flymake, the presence of a frequently
-    ;; misbehaving backend in the global hook (most likely the legacy
-    ;; backend) will trigger an annoying backtrace.
-    ;;
-    (condition-case err
+    (condition-case-unless-debug err
         (apply backend (flymake-make-report-fn backend run-token)
                args)
       (error
@@ -1187,6 +1188,11 @@ Interactively, with a prefix arg, FORCE is t."
                            (cl-reduce
                             #'max (mapcar #'cadr flymake--recent-changes))))))
                (setq flymake--recent-changes nil)
+               (run-hook-wrapped
+                'flymake-diagnostic-functions
+                (lambda (backend)
+                  (flymake--with-backend-state backend state
+                    (setf (flymake--state-reported-p state) nil))))
                (run-hook-wrapped
                 'flymake-diagnostic-functions
                 (lambda (backend)
