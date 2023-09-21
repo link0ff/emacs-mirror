@@ -197,11 +197,6 @@ CL struct.")
   "Value to use instead of `default-directory' when detecting the project.
 When it is non-nil, `project-current' will always skip prompting too.")
 
-(make-obsolete-variable
- 'project-current-directory-override
- 'project-current-directory-old
- "30.1")
-
 (defvar-local project-current-directory-old nil
   "Value to use instead of `default-directory' when detecting the project.
 For the next command after switching the project, this buffer-local
@@ -2064,18 +2059,25 @@ to directory DIR."
       (add-hook 'prefix-command-echo-keystrokes-functions echofun)
       (setq-local project-current-directory-old default-directory)
       (setq-local default-directory dir)
-      (message (project--keymap-prompt))
-      (let ((commands-map
-             (let ((temp-map (make-sparse-keymap)))
-               (set-keymap-parent temp-map project-prefix-map)
-               (dolist (row project-switch-commands temp-map)
-                 (when-let ((cmd (nth 0 row))
-                            (keychar (nth 2 row)))
-                   (define-key temp-map (vector keychar) cmd))))))
-        (set-transient-map commands-map))
-      ;; (set-transient-map project-prefix-map nil postfun)
-      ;; also try KEEP-PRED to keep keymap until key in map is pressed
-      )))
+      (message (concat (project--keymap-prompt) " or any global key."))
+      (let ((map (make-sparse-keymap)))
+        (if project-switch-use-entire-map
+            (set-keymap-parent map project-prefix-map)
+          (dolist (row project-switch-commands map)
+            (when-let* ((cmd (nth 0 row))
+                        (key (nth 2 row))
+                        (keychar (if key (vector key)
+                                   (where-is-internal
+                                    cmd (list project-prefix-map) t))))
+              (define-key map keychar cmd))))
+        (define-key map (vector help-char)
+                    (lambda ()
+                      (interactive)
+                      (let ((help-form "\
+You can use any global keybinding."))
+                        (help-form-show))))
+        ;; Should return exitfun from set-transient-map
+        (set-transient-map map)))))
 
 ;;;###autoload
 (defun project-uniquify-dirname-transform (dirname)
