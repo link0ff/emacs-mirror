@@ -908,8 +908,10 @@ The following commands are available:
       (project--other-place-command '((display-buffer-pop-up-window)
                                       (inhibit-same-window . t))
                                     project-other-window-map)
+    (prefix-command-preserve-state)
     (let ((inhibit-message t)) (other-window-prefix))
     (message "Display next project command buffer in a new window...")
+    ;; Should return exitfun from set-transient-map
     (set-transient-map (make-composed-keymap project-prefix-map
                                              project-other-window-map))))
 
@@ -928,8 +930,10 @@ The following commands are available:
   (if (< emacs-major-version 30)
       (project--other-place-command '((display-buffer-pop-up-frame))
                                     project-other-frame-map)
+    (prefix-command-preserve-state)
     (let ((inhibit-message t)) (other-frame-prefix))
     (message "Display next project command buffer in a new frame...")
+    ;; Should return exitfun from set-transient-map
     (set-transient-map (make-composed-keymap project-prefix-map
                                              project-other-frame-map))))
 
@@ -945,8 +949,10 @@ The following commands are available:
   (interactive)
   (if (< emacs-major-version 30)
       (project--other-place-command '((display-buffer-in-new-tab)))
+    (prefix-command-preserve-state)
     (let ((inhibit-message t)) (other-tab-prefix))
     (message "Display next project command buffer in a new tab...")
+    ;; Should return exitfun from set-transient-map
     (set-transient-map project-prefix-map)))
 
 ;;;###autoload
@@ -2065,11 +2071,11 @@ to directory DIR."
             (set-keymap-parent map project-prefix-map)
           (dolist (row project-switch-commands map)
             (when-let* ((cmd (nth 0 row))
-                        (key (nth 2 row))
-                        (keychar (if key (vector key)
-                                   (where-is-internal
-                                    cmd (list project-prefix-map) t))))
-              (define-key map keychar cmd))))
+                        (key (if (nth 2 row)
+                                 (vector (nth 2 row))
+                               (where-is-internal
+                                cmd (list project-prefix-map) t))))
+              (define-key map key cmd))))
         (define-key map (vector help-char)
                     (lambda ()
                       (interactive)
