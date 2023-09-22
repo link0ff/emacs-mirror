@@ -405,6 +405,8 @@ contents from the file."
           (const :tag "Use modified buffer" use-modified-buffer))
   :version "30.1")
 
+(declare-function diff-setup-whitespace "diff-mode" ())
+
 (defun multi-file-replace-as-diff (files-or-buffers from-string replacements regexp-flag delimited-flag)
   "Show as diffs replacements of FROM-STRING with REPLACEMENTS.
 FILES-OR-BUFFERS is a list of either file names or buffers.
@@ -485,6 +487,10 @@ DELIMITED has the same meaning as in `replace-regexp'."
      (list (nth 0 common) (nth 1 common) (nth 2 common))))
   (multi-file-replace-as-diff
    (list (current-buffer)) regexp to-string t delimited))
+
+(defvar diff-use-labels)
+(declare-function diff-check-labels "diff" (&optional force))
+(declare-function diff-file-local-copy "diff" (file-or-buf))
 
 (defun multi-file-diff-no-select (old new &optional switches buf label-old label-new)
   ;; Based on `diff-no-select' tailored to multi-file diffs.
