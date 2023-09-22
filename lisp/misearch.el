@@ -406,6 +406,7 @@ contents from the file."
   :version "30.1")
 
 (declare-function diff-setup-whitespace "diff-mode" ())
+(declare-function diff-setup-buffer-type "diff-mode" ())
 
 (defun multi-file-replace-as-diff (files-or-buffers from-string replacements regexp-flag delimited-flag)
   "Show as diffs replacements of FROM-STRING with REPLACEMENTS.
@@ -419,18 +420,20 @@ REGEXP-FLAG and DELIMITED-FLAG have the same meaning as in `perform-replace'."
                              (seq-some (lambda (f-or-b)
                                          (if (bufferp f-or-b)
                                              (eq f-or-b (current-buffer))
-                                           (equal f-or-b (buffer-file-name))))
+                                           (equal f-or-b buffer-file-name)))
                                        files-or-buffers))))
     (with-current-buffer diff-buffer
-      (setq-local buffer-read-only t)
-      (erase-buffer)
-      (diff-mode)
-      (setq-local buffer-read-only nil)
-      (buffer-disable-undo (current-buffer)))
+      (buffer-disable-undo (current-buffer))
+      (let ((inhibit-read-only t))
+        (erase-buffer))
+      ;; Make the *vc-diff* buffer read only, the diff-mode key
+      ;; bindings are nicer for read only buffers.
+      (setq buffer-read-only t)
+      (diff-mode))
     (dolist (file-or-buffer files-or-buffers)
-      (let ((file-name (if (bufferp file-or-buffer) buffer-file-name file-or-buffer))
-            (file-buffer (when (eq multi-file-diff-unsaved 'use-modified-buffer)
-                           (find-buffer-visiting file-or-buffer))))
+      (let* ((file-name (if (bufferp file-or-buffer) buffer-file-name file-or-buffer))
+             (file-buffer (when (eq multi-file-diff-unsaved 'use-modified-buffer)
+                            (find-buffer-visiting file-name))))
         (when file-name
           (with-temp-buffer
             (if (bufferp file-or-buffer)
@@ -444,9 +447,8 @@ REGEXP-FLAG and DELIMITED-FLAG have the same meaning as in `perform-replace'."
                                        (concat file-name "~") file-name)))))
     (with-current-buffer diff-buffer
       (diff-setup-whitespace)
-      (font-lock-ensure)
+      (diff-setup-buffer-type)
       (buffer-enable-undo (current-buffer))
-      (setq-local buffer-read-only t)
       (setq-local revert-buffer-function
                   (lambda (_ignore-auto _noconfirm)
                     (multi-file-replace-as-diff
@@ -528,9 +530,10 @@ specify labels to use for file names."
                                         (or new-alt new)))))
                      " ")))
     (with-current-buffer buf
-      (insert command "\n")
-      (call-process shell-file-name nil buf nil
-                    shell-command-switch command)
+      (let ((inhibit-read-only t))
+        (insert command "\n")
+        (call-process shell-file-name nil buf nil
+                      shell-command-switch command))
       (if old-alt (delete-file old-alt))
       (if new-alt (delete-file new-alt)))))
 
