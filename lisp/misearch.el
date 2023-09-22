@@ -393,12 +393,10 @@ whose file names match the specified wildcard."
 (defcustom multi-file-diff-unsaved 'save-buffers
   "What to do with unsaved edits when showing multi-file replacements as diffs.
 If the value is `save-buffers', save unsaved buffers before creating diff.
-If the value is `use-file', use text from the file even when the visiting
-file buffer is modified.
+If the value is `use-file', use text from the file even when the
+file-visiting buffer is modified.
 If the value is `use-modified-buffer', use text from the file-visiting
-modified buffer to be able to use unsaved changes.  However, when the file
-is not visited in a buffer, or the buffer is not modified, still read
-contents from the file."
+modified buffer to be able to use unsaved changes."
   :type '(choice
           (const :tag "Save buffers" save-buffers)
           (const :tag "Use file" use-file)
