@@ -405,48 +405,6 @@ contents from the file."
           (const :tag "Use modified buffer" use-modified-buffer))
   :version "30.1")
 
-(defun multi-file-diff-no-select (old new &optional switches buf label-old label-new)
-  ;; Based on `diff-no-select' tailored to multi-file diffs.
-  "Compare the OLD and NEW file/buffer.
-If the optional SWITCHES is nil, the switches specified in the
-variable `diff-switches' are passed to the diff command,
-otherwise SWITCHES is used.  SWITCHES can be a string or a list
-of strings.  BUF should be non-nil.  LABEL-OLD and LABEL-NEW
-specify labels to use for file names."
-  (unless (bufferp new) (setq new (expand-file-name new)))
-  (unless (bufferp old) (setq old (expand-file-name old)))
-  (or switches (setq switches diff-switches)) ; If not specified, use default.
-  (setq switches (ensure-list switches))
-  (diff-check-labels)
-  (let* ((old-alt (diff-file-local-copy old))
-         (new-alt (diff-file-local-copy new))
-         (command
-          (mapconcat #'identity
-                     `(,diff-command
-                       ;; Use explicitly specified switches
-                       ,@switches
-                       ,@(mapcar #'shell-quote-argument
-                                 (nconc
-                                  (and (or old-alt new-alt)
-                                       (eq diff-use-labels t)
-                                       (list "--label"
-                                             (cond ((stringp label-old) label-old)
-                                                   ((stringp old) old)
-                                                   ((prin1-to-string old)))
-                                             "--label"
-                                             (cond ((stringp label-new) label-new)
-                                                   ((stringp new) new)
-                                                   ((prin1-to-string new)))))
-                                  (list (or old-alt old)
-                                        (or new-alt new)))))
-                     " ")))
-    (with-current-buffer buf
-      (insert command "\n")
-      (call-process shell-file-name nil buf nil
-                    shell-command-switch command)
-      (if old-alt (delete-file old-alt))
-      (if new-alt (delete-file new-alt)))))
-
 (defun multi-file-replace-as-diff (files-or-buffers from-string replacements regexp-flag delimited-flag)
   "Show as diffs replacements of FROM-STRING with REPLACEMENTS.
 FILES-OR-BUFFERS is a list of either file names or buffers.
@@ -527,6 +485,48 @@ DELIMITED has the same meaning as in `replace-regexp'."
      (list (nth 0 common) (nth 1 common) (nth 2 common))))
   (multi-file-replace-as-diff
    (list (current-buffer)) regexp to-string t delimited))
+
+(defun multi-file-diff-no-select (old new &optional switches buf label-old label-new)
+  ;; Based on `diff-no-select' tailored to multi-file diffs.
+  "Compare the OLD and NEW file/buffer.
+If the optional SWITCHES is nil, the switches specified in the
+variable `diff-switches' are passed to the diff command,
+otherwise SWITCHES is used.  SWITCHES can be a string or a list
+of strings.  BUF should be non-nil.  LABEL-OLD and LABEL-NEW
+specify labels to use for file names."
+  (unless (bufferp new) (setq new (expand-file-name new)))
+  (unless (bufferp old) (setq old (expand-file-name old)))
+  (or switches (setq switches diff-switches)) ; If not specified, use default.
+  (setq switches (ensure-list switches))
+  (diff-check-labels)
+  (let* ((old-alt (diff-file-local-copy old))
+         (new-alt (diff-file-local-copy new))
+         (command
+          (mapconcat #'identity
+                     `(,diff-command
+                       ;; Use explicitly specified switches
+                       ,@switches
+                       ,@(mapcar #'shell-quote-argument
+                                 (nconc
+                                  (and (or old-alt new-alt)
+                                       (eq diff-use-labels t)
+                                       (list "--label"
+                                             (cond ((stringp label-old) label-old)
+                                                   ((stringp old) old)
+                                                   ((prin1-to-string old)))
+                                             "--label"
+                                             (cond ((stringp label-new) label-new)
+                                                   ((stringp new) new)
+                                                   ((prin1-to-string new)))))
+                                  (list (or old-alt old)
+                                        (or new-alt new)))))
+                     " ")))
+    (with-current-buffer buf
+      (insert command "\n")
+      (call-process shell-file-name nil buf nil
+                    shell-command-switch command)
+      (if old-alt (delete-file old-alt))
+      (if new-alt (delete-file new-alt)))))
 
 
 (defvar unload-function-defs-list)
