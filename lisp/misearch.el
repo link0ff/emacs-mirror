@@ -391,16 +391,18 @@ whose file names match the specified wildcard."
 ;;; Global multi-file and multi-buffer replacements as diff
 
 (defcustom multi-file-diff-unsaved 'save-buffers
-  "A choice defining what to do with unsaved changes.
-If the value is `use-file', use text from the file.
-If the value is `use-modified-buffer', use text from the file-visiting buffer
-to be able to use unsaved changes.  However, when the file is
-not visited in a buffer, read contents from the file.
-If the value is `save-buffers', save unsaved buffers before creating diff."
+  "What to do with unsaved edits when showing multi-file replacements as diffs.
+If the value is `save-buffers', save unsaved buffers before creating diff.
+If the value is `use-file', use text from the file even when the visiting
+file buffer is modified.
+If the value is `use-modified-buffer', use text from the file-visiting
+modified buffer to be able to use unsaved changes.  However, when the file
+is not visited in a buffer, or the buffer is not modified, still read
+contents from the file."
   :type '(choice
+          (const :tag "Save buffers" save-buffers)
           (const :tag "Use file" use-file)
-          (const :tag "Use buffer" use-modified-buffer)
-          (const :tag "Save buffers" save-buffers))
+          (const :tag "Use modified buffer" use-modified-buffer))
   :version "30.1")
 
 (defun multi-file-diff-no-select (old new &optional switches buf label-old label-new)
@@ -446,6 +448,9 @@ specify labels to use for file names."
       (if new-alt (delete-file new-alt)))))
 
 (defun multi-file-replace-as-diff (files-or-buffers from-string replacements regexp-flag delimited-flag)
+  "Show as diffs replacements of FROM-STRING with REPLACEMENTS.
+FILES-OR-BUFFERS is a list of either file names or buffers.
+REGEXP-FLAG and DELIMITED-FLAG have the same meaning as in `perform-replace'."
   (require 'diff)
   (let ((inhibit-message t)
         (diff-buffer (get-buffer-create "*replace-diff*")))
@@ -491,8 +496,9 @@ specify labels to use for file names."
 
 ;;;###autoload
 (defun multi-file-replace-regexp-as-diff (files regexp to-string &optional delimited)
-  "Show replacements of REGEXP with TO-STRING in FILES as diff.
-With a prefix argument, ask for a wildcard, and replace in files
+  "Show as diffs replacements of REGEXP with TO-STRING in FILES.
+DELIMITED has the same meaning as in `replace-regexp'.
+With a prefix argument, ask for a wildcard, and show diffs for files
 whose file names match the specified wildcard."
   (interactive
    (let ((files (if current-prefix-arg
@@ -509,9 +515,8 @@ whose file names match the specified wildcard."
 
 ;;;###autoload
 (defun replace-regexp-as-diff (regexp to-string &optional delimited)
-  "Show replacements of REGEXP with TO-STRING in current buffer as diff.
-With a prefix argument, ask for a regexp, and replace in file buffers
-whose names match the specified regexp."
+  "Show as diffs replacements of REGEXP with TO-STRING in the current buffer.
+DELIMITED has the same meaning as in `replace-regexp'."
   (interactive
    (let ((common
           (query-replace-read-args
