@@ -408,20 +408,18 @@ contents from the file."
 (declare-function diff-setup-whitespace "diff-mode" ())
 (declare-function diff-setup-buffer-type "diff-mode" ())
 
-(defun multi-file-replace-as-diff (files-or-buffers from-string replacements regexp-flag delimited-flag)
+(defun multi-file-replace-as-diff (files from-string replacements regexp-flag delimited-flag)
   "Show as diffs replacements of FROM-STRING with REPLACEMENTS.
-FILES-OR-BUFFERS is a list of either file names or buffers.
-REGEXP-FLAG and DELIMITED-FLAG have the same meaning as in `perform-replace'."
+FILES is a list of file names.  REGEXP-FLAG and DELIMITED-FLAG have
+the same meaning as in `perform-replace'."
   (require 'diff)
   (let ((inhibit-message t)
         (diff-buffer (get-buffer-create "*replace-diff*")))
     (when (eq multi-file-diff-unsaved 'save-buffers)
       (save-some-buffers t (lambda ()
                              (seq-some (lambda (f-or-b)
-                                         (if (bufferp f-or-b)
-                                             (eq f-or-b (current-buffer))
-                                           (equal f-or-b buffer-file-name)))
-                                       files-or-buffers))))
+                                         (equal f-or-b buffer-file-name))
+                                       files))))
     (with-current-buffer diff-buffer
       (buffer-disable-undo (current-buffer))
       (let ((inhibit-read-only t))
@@ -430,20 +428,17 @@ REGEXP-FLAG and DELIMITED-FLAG have the same meaning as in `perform-replace'."
       ;; bindings are nicer for read only buffers.
       (setq buffer-read-only t)
       (diff-mode))
-    (dolist (file-or-buffer files-or-buffers)
-      (let* ((file-name (if (bufferp file-or-buffer) buffer-file-name file-or-buffer))
-             (file-buffer (when (eq multi-file-diff-unsaved 'use-modified-buffer)
-                            (find-buffer-visiting file-name))))
+    (dolist (file-name files)
+      (let ((file-buffer (when (eq multi-file-diff-unsaved 'use-modified-buffer)
+                           (find-buffer-visiting file-name))))
         (when file-name
           (with-temp-buffer
-            (if (bufferp file-or-buffer)
-                (insert-buffer-substring file-or-buffer)
-              (if (and file-buffer (buffer-modified-p file-buffer))
-                  (insert-buffer-substring file-buffer)
-                (insert-file-contents file-or-buffer)))
+            (if (and file-buffer (buffer-modified-p file-buffer))
+                (insert-buffer-substring file-buffer)
+              (insert-file-contents file-name))
             (goto-char (point-min))
             (perform-replace from-string replacements nil regexp-flag delimited-flag)
-            (multi-file-diff-no-select file-or-buffer (current-buffer) nil diff-buffer
+            (multi-file-diff-no-select file-name (current-buffer) nil diff-buffer
                                        (concat file-name "~") file-name)))))
     (with-current-buffer diff-buffer
       (diff-setup-whitespace)
@@ -452,7 +447,7 @@ REGEXP-FLAG and DELIMITED-FLAG have the same meaning as in `perform-replace'."
       (setq-local revert-buffer-function
                   (lambda (_ignore-auto _noconfirm)
                     (multi-file-replace-as-diff
-                     files-or-buffers from-string replacements regexp-flag delimited-flag)))
+                     files from-string replacements regexp-flag delimited-flag)))
       (goto-char (point-min)))
     (pop-to-buffer diff-buffer)))
 
@@ -488,7 +483,7 @@ DELIMITED has the same meaning as in `replace-regexp'."
            t t)))
      (list (nth 0 common) (nth 1 common) (nth 2 common))))
   (multi-file-replace-as-diff
-   (list (current-buffer)) regexp to-string t delimited))
+   (list buffer-file-name) regexp to-string t delimited))
 
 (defvar diff-use-labels)
 (declare-function diff-check-labels "diff" (&optional force))
