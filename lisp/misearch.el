@@ -390,16 +390,16 @@ whose file names match the specified wildcard."
 
 ;;; Global multi-file and multi-buffer replacements as diff
 
-(defcustom multi-file-diff-unsaved 'use-file
+(defcustom multi-file-diff-unsaved 'save-buffers
   "A choice defining what to do with unsaved changes.
 If the value is `use-file', use text from the file.
-If the value is `use-buffer', use text from the file-visiting buffer
+If the value is `use-modified-buffer', use text from the file-visiting buffer
 to be able to use unsaved changes.  However, when the file is
 not visited in a buffer, read contents from the file.
 If the value is `save-buffers', save unsaved buffers before creating diff."
   :type '(choice
           (const :tag "Use file" use-file)
-          (const :tag "Use buffer" use-buffer)
+          (const :tag "Use buffer" use-modified-buffer)
           (const :tag "Save buffers" save-buffers))
   :version "30.1")
 
@@ -463,15 +463,16 @@ specify labels to use for file names."
       (setq-local buffer-read-only nil)
       (buffer-disable-undo (current-buffer)))
     (dolist (file-or-buffer files-or-buffers)
-      (let ((file-name (if (bufferp file-or-buffer) buffer-file-name file-or-buffer)))
+      (let ((file-name (if (bufferp file-or-buffer) buffer-file-name file-or-buffer))
+            (file-buffer (when (eq multi-file-diff-unsaved 'use-modified-buffer)
+                           (find-buffer-visiting file-or-buffer))))
         (when file-name
           (with-temp-buffer
             (if (bufferp file-or-buffer)
                 (insert-buffer-substring file-or-buffer)
-              (if (or (eq multi-file-diff-unsaved 'use-file)
-                      (not (find-buffer-visiting file-or-buffer)))
-                  (insert-file-contents file-or-buffer)
-                (insert-buffer-substring (find-buffer-visiting file-or-buffer))))
+              (if (and file-buffer (buffer-modified-p file-buffer))
+                  (insert-buffer-substring file-buffer)
+                (insert-file-contents file-or-buffer)))
             (goto-char (point-min))
             (perform-replace from-string replacements nil regexp-flag delimited-flag)
             (multi-file-diff-no-select file-or-buffer (current-buffer) nil diff-buffer
@@ -490,7 +491,7 @@ specify labels to use for file names."
 
 ;;;###autoload
 (defun multi-file-replace-regexp-as-diff (files regexp to-string &optional delimited)
-  "Show replacements in FILES matching REGEXP with TO-STRING as diff.
+  "Show replacements of REGEXP with TO-STRING in FILES as diff.
 With a prefix argument, ask for a wildcard, and replace in files
 whose file names match the specified wildcard."
   (interactive
@@ -507,26 +508,8 @@ whose file names match the specified wildcard."
   (multi-file-replace-as-diff files regexp to-string t delimited))
 
 ;;;###autoload
-(defun multi-buffer-replace-regexp-as-diff (buffers regexp to-string &optional delimited)
-  "Show replacements in file BUFFERS matching REGEXP with TO-STRING as diff.
-With a prefix argument, ask for a regexp, and replace in file buffers
-whose names match the specified regexp."
-  (interactive
-   (let ((buffers (if current-prefix-arg
-                      (multi-isearch-read-matching-buffers)
-                    (multi-isearch-read-buffers)))
-         (common
-          (query-replace-read-args
-           (concat "Replace"
-                   (if current-prefix-arg " word" "")
-                   " regexp as diff in buffers")
-           t t)))
-     (list buffers (nth 0 common) (nth 1 common) (nth 2 common))))
-  (multi-file-replace-as-diff buffers regexp to-string t delimited))
-
-;;;###autoload
 (defun replace-regexp-as-diff (regexp to-string &optional delimited)
-  "Show replacements in the current file buffer matching REGEXP with TO-STRING as diff.
+  "Show replacements of REGEXP with TO-STRING in current buffer as diff.
 With a prefix argument, ask for a regexp, and replace in file buffers
 whose names match the specified regexp."
   (interactive
@@ -534,7 +517,7 @@ whose names match the specified regexp."
           (query-replace-read-args
            (concat "Replace"
                    (if current-prefix-arg " word" "")
-                   " regexp as diff in buffers")
+                   " regexp as diff")
            t t)))
      (list (nth 0 common) (nth 1 common) (nth 2 common))))
   (multi-file-replace-as-diff
