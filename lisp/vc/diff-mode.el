@@ -2059,7 +2059,7 @@ With a prefix argument, try to REVERSE the hunk."
   "Apply the diff in the entire diff buffer.
 When applying all hunks was successful, then save the changed buffers."
   (interactive)
-  (let ((buffers nil)
+  (let ((buffer-edits nil)
         (failures 0)
         (diff-refine nil))
     (save-excursion
@@ -2068,26 +2068,25 @@ When applying all hunks was successful, then save the changed buffers."
       (while (pcase-let ((`(,buf ,line-offset ,pos ,_src ,dst ,switched)
                           (diff-find-source-location nil nil)))
                (cond ((and line-offset (not switched))
-                      (with-current-buffer buf
-                        (goto-char (car pos))
-                        (delete-region (car pos) (cdr pos))
-                        (insert (car dst))
-                        (when buffer-file-name
-                          (push (current-buffer) buffers))))
+                      (push (cons pos dst)
+                            (alist-get buf buffer-edits)))
                      (t (setq failures (1+ failures))))
                (not (or (eq (prog1 (point) (diff-hunk-next)) (point))
                         (eobp))))))
-    (setq buffers (delete-dups buffers))
     (cond ((zerop failures)
-           (dolist (buf (reverse buffers))
-             (with-current-buffer buf
+           (dolist (buf-edits (reverse buffer-edits))
+             (with-current-buffer (car buf-edits)
+               (dolist (edit (cdr buf-edits))
+                 (let ((pos (car edit))
+                       (dst (cdr edit))
+                       (inhibit-read-only t))
+                   (goto-char (car pos))
+                   (delete-region (car pos) (cdr pos))
+                   (insert (car dst))))
                (save-buffer)))
-           (message "Saved %d buffers" (length buffers)))
+           (message "Saved %d buffers" (length buffer-edits)))
           (t
-           (dolist (buf buffers)
-             (with-current-buffer buf
-               (display-buffer buf)))
-           (message "%d hunks failed; no buffers saved" failures)))))
+           (message "%d hunks failed; no buffers changed" failures)))))
 
 (defalias 'diff-mouse-goto-source #'diff-goto-source)
 
