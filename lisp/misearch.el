@@ -427,17 +427,24 @@ the same meaning as in `perform-replace'."
       (setq buffer-read-only t)
       (diff-mode))
     (dolist (file-name files)
-      (let ((file-buffer (when (eq multi-file-diff-unsaved 'use-modified-buffer)
-                           (find-buffer-visiting file-name))))
+      (let* ((file-exists (file-exists-p file-name))
+             (file-buffer
+              (when (or (not file-exists)
+                        (eq multi-file-diff-unsaved 'use-modified-buffer))
+                (find-buffer-visiting file-name))))
         (when file-name
           (with-temp-buffer
-            (if (and file-buffer (buffer-modified-p file-buffer))
+            (if (and file-buffer
+                     (or (not file-exists)
+                         (buffer-modified-p file-buffer)))
                 (insert-buffer-substring file-buffer)
               (insert-file-contents file-name))
             (goto-char (point-min))
             (perform-replace from-string replacements nil regexp-flag delimited-flag)
-            (multi-file-diff-no-select file-name (current-buffer) nil diff-buffer
-                                       (concat file-name "~") file-name)))))
+            (multi-file-diff-no-select
+             (if file-exists file-name file-buffer)
+             (current-buffer) nil diff-buffer
+             (concat file-name "~") file-name)))))
     (with-current-buffer diff-buffer
       (diff-setup-whitespace)
       (diff-setup-buffer-type)
