@@ -2071,12 +2071,9 @@ When applying all hunks was successful, then save the changed buffers."
                       (push (cons pos dst)
                             (alist-get buf buffer-edits)))
                      (t (setq failures (1+ failures))))
-               (not (or (eq (prog1 (point) (diff-hunk-next)) (point))
-                        (eobp)
-                        ;; In git format-patch "^-- $" signifies
-                        ;; the end of the patch.
-                        (and (eq diff-buffer-type 'git)
-                             (looking-at-p "^-- $")))))))
+               (and (not (eq (prog1 (point) (ignore-errors (diff-hunk-next)))
+                             (point)))
+                    (looking-at-p diff-hunk-header-re)))))
     (cond ((zerop failures)
            (dolist (buf-edits (reverse buffer-edits))
              (with-current-buffer (car buf-edits)
