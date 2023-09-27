@@ -388,7 +388,7 @@ whose file names match the specified wildcard."
     (isearch-forward-regexp nil t)))
 
 
-;;; Global multi-file and multi-buffer replacements as diff
+;;; Global multi-file replacements as diff
 
 (defcustom multi-file-diff-unsaved 'save-buffers
   "What to do with unsaved edits when showing multi-file replacements as diffs.
@@ -460,12 +460,10 @@ the same meaning as in `perform-replace'."
 (defun multi-file-replace-regexp-as-diff (files regexp to-string &optional delimited)
   "Show as diffs replacements of REGEXP with TO-STRING in FILES.
 DELIMITED has the same meaning as in `replace-regexp'.
-With a prefix argument, ask for a wildcard, and show diffs for files
-whose file names match the specified wildcard."
+The replacements are displayed in the buffer *replace-diff* that
+you can later apply as a patch after reviewing the changes."
   (interactive
-   (let ((files (if current-prefix-arg
-                    (multi-isearch-read-matching-files)
-                  (multi-isearch-read-files)))
+   (let ((files (multi-isearch-read-files))
          (common
           (query-replace-read-args
            (concat "Replace"
@@ -478,7 +476,9 @@ whose file names match the specified wildcard."
 ;;;###autoload
 (defun replace-regexp-as-diff (regexp to-string &optional delimited)
   "Show as diffs replacements of REGEXP with TO-STRING in the current buffer.
-DELIMITED has the same meaning as in `replace-regexp'."
+DELIMITED has the same meaning as in `replace-regexp'.
+The replacements are displayed in the buffer *replace-diff* that
+you can later apply as a patch after reviewing the changes."
   (interactive
    (let ((common
           (query-replace-read-args
