@@ -2076,12 +2076,13 @@ to directory DIR."
                                (where-is-internal
                                 cmd (list project-prefix-map) t))))
               (define-key map key cmd))))
-        (define-key map (vector help-char)
-                    (lambda ()
-                      (interactive)
-                      (let ((help-form "\
-You can use any global keybinding."))
-                        (help-form-show))))
+;; Unfortunately, this will disable global help commands like 'C-h v':
+;;         (define-key map (vector help-char)
+;;                     (lambda ()
+;;                       (interactive)
+;;                       (let ((help-form "\
+;; You can use any global keybinding."))
+;;                         (help-form-show))))
         ;; Should return exitfun from set-transient-map
         (set-transient-map map)))))
 
@@ -2102,49 +2103,20 @@ would otherwise have the same name."
           (file-relative-name dirname root))))
     dirname))
 
-;;; Project mode
+;;; Project mode-line
 
-;; Tell Emacs about this new kind of minor mode
-;; (add-to-list 'minor-mode-alist '(project-mode project-name))
-
-(defvar project-name nil
-  "The project name of the current buffer when it belongs to a project.")
-
-;;;###autoload
-(put 'project-name 'risky-local-variable t)
-(put 'project-name 'permanent-local t)
-
-(defvar project-menu-entry
-  `(menu-item "Project" ,menu-bar-project-menu))
-
-(defconst project-mode-line-map
-  (let ((map (make-sparse-keymap)))
-    (define-key map [mode-line down-mouse-1] project-menu-entry)
-    map))
-
-;;;###autoload
-(define-minor-mode project-mode
-  "Toggle display of project menu in the project-aware buffers."
-  :lighter nil
-  ;; :keymap (define-keymap "<menu-bar>" project-mode-menu)
-  (if project-mode
-      (setq-local project-name (concat
-                                " "
-                                (propertize
-                                 (project-name (project-current))
-                                 'mouse-face 'mode-line-highlight
-                                 'local-map project-mode-line-map)))))
-
-(defun project-mode--turn-on ()
-  "Turn on `project-mode' in all pertinent buffers."
-  (when (project-current)
-    (project-mode 1)))
-
-;;;###autoload
-(define-globalized-minor-mode global-project-mode
-  project-mode project-mode--turn-on
-  :group 'project
-  :version "30.1")
+(let ((form '(:eval (when-let (project (project-current))
+                      (concat " "
+                              (propertize
+                               (project-name project)
+                               'mouse-face 'mode-line-highlight
+                               'local-map
+                               (make-mode-line-mouse-map
+                                'down-mouse-1
+			        `(menu-item "Project"
+                                            ,menu-bar-project-menu))))))))
+  (when-let (pos (seq-position mode-line-format '(vc-mode vc-mode)))
+    (cl-pushnew form (nthcdr pos mode-line-format))))
 
 (provide 'project)
 ;;; project.el ends here
