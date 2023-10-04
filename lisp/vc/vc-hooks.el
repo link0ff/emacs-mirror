@@ -743,10 +743,12 @@ Format:
   \"BACKEND?REV\"        if the file is under VC, but is missing
 
 This function assumes that the file is registered."
-  (let* ((backend-name (if-let ((project (and (featurep 'project) ;; use new option here
-                                              (project-current nil))))
-                           (project-name project)
-                         (symbol-name backend)))
+  (let* ((backend-name (symbol-name backend)
+                       ;; (if-let ((project (and (featurep 'project) ;; use new option here
+                       ;;                        (project-current nil))))
+                       ;;     (project-name project)
+                       ;;   (symbol-name backend))
+                       )
 	 (state   (vc-state file backend))
 	 (state-echo nil)
 	 (face nil)

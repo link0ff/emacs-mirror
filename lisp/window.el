@@ -9114,8 +9114,7 @@ to deactivate this overriding action."
 		     (> (minibuffer-depth) minibuffer-depth)
 		     ;; But don't remove immediately after
 		     ;; adding the hook by the same command below.
-		     (eq this-command command)
-		     (eq this-command 'other-project-prefix))
+		     (eq this-command command))
               (funcall exitfun))))
     ;; Call post-function after the next command finishes (bug#49057).
     (add-hook 'post-command-hook postfun)

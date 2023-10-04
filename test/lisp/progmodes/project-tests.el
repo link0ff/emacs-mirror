@@ -42,6 +42,8 @@ quoted directory names (Bug#47799)."
   (ert-with-temp-directory directory
     (let ((default-directory directory)
           (project-current-directory-override t)
+          ;;  TODO: rename 'project-current-directory-old' to 'project-default-directory'
+          ;; (project-current-directory-old directory)
           (project-find-functions nil)
           (project-list-file
            (expand-file-name "projects" directory))

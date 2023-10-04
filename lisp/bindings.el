@@ -682,7 +682,7 @@ By default, this shows the information specified by `global-mode-string'.")
 	     'mode-line-buffer-identification
 	     "   "
 	     'mode-line-position
-	     '(project-mode project-name)
+	     '(project-mode-line project-mode-line-format)
 	     '(vc-mode vc-mode)
 	     "  "
 	     'mode-line-modes
