@@ -2107,7 +2107,9 @@ would otherwise have the same name."
 
 ;;;###autoload
 (defcustom project-mode-line nil
-  "Show the current project name with the menu on the mode line."
+  "Show the current project name with the menu on the mode line.
+This feature requires the presence of the following item in
+`mode-line-format': `(project-mode-line project-mode-line-format)'."
   :type 'boolean
   :group 'project
   :version "30.1")
