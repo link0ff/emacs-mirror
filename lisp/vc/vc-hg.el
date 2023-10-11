@@ -354,8 +354,10 @@ specific file to query."
   (let* ((backend-name "Hg")
          (truename (file-truename file))
          (state (vc-state truename))
-         (state-echo nil)
-         (face nil)
+         (status (vc-mode-line-status state))
+         (state-echo (nth 0 status))
+         (face (nth 1 status))
+         (indicator (nth 2 status))
          (rev (and state
                    (let ((default-directory
                           (expand-file-name (vc-hg-root truename))))
@@ -363,33 +365,10 @@ specific file to query."
                       "."
                       (and vc-hg-use-file-version-for-mode-line-version
                            truename)))))
-         (rev (or rev "???")))
+         (rev (or rev "???"))
+         (state-string (concat backend-name indicator rev)))
     (propertize
-     (cond ((or (eq state 'up-to-date)
-                (eq state 'needs-update))
-            (setq state-echo "Up to date file")
-            (setq face 'vc-up-to-date-state)
-            (concat backend-name "-" rev))
-           ((eq state 'added)
-            (setq state-echo "Locally added file")
-            (setq face 'vc-locally-added-state)
-            (concat backend-name "@" rev))
-           ((eq state 'conflict)
-            (setq state-echo "File contains conflicts after the last merge")
-            (setq face 'vc-conflict-state)
-            (concat backend-name "!" rev))
-           ((eq state 'removed)
-            (setq state-echo "File removed from the VC system")
-            (setq face 'vc-removed-state)
-            (concat backend-name "!" rev))
-           ((eq state 'missing)
-            (setq state-echo "File tracked by the VC system, but missing from the file system")
-            (setq face 'vc-missing-state)
-            (concat backend-name "?" rev))
-           (t
-            (setq state-echo "Locally modified file")
-            (setq face 'vc-edited-state)
-            (concat backend-name ":" rev)))
+     state-string
      'face face
      'help-echo (concat state-echo " under the " backend-name
                         " version control system"))))

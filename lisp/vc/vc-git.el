@@ -416,15 +416,22 @@ in the order given by `git status'."
 
 (defun vc-git-mode-line-string (file)
   "Return a string for `vc-mode-line' to put in the mode line for FILE."
-  (let* ((rev (vc-working-revision file 'Git))
+  (let* ((backend-name "Git")
+         (state (vc-state file))
+         (status (vc-mode-line-status state))
+         (state-echo (nth 0 status))
+         (face (nth 1 status))
+         (indicator (nth 2 status))
+         (rev (vc-working-revision file 'Git))
          (disp-rev (or (vc-git--symbolic-ref file)
                        (and rev (substring rev 0 7))))
-         (def-ml (vc-default-mode-line-string 'Git file))
-         (help-echo (get-text-property 0 'help-echo def-ml))
-         (face   (get-text-property 0 'face def-ml)))
-    (propertize (concat (substring def-ml 0 4) disp-rev)
-                'face face
-                'help-echo (concat help-echo "\nCurrent revision: " rev))))
+         (state-string (concat backend-name indicator disp-rev)))
+    (propertize
+     state-string
+     'face face
+     'help-echo (concat state-echo " under the " backend-name
+                        " version control system"
+                        "\nCurrent revision: " rev))))
 
 (cl-defstruct (vc-git-extra-fileinfo
             (:copier nil)
