@@ -157,9 +157,10 @@ Otherwise, not displayed."
   :group 'vc)
 (make-obsolete-variable 'vc-display-status 'vc-mode-line-format "30.1")
 
-(defcustom vc-mode-line-format '(backend status revision)
+(defcustom vc-mode-line-format (if vc-display-status '(backend status revision) '(backend))
   "What items to display on the mode line.
-Possible values:
+If nil, don't display revision number and lock status in mode line.
+If a list, then possible values for its elements are:
 `project' - the current project name;
 `backend' - backend name;
 `status' - a character that denotes the vc status;
@@ -169,17 +170,18 @@ Possible values:
 `branch' - branch name;
 `separator' - a string between items.
 See more at Info node (emacs) VC Mode Line."
-  :type '(repeat
-          (choice
-           (const :tag "Project name" project)
-           (const :tag "Backend name" backend)
-           (const :tag "Status character" status)
-           (const :tag "Revision number/Lock status" revision)
-           (const :tag "Commit name" commit)
-           (const :tag "Abbreviated commit name" commit-abbr)
-           (const :tag "Branch name" branch)
-           (function :tag "Custom function")
-           (string :tag "Separator")))
+  :type '(choice (const :tag "Don't display status" nil)
+                 (repeat
+                  (choice
+                   (const :tag "Project name" project)
+                   (const :tag "Backend name" backend)
+                   (const :tag "Status character" status)
+                   (const :tag "Revision number/Lock status" revision)
+                   (const :tag "Commit name" commit)
+                   (const :tag "Abbreviated commit name" commit-abbr)
+                   (const :tag "Branch name" branch)
+                   (function :tag "Custom function")
+                   (string :tag "Separator"))))
   :version "30.1"
   :group 'vc)
 
@@ -731,6 +733,9 @@ If BACKEND is passed use it as the VC backend when computing the result."
   (force-mode-line-update)
   backend)
 
+(defun vc-mode-line-status (state)
+  )
+
 (defun vc-default-mode-line-string (backend file)
   "Return a string for `vc-mode-line' to put in the mode line for FILE.
 Format:
@@ -743,12 +748,7 @@ Format:
   \"BACKEND?REV\"        if the file is under VC, but is missing
 
 This function assumes that the file is registered."
-  (let* ((backend-name (symbol-name backend)
-                       ;; (if-let ((project (and (featurep 'project) ;; use new option here
-                       ;;                        (project-current nil))))
-                       ;;     (project-name project)
-                       ;;   (symbol-name backend))
-                       )
+  (let* ((backend-name (symbol-name backend))
 	 (state   (vc-state file backend))
 	 (state-echo nil)
 	 (face nil)
