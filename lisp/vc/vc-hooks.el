@@ -733,7 +733,11 @@ If BACKEND is passed use it as the VC backend when computing the result."
   (force-mode-line-update)
   backend)
 
-(defun vc-mode-line-status (state)
+(defun vc-mode-line-state (state)
+  "Return a list of data to display on the mode line.
+The argument STATE should contains the version control state returned
+from `vc-state'.  The returned list includes three elements: the echo
+string, the face name, and the indicator that usually is one character."
   (let (state-echo face indicator)
     (cond ((or (eq state 'up-to-date)
                (eq state 'needs-update))
@@ -785,19 +789,15 @@ Format:
   \"BACKEND?REV\"        if the file is under VC, but is missing
 
 This function assumes that the file is registered."
-  (let* ((backend-name (symbol-name backend))
-         (state (vc-state file backend))
-         (rev (vc-working-revision file backend))
-         (status (vc-mode-line-status state))
-         (state-echo (nth 0 status))
-         (face (nth 1 status))
-         (indicator (nth 2 status))
-         (state-string (concat backend-name indicator rev)))
-    (propertize
-     state-string
-     'face face
-     'help-echo (concat state-echo " under the " backend-name
-			" version control system"))))
+  (pcase-let* ((backend-name (symbol-name backend))
+               (state (vc-state file backend))
+               (rev (vc-working-revision file backend))
+               (`(,state-echo ,face ,indicator)
+                (vc-mode-line-state state))
+               (state-string (concat backend-name indicator rev)))
+    (propertize state-string 'face face 'help-echo
+                (concat state-echo " under the " backend-name
+                        " version control system"))))
 
 (defun vc-follow-link ()
   "If current buffer visits a symbolic link, visit the real file.

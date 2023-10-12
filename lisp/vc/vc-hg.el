@@ -351,26 +351,22 @@ specific file to query."
 
 (defun vc-hg-mode-line-string (file)
   "Hg-specific version of `vc-mode-line-string'."
-  (let* ((backend-name "Hg")
-         (truename (file-truename file))
-         (state (vc-state truename))
-         (status (vc-mode-line-status state))
-         (state-echo (nth 0 status))
-         (face (nth 1 status))
-         (indicator (nth 2 status))
-         (rev (and state
-                   (let ((default-directory
-                          (expand-file-name (vc-hg-root truename))))
-                     (vc-hg--symbolic-revision
-                      "."
-                      (and vc-hg-use-file-version-for-mode-line-version
-                           truename)))))
-         (rev (or rev "???"))
-         (state-string (concat backend-name indicator rev)))
-    (propertize
-     state-string
-     'face face
-     'help-echo (concat state-echo " under the " backend-name
+  (pcase-let* ((backend-name "Hg")
+               (truename (file-truename file))
+               (state (vc-state truename))
+               (`(,state-echo ,face ,indicator)
+                (vc-mode-line-state state))
+               (rev (and state
+                         (let ((default-directory
+                                (expand-file-name (vc-hg-root truename))))
+                           (vc-hg--symbolic-revision
+                            "."
+                            (and vc-hg-use-file-version-for-mode-line-version
+                                 truename)))))
+               (rev (or rev "???"))
+               (state-string (concat backend-name indicator rev)))
+    (propertize state-string 'face face 'help-echo
+                (concat state-echo " under the " backend-name
                         " version control system"))))
 
 ;;; History functions
