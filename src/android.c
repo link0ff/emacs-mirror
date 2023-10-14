@@ -2320,6 +2320,100 @@ NATIVE_NAME (sendExpose) (JNIEnv *env, jobject object,
 }
 
 JNIEXPORT jboolean JNICALL
+NATIVE_NAME (sendDndDrag) (JNIEnv *env, jobject object,
+			   jshort window, jint x, jint y)
+{
+  JNI_STACK_ALIGNMENT_PROLOGUE;
+
+  union android_event event;
+
+  event.dnd.type = ANDROID_DND_DRAG_EVENT;
+  event.dnd.serial = ++event_serial;
+  event.dnd.window = window;
+  event.dnd.x = x;
+  event.dnd.y = y;
+  event.dnd.uri_or_string = NULL;
+  event.dnd.length = 0;
+
+  android_write_event (&event);
+  return event_serial;
+}
+
+JNIEXPORT jboolean JNICALL
+NATIVE_NAME (sendDndUri) (JNIEnv *env, jobject object,
+			  jshort window, jint x, jint y,
+			  jstring string)
+{
+  JNI_STACK_ALIGNMENT_PROLOGUE;
+
+  union android_event event;
+  const jchar *characters;
+  jsize length;
+  uint16_t *buffer;
+
+  event.dnd.type = ANDROID_DND_URI_EVENT;
+  event.dnd.serial = ++event_serial;
+  event.dnd.window = window;
+  event.dnd.x = x;
+  event.dnd.y = y;
+
+  length = (*env)->GetStringLength (env, string);
+  buffer = malloc (length * sizeof *buffer);
+  characters = (*env)->GetStringChars (env, string, NULL);
+
+  if (!characters)
+    /* The JVM has run out of memory; return and let the out of memory
+       error take its course.  */
+    return 0;
+
+  memcpy (buffer, characters, length * sizeof *buffer);
+  (*env)->ReleaseStringChars (env, string, characters);
+
+  event.dnd.uri_or_string = buffer;
+  event.dnd.length = length;
+
+  android_write_event (&event);
+  return event_serial;
+}
+
+JNIEXPORT jboolean JNICALL
+NATIVE_NAME (sendDndText) (JNIEnv *env, jobject object,
+			   jshort window, jint x, jint y,
+			   jstring string)
+{
+  JNI_STACK_ALIGNMENT_PROLOGUE;
+
+  union android_event event;
+  const jchar *characters;
+  jsize length;
+  uint16_t *buffer;
+
+  event.dnd.type = ANDROID_DND_TEXT_EVENT;
+  event.dnd.serial = ++event_serial;
+  event.dnd.window = window;
+  event.dnd.x = x;
+  event.dnd.y = y;
+
+  length = (*env)->GetStringLength (env, string);
+  buffer = malloc (length * sizeof *buffer);
+  characters = (*env)->GetStringChars (env, string, NULL);
+
+  if (!characters)
+    /* The JVM has run out of memory; return and let the out of memory
+       error take its course.  */
+    return 0;
+
+  memcpy (buffer, characters, length * sizeof *buffer);
+  (*env)->ReleaseStringChars (env, string, characters);
+
+  event.dnd.uri_or_string = buffer;
+  event.dnd.length = length;
+
+  android_write_event (&event);
+  return event_serial;
+}
+
+JNIEXPORT jboolean JNICALL
 NATIVE_NAME (shouldForwardMultimediaButtons) (JNIEnv *env,
 					      jobject object)
 {
@@ -5542,22 +5636,40 @@ android_toggle_on_screen_keyboard (android_window window, bool show)
 
 
 
+#if defined __clang_major__ && __clang_major__ < 5
+# define HAS_BUILTIN_TRAP 0
+#elif 3 < __GNUC__ + (3 < __GNUC_MINOR__ + (4 <= __GNUC_PATCHLEVEL__))
+# define HAS_BUILTIN_TRAP 1
+#elif defined __has_builtin
+# define HAS_BUILTIN_TRAP __has_builtin (__builtin_trap)
+#else /* !__has_builtin */
+# define HAS_BUILTIN_TRAP 0
+#endif /* defined __clang_major__ && __clang_major__ < 5 */
+
 /* emacs_abort implementation for Android.  This logs a stack
    trace.  */
 
 void
 emacs_abort (void)
 {
+#ifndef HAS_BUILTIN_TRAP
   volatile char *foo;
+#endif /* !HAS_BUILTIN_TRAP */
 
   __android_log_print (ANDROID_LOG_FATAL, __func__,
-		       "emacs_abort called, please review the ensuing"
+		       "emacs_abort called, please review the following"
 		       " stack trace");
 
-  /* Cause a NULL pointer dereference to make debuggerd generate a
+#ifndef HAS_BUILTIN_TRAP
+  /* Induce a NULL pointer dereference to make debuggerd generate a
      tombstone.  */
   foo = NULL;
   *foo = '\0';
+#else /* HAS_BUILTIN_TRAP */
+  /* Crash through __builtin_trap instead.  This appears to more
+     uniformly elicit crash reports from debuggerd.  */
+  __builtin_trap ();
+#endif /* !HAS_BUILTIN_TRAP */
 
   abort ();
 }

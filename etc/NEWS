@@ -796,6 +796,13 @@ which makes them visually distinct from subroutine prototypes.
 CPerl mode supports the new keywords for exception handling and the
 object oriented syntax which were added in Perl 5.36 and 5.38.
 
+*** New user option 'cperl-fontify-trailer'.
+This user option takes the values "perl-code" or "comment" and treats
+text after an "__END__" or "__DATA__" token accordingly.  The default
+value of "perl-code" is useful for trailing POD and for AutoSplit
+modules, the value "comment" makes cperl-mode treat trailers as
+comment, like perl-mode does.
+
 ** Emacs Sessions (Desktop)
 
 +++
@@ -1015,10 +1022,13 @@ The compatibility aliases 'x-defined-colors', 'x-color-defined-p',
 ** 'easy-mmode-define-{minor,global}-mode' aliases are now obsolete.
 Use 'define-minor-mode' and 'define-globalized-minor-mode' instead.
 
+** The obsolete calling convention of 'sit-for' has been removed.
+That convention was: (sit-for SECONDS MILLISEC &optional NODISP)
+
 
 * Lisp Changes in Emacs 30.1
 
-** New function 're--describe-compiled' to see the innards of a regexp.
+** New function 're-disassemble' to see the innards of a regexp.
 If you compiled with '--enable-checking', you can use this to help debug
 either your regexp performance problems or the regexp engine.
 
@@ -1265,6 +1275,10 @@ name 'ignored-return-value'.
 
 The warning will only be issued for calls to functions declared
 'important-return-value' or 'side-effect-free' (but not 'error-free').
+
+---
+*** The warning about wide docstrings can now be disabled separately.
+Its warning name is 'docstrings-wide'.
 
 +++
 ** New function declaration and property 'important-return-value'.
