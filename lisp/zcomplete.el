@@ -285,7 +285,7 @@ See `zcomplete-mode' and `minibuffer-setup-hook'."
                 (> (- (point) (zcomplete--field-beg))
                    zcomplete-max-delay-chars)
                 ;; Don't delay if the completions are known.
-                completion-all-sorted-completions
+                ;; UNUSED: completion-all-sorted-completions
                 ;; Don't delay if alternatives number is small enough:
                 (and (sequencep (zcomplete--completion-table))
                      (< (length (zcomplete--completion-table))

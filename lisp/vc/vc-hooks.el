@@ -735,7 +735,7 @@ If BACKEND is passed use it as the VC backend when computing the result."
 
 (defun vc-mode-line-state (state)
   "Return a list of data to display on the mode line.
-The argument STATE should contains the version control state returned
+The argument STATE should contain the version control state returned
 from `vc-state'.  The returned list includes three elements: the echo
 string, the face name, and the indicator that usually is one character."
   (let (state-echo face indicator)
