@@ -895,6 +895,17 @@ DIRS must contain directory names."
         (call-interactively cmd)
       (user-error "%s is undefined" (key-description key)))))
 
+(defun project--other-place-prefix (place &optional extra-keymap)
+  (cl-assert (member place '(window frame tab)))
+  (prefix-command-preserve-state)
+  (let ((inhibit-message t)) (funcall (intern (format "other-%s-prefix" place))))
+  (message "Display next project command buffer in a new %s..." place)
+  ;; Should return exitfun from set-transient-map
+  (set-transient-map (if extra-keymap
+                         (make-composed-keymap project-prefix-map
+                                               extra-keymap)
+                       project-prefix-map)))
+
 ;;;###autoload
 (defun project-other-window-command ()
   "Run project command, displaying resultant buffer in another window.
@@ -908,14 +919,8 @@ The following commands are available:
       (project--other-place-command '((display-buffer-pop-up-window)
                                       (inhibit-same-window . t))
                                     project-other-window-map)
-    (prefix-command-preserve-state)
-    (let ((inhibit-message t)) (other-window-prefix))
-    (message "Display next project command buffer in a new window...")
-    ;; Should return exitfun from set-transient-map
-    (set-transient-map (make-composed-keymap project-prefix-map
-                                             project-other-window-map))))
+    (project--other-place-prefix 'window project-other-window-map)))
 
-;; TODO: maybe rename to project-other-window-prefix
 ;;;###autoload (define-key ctl-x-4-map "p" #'project-other-window-command)
 
 ;;;###autoload
@@ -930,12 +935,7 @@ The following commands are available:
   (if (< emacs-major-version 30)
       (project--other-place-command '((display-buffer-pop-up-frame))
                                     project-other-frame-map)
-    (prefix-command-preserve-state)
-    (let ((inhibit-message t)) (other-frame-prefix))
-    (message "Display next project command buffer in a new frame...")
-    ;; Should return exitfun from set-transient-map
-    (set-transient-map (make-composed-keymap project-prefix-map
-                                             project-other-frame-map))))
+    (project--other-place-prefix 'frame project-other-frame-map)))
 
 ;;;###autoload (define-key ctl-x-5-map "p" #'project-other-frame-command)
 
@@ -949,11 +949,7 @@ The following commands are available:
   (interactive)
   (if (< emacs-major-version 30)
       (project--other-place-command '((display-buffer-in-new-tab)))
-    (prefix-command-preserve-state)
-    (let ((inhibit-message t)) (other-tab-prefix))
-    (message "Display next project command buffer in a new tab...")
-    ;; Should return exitfun from set-transient-map
-    (set-transient-map project-prefix-map)))
+    (project--other-place-prefix 'tab)))
 
 ;;;###autoload
 (when (bound-and-true-p tab-prefix-map)
