@@ -197,14 +197,6 @@ CL struct.")
   "Value to use instead of `default-directory' when detecting the project.
 When it is non-nil, `project-current' will always skip prompting too.")
 
-(defvar-local project-default-directory nil
-  "Value to use instead of `default-directory' when detecting the project.
-For the next command after switching the project, this buffer-local
-variable contains the original value of `default-directory'.
-Whereas the buffer-local `default-directory' is temporarily set
-to the root directory of the switched project.
-When it is non-nil, `project-current' will always skip prompting too.")
-
 (defcustom project-prompter #'project-prompt-project-dir
   "Function to call to prompt for a project.
 Called with no arguments and should return a project root dir."
@@ -240,8 +232,7 @@ of the project instance object."
   (let ((pr (project--find-in-directory directory)))
     (cond
      (pr)
-     ((unless (or project-current-directory-override
-                  project-default-directory)
+     ((unless project-current-directory-override
         maybe-prompt)
       (setq directory (funcall project-prompter)
             pr (project--find-in-directory directory))))
@@ -406,10 +397,8 @@ the buffer's value of `default-directory'."
   (let ((root (expand-file-name (file-name-as-directory (project-root project))))
         bufs)
     (dolist (buf (buffer-list))
-      (when (string-prefix-p
-             root (expand-file-name
-                   (or (buffer-local-value 'project-default-directory buf)
-                       (buffer-local-value 'default-directory buf))))
+      (when (string-prefix-p root (expand-file-name
+                                   (buffer-local-value 'default-directory buf)))
         (push buf bufs)))
     (nreverse bufs)))
 
@@ -824,9 +813,7 @@ DIRS must contain directory names."
          dd
          bufs)
     (dolist (buf (buffer-list))
-      (setq dd (expand-file-name
-                (or (buffer-local-value 'project-default-directory buf)
-                    (buffer-local-value 'default-directory buf))))
+      (setq dd (expand-file-name (buffer-local-value 'default-directory buf)))
       (when (and (string-prefix-p root dd)
                  (not (cl-find-if (lambda (module) (string-prefix-p module dd))
                                   modules)))
@@ -855,9 +842,7 @@ DIRS must contain directory names."
     (define-key map "c" 'project-compile)
     (define-key map "e" 'project-eshell)
     (define-key map "k" 'project-kill-buffers)
-    (define-key map "p" (if (< emacs-major-version 30)
-                            'project-switch-project
-                          'other-project-prefix))
+    (define-key map "p" 'project-switch-project)
     (define-key map "g" 'project-find-regexp)
     (define-key map "G" 'project-or-external-find-regexp)
     (define-key map "r" 'project-query-replace-regexp)
@@ -1032,16 +1017,14 @@ pattern to search for."
   "Ensure FILENAME is in PROJECT.
 
 Usually, just return FILENAME.  But if
-`project-default-directory' is set, adjust it to be
+`project-current-directory-override' is set, adjust it to be
 relative to PROJECT instead.
 
 This supports using a relative file name from the current buffer
 when switching projects with `project-switch-project' and then
 using a command like `project-find-file'."
-  (if-let (filename-proj (or (and project-current-directory-override
-                                  (project-current nil default-directory))
-                             (and project-default-directory
-                                  (project-current nil project-default-directory))))
+  (if-let (filename-proj (and project-current-directory-override
+                            (project-current nil default-directory)))
       ;; file-name-concat requires Emacs 28+
       (concat (file-name-as-directory (project-root project))
               (file-relative-name filename (project-root filename-proj)))
@@ -2026,61 +2009,6 @@ to directory DIR."
                    (project--switch-project-command))))
     (let ((project-current-directory-override dir))
       (call-interactively command))))
-
-;;;###autoload
-(defun other-project-prefix (dir)
-  "\"Switch\" to another project before running an Emacs command.
-The available commands are presented as a dispatch menu
-made from `project-switch-commands'.
-
-When called in a program, it will use the project corresponding
-to directory DIR."
-  (interactive (list (funcall project-prompter)))
-  (if (symbolp project-switch-commands)
-      (let* ((project-default-directory default-directory)
-             (default-directory dir))
-        (call-interactively project-switch-commands))
-    (prefix-command-preserve-state)
-    (letrec ((minibuffer-depth (minibuffer-depth))
-             (command this-command)
-             (old-buffer (current-buffer))
-             (echofun (lambda () "[switch-project]"))
-             (postfun
-              (lambda ()
-                (unless (or (eq this-command command)
-                            (> (minibuffer-depth) minibuffer-depth))
-                  (remove-hook 'post-command-hook postfun)
-                  (remove-hook 'prefix-command-echo-keystrokes-functions
-                               echofun)
-                  (when (buffer-live-p old-buffer)
-                    (with-current-buffer old-buffer
-                      (when project-default-directory
-                        (setq-local default-directory project-default-directory)
-                        (kill-local-variable 'project-default-directory))))))))
-      (add-hook 'post-command-hook postfun)
-      (add-hook 'prefix-command-echo-keystrokes-functions echofun)
-      (setq-local project-default-directory default-directory)
-      (setq-local default-directory dir)
-      (message (concat (project--keymap-prompt) " or any global key."))
-      (let ((map (make-sparse-keymap)))
-        (if project-switch-use-entire-map
-            (set-keymap-parent map project-prefix-map)
-          (dolist (row project-switch-commands map)
-            (when-let* ((cmd (nth 0 row))
-                        (key (if (nth 2 row)
-                                 (vector (nth 2 row))
-                               (where-is-internal
-                                cmd (list project-prefix-map) t))))
-              (define-key map key cmd))))
-;; Unfortunately, this will disable global help commands like 'C-h v':
-;;         (define-key map (vector help-char)
-;;                     (lambda ()
-;;                       (interactive)
-;;                       (let ((help-form "\
-;; You can use any global keybinding."))
-;;                         (help-form-show))))
-        ;; Should return exitfun from set-transient-map
-        (set-transient-map map)))))
 
 ;;;###autoload
 (defun project-uniquify-dirname-transform (dirname)
