@@ -40,7 +40,6 @@
 ;;; Code:
 
 (require 'comint)
-(require 'cl-macs)
 
 (defvar gdb-active-process)
 (defvar gdb-define-alist)
@@ -3863,11 +3862,9 @@ so they have been disabled."))
 (defvar gud-lldb-history nil)
 
 (defcustom gud-gud-lldb-command-name "lldb"
-  "Default command to run an executable under LLDB."
-  :type 'string)
-
-(cl-defun gud-lldb-stop (&key file line column)
-  (setq gud-last-frame (list file line column)))
+  "Default command to invoke LLDB in order to debug a program with it."
+  :type 'string
+  :version "30.1")
 
 (defun gud-lldb-marker-filter (string)
   "Deduce interesting stuff from process output STRING."
@@ -3876,8 +3873,13 @@ so they have been disabled."))
    ((string-match (rx line-start (0+ blank) "gud-info:" (0+ blank)
                       (group "(" (1+ (not ")")) ")"))
                   string)
-    (let ((form (string-replace "///" "\"" (match-string 1 string))))
-      (eval (car (read-from-string form)))))
+    (let* ((form (string-replace "///" "\"" (match-string 1 string)))
+           (form (car (read-from-string form))))
+      (when (eq (car form) 'gud-lldb-stop)
+        (let ((plist (cdr form)))
+          (setq gud-last-frame (list (plist-get plist :file)
+                                     (plist-get plist :line)
+                                     (plist-get plist :column)))))))
    ;; Process 72874 exited with status = 9 (0x00000009) killed.
    ;; Doesn't seem to be changeable as of LLDB 17.0.2.
     ((string-match (rx "Process " (1+ digit) " exited with status")
@@ -3906,7 +3908,8 @@ so they have been disabled."))
 
 (defcustom gud-lldb-max-completions 20
   "Maximum number of completions to request from LLDB."
-  :type 'integer)
+  :type 'integer
+  :version "30.1")
 
 (defvar gud-lldb-def-python-completion-function
   "
@@ -3914,19 +3917,21 @@ def gud_complete(s, max):
     interpreter = lldb.debugger.GetCommandInterpreter()
     string_list = lldb.SBStringList()
     interpreter.HandleCompletion(s, len(s), len(s), max, string_list)
-    print('gud-completions: (')
+    print('gud-completions: ##(')
     # Specifying a max count doesn't seem to work in LLDB 17.
     max = min(max, string_list.GetSize())
     for i in range(max):
         print(f'\"{string_list.GetStringAtIndex(i)}\" ')
-    print(')')
+    print(')##')
 "
   "LLDB Python function for completion.")
 
 (defun gud-lldb-fetch-completions (context command)
   "Return the data to complete the LLDB command before point.
 This is what the Python function we installed at initialzation
-time returns, as a Lisp list."
+time returns, as a Lisp list.
+Maximum number of completions requested from LLDB is controlled
+by `gud-lldb-max-completions', which see."
   (let* ((process (get-buffer-process gud-comint-buffer))
          (to-complete (concat context command))
          (output-buffer (get-buffer-create "*lldb-completions*")))
@@ -3940,12 +3945,12 @@ time returns, as a Lisp list."
     ;; Wait for output
     (unwind-protect
         (while (not comint-redirect-completed)
-          (accept-process-output process))
+          (accept-process-output process 2))
       (comint-redirect-cleanup))
     ;; Process the completion output.
     (with-current-buffer output-buffer
       (goto-char (point-min))
-      (when (search-forward "gud-completions:" nil t)
+      (when (search-forward "gud-completions: ##" nil t)
         (read (current-buffer))))))
 
 (defun gud-lldb-completions (context command)
@@ -3995,20 +4000,26 @@ time returns, as a Lisp list."
 
 ;;;###autoload
 (defun lldb (command-line)
-  "Run lldb passing it COMMAND-LINE as arguments.
-If COMMAND-LINE names a program FILE to debug, lldb will run in
+  "Run LLDB passing it COMMAND-LINE as arguments.
+If COMMAND-LINE names a program FILE to debug, LLDB will run in
 a buffer named *gud-FILE*, and the directory containing FILE
 becomes the initial working directory and source-file directory
-for your debugger.  If you don't want `default-directory' to
+for the debug session.  If you don't want `default-directory' to
 change to the directory of FILE, specify FILE without leading
 directories, in which case FILE should reside either in the
 directory of the buffer from which this command is invoked, or
 it can be found by searching PATH.
 
-If COMMAND-LINE requests that lldb attaches to a process PID, lldb
+If COMMAND-LINE requests that LLDB attaches to a process PID, LLDB
 will run in *gud-PID*, otherwise it will run in *gud*; in these
 cases the initial working directory is the `default-directory' of
-the buffer in which this command was invoked."
+the buffer in which this command was invoked.
+
+Please note that completion framework that complete while you
+type, like Corfu, do not work well with this mode.  You should
+consider to turn them off in this mode.
+
+This command runs functions from `lldb-mode-hook'. "
   (interactive (list (gud-query-cmdline 'lldb)))
 
   (when (and gud-comint-buffer
