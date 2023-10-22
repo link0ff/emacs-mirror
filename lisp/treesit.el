@@ -32,9 +32,8 @@
 
 ;;; Code:
 
-(eval-when-compile (require 'cl-lib))
 (eval-when-compile (require 'subr-x)) ; For `string-join'.
-(require 'cl-seq)
+(require 'cl-lib)
 (require 'font-lock)
 (require 'seq)
 
@@ -893,6 +892,8 @@ Other keywords include:
              `append'   Append the new face to existing ones.
              `prepend'  Prepend the new face to existing ones.
              `keep'     Fill-in regions without an existing face.
+  :default-language  LANGUAGE  Every QUERY after this keyword
+                               will use LANGUAGE by default.
 
 Capture names in QUERY should be face names like
 `font-lock-keyword-face'.  The captured node will be fontified
@@ -2143,7 +2144,7 @@ If LANGUAGE is nil, return the first definition for THING in
                                     (copy-tree (cdr entry)))
                                   treesit-thing-settings)))))
 
-(defalias 'treesit-thing-defined-p 'treesit-thing-definition
+(defalias 'treesit-thing-defined-p #'treesit-thing-definition
   "Return non-nil if THING is defined.")
 
 (defun treesit-beginning-of-thing (thing &optional arg tactic)
