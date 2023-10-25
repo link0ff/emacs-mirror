@@ -4053,10 +4053,20 @@ under X, and @xref{Other Selections} for those elsewhere.
 @end defun
 
 @defopt selection-coding-system
-This variable specifies the coding system to use when reading and
-writing selections or the clipboard.  @xref{Coding
-Systems}.  The default is @code{compound-text-with-extensions}, which
-converts to the text representation that X11 normally uses.
+This variable provides a coding system (@pxref{Coding Systems}) which
+is used to encode selection data, and takes effect on MS-DOS,
+MS-Windows and X@.
+
+Under MS-DOS and MS-Windows, it is the coding system by which all
+clipboard text will be encoded and decoded, whereas on X it merely
+supplies the EOL format of the selection text sent in response to a
+request for text encoded by a matching coding system; which is to say
+that if its value is @code{utf-8-dos}, it will influence requests for
+@code{UTF8_STRING} data, but not those for @code{STRING}.
+
+Its default value is the system code page under MS-Windows 95, 98 or
+Me, @code{utf-16le-dos} under NT/W2K/XP, @code{iso-latin-1-dos} on
+MS-DOS, and @code{nil} elsewhere.
 @end defopt
 
 For backward compatibility, there are obsolete aliases
@@ -4660,10 +4670,17 @@ startup (@emph{not} a timestamp), and that for the other is a vector
 of available selection data types, as elsewhere.
 
 @cindex Android selections
-  Under Android, @code{gui-get-selection} is capable of returning
-UTF-8 string data of the type @code{STRING}, or image and application
-data associated with a MIME type.  @code{gui-set-selection} will only
-set string data, as on MS-Windows.
+  Much like MS-Windows, Android provides a clipboard but no primary or
+secondary selection; @code{gui-set-selection} simulates the primary
+selection by saving the value supplied into a variable subsequent
+calls to @code{gui-get-selection} return.
+
+  From the clipboard, @code{gui-get-selection} is capable of returning
+UTF-8 string data of the type @code{STRING}, the @code{TAREGTS} data
+type, or image and application data of any MIME type.
+@code{gui-set-selection} sets only string data, much as under
+MS-Windows, although this data is not affected by the value of
+@code{selection-coding-system}.
 
 @node Yanking Media
 @section Yanking Media
@@ -4810,10 +4827,10 @@ selection name such as @code{UTF8_STRING}.
 @cindex direct save protocol
 @vindex x-dnd-direct-save-function
   The X Direct Save (@acronym{XDS}) protocol enables programs to
-devolve responsibility for naming a dropped file file upon the
-recipient.  When such a drop transpires, DND handlers and the
-foregoing X-specific interface are largely circumvented, tasking a
-different function with responding to the drop.
+devolve responsibility for naming a dropped file upon the recipient.
+When such a drop transpires, DND handlers and the foregoing X-specific
+interface are largely circumvented, tasking a different function with
+responding to the drop.
 
 @defvar x-dnd-direct-save-function
 This variable should be set to a function that registers and names
@@ -4876,30 +4893,30 @@ default directory.)
 
 @cindex initiating drag-and-drop
   It is also possible to drag content from Emacs to other programs
-whenever this is supported for the current window-system.  The
-functions which provide for this are as follows:
+when this is supported by the current window-system.  The functions
+which provide for this are as follows:
 
 @cindex drop target, in drag-and-drop operations
 @defun dnd-begin-text-drag text &optional frame action allow-same-frame
-This function commences a drag-and-drop operation from @var{frame} to
+This function starts a drag-and-drop operation from @var{frame} to
 another program (dubbed the @dfn{drop target}), and returns when
 @var{text} is dropped or the operation is canceled.
 
 @var{action} must be one of the symbols @code{copy} or @code{move},
 where @code{copy} means that @var{text} should be inserted by the drop
-target, and @code{move} means the same as @code{copy}, but furthermore
-enjoins the caller to delete @var{text} from its source as explained
-in the list below.
+target, and @code{move} means the same as @code{copy}, but the caller
+must also delete @var{text} from its source as explained in the list
+below.
 
 @var{frame} is the frame where the mouse is currently held down, or
 @code{nil}, which means to use the selected frame.  Since this
-function is liable to return promptly if no mouse buttons are held
-down, it should be only called in response to a @code{down-mouse-1} or
+function might return promptly if no mouse buttons are held down, it
+should be only called in response to a @code{down-mouse-1} or
 analogous event (@pxref{Mouse Events}), with @var{frame} set to the
 frame where that event was generated (@pxref{Click Events}).
 
 If @var{allow-same-frame} is @code{nil}, drops on top of @var{frame}
-will be disregarded.
+will be ignored.
 
 The return value reflects the action that the drop target actually
 performed, and thus also what action, if any, the caller should in
@@ -4924,7 +4941,7 @@ The drag-and-drop operation was canceled.
 @end defun
 
 @defun dnd-begin-file-drag file &optional frame action allow-same-frame
-This function commences a drag-and-drop operation from @var{frame} to
+This function starts a drag-and-drop operation from @var{frame} to
 another program (dubbed the @dfn{drop target}), and returns when
 @var{file} is dropped or the operation is canceled.
 
