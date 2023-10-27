@@ -60,8 +60,12 @@ The frame is displayed on a GNUstep or Macintosh Cocoa graphical
 terminal.
 @item pc
 The frame is displayed on an MS-DOS terminal.
+@item haiku
+The frame is displayed using the Haiku Application Kit.
 @item pgtk
 The frame is displayed using pure GTK facilities.
+@item android
+The frame is displayed on an Android device.
 @end table
 @end defun
 
@@ -224,8 +228,8 @@ The terminal and keyboard coding systems used on the terminal.
 @item
 The kind of display associated with the terminal.  This is the symbol
 returned by the function @code{terminal-live-p} (i.e., @code{x},
-@code{t}, @code{w32}, @code{ns}, @code{pc}, @code{haiku}, or @code{pgtk}).
-@xref{Frames}.
+@code{t}, @code{w32}, @code{ns}, @code{pc}, @code{haiku}, @code{pgtk},
+or @code{android}).  @xref{Frames}.
 
 @item
 A list of terminal parameters.  @xref{Terminal Parameters}.
@@ -4058,11 +4062,12 @@ is used to encode selection data, and takes effect on MS-DOS,
 MS-Windows and X@.
 
 Under MS-DOS and MS-Windows, it is the coding system by which all
-clipboard text will be encoded and decoded, whereas on X it merely
-supplies the EOL format of the selection text sent in response to a
-request for text encoded by a matching coding system; which is to say
-that if its value is @code{utf-8-dos}, it will influence requests for
-@code{UTF8_STRING} data, but not those for @code{STRING}.
+non-ASCII clipboard text will be encoded and decoded; if set under X,
+it provides the coding system calls to @code{gui-get-selection} will
+decode selection data for a subset of text data types by, and also
+forces replies to selection requests for the polymorphic @code{TEXT}
+data type to be encoded by the @code{compound-text-with-extensions}
+coding system rather than Unicode.
 
 Its default value is the system code page under MS-Windows 95, 98 or
 Me, @code{utf-16le-dos} under NT/W2K/XP, @code{iso-latin-1-dos} on
@@ -4154,12 +4159,12 @@ format and data type to convert the data transferred by the selection
 owner to a Lisp representation, which @code{gui-get-selection}
 returns.
 
-  By default, Emacs converts selection data consisting of any series
-of bytes to a unibyte string holding those bytes, that consisting of a
-single 16-bit or 32-bit word as an unsigned number, and that
-consisting of multiple such words as a vector of unsigned numbers.
-However, Emacs applies special treatment for data from the following
-conversion targets:
+  Emacs converts selection data consisting of any series of bytes to a
+unibyte string holding those bytes, that consisting of a single 16-bit
+or 32-bit word as an unsigned number, and that consisting of multiple
+such words as a vector of unsigned numbers.  The exceptions to this
+general pattern are that Emacs applies special treatment for data from
+the following conversion targets:
 
 @table @code
 @item INTEGER
@@ -4384,8 +4389,8 @@ This selection converter returns selection data as:
 @itemize @bullet
 @item
 A string of type @code{C_STRING}, if the selection contents contain no
-multibyte characters, or contains 8-bit characters with all 8 bits
-set.
+multibyte characters, or contain ``raw 8-bit bytes'' (@pxref{Text
+Representations}).
 
 @item
 A string of type @code{STRING}, if the selection contents can be
@@ -4723,9 +4728,9 @@ seldom consistent medley of data types.
 @cindex drag and drop
 
   Data transferred by drag and drop is generally either plain text or
-a URL designating a file or another resource.  When text is dropped,
-it is inserted at the location of the drop, with recourse to saving it
-into the kill ring if that is not possible.
+a list of URLs designating files or other resources.  When text is
+dropped, it is inserted at the location of the drop, with recourse to
+saving it into the kill ring if that is not possible.
 
   URLs dropped are supplied to pertinent @dfn{DND handler functions}
 in the variable @code{dnd-protocol-alist}, or alternatively ``URL
@@ -4739,9 +4744,14 @@ This variable is an alist between regexps against which URLs are
 matched and DND handler functions called on the dropping of matching
 URLs.
 
-Each handler function is called with the URL that matched it and one
-of the symbols @code{copy}, @code{move}, @code{link}, @code{private}
-or @code{ask} identifying the action to be taken.
+@cindex dnd-multiple-handler, a symbol property
+If a handler function is a symbol whose @code{dnd-multiple-handler}
+property (@pxref{Symbol Properties}) is set, then upon a drop it is
+given a list of every URL that matches its regexp; absent this
+property, it is called once for each of those URLs.  Following this
+first argument is one of the symbols @code{copy}, @code{move},
+@code{link}, @code{private} or @code{ask} identifying the action to be
+taken.
 
 If @var{action} is @code{private}, the program that initiated the drop
 does not insist on any particular behavior on the part of its
@@ -4749,19 +4759,29 @@ recipient; a reasonable action to take in that case is to open the URL
 or copy its contents into the current buffer.  The other values of
 @var{action} imply much the same as in the @var{action} argument to
 @code{dnd-begin-file-drag}.
+
+Once its work completes, a handler function must return a symbol
+designating the action it took: either the action it was provided, or
+the symbol @code{private}, which communicates to the source of the
+drop that the action it prescribed has not been executed.
+
+When multiple handlers match an overlapping subset of items within a
+drop, the handler matched against by the greatest number of items is
+called to open that subset.  The items it is supplied are subsequently
+withheld from other handlers, even those they also match.
 @end defvar
 
 @cindex drag and drop, X
 @cindex drag and drop, other formats
-  Emacs does not take measures to accept data besides text and URLs by
-default, for the window system interfaces which enable this are too
-far removed from each other to abstract over consistently.  Nor are
-DND handlers accorded the capacity to influence the action they are
-meant to take, as particular drag-and-drop protocols deny recipients
-such control.  The X11 drag-and-drop implementation rests on several
-underlying protocols that make use of selection transfer and share
-much in common, to which low level access is provided through the
-following functions and variables:
+  Emacs does not take measures to accept data besides text and URLs,
+for the window system interfaces which enable this are too far removed
+from each other to abstract over consistently.  Nor are DND handlers
+accorded influence over the actions they are meant to take, as
+particular drag-and-drop protocols deny recipients such control.  The
+X11 drag-and-drop implementation rests on several underlying protocols
+that make use of selection transfer and share much in common, to which
+low level access is provided through the following functions and
+variables:
 
 @defvar x-dnd-test-function
 This function is called to ascertain whether Emacs should accept a
