@@ -155,35 +155,7 @@ visited and a warning displayed."
 Otherwise, not displayed."
   :type 'boolean
   :group 'vc)
-(make-obsolete-variable 'vc-display-status 'vc-mode-line-format "30.1")
 
-(defcustom vc-mode-line-format (if vc-display-status '(backend status revision) '(backend))
-  "What items to display on the mode line.
-If nil, don't display revision number and lock status in mode line.
-If a list, then possible values for its elements are:
-`project' - the current project name;
-`backend' - backend name;
-`status' - a character that denotes the vc status;
-`revision' - revision number and/or lock status;
-`commit' - commit name;
-`commit-abbr' - abbreviated commit name;
-`branch' - branch name;
-`separator' - a string between items.
-See more at Info node (emacs) VC Mode Line."
-  :type '(choice (const :tag "Don't display status" nil)
-                 (repeat
-                  (choice
-                   (const :tag "Project name" project)
-                   (const :tag "Backend name" backend)
-                   (const :tag "Status character" status)
-                   (const :tag "Revision number/Lock status" revision)
-                   (const :tag "Commit name" commit)
-                   (const :tag "Abbreviated commit name" commit-abbr)
-                   (const :tag "Branch name" branch)
-                   (function :tag "Custom function")
-                   (string :tag "Separator"))))
-  :version "30.1"
-  :group 'vc)
 
 (defcustom vc-consult-headers t
   "If non-nil, identify work files by searching for version headers."
