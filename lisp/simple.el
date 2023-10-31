@@ -10042,9 +10042,10 @@ Also see the `completion-auto-wrap' variable."
           (progn
             (goto-char pos)
             (unless (get-text-property (point) 'mouse-face)
-              (goto-char (previous-single-property-change (point) 'mouse-face))))
+              (goto-char (previous-single-property-change
+                          (point) 'mouse-face nil (point-min)))))
         (cond ((> n 0) (setq n (1- n)) (first-completion))
-              ((< n 0) (setq n (1+ n)) (last-completion)))))
+              ((< n 0) (first-completion)))))
 
     (while (> n 0)
       (setq pos nil column (current-column) line (line-number-at-pos))
