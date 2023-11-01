@@ -2661,11 +2661,13 @@ Also respects the obsolete wrapper hook `completion-in-region-functions'.
   ;; completion-at-point called directly.
   "M-?" #'completion-help-at-point
   "TAB" #'completion-at-point
-  "M-<left>"  #'minibuffer-previous-completion
-  "M-<right>" #'minibuffer-next-completion
-  "M-<up>"    #'minibuffer-previous-line-completion
-  "M-<down>"  #'minibuffer-next-line-completion
-  "M-RET"     #'minibuffer-choose-completion)
+  ;; "M-<left>"  #'minibuffer-previous-completion
+  ;; "M-<right>" #'minibuffer-next-completion
+  ;; "M-<up>"    #'minibuffer-previous-line-completion
+  ;; "M-<down>"  #'minibuffer-next-line-completion
+  "M-<up>"   #'minibuffer-previous-completion
+  "M-<down>" #'minibuffer-next-completion
+  "M-RET"    #'minibuffer-choose-completion)
 
 ;; It is difficult to know when to exit completion-in-region-mode (i.e. hide
 ;; the *Completions*).  Here's how previous packages did it:
@@ -2714,8 +2716,14 @@ Also respects the obsolete wrapper hook `completion-in-region-functions'.
 	  completion-in-region-mode-predicate)
     (setq-local minibuffer-completion-auto-choose nil)
     (add-hook 'post-command-hook #'completion-in-region--postch)
-    (push `(completion-in-region-mode . ,completion-in-region-mode-map)
-          minor-mode-overriding-map-alist)))
+    (let* ((keymap completion-in-region-mode-map)
+           (keymap (if minibuffer-completion-visible
+                       (make-composed-keymap
+                        (list minibuffer-local-visible-completion-map
+                              keymap))
+                     keymap)))
+      (push `(completion-in-region-mode . ,keymap)
+            minor-mode-overriding-map-alist))))
 
 ;; Define-minor-mode added our keymap to minor-mode-map-alist, but we want it
 ;; on minor-mode-overriding-map-alist instead.
@@ -2875,10 +2883,12 @@ The completion method is determined by `completion-at-point-functions'."
   "<prior>"   #'switch-to-completions
   "M-v"       #'switch-to-completions
   "M-g M-c"   #'switch-to-completions
-  "M-<left>"  #'minibuffer-previous-completion
-  "M-<right>" #'minibuffer-next-completion
-  "M-<up>"    #'minibuffer-previous-line-completion
-  "M-<down>"  #'minibuffer-next-line-completion
+  ;; "M-<left>"  #'minibuffer-previous-completion
+  ;; "M-<right>" #'minibuffer-next-completion
+  ;; "M-<up>"    #'minibuffer-previous-line-completion
+  ;; "M-<down>"  #'minibuffer-next-line-completion
+  "M-<up>"    #'minibuffer-previous-completion
+  "M-<down>"  #'minibuffer-next-completion
   "M-RET"     #'minibuffer-choose-completion)
 
 (defvar-keymap minibuffer-local-must-match-map
@@ -2962,7 +2972,39 @@ the mode hook of this mode."
   :interactive nil
   ;; Enable text conversion, but always make sure `RET' does
   ;; something.
-  (setq text-conversion-style 'action))
+  (setq text-conversion-style 'action)
+  (when minibuffer-completion-visible
+    (setq-local minibuffer-completion-auto-choose nil)))
+
+(defcustom minibuffer-completion-visible t
+  "Non-nil means to navigate completions from the minibuffer."
+  :type 'boolean
+  :version "30.1")
+
+(defun minibuffer-bind-visible (binding)
+  `(menu-item
+    "" ,binding
+    :filter ,(lambda (cmd)
+               (when (get-buffer-window "*Completions*" 0)
+                 cmd))))
+
+(defvar-keymap minibuffer-local-visible-completion-map
+  :doc "Local keymap for minibuffer input with visible completions."
+  "<remap> <exit-minibuffer>"              (minibuffer-bind-visible #'minibuffer-choose-completion)
+  "<remap> <minibuffer-complete-and-exit>" (minibuffer-bind-visible #'minibuffer-choose-completion)
+  "<remap> <minibuffer-keyboard-quit>"     (minibuffer-bind-visible #'minibuffer-hide-completions)
+  "<remap> <abort-minibuffers>"            (minibuffer-bind-visible #'minibuffer-hide-completions)
+
+  "<left>"  (minibuffer-bind-visible #'minibuffer-previous-completion)
+  "<right>" (minibuffer-bind-visible #'minibuffer-next-completion)
+  "<up>"    (minibuffer-bind-visible #'minibuffer-previous-line-completion)
+  "<down>"  (minibuffer-bind-visible #'minibuffer-next-line-completion)
+
+  ;; "<home>"    (minibuffer-bind-visible #'minibuffer-first-completion)
+  ;; "<end>"     (minibuffer-bind-visible #'minibuffer-last-completion)
+  ;; "<next>"    (minibuffer-bind-visible #'scroll-other-window)
+  ;; "<prior>"   (minibuffer-bind-visible #'scroll-other-window-down)
+  )
 
 ;;; Completion tables.
 
@@ -4379,6 +4421,11 @@ See `completing-read' for the meaning of the arguments."
                     ;; in minibuffer-local-filename-completion-map can
                     ;; override bindings in base-keymap.
                     base-keymap)))
+         (keymap (if minibuffer-completion-visible
+                     (make-composed-keymap
+                      (list minibuffer-local-visible-completion-map
+                            keymap))
+                   keymap))
          (buffer (current-buffer))
          (c-i-c completion-ignore-case)
          (result
@@ -4509,7 +4556,7 @@ insert the selected completion to the minibuffer."
       (when completions-highlight-face
         (setq-local cursor-face-highlight-nonselected-window t))
       (if vertical
-          (next-completion (or n 1))
+          (next-line-completion (or n 1))
         (next-completion (or n 1)))
       (when auto-choose
         (let ((completion-use-base-affixes t))
