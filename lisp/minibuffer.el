@@ -2990,15 +2990,12 @@ the mode hook of this mode."
 
 (defvar-keymap minibuffer-local-visible-completion-map
   :doc "Local keymap for minibuffer input with visible completions."
-  "<remap> <exit-minibuffer>"              (minibuffer-bind-visible #'minibuffer-choose-completion)
-  "<remap> <minibuffer-complete-and-exit>" (minibuffer-bind-visible #'minibuffer-choose-completion)
-  "<remap> <minibuffer-keyboard-quit>"     (minibuffer-bind-visible #'minibuffer-hide-completions)
-  "<remap> <abort-minibuffers>"            (minibuffer-bind-visible #'minibuffer-hide-completions)
-
   "<left>"  (minibuffer-bind-visible #'minibuffer-previous-completion)
   "<right>" (minibuffer-bind-visible #'minibuffer-next-completion)
   "<up>"    (minibuffer-bind-visible #'minibuffer-previous-line-completion)
   "<down>"  (minibuffer-bind-visible #'minibuffer-next-line-completion)
+  "RET"     (minibuffer-bind-visible #'minibuffer-choose-completion)
+  "C-g"     (minibuffer-bind-visible #'minibuffer-hide-completions)
 
   ;; "<home>"    (minibuffer-bind-visible #'minibuffer-first-completion)
   ;; "<end>"     (minibuffer-bind-visible #'minibuffer-last-completion)
