@@ -2977,7 +2977,9 @@ the mode hook of this mode."
     (setq-local minibuffer-completion-auto-choose nil)))
 
 (defcustom minibuffer-completion-visible t
-  "Non-nil means to navigate completions from the minibuffer."
+  "Non-nil means to navigate completions with arrows from the minibuffer.
+This has effect only when the window with the *Completions* buffer
+is visible on the screen."
   :type 'boolean
   :version "30.1")
 

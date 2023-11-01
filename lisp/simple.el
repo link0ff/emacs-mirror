@@ -2994,6 +2994,11 @@ the end of the list of defaults just after the default value."
 	(all (all-completions ""
 			      minibuffer-completion-table
 			      minibuffer-completion-predicate)))
+    (when (eq minibuffer-completion-table 'help--symbol-completion-table)
+      (setq all (pcase completions-sort
+		  ('nil all)
+		  ('alphabetical (sort all #'string-lessp))
+		  (_ (funcall completions-sort all)))))
     (if (listp def)
 	(append def all)
       (cons def (delete def all)))))
