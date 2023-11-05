@@ -2968,12 +2968,12 @@ the mode hook of this mode."
   (when minibuffer-visible-completions
     (setq-local minibuffer-completion-auto-choose nil)))
 
-(defcustom minibuffer-visible-completions t
+(defcustom minibuffer-visible-completions nil
   "When non-nil, visible completions can be navigated from the minibuffer.
 This means that when the *Completions* buffer is visible in a window,
 then you can use the arrow keys in the minibuffer to move the cursor
 in the *Completions* buffer.  Then you can type `RET',
-and the candidate highlighted the *Completions* buffer
+and the candidate highlighted in the *Completions* buffer
 will be accepted.
 But when the *Completions* buffer is not displayed on the screen,
 then the arrow keys move point in the minibuffer as usual, and
@@ -2988,12 +2988,10 @@ displaying the *Completions* buffer exists."
   `(menu-item
     "" ,binding
     :filter ,(lambda (cmd)
-               ;; For `M-x TAB C-h v down RET' -> (error "Minibuffer is not active for completion"),
-               ;; so logic like in `choose-completion-string':
                (when-let ((window (get-buffer-window "*Completions*" 0)))
                  (when (eq (buffer-local-value 'completion-reference-buffer
                                                (window-buffer window))
-			   (window-buffer (active-minibuffer-window)))
+                           (window-buffer (active-minibuffer-window)))
                    cmd)))))
 
 (defvar-keymap minibuffer-visible-completions-map
@@ -3005,6 +3003,7 @@ displaying the *Completions* buffer exists."
   "RET"     (minibuffer-visible-completions-bind #'minibuffer-choose-completion)
   "C-g"     (minibuffer-visible-completions-bind #'minibuffer-hide-completions))
 
+
 ;;; Completion tables.
 
 (defun minibuffer--double-dollars (str)
