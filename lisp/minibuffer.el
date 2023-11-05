@@ -2661,10 +2661,6 @@ Also respects the obsolete wrapper hook `completion-in-region-functions'.
   ;; completion-at-point called directly.
   "M-?" #'completion-help-at-point
   "TAB" #'completion-at-point
-  ;; "M-<left>"  #'minibuffer-previous-completion
-  ;; "M-<right>" #'minibuffer-next-completion
-  ;; "M-<up>"    #'minibuffer-previous-line-completion
-  ;; "M-<down>"  #'minibuffer-next-line-completion
   "M-<up>"   #'minibuffer-previous-completion
   "M-<down>" #'minibuffer-next-completion
   "M-RET"    #'minibuffer-choose-completion)
@@ -2883,10 +2879,6 @@ The completion method is determined by `completion-at-point-functions'."
   "<prior>"   #'switch-to-completions
   "M-v"       #'switch-to-completions
   "M-g M-c"   #'switch-to-completions
-  ;; "M-<left>"  #'minibuffer-previous-completion
-  ;; "M-<right>" #'minibuffer-next-completion
-  ;; "M-<up>"    #'minibuffer-previous-line-completion
-  ;; "M-<down>"  #'minibuffer-next-line-completion
   "M-<up>"    #'minibuffer-previous-completion
   "M-<down>"  #'minibuffer-next-completion
   "M-RET"     #'minibuffer-choose-completion)
@@ -2980,12 +2972,12 @@ the mode hook of this mode."
   "When non-nil, visible completions can be navigated from the minibuffer.
 This means that when the *Completions* buffer is visible in a window,
 then you can use the arrow keys in the minibuffer to move the cursor
-in the *Completions* buffer.  Then you can type 'RET',
+in the *Completions* buffer.  Then you can type `RET',
 and the candidate highlighted the *Completions* buffer
 will be accepted.
 But when the *Completions* buffer is not displayed on the screen,
 then the arrow keys move point in the minibuffer as usual, and
-'RET' accepts the input typed in the minibuffer."
+`RET' accepts the input typed in the minibuffer."
   :type 'boolean
   :version "30.1")
 
@@ -2996,8 +2988,13 @@ displaying the *Completions* buffer exists."
   `(menu-item
     "" ,binding
     :filter ,(lambda (cmd)
-               (when (get-buffer-window "*Completions*" 0)
-                 cmd))))
+               ;; For `M-x TAB C-h v down RET' -> (error "Minibuffer is not active for completion"),
+               ;; so logic like in `choose-completion-string':
+               (when-let ((window (get-buffer-window "*Completions*" 0)))
+                 (when (eq (buffer-local-value 'completion-reference-buffer
+                                               (window-buffer window))
+			   (window-buffer (active-minibuffer-window)))
+                   cmd)))))
 
 (defvar-keymap minibuffer-visible-completions-map
   :doc "Local keymap for minibuffer input with visible completions."
@@ -3006,13 +3003,7 @@ displaying the *Completions* buffer exists."
   "<up>"    (minibuffer-visible-completions-bind #'minibuffer-previous-line-completion)
   "<down>"  (minibuffer-visible-completions-bind #'minibuffer-next-line-completion)
   "RET"     (minibuffer-visible-completions-bind #'minibuffer-choose-completion)
-  "C-g"     (minibuffer-visible-completions-bind #'minibuffer-hide-completions)
-
-  ;; "<home>"    (minibuffer-visible-completions-bind #'minibuffer-first-completion)
-  ;; "<end>"     (minibuffer-visible-completions-bind #'minibuffer-last-completion)
-  ;; "<next>"    (minibuffer-visible-completions-bind #'scroll-other-window)
-  ;; "<prior>"   (minibuffer-visible-completions-bind #'scroll-other-window-down)
-)
+  "C-g"     (minibuffer-visible-completions-bind #'minibuffer-hide-completions))
 
 ;;; Completion tables.
 
