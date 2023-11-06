@@ -10050,10 +10050,10 @@ Also see the `completion-auto-wrap' variable."
 
     (while (> n 0)
       (setq found nil pos nil column (current-column) line (line-number-at-pos))
-      (while (not (or found
-                      (not (eq (forward-line 1) 0))
-                      (eobp)
-                      (not (eq (move-to-column column) column))))
+      (while (and (not found)
+                  (eq (forward-line 1) 0)
+                  (not (eobp))
+                  (eq (move-to-column column) column))
         (when (get-text-property (point) 'mouse-face)
           (setq found t)))
       (when (and (not found) completion-auto-wrap)
@@ -10072,9 +10072,9 @@ Also see the `completion-auto-wrap' variable."
 
     (while (< n 0)
       (setq found nil pos nil column (current-column) line (line-number-at-pos))
-      (while (not (or found
-                      (not (eq (forward-line -1) 0))
-                      (not (eq (move-to-column column) column))))
+      (while (and (not found)
+                  (eq (forward-line -1) 0)
+                  (eq (move-to-column column) column))
         (when (get-text-property (point) 'mouse-face)
           (setq found t)))
       (when (and (not found) completion-auto-wrap)
