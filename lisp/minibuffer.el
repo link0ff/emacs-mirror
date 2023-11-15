@@ -4727,13 +4727,23 @@ instead of the default completion table."
                       history)
             (user-error "No history available"))))
     ;; FIXME: Can we make it work for CRM?
-    (completion-in-region
-     (minibuffer--completion-prompt-end) (point-max)
-     (lambda (string pred action)
-       (if (eq action 'metadata)
-           '(metadata (display-sort-function . identity)
-                      (cycle-sort-function . identity))
-         (complete-with-action action completions string pred))))))
+    (let* ((start (minibuffer--completion-prompt-end))
+           (end (point-max))
+           (collection
+            (lambda (string pred action)
+              (if (eq action 'metadata)
+                  '(metadata (display-sort-function . identity)
+                             (cycle-sort-function . identity))
+                (complete-with-action action completions string pred))))
+           (minibuffer-completion-table collection)
+           (completion-in-region-mode-predicate
+            (lambda () (get-buffer-window "*Completions*" 0))))
+      (setq completion-in-region--data
+            `(,(copy-marker start) ,(copy-marker end t)
+              ,collection nil))
+      (completion-in-region start end collection)
+      ;; (completion-in-region-mode 1)
+      )))
 
 (defun minibuffer-complete-defaults ()
   "Complete minibuffer defaults as far as possible.
