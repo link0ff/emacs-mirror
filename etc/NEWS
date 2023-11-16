@@ -1099,6 +1099,9 @@ showcases all their customization options.
 
 * Incompatible Lisp Changes in Emacs 30.1
 
+** 'pp' and 'pp-to-string' now always include a terminating newline.
+In the past they included a terminating newline in most cases but not all.
+
 ** 'buffer-match-p' and 'match-buffers' take '&rest args'.
 They used to take a single '&optional arg' and were documented to use
 an unreliable hack to try and support condition predicates that
@@ -1195,6 +1198,18 @@ values.
 
 
 * Lisp Changes in Emacs 30.1
+
+** New function 'merge-ordered-lists'.
+Mostly used internally to do a kind of topological sort of
+inheritance hierarchies.
+
+** New API to control the graph of major modes.
+While 'define-derived-mode' still only support single inheritance,
+modes can declare additional parents (for tests like 'derived-mode-p')
+with `derived-mode-add-parents`.
+Accessing the 'derived-mode-parent' property directly is now
+deprecated in favor of the new functions 'derived-mode-set-parent'
+and 'derived-mode-all-parents'.
 
 +++
 ** Drag-and-drop functions can now be called once for compound drops.
