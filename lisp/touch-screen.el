@@ -908,16 +908,17 @@ text scale by the ratio therein."
   (require 'face-remap)
   (let* ((posn (cadr event))
          (window (posn-window posn))
-         (current-scale (if text-scale-mode
-                            text-scale-mode-amount
-                          0))
-         (start-scale (or (aref touch-screen-aux-tool 7)
-                          (aset touch-screen-aux-tool 7
-                                current-scale)))
          (scale (nth 2 event))
-         (ratio-diff (nth 5 event)))
+         (ratio-diff (nth 5 event))
+         current-scale start-scale)
     (when (windowp window)
       (with-selected-window window
+        (setq current-scale (if text-scale-mode
+                                text-scale-mode-amount
+                              0)
+              start-scale (or (aref touch-screen-aux-tool 7)
+                              (aset touch-screen-aux-tool 7
+                                    current-scale)))
         ;; Set the text scale.
         (text-scale-set (+ start-scale
                            (round (log scale text-scale-mode-step))))
@@ -925,7 +926,8 @@ text scale by the ratio therein."
         ;; position.
         (if (and (not (eq current-scale
                           text-scale-mode-amount))
-                 (posn-point posn))
+                 (posn-point posn)
+                 (cdr (posn-x-y posn)))
             (touch-screen-scroll-point-to-y (posn-point posn)
                                             (cdr (posn-x-y posn)))
           ;; Rather than scroll POSN's point to its old row, scroll the
@@ -1056,25 +1058,12 @@ then move point to the position of POINT."
     (cond ((or (null what)
                (eq what 'ancillary-tool))
            (let* ((last-posn (nth 2 touch-screen-current-tool))
-                  (original-posn (nth 4 touch-screen-current-tool))
-                  (col (and (not (posn-area original-posn))
-                            (car (posn-col-row original-posn
-                                               (posn-window posn)))))
-                  ;; Don't start horizontal scrolling if the touch
-                  ;; point originated within two columns of the window
-                  ;; edges, as systems like Android use those two
-                  ;; columns to implement gesture navigation.
-                  (diff-x-eligible
-                   (and col (> col 2)
-                        (< col (- (window-width window) 2))))
                   (diff-x (- (car last-posn) (car relative-xy)))
                   (diff-y (- (cdr last-posn) (cdr relative-xy))))
              (when (or (> diff-y 10)
-                       (and diff-x-eligible
-                            (> diff-x (frame-char-width)))
+                       (> diff-x (frame-char-width))
                        (< diff-y -10)
-                       (and diff-x-eligible
-                            (< diff-x (- (frame-char-width)))))
+                       (< diff-x (- (frame-char-width))))
                (setcar (nthcdr 3 touch-screen-current-tool)
                        'scroll)
                (setcar (nthcdr 2 touch-screen-current-tool)
@@ -1224,11 +1213,22 @@ last such event."
             (throw 'input-event (list 'touchscreen-pinch
                                       (if (or (<= (car centrum) 0)
                                               (<= (cdr centrum) 0))
-                                          (list window centrum nil nil nil
-                                                nil nil nil)
-                                        (posn-at-x-y (car centrum)
-                                                     (cdr centrum)
-                                                     window))
+                                          (list window nil centrum nil nil
+                                                nil nil nil nil nil)
+                                        (let ((posn (posn-at-x-y (car centrum)
+                                                                 (cdr centrum)
+                                                                 window)))
+                                          (if (eq (posn-window posn)
+                                                  window)
+                                              posn
+                                            ;; Return a placeholder
+                                            ;; outside the window if
+                                            ;; the centrum has moved
+                                            ;; beyond the confines of
+                                            ;; the window where the
+                                            ;; gesture commenced.
+                                            (list window nil centrum nil nil
+                                                  nil nil nil nil nil))))
                                       ratio
                                       (- (car centrum)
                                          (car initial-centrum))
