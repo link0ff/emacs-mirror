@@ -763,22 +763,6 @@ with a prefix argument."
 
 ;;; Shell commands
 
-(declare-function mailcap-file-default-commands "mailcap" (files))
-
-(defvar dired-aux-files)
-
-(defun dired-minibuffer-default-add-shell-commands ()
-  "Return a list of all commands associated with current Dired files.
-This function is used to add all related commands retrieved by `mailcap'
-to the end of the list of defaults just after the default value."
-  (interactive)
-  (let ((commands (and (boundp 'dired-aux-files)
-		       (require 'mailcap nil t)
-		       (mailcap-file-default-commands dired-aux-files))))
-    (if (listp minibuffer-default)
-	(append minibuffer-default commands)
-      (cons minibuffer-default commands))))
-
 ;; This is an extra function so that you can redefine it, e.g., to use gmhist.
 (defun dired-read-shell-command (prompt arg files)
   "Read a Dired shell command.
@@ -789,14 +773,9 @@ file names.  The result is used as the prompt.
 
 Use `dired-guess-shell-command' to offer a smarter default choice
 of shell command."
-  (minibuffer-with-setup-hook
-      (lambda ()
-	(setq-local dired-aux-files files)
-	(setq-local minibuffer-default-add-function
-                    #'dired-minibuffer-default-add-shell-commands))
-    (setq prompt (format prompt (dired-mark-prompt arg files)))
-    (dired-mark-pop-up nil 'shell files
-                       'dired-guess-shell-command prompt files)))
+  (setq prompt (format prompt (dired-mark-prompt arg files)))
+  (dired-mark-pop-up nil 'shell files
+                     'dired-guess-shell-command prompt files))
 
 ;;;###autoload
 (defcustom dired-confirm-shell-command t
@@ -1316,7 +1295,7 @@ See `dired-guess-shell-alist-user'."
 ;;;###autoload
 (defun dired-guess-shell-command (prompt files)
   "Ask user with PROMPT for a shell command, guessing a default from FILES."
-  (let ((default (dired-guess-default files))
+  (let ((default (shell-command-guess files))
         default-list val)
     (if (null default)
         ;; Nothing to guess
@@ -3855,9 +3834,6 @@ case, the VERBOSE argument is ignored."
       (when (and state (not (eq state 'unregistered)))
         (setq model (vc-checkout-model backend only-files-list))))
     (list backend files only-files-list state model)))
-
-(define-obsolete-function-alias 'minibuffer-default-add-dired-shell-commands
-  #'dired-minibuffer-default-add-shell-commands "29.1")
 
 
 (provide 'dired-aux)
