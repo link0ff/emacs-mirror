@@ -499,7 +499,8 @@ to nil: a pipe using `zcat' or `gunzip -c' will be used."
 
 (defcustom dired-movement-style nil
   "Non-nil means point skips empty lines when moving in Dired buffers.
-This affects only `dired-next-line' and `dired-previous-line'.
+This affects only `dired-next-line', `dired-previous-line',
+`dired-next-dirline', `dired-prev-dirline'.
 
 Possible non-nil values:
  * `cycle':   when moving from the last/first visible line, cycle back
@@ -2780,14 +2781,20 @@ is controlled by `dired-movement-style'."
       (error "No more subdirectories"))))
 
 (defun dired-next-dirline (arg &optional _opoint)
-  "Goto ARGth next directory file line."
+  "Goto ARGth next directory file line.
+
+Whether to skip empty lines and how to move from last line
+is controlled by `dired-movement-style'."
   (interactive "p" dired-mode)
   (if dired-movement-style
       (dired--move-to-next-line arg #'dired--trivial-next-dirline)
     (dired--trivial-next-dirline arg)))
 
 (defun dired-prev-dirline (arg)
-  "Goto ARGth previous directory file line."
+  "Goto ARGth previous directory file line.
+
+Whether to skip empty lines and how to move from last line
+is controlled by `dired-movement-style'."
   (interactive "p" dired-mode)
   (dired-next-dirline (- arg)))
 
