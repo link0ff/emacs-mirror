@@ -2595,8 +2595,6 @@ Do so according to the former subdir alist OLD-SUBDIR-ALIST."
   "Populate MENU with Dired mode commands at CLICK."
   (when (mouse-posn-property (event-start click) 'dired-filename)
     (define-key menu [dired-separator] menu-bar-separator)
-    (require 'mailcap)
-    (require 'xdg)
     (let* ((filename (save-excursion
                        (mouse-set-point click)
                        (dired-get-filename nil t)))

@@ -1327,15 +1327,19 @@ and should return the same list of commands with changes
 such as added new commands."
   :type '(repeat
           (choice (function-item shell-command-guess-dired)
-                  (function-item shell-command-guess-xdg)
                   (function-item shell-command-guess-mailcap)
+                  (function-item shell-command-guess-xdg)
                   (function :tag "Custom function")))
   :group 'dired
   :version "30.1")
 
 ;;;###autoload
 (defun shell-command-guess (files)
-  "Return a list of shell commands, appropriate for FILES."
+  "Return a list of shell commands, appropriate for FILES.
+The list is populated by calling functions from
+`shell-command-guess-functions'.  Each function receives the list
+of commands and the list of file names and returns the same list
+after adding own commands to the composite list."
   (let ((commands nil))
     (run-hook-wrapped 'shell-command-guess-functions
                       (lambda (fun)
@@ -1343,23 +1347,23 @@ such as added new commands."
                         nil))
     commands))
 
+(defun shell-command-guess-dired (commands files)
+  "Populate COMMANDS using `dired-guess-default'."
+  (require 'dired-aux)
+  (append (ensure-list (dired-guess-default files)) commands))
+
 (declare-function mailcap-file-default-commands "mailcap" (files))
 
 (defun shell-command-guess-mailcap (commands files)
+  "Populate COMMANDS by MIME types of FILES."
   (require 'mailcap)
   (append (mailcap-file-default-commands files) commands))
-
-(declare-function dired-get-filename "dired" (&optional localp no-error-if-not-filep))
-(declare-function dired-guess-default "dired-aux" (files))
-
-(defun shell-command-guess-dired (commands files)
-  (require 'dired-aux)
-  (append (ensure-list (dired-guess-default files)) commands))
 
 (declare-function xdg-mime-apps "xdg" (mime))
 (declare-function xdg-desktop-read-file "xdg" (filename &optional group))
 
 (defun shell-command-guess-xdg (commands files)
+  "Populate COMMANDS by XDG configuration for FILES."
   (require 'xdg)
   (let* ((xdg-mime (when (executable-find "xdg-mime")
                      (string-trim-right
