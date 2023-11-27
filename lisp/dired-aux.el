@@ -1319,6 +1319,64 @@ See `dired-guess-shell-alist-user'."
       ;; If we got a return, then return default.
       (if (equal val "") default val))))
 
+(defcustom shell-command-guess-functions
+  '(shell-command-guess-dired)
+  "List of functions that guess shell commands for files.
+Each function receives a list of commands and a list of file names
+and should return the same list of commands with changes
+such as added new commands."
+  :type '(repeat
+          (choice (function-item shell-command-guess-dired)
+                  (function-item shell-command-guess-xdg)
+                  (function-item shell-command-guess-mailcap)
+                  (function :tag "Custom function")))
+  :group 'dired
+  :version "30.1")
+
+;;;###autoload
+(defun shell-command-guess (files)
+  "Return a list of shell commands, appropriate for FILES."
+  (let ((commands nil))
+    (run-hook-wrapped 'shell-command-guess-functions
+                      (lambda (fun)
+                        (setq commands (funcall fun commands files))
+                        nil))
+    commands))
+
+(declare-function mailcap-file-default-commands "mailcap" (files))
+
+(defun shell-command-guess-mailcap (commands files)
+  (require 'mailcap)
+  (append (mailcap-file-default-commands files) commands))
+
+(declare-function dired-get-filename "dired" (&optional localp no-error-if-not-filep))
+(declare-function dired-guess-default "dired-aux" (files))
+
+(defun shell-command-guess-dired (commands files)
+  (require 'dired-aux)
+  (append (ensure-list (dired-guess-default files)) commands))
+
+(declare-function xdg-mime-apps "xdg" (mime))
+(declare-function xdg-desktop-read-file "xdg" (filename &optional group))
+
+(defun shell-command-guess-xdg (commands files)
+  (require 'xdg)
+  (let* ((xdg-mime (when (executable-find "xdg-mime")
+                     (string-trim-right
+                      (shell-command-to-string
+                       (concat "xdg-mime query filetype " (car files))))))
+         (xdg-mime-apps (unless (string-empty-p xdg-mime)
+                          (xdg-mime-apps xdg-mime)))
+         (xdg-commands
+          (mapcar (lambda (desktop)
+                    (setq desktop (xdg-desktop-read-file desktop))
+                    (propertize
+                     (replace-regexp-in-string
+                      " .*" "" (gethash "Exec" desktop))
+                     'name (gethash "Name" desktop)))
+                  xdg-mime-apps)))
+    (append xdg-commands commands)))
+
 
 ;;; Commands that delete or redisplay part of the dired buffer
 
