@@ -1349,7 +1349,6 @@ after adding own commands to the composite list."
 
 (defun shell-command-guess-dired (commands files)
   "Populate COMMANDS using `dired-guess-default'."
-  (require 'dired-aux)
   (append (ensure-list (dired-guess-default files)) commands))
 
 (declare-function mailcap-file-default-commands "mailcap" (files))
