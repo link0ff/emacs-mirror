@@ -791,6 +791,7 @@ definitions that aren't listed in VARIABLES."
     (setq variables (nreverse existing-variables)))
   (connection-local-set-profile-variables profile variables))
 
+;;;###autoload
 (defun hack-connection-local-variables (criteria)
   "Read connection-local variables according to CRITERIA.
 Store the connection-local variables in buffer local
@@ -928,8 +929,10 @@ earlier in the `setq-connection-local'.  The return value of the
 ;;;###autoload
 (defmacro connection-local-value (variable &optional application)
   "Return connection-local VARIABLE for APPLICATION in `default-directory'.
-If VARIABLE does not have a connection-local binding, the value
-is the default binding of the variable."
+If APPLICATION is nil, the value of
+`connection-local-default-application' is used.
+If VARIABLE does not have a connection-local binding, the return
+value is the default binding of the variable."
   (unless (symbolp variable)
     (signal 'wrong-type-argument (list 'symbolp variable)))
   `(let (connection-local-variables-alist file-local-variables-alist)

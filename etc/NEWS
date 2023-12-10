@@ -517,6 +517,10 @@ marked or clicked on files according to the OS conventions.  For
 example, on systems supporting XDG, this runs 'xdg-open' on the
 files.
 
++++
+*** 'dired-listing-switches' handles connection-local values if exist.
+This allows to customize different switches for different remote machines.
+
 ** Ediff
 
 ---
@@ -1220,7 +1224,7 @@ This user option has been obsoleted in Emacs 27, use
 ---
 ** User options 'eshell-NAME-unload-hook' are now obsolete.
 These hooks were named incorrectly, and so they never actually ran
-when unloading the correspending feature.  Instead, you should use
+when unloading the corresponding feature.  Instead, you should use
 hooks named after the feature name, like 'esh-mode-unload-hook'.
 
 +++
