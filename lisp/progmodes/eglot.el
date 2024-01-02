@@ -1,6 +1,6 @@
 ;;; eglot.el --- The Emacs Client for LSP servers  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2018-2023 Free Software Foundation, Inc.
+;; Copyright (C) 2018-2024 Free Software Foundation, Inc.
 
 ;; Version: 1.16
 ;; Author: João Távora <joaotavora@gmail.com>
@@ -3649,7 +3649,8 @@ at point.  With prefix argument, prompt for ACTION-KIND."
          ;; Redo filtering, in case the `:only' didn't go through.
          (actions (cl-loop for a across actions
                            when (or (not action-kind)
-                                    (equal action-kind (plist-get a :kind)))
+                                    ;; github#847
+                                    (string-prefix-p action-kind (plist-get a :kind)))
                            collect a)))
     (if interactive
         (eglot--read-execute-code-action actions server action-kind)

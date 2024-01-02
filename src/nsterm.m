@@ -1,6 +1,6 @@
 /* NeXT/Open/GNUstep / macOS communication module.      -*- coding: utf-8 -*-
 
-Copyright (C) 1989, 1993-1994, 2005-2006, 2008-2023 Free Software
+Copyright (C) 1989, 1993-1994, 2005-2006, 2008-2024 Free Software
 Foundation, Inc.
 
 This file is part of GNU Emacs.
@@ -5265,11 +5265,8 @@ ns_initialize_display_info (struct ns_display_info *dpyinfo)
     NSScreen *screen = [NSScreen mainScreen];
     NSWindowDepth depth = [screen depth];
 
-    NSDictionary *dict = [screen deviceDescription];
-    NSSize res = [[dict objectForKey:@"NSDeviceResolution"] sizeValue];
-    dpyinfo->resx = res.width;
-    dpyinfo->resy = res.height;
-
+    dpyinfo->resx = 72.27; /* used 75.0, but this makes pt == pixel, expected */
+    dpyinfo->resy = 72.27;
     dpyinfo->color_p = ![NSDeviceWhiteColorSpace isEqualToString:
                                                   NSColorSpaceFromDepth (depth)]
                 && ![NSCalibratedWhiteColorSpace isEqualToString:

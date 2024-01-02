@@ -1,6 +1,6 @@
 ;;; erc-goodies.el --- Collection of ERC modules  -*- lexical-binding: t; -*-
 
-;; Copyright (C) 2001-2023 Free Software Foundation, Inc.
+;; Copyright (C) 2001-2024 Free Software Foundation, Inc.
 
 ;; Author: Jorgen Schaefer <forcer@forcix.cx>
 ;; Maintainer: Amin Bandali <bandali@gnu.org>, F. Jason Park <jp@neverwas.me>
@@ -471,8 +471,7 @@ For use with `keep-place-indicator' module."
     ;; if `switch-to-buffer-preserve-window-point' is set,
     ;; we cannot rely on point being saved, and must commit
     ;; it to window-prev-buffers.
-    (when (and switch-to-buffer-preserve-window-point
-               (not erc-keep-place-indicator-mode))
+    (when switch-to-buffer-preserve-window-point
       (dolist (frame (frame-list))
         (walk-window-tree
          (lambda (window)
