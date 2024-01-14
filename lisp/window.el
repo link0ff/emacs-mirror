@@ -7859,13 +7859,14 @@ specified by the ACTION argument."
         (setq window (funcall (car functions) buffer alist)
               functions (cdr functions)))
       (when-let ((select-window (assq 'select-window alist)))
-        (letrec ((postfun
+        (letrec ((old-selected-window (selected-window))
+                 (postfun
                   (lambda ()
                     (if (cdr select-window)
                         (when (window-live-p window)
                           (select-window window))
-                      (when (window-live-p (old-selected-window))
-                        (select-window (old-selected-window))))
+                      (when (window-live-p old-selected-window)
+                        (select-window old-selected-window)))
                     (remove-hook 'post-command-hook postfun))))
           (add-hook 'post-command-hook postfun)))
       (and (windowp window) window))))
