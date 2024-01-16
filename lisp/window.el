@@ -7809,7 +7809,8 @@ Action alist entries are:
     means that if functions like `pop-to-buffer' selected another window,
     at the end of this command that window will be deselected, and the
     window that was selected before calling this function will remain
-    selected.
+    selected regardless of which windows were selected afterwards within
+    this command.
 
 The entries `window-height', `window-width', `window-size' and
 `preserve-size' are applied only when the window used for
