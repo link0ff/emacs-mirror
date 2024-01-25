@@ -2817,7 +2817,8 @@ is controlled by `dired-movement-style'."
     (dired--trivial-next-line arg)))
 
 (defun dired--move-to-next-line (arg jumpfun)
-  (let ((old-position (progn
+  (let ((cycled nil)
+        (old-position (progn
                         ;; It's always true that we should move
                         ;; to the filename when possible.
                         (dired-move-to-filename)
@@ -2827,7 +2828,7 @@ is controlled by `dired-movement-style'."
                          1              ; means Down.
                        -1)))            ; means Up.
     ;; Line by line in case we forget to skip empty lines.
-    (while (not (zerop arg))
+    (while (and (not cycled) (not (zerop arg)))
       (funcall jumpfun moving-down)
       (when (= old-position (point))
         ;; Now point is at beginning/end of movable area,
@@ -2838,8 +2839,11 @@ is controlled by `dired-movement-style'."
                            (point-min)
                          (point-max)))
           ;; `bounded': go back to the last non-empty line.
-          (while (dired-between-files)
-            (funcall jumpfun (- moving-down)))
+          (while (and (not cycled) (dired-between-files))
+            (funcall jumpfun (- moving-down))
+            (if (= old-position (point))
+                (setq cycled t)
+              (setq old-position (point))))
           ;; Encountered a boundary, so let's stop movement.
           (setq arg moving-down)))
       (unless (dired-between-files)
