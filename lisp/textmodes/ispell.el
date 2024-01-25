@@ -2769,7 +2769,7 @@ Optional third arg SHIFT is an offset to apply based on previous corrections."
    ((equal 0 (string-match "[\ra-zA-Z]" output))
     (ding)				; error message from ispell!
     (message "Ispell error: %s" output)
-    (sit-for 1)
+    (sit-for 5)
     nil)
    (t					; need to process &, ?, and #'s
     (let ((type (aref output 0))	; &, ?, or #
