@@ -2852,9 +2852,9 @@ is controlled by `dired-movement-style'."
             ;; Point not moving means infinite loop.
             (if (= old-position (point))
                 (setq arg 0)
-              (setq old-position (point)))))
-         ;; Encountered a boundary, so let's stop movement.
-         (setq arg (if (dired-between-files) 0 moving-down))))
+              (setq old-position (point))))
+          ;; Encountered a boundary, so let's stop movement.
+          (setq arg (if (dired-between-files) 0 moving-down)))))
       (unless (dired-between-files)
         ;; Has moved to a non-empty line.  This movement does
         ;; make sense.
