@@ -2839,95 +2839,44 @@ ENTRY.  MARKER marks the start of each tree-sitter node."
 ;;; Outline minor mode
 
 (defvar-local treesit-outline-predicate nil
-  "Predicate used to find outline headings in a sparse tree.
+  "Predicate used to find outline headings in the syntax tree.
 Intended to be set by a major mode.  When nil, the predicate
 is constructed from the value of `treesit-simple-imenu-settings'
 when a major mode sets it.")
 
-(defvar-local treesit-outline-levels nil
-  "Holds a cached structure that corresponds to the outline tree.
-It's a list of (MARKER . LEVEL) where MARKER is a position of the
-beginning of the outline heading, and LEVEL is its depth in the
-outline tree.")
-
-(defun treesit-outline-levels (node level)
-  "Given a sparse tree, return a list for `treesit-outline-levels'."
-  (let* ((ts-node (car node))
-         (children (cdr node))
-         (subtrees (mapcan (lambda (node)
-                             (treesit-outline-levels node (1+ level)))
-                           children))
-         (marker (when ts-node
-                   (set-marker (make-marker)
-                               (save-excursion
-                                 (goto-char (treesit-node-start ts-node))
-                                 (search-forward (or (treesit-defun-name ts-node) ""))
-                                 (pos-bol))))))
-    (cond
-     ((null ts-node)
-      subtrees)
-     (subtrees
-      (cons (cons marker level) subtrees))
-     (t
-      (list (cons marker level))))))
-
-(defun treesit-outline-prepare ()
-  "Prepare `treesit-outline-levels' to be used by `treesit-outline-search'.
-Build the internal structure based either on the value
-`treesit-outline-predicate' that should be a predicate for
-`treesit-induce-sparse-tree', or use the existing value of
-`treesit-simple-imenu-settings' where outline headings are
-on the same lines as the imenu items."
-  (unless treesit-outline-predicate
-    (setq treesit-outline-predicate
-          (lambda (node)
-            (seq-some
-             (lambda (setting)
-               (and (string-match-p (nth 1 setting) (treesit-node-type node))
-                    (or (null (nth 2 setting))
-                        (funcall (nth 2 setting) node))))
-             treesit-simple-imenu-settings))))
-  (setq treesit-outline-levels
-        (treesit-outline-levels
-         (treesit-induce-sparse-tree
-          (treesit-buffer-root-node)
-          treesit-outline-predicate)
-         0)))
-
 (defun treesit-outline-search (&optional bound move backward looking-at)
-  "Search for the next outline heading.
-See the descriptions of arguments in `outline-search-function'.
-Uses the value of `treesit-outline-levels' prepared by
-`treesit-outline-prepare'."
-  (unless treesit-outline-levels
-    (treesit-outline-prepare))
-
-  (let ((positions (mapcar #'car treesit-outline-levels)))
-    (if looking-at
-        (when (member (point-marker) positions)
-          (set-match-data (list (pos-bol) (pos-eol)))
-          t)
-
-      (let ((found (seq-find (lambda (p) (>= p (point)))
-                             (if backward (nreverse positions) positions))))
-        (if found
-            (if (or (not bound) (if backward (>= found bound) (<= found bound)))
-                (progn
-                  (goto-char found)
-                  (goto-char (pos-bol))
-                  (set-match-data (list (point) (pos-eol)))
-                  t)
-              (when move (goto-char bound))
-              nil)
-          (when move (goto-char (or bound (if backward (point-min) (point-max)))))
-          nil)))))
+  "Search for the next outline heading in the syntax tree.
+See the descriptions of arguments in `outline-search-function'."
+  (if looking-at
+      (treesit-parent-until (treesit-node-at (pos-bol)) treesit-outline-predicate)
+    (let* ((current (treesit-node-at (pos-bol)))
+           (current (or (treesit-parent-until current treesit-outline-predicate)
+                        current))
+           (node (treesit-search-forward
+                   current treesit-outline-predicate backward))
+           (found (when node (treesit-node-start node))))
+      (if found
+          (if (or (not bound) (if backward (>= found bound) (<= found bound)))
+              (progn
+                (goto-char found)
+                (search-forward (or (treesit-defun-name node) ""))
+                (goto-char (pos-bol))
+                (set-match-data (list (point) (pos-eol)))
+                t)
+            (when move (goto-char bound))
+            nil)
+        (when move (goto-char (or bound (if backward (point-min) (point-max)))))
+        nil))))
 
 (defun treesit-outline-level ()
-  "Return the depth of the current outline heading.
-Uses the value of `treesit-outline-levels'."
-  (or (alist-get (point) treesit-outline-levels nil nil
-                 (lambda (m k) (eq (marker-position m) k)))
-      1))
+  "Return the depth of the current outline heading."
+  (let ((node (treesit-node-at (point)))
+        (level 0))
+    (while node
+      (when (funcall treesit-outline-predicate node)
+        (setq level (1+ level)))
+      (setq node (treesit-node-parent node)))
+    level))
 
 ;;; Activating tree-sitter
 
@@ -3064,6 +3013,15 @@ before calling this function."
              (not (seq-some #'local-variable-p
                             '(outline-search-function
                               outline-regexp outline-level))))
+    (unless treesit-outline-predicate
+      (setq treesit-outline-predicate
+            (lambda (node)
+              (seq-some
+               (lambda (setting)
+                 (and (string-match-p (nth 1 setting) (treesit-node-type node))
+                      (or (null (nth 2 setting))
+                          (funcall (nth 2 setting) node))))
+               treesit-simple-imenu-settings))))
     (setq-local outline-search-function #'treesit-outline-search
                 outline-level #'treesit-outline-level))
 
