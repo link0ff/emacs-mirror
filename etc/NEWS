@@ -1170,6 +1170,11 @@ Previously, the '@' character, which normally has 'symbol' syntax,
 would combine with a following Lisp symbol and interfere with symbol
 searching.
 
+---
+*** 'emacs-lisp-docstring-fill-column' now defaults to 72.
+It was previously 65.  The new default formats documentation strings to
+fit on fewer lines without negatively impacting readability.
+
 ** CPerl mode
 
 ---
@@ -1524,6 +1529,11 @@ precedence over the variable when present.
 ** New function 'merge-ordered-lists'.
 Mostly used internally to do a kind of topological sort of
 inheritance hierarchies.
+
+** New function 'sort-on'.
+This function implements the Schwartzian transform, and is appropriate
+for sorting lists when the computation of the sort key of a list
+element can be expensive.
 
 ** New API for 'derived-mode-p' and control of the graph of major modes.
 
