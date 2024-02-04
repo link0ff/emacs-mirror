@@ -2867,37 +2867,24 @@ when a major mode sets it.")
   "Search for the next outline heading in the syntax tree.
 See the descriptions of arguments in `outline-search-function'."
   (if looking-at
-      (when-let* ((node (treesit--thing-at (pos-eol) treesit-outline-predicate))
+      (when-let* ((node (or (treesit--thing-at (pos-eol) treesit-outline-predicate)
+                            (treesit--thing-at (pos-bol) treesit-outline-predicate)))
                   (start (treesit-node-start node)))
-        (eq (pos-bol) (save-excursion
-                        (goto-char start)
-                        (search-forward (or (treesit-defun-name node) ""))
-                        (pos-bol))))
+        (eq (pos-bol) (save-excursion (goto-char start) (pos-bol))))
 
     (let* ((pos
             ;; When function wants to find the current outline, point
             ;; is at the beginning of the current line.  When it wants
             ;; to find the next outline, point is at the second column.
             (if (eq (point) (pos-bol))
-                (if-let* ((node (treesit--thing-at (pos-eol) treesit-outline-predicate))
-                          (start (treesit-node-start node)))
-                    ;; Also `1-' needed because treesit--navigate-thing doesn't
-                    ;; return the current thing when point is already at it.
-                    (if (eq start (point-min)) start (1- start))
-                  (if (bobp) (point) (1- (point))))
+                (if (bobp) (point) (1- (point)))
               (pos-eol)))
-           (found (treesit--navigate-thing
-                   pos (if backward -1 1) 'beg
-                   treesit-outline-predicate)))
+           (found (treesit--navigate-thing pos (if backward -1 1) 'beg
+                                           treesit-outline-predicate)))
       (if found
           (if (or (not bound) (if backward (>= found bound) (<= found bound)))
               (progn
                 (goto-char found)
-                (search-forward (or (treesit-defun-name
-                                     (treesit--thing-at
-                                      found
-                                      treesit-outline-predicate))
-                                    ""))
                 (goto-char (pos-bol))
                 (set-match-data (list (point) (pos-eol)))
                 t)
@@ -2913,7 +2900,7 @@ See the descriptions of arguments in `outline-search-function'."
                     1 0)))
     (while (setq node (treesit-parent-until node treesit-outline-predicate))
       (setq level (1+ level)))
-    level))
+    (if (zerop level) 1 level)))
 
 ;;; Activating tree-sitter
 
