@@ -351,6 +351,7 @@ node is a match.
 If INCLUDE-NODE is non-nil, return NODE if it satisfies PRED."
   (let ((node (if include-node node
                 (treesit-node-parent node))))
+    ;; TODO: use `treesit-node-match-p'?
     (while (and node (not (funcall pred node)))
       (setq node (treesit-node-parent node)))
     node))
@@ -2866,18 +2867,21 @@ when a major mode sets it.")
   "Search for the next outline heading in the syntax tree.
 See the descriptions of arguments in `outline-search-function'."
   (if looking-at
-      (treesit-parent-until (treesit-node-at (pos-bol)) treesit-outline-predicate)
-    (let* ((current (treesit-node-at (pos-bol)))
-           (current (or (treesit-parent-until current treesit-outline-predicate)
-                        current))
-           (node (treesit-search-forward
-                   current treesit-outline-predicate backward))
-           (found (when node (treesit-node-start node))))
+      (when-let* ((node (treesit-parent-until
+                         (treesit-node-at (point))
+                         treesit-outline-predicate t))
+                  (start (treesit-node-start node)))
+        (eq (pos-bol) (save-excursion (goto-char start) (pos-bol))))
+
+    (let ((found (treesit--navigate-thing
+                  (if backward (pos-bol) (pos-eol))
+                  (if backward -1 1) 'beg
+                  treesit-outline-predicate)))
       (if found
           (if (or (not bound) (if backward (>= found bound) (<= found bound)))
               (progn
                 (goto-char found)
-                (search-forward (or (treesit-defun-name node) ""))
+                (search-forward (or (treesit-defun-name (treesit-node-at found)) ""))
                 (goto-char (pos-bol))
                 (set-match-data (list (point) (pos-eol)))
                 t)
@@ -2888,12 +2892,11 @@ See the descriptions of arguments in `outline-search-function'."
 
 (defun treesit-outline-level ()
   "Return the depth of the current outline heading."
-  (let ((node (treesit-node-at (point)))
-        (level 0))
-    (while node
-      (when (funcall treesit-outline-predicate node)
-        (setq level (1+ level)))
-      (setq node (treesit-node-parent node)))
+  (let* ((node (treesit-node-at (point)))
+         (level (if (treesit-node-match-p node treesit-outline-predicate t)
+                    1 0)))
+    (while (setq node (treesit-parent-until node treesit-outline-predicate))
+      (setq level (1+ level)))
     level))
 
 ;;; Activating tree-sitter
