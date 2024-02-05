@@ -351,7 +351,6 @@ node is a match.
 If INCLUDE-NODE is non-nil, return NODE if it satisfies PRED."
   (let ((node (if include-node node
                 (treesit-node-parent node))))
-    ;; TODO: use `treesit-node-match-p'?
     (while (and node (not (funcall pred node)))
       (setq node (treesit-node-parent node)))
     node))
