@@ -2864,9 +2864,27 @@ ENTRY.  MARKER marks the start of each tree-sitter node."
 
 (defvar-local treesit-outline-predicate nil
   "Predicate used to find outline headings in the syntax tree.
+The predicate can be a function, a regexp matching node type,
+and more; see docstring of `treesit-thing-settings'.
+It matches the nodes located on lines with outline headings.
 Intended to be set by a major mode.  When nil, the predicate
 is constructed from the value of `treesit-simple-imenu-settings'
 when a major mode sets it.")
+
+(defun treesit-outline-predicate--from-imenu (node)
+  ;; Return an outline searching predicate created from Imenu.
+  ;; Return the value suitable to set `treesit-outline-predicate'.
+  ;; Create this predicate from the value `treesit-simple-imenu-settings'
+  ;; that major modes set to find Imenu entries.  The assumption here
+  ;; is that the positions of Imenu entries most of the time coincide
+  ;; with the lines of outline headings.  When this assumption fails,
+  ;; you can directly set a proper value to `treesit-outline-predicate'.
+  (seq-some
+   (lambda (setting)
+     (and (string-match-p (nth 1 setting) (treesit-node-type node))
+          (or (null (nth 2 setting))
+              (funcall (nth 2 setting) node))))
+   treesit-simple-imenu-settings))
 
 (defun treesit-outline-search (&optional bound move backward looking-at)
   "Search for the next outline heading in the syntax tree.
@@ -3044,13 +3062,7 @@ before calling this function."
                               outline-regexp outline-level))))
     (unless treesit-outline-predicate
       (setq treesit-outline-predicate
-            (lambda (node)
-              (seq-some
-               (lambda (setting)
-                 (and (string-match-p (nth 1 setting) (treesit-node-type node))
-                      (or (null (nth 2 setting))
-                          (funcall (nth 2 setting) node))))
-               treesit-simple-imenu-settings))))
+            #'treesit-outline-predicate--from-imenu))
     (setq-local outline-search-function #'treesit-outline-search
                 outline-level #'treesit-outline-level))
 
