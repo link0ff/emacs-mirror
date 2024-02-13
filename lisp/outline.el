@@ -325,7 +325,6 @@ don't modify the buffer."
   ;; The value `insert' is not intended to be customizable.
   :type '(choice (const :tag "Do not use outline buttons" nil)
                  (const :tag "Show outline buttons in margins" in-margins)
-                 (const :tag "Show outline buttons as ellipses" ellipsis)
                  (const :tag "Show outline buttons in buffer" t))
   :safe #'symbolp
   :version "29.1")
@@ -581,18 +580,13 @@ See the command `outline-mode' for more information on this mode."
 		  nil t)
         (setq-local line-move-ignore-invisible t)
 	;; Cause use of ellipses for invisible text.
-	(add-to-invisibility-spec
-         ;; !!! ellipses can't be removed because otherwise
-         ;; (current-indentation) gives wrong value in outline-level!!!
-         ;; (if outline-minor-mode-use-buttons 'outline '(outline . t))
-         '(outline . t))
+	(add-to-invisibility-spec '(outline . t))
 	(outline-apply-default-state))
     (setq line-move-ignore-invisible nil)
     ;; Cause use of ellipses for invisible text.
     (remove-from-invisibility-spec '(outline . t))
     ;; When turning off outline mode, get rid of any outline hiding.
     (outline-show-all)
-    (kill-local-variable 'outline--cycle-buffer-state)
     (when outline-minor-mode-highlight
       (if font-lock-fontified
           (font-lock-remove-keywords nil outline-font-lock-keywords))
@@ -1009,8 +1003,6 @@ If FLAG is nil then text is shown, while if FLAG is t the text is hidden."
     ;; belongs to the heading rather than to the entry.
     (let ((o (make-overlay from to nil 'front-advance)))
       (overlay-put o 'evaporate t)
-      (when (eq outline-minor-mode-use-buttons 'ellipsis)
-        (overlay-put o 'after-string (apply #'propertize "…" (text-properties-at (save-excursion (goto-char from) (goto-char (1+ (pos-bol))) (point))))))
       (overlay-put o 'invisible 'outline)
       (overlay-put o 'isearch-open-invisible
 		   (or outline-isearch-open-invisible-function
@@ -1803,7 +1795,6 @@ With a prefix argument, show headings up to that LEVEL."
 
 (defun outline--create-button-icons ()
   (pcase outline-minor-mode-use-buttons
-    ('ellipsis)
     ('in-margins
      (mapcar
       (lambda (icon-name)
@@ -1844,25 +1835,16 @@ With a prefix argument, show headings up to that LEVEL."
       (forward-line 0)
       (let ((icon (nth (if (eq type 'close) 1 0) outline--button-icons))
             (o (seq-find (lambda (o) (overlay-get o 'outline-button))
-                         ;; (overlays-at (if (eq outline-minor-mode-use-buttons 'ellipsis)
-                         ;;                  (1- (pos-eol)) (point)))
                          (overlays-at (point)))))
         (unless o
           (when (eq outline-minor-mode-use-buttons 'insert)
             (let ((inhibit-read-only t))
               (insert (apply #'propertize "  " (text-properties-at (point))))
               (forward-line 0)))
-          ;; (if (eq outline-minor-mode-use-buttons 'ellipsis)
-          ;;     (setq o (make-overlay (1- (pos-eol)) (pos-eol)))
-          ;;   (setq o (make-overlay (point) (1+ (point)))))
           (setq o (make-overlay (point) (1+ (point))))
           (overlay-put o 'outline-button t)
           (overlay-put o 'evaporate t))
         (pcase outline-minor-mode-use-buttons
-          ('ellipsis
-           ;; (overlay-put o 'after-string (when (eq type 'close) "…"))
-           ;; (overlay-put o 'after-string "…")
-           )
           ('insert
            (overlay-put o 'display (or (plist-get icon 'image)
                                        (plist-get icon 'string)))
