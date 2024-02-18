@@ -83,7 +83,6 @@ and filter displayed buffers by various criteria."
   :version "22.1"
   :group 'convenience)
 
-;; this is like tabulated-list-entries in list-buffers--refresh
 (defcustom ibuffer-formats '((mark modified read-only locked
                                    " " (name 18 18 :left :elide)
 				   " " (size 9 -1 :right)

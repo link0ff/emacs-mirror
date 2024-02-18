@@ -634,7 +634,7 @@ This behaves like invoking \\[read-only-mode] in that buffer."
 	   (save-excursion
 	     (let ((elt (tabulated-list-delete-entry)))
 	       (goto-char (point-max))
-	       (apply tabulated-list-printer elt)))
+	       (apply 'tabulated-list-print-entry elt)))
 	   (message "Buffer buried."))
 	  (t
 	   (tabulated-list-delete-entry)
@@ -674,10 +674,7 @@ See more at `Buffer-menu-filter-predicate'."
       (setq Buffer-menu-buffer-list buffer-list)
       (setq Buffer-menu-filter-predicate filter-predicate)
       (list-buffers--refresh buffer-list old-buffer)
-      (tabulated-list-print)
-      (setq-local outline-minor-mode-cycle t
-                  outline-minor-mode-highlight t)
-      (outline-minor-mode 1))
+      (tabulated-list-print))
     buffer))
 
 (defun Buffer-menu-mouse-select (event)
@@ -752,17 +749,8 @@ See more at `Buffer-menu-filter-predicate'."
                     :right-align t)
 		  `("Mode" ,Buffer-menu-mode-width t)
 		  '("File" 1 t)))
-    ;; (setq tubulated-cats-format)
     (setq tabulated-list-use-header-line Buffer-menu-use-header-line)
-    (setq entries (nreverse entries))
-    ;; (setq tabulated-list-entries entries)
-    (setq tabulated-list-groups
-          `(("* 1. Text"
-             ,@entries)
-            ("** 1.1. Text"
-             ,@entries)
-            ("** 1.2. Text"
-             ,@entries))))
+    (setq tabulated-list-entries (nreverse entries)))
   (tabulated-list-init-header))
 
 (defun tabulated-list-entry-size-> (entry1 entry2)
