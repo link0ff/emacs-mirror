@@ -95,6 +95,12 @@ as it is by default."
   :group 'Buffer-menu
   :version "22.1")
 
+(defcustom Buffer-menu-group-by nil
+  "If non-nil, buffers are grouped by function."
+  :type 'function
+  :group 'Buffer-menu
+  :version "30.1")
+
 (defvar-local Buffer-menu-files-only nil
   "Non-nil if the current Buffer Menu lists only file buffers.
 This is set by the prefix argument to `buffer-menu' and related
@@ -634,7 +640,7 @@ This behaves like invoking \\[read-only-mode] in that buffer."
 	   (save-excursion
 	     (let ((elt (tabulated-list-delete-entry)))
 	       (goto-char (point-max))
-	       (apply 'tabulated-list-print-entry elt)))
+	       (apply tabulated-list-printer elt)))
 	   (message "Buffer buried."))
 	  (t
 	   (tabulated-list-delete-entry)
@@ -674,7 +680,12 @@ See more at `Buffer-menu-filter-predicate'."
       (setq Buffer-menu-buffer-list buffer-list)
       (setq Buffer-menu-filter-predicate filter-predicate)
       (list-buffers--refresh buffer-list old-buffer)
-      (tabulated-list-print))
+      (tabulated-list-print)
+      (when tabulated-list-groups
+        (setq-local outline-minor-mode-cycle t
+                    outline-minor-mode-highlight t
+                    outline-minor-mode-use-buttons 'in-margins)
+        (outline-minor-mode 1)))
     buffer))
 
 (defun Buffer-menu-mouse-select (event)
@@ -750,7 +761,11 @@ See more at `Buffer-menu-filter-predicate'."
 		  `("Mode" ,Buffer-menu-mode-width t)
 		  '("File" 1 t)))
     (setq tabulated-list-use-header-line Buffer-menu-use-header-line)
-    (setq tabulated-list-entries (nreverse entries)))
+    (setq tabulated-list-entries (nreverse entries))
+    (when Buffer-menu-group-by
+      (setq tabulated-list-groups
+            (seq-group-by Buffer-menu-group-by
+                          tabulated-list-entries))))
   (tabulated-list-init-header))
 
 (defun tabulated-list-entry-size-> (entry1 entry2)
