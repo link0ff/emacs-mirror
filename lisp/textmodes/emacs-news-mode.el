@@ -90,23 +90,7 @@
   (setq-local font-lock-defaults '(emacs-news-mode-font-lock-keywords t))
   (setq-local outline-minor-mode-cycle t
               outline-minor-mode-highlight 'append
-              outline-minor-mode-use-buttons 'in-margins
-              ;; outline-minor-mode-use-buttons 'ellipsis
-              ;; outline-search-function
-              ;; (lambda (&optional bound move backward looking-at)
-              ;;   (cond
-              ;;    (looking-at (looking-at outline-regexp))
-              ;;    (backward
-              ;;     (re-search-backward
-              ;;      (concat "^\\(?:" outline-regexp "\\).*")
-              ;;      bound (if move 'move t)))
-              ;;    (t
-              ;;     (re-search-forward
-              ;;      (concat "^\\(?:" outline-regexp "\\).*")
-              ;;      bound (if move 'move t)))))
-              ;; outline-level
-              ;; (lambda () (looking-at outline-regexp) (outline-level))
-              )
+              outline-minor-mode-use-buttons 'in-margins)
   (outline-minor-mode)
   (setq-local imenu-generic-expression outline-imenu-generic-expression)
   (emacs-etc--hide-local-variables))
