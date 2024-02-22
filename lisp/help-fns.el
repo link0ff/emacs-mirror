@@ -2133,12 +2133,6 @@ keymap value."
     (when used-gentemp
       (makunbound keymap))))
 
-(defcustom describe-mode-outline t
-  "Non-nil enables outlines in the output buffer of `describe-mode'."
-  :type 'boolean
-  :group 'help
-  :version "30.1")
-
 ;;;###autoload
 (defun describe-mode (&optional buffer)
   "Display documentation of current major mode and minor modes.
@@ -2165,18 +2159,12 @@ documentation for the major and minor modes of that buffer."
       (with-current-buffer (help-buffer)
         ;; Add the local minor modes at the start.
         (when local-minors
-          (if describe-mode-outline
-              (save-excursion
-	        (goto-char (point-max))
-                (insert "* Local Minor modes enabled in this buffer"))
-            (insert (format "Minor mode%s enabled in this buffer:"
-                            (if (length> local-minors 1)
-                                "s" ""))))
+          (insert (format "Minor mode%s enabled in this buffer:"
+                          (if (length> local-minors 1)
+                              "s" "")))
           (describe-mode--minor-modes local-minors))
 
         ;; Document the major mode.
-        (when describe-mode-outline
-          (insert "* Major mode\n\n"))
         (let ((major (buffer-local-value 'major-mode buffer)))
           (insert "The major mode is "
                   (buttonize
@@ -2197,38 +2185,19 @@ documentation for the major and minor modes of that buffer."
           (insert (help-split-fundoc (documentation major) nil 'doc)
                   (with-current-buffer buffer
                     (help-fns--list-local-commands)))
-          (ensure-empty-lines 1))
+          (ensure-empty-lines 1)
 
-        ;; Insert the global minor modes after the major mode.
-        (when global-minor-modes
-          (if describe-mode-outline
-              (save-excursion
-	        (goto-char (point-max))
-                (insert "* Global Minor modes enabled in this buffer"))
+          ;; Insert the global minor modes after the major mode.
+          (when global-minor-modes
             (insert (format "Global minor mode%s enabled:"
                             (if (length> global-minor-modes 1)
-                                "s" ""))))
-          (describe-mode--minor-modes global-minor-modes)
-          (unless describe-mode-outline
+                                "s" "")))
+            (describe-mode--minor-modes global-minor-modes)
             (when (re-search-forward "^\f")
               (beginning-of-line)
-              (ensure-empty-lines 1))))
-
-        (when describe-mode-outline
-          (setq-local outline-regexp "[*]+")
-          (setq-local outline-minor-mode-cycle t
-                      outline-minor-mode-highlight t
-                      outline-minor-mode-use-buttons 'insert)
-          (outline-minor-mode 1))
-
-        ;; For the sake of IELM and maybe others
-        nil))))
-
-;; TODO: use pretty-minor-mode in heading only:
-;; * Local Minor modes enabled in this buffer
-;; ** Font-Lock minor mode:
-;; [font-lock-mode] (no indicator)
-;; Toggle syntax highlighting in this buffer (Font Lock mode).
+              (ensure-empty-lines 1)))
+          ;; For the sake of IELM and maybe others
+          nil)))))
 
 (defun describe-mode--minor-modes (modes)
   (dolist (mode (seq-sort #'string< modes))
@@ -2237,22 +2206,19 @@ documentation for the major and minor modes of that buffer."
             (replace-regexp-in-string
              "\\(\\(-minor\\)?-mode\\)?\\'" ""
              (symbol-name mode)))))
-      (unless describe-mode-outline
-        (insert
-         " "
-         (buttonize
-          pretty-minor-mode
-          (lambda (mode)
-            (goto-char (point-min))
-            (text-property-search-forward
-             'help-minor-mode mode t)
-            (beginning-of-line))
-          mode)))
+      (insert
+       " "
+       (buttonize
+        pretty-minor-mode
+        (lambda (mode)
+          (goto-char (point-min))
+          (text-property-search-forward
+           'help-minor-mode mode t)
+          (beginning-of-line))
+        mode))
       (save-excursion
 	(goto-char (point-max))
-	(if describe-mode-outline
-            (insert "\n\n** ")
-          (insert "\n\n\f\n"))
+	(insert "\n\n\f\n")
 	;; Document the minor modes fully.
         (insert (buttonize
                  (propertize pretty-minor-mode 'help-minor-mode mode)
