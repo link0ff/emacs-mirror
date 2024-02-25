@@ -3781,9 +3781,6 @@ There is no need to explicitly add `help-char' to CHARS;
       (define-key map (vector 'remap symbol) #'abort-recursive-edit))
     (define-key map [escape] #'abort-recursive-edit)
 
-    ;; FIXME: try catch-all instead of explicit bindings:
-    ;; (define-key map [remap t] #'y-or-n-p-insert-other)
-
     map)
   "Keymap that defines additional bindings for `y-or-n-p' answers.")
 
