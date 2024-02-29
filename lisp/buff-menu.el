@@ -96,8 +96,21 @@ as it is by default."
   :version "22.1")
 
 (defcustom Buffer-menu-group-by nil
-  "If non-nil, buffers are grouped by function."
-  :type 'function
+  "If non-nil, buffers are grouped by function.
+This function takes one argument: a list of entries in the same format
+as in `tabulated-list-entries', and should return a list in the format
+suitable for `tabulated-list-groups'.  Also when this variable is non-nil,
+then `outline-minor-mode' is enabled in the Buffer Menu.  Then with the
+default value of `outline-regexp' you can use Outline minor mode commands
+to show/hide groups of buffers.
+The default options can group by a mode, and by a root directory of
+a project or just `default-directory'."
+  :type '(choice (const :tag "No grouping" nil)
+                 (function-item :tag "Group by mode"
+                                Buffer-menu-group-by-mode)
+                 (function-item :tag "Group by project root or directory"
+                                Buffer-menu-group-by-root)
+                 (function :tag "Custom function"))
   :group 'Buffer-menu
   :version "30.1")
 
@@ -414,14 +427,12 @@ When called interactively prompt for MARK;  RET remove all marks."
   (interactive "cRemove marks (RET means all):" Buffer-menu-mode)
   (save-excursion
     (goto-char (point-min))
-    (when (tabulated-list-header-overlay-p)
-      (forward-line))
     (while (not (eobp))
-      (let ((xmarks (list (aref (tabulated-list-get-entry) 0)
-                          (aref (tabulated-list-get-entry) 2))))
-        (when (or (char-equal mark ?\r)
-                  (member (char-to-string mark) xmarks))
-          (Buffer-menu--unmark)))
+      (when-let ((entry (tabulated-list-get-entry)))
+        (let ((xmarks (list (aref entry 0) (aref entry 2))))
+          (when (or (char-equal mark ?\r)
+                    (member (char-to-string mark) xmarks))
+            (Buffer-menu--unmark))))
       (forward-line))))
 
 (defun Buffer-menu-unmark-all ()
@@ -640,7 +651,7 @@ This behaves like invoking \\[read-only-mode] in that buffer."
 	   (save-excursion
 	     (let ((elt (tabulated-list-delete-entry)))
 	       (goto-char (point-max))
-	       (apply tabulated-list-printer elt)))
+	       (apply 'tabulated-list-print-entry elt)))
 	   (message "Buffer buried."))
 	  (t
 	   (tabulated-list-delete-entry)
@@ -783,5 +794,15 @@ See more at `Buffer-menu-filter-predicate'."
 	((bound-and-true-p list-buffers-directory)
          (abbreviate-file-name list-buffers-directory))
 	(t "")))
+
+(defun Buffer-menu-group-by-mode (entry)
+  (concat "* " (aref (cadr entry) 5)))
+
+(declare-function project-root "project" (project))
+(defun Buffer-menu-group-by-root (entry)
+  (concat "* " (with-current-buffer (car entry)
+                 (if-let ((project (project-current)))
+                     (project-root project)
+                   default-directory))))
 
 ;;; buff-menu.el ends here
