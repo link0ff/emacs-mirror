@@ -1259,7 +1259,6 @@ should have the form @w{@code{(@var{group-name} @var{entries})}}, where
 
 Otherwise, the value should be a function which returns a list of the
 above form when called with no arguments.
-@end defvar
 
 You can use @code{seq-group-by} to create @code{tabulated-list-groups}
 from @code{tabulated-list-entries}.  For example:
@@ -1280,6 +1279,7 @@ where you can define @code{Buffer-menu-group-by-mode} like this:
   (concat "* " (aref (cadr entry) 5)))
 @end group
 @end smallexample
+@end defvar
 
 @defvar tabulated-list-revert-hook
 This normal hook is run prior to reverting a Tabulated List buffer.  A
