@@ -417,7 +417,7 @@ When there is a text property `context-menu-function' at CLICK,
 it overrides all functions from `context-menu-functions'.
 Whereas the property `context-menu-functions' doesn't override
 the variable `context-menu-functions', but adds menus from the
-property after adding menus from the variable.
+list in the property after adding menus from the variable.
 At the end, it's possible to modify the final menu by specifying
 the function `context-menu-filter-function'."
   (let* ((menu (make-sparse-keymap (propertize "Context Menu" 'hide t)))
