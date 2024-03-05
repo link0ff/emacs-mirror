@@ -368,10 +368,10 @@ not it is actually displayed."
     ;; FIXME: We have a problem here: we have to use the global/local/minor
     ;; so they're displayed in the expected order, but later on in the command
     ;; loop, they're actually looked up in the opposite order.
-    (menu-bar-keymap (apply #'append
-                            global-menu
-                            local-menu
-                            minor-mode-menus))))
+    (apply #'append
+           global-menu
+           local-menu
+           minor-mode-menus)))
 
 
 ;; Context menus.
@@ -393,6 +393,7 @@ and should return the same menu with changes such as added new menu items."
                   (function-item context-menu-local)
                   (function-item context-menu-minor)
                   (function-item context-menu-buffers)
+                  (function-item context-menu-project)
                   (function-item context-menu-vc)
                   (function-item context-menu-ffap)
                   (function-item hi-lock-context-menu)
@@ -414,6 +415,9 @@ Each function receives the menu and the mouse click event
 and returns the same menu after adding own menu items to the composite menu.
 When there is a text property `context-menu-function' at CLICK,
 it overrides all functions from `context-menu-functions'.
+Whereas the property `context-menu-functions' doesn't override
+the variable `context-menu-functions', but adds menus from the
+property after adding menus from the variable.
 At the end, it's possible to modify the final menu by specifying
 the function `context-menu-filter-function'."
   (let* ((menu (make-sparse-keymap (propertize "Context Menu" 'hide t)))
@@ -528,6 +532,12 @@ Some context functions add menu items below the separator."
                   (define-key-after menu (vector key)
                     (copy-sequence binding))))
               (mouse-buffer-menu-keymap))
+  menu)
+
+(defun context-menu-project (menu _click)
+  "Populate MENU with project commands."
+  (define-key-after menu [separator-project] menu-bar-separator)
+  (define-key-after menu [project-menu] (bound-and-true-p project-menu-entry))
   menu)
 
 (defun context-menu-vc (menu _click)
