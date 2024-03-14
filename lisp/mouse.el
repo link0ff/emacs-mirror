@@ -537,7 +537,7 @@ Some context functions add menu items below the separator."
 (defun context-menu-project (menu _click)
   "Populate MENU with project commands."
   (define-key-after menu [separator-project] menu-bar-separator)
-  (define-key-after menu [project-menu] (bound-and-true-p project-menu-entry))
+  (define-key-after menu [project-menu] menu-bar-project-item)
   menu)
 
 (defun context-menu-vc (menu _click)
