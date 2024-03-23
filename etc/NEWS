@@ -108,6 +108,12 @@ to your init:
 
 * Changes in Emacs 30.1
 
+** 'describe-function' now shows the type of the function object.
+The text used to say things like "car is is a built-in function"
+whereas it now says "car is a primitive-function" where "primitive-function"
+is the symbol returned by `cl-type-of` and you can click on it to get
+information about that type.
+
 ** 'advice-remove' is now an interactive command.
 When called interactively, 'advice-remove' now prompts for an advised
 function to the advice to remove.
@@ -699,6 +705,12 @@ marked or clicked on files according to the OS conventions.  For
 example, on systems supporting XDG, this runs 'xdg-open' on the
 files.
 
+*** The default value of 'dired-omit-size-limit' was increased.
+After performance improvements to omitting in large directories, the new
+default value is 300k, up from 100k.  This means 'dired-omit-mode' will
+omit files in directories whose directory listing is up to 300 kilobytes
+in size.
+
 +++
 *** 'dired-listing-switches' handles connection-local values if exist.
 This allows to customize different switches for different remote machines.
@@ -1053,6 +1065,24 @@ page loaded by navigating back through history), EWW deletes the history
 entries newer than the current page.  To change the behavior when
 browsing from "historical" pages, you can customize
 'eww-before-browse-history-function'.
+
++++
+*** 'eww-readable' now toggles display of the readable parts of a web page.
+When called interactively, 'eww-readable' toggles whether to display
+only the readable parts of a page or the full page.  With a positive
+prefix argument, it always displays the readable parts, and with a zero
+or negative prefix, it always displays the full page.
+
++++
+*** New option 'eww-readable-urls'.
+This is a list of regular expressions matching the URLs where EWW should
+display only the readable parts by default.  For more details, see
+"(eww) Basics" in the EWW manual.
+
+---
+*** New option 'eww-readable-adds-to-history'.
+When non-nil (the default), calling 'eww-readable' adds a new entry to
+the EWW page history.
 
 ** go-ts-mode
 
