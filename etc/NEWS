@@ -43,6 +43,12 @@ external packages and to resolve potential incompatibilities between
 Linux and BSD versions of ALSA.  Use '--with-sound=alsa' to build with
 ALSA on these operating systems instead.
 
+---
+** Native JSON support is now always available; libjansson is no longer used.
+No external library is required.  The '--with-json' configure option has
+been removed.  'json-available-p' now always returns non-nil and is only
+kept for compatibility.
+
 
 * Startup Changes in Emacs 30.1
 
@@ -1217,6 +1223,11 @@ interactive Python interpreter specified by 'python-interpreter'.
 +++
 *** New ':vc' keyword.
 This keyword enables the user to install packages using 'package-vc'.
+
++++
+*** New user option 'use-package-vc-prefer-newest'.
+This allows the user to always install the newest commit of a package
+when using the ':vc' keyword.
 
 ** Gnus
 
