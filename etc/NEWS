@@ -1218,6 +1218,12 @@ instead of:
 This allows the user to specify command line arguments to the non
 interactive Python interpreter specified by 'python-interpreter'.
 
+** Scheme mode
+
+Scheme mode now handles regular expression literal #/regexp/ that is
+available in some Scheme implementations.
+Also, it should now handle nested sexp-comments.
+
 ** use-package
 
 +++
@@ -1559,6 +1565,8 @@ sexp navigation more intuitive.
 This minor mode shows you symbol completion suggestions as you type,
 using an inline preview.  New user options in the 'completion-preview'
 customization group control exactly when Emacs displays this preview.
+'completion-preview-mode' is buffer-local, to enable it globally use
+'global-completion-preview-mode'.
 
 ---
 ** The highly accessible Modus themes collection has eight items.
@@ -1584,6 +1592,14 @@ Emacs now comes with a stub implementation of the
 forwards-compatibility Compat package from GNU ELPA.  This allows
 built-in packages to use the library more effectively, and helps
 preventing the installation of Compat if unnecessary.
+
++++
+** New package PEG.
+Emacs now includes a library for writing Parsing Expression
+Grammars (PEG), an approach to text parsing that provides more structure
+than regular expressions, but less complexity than context-free
+grammars.  The Info manual "(elisp) Parsing Expression Grammars" has
+documentation and examples.
 
 
 * Incompatible Lisp Changes in Emacs 30.1
@@ -1704,6 +1720,19 @@ Use a float value for the first argument instead.
 ** 'eshell-process-wait-{seconds,milliseconds}' options are now obsolete.
 Instead, use 'eshell-process-wait-time', which supports floating-point
 values.
+
+** JSON
+
+---
+*** The parser keeps duplicated object keys in alist and plist output.
+A JSON object such as '{"a":1,"a":2}' will now be translated into the
+Lisp values '((a . 1) (a . 2))' or '(:a 1 :a 2)' if alist or plist
+object types are requested.
+
+---
+*** The parser sometimes signals different types of errors.
+It will now signal 'json-utf8-decode-error' for inputs that are not
+correctly UTF-8 encoded.
 
 
 * Lisp Changes in Emacs 30.1
@@ -2304,6 +2333,10 @@ arguments.  (Previously the 'old-object' argument was required which, in
 this case, would mean repeating the object in the argument list.)  When
 replacing an object with a different one, passing both the new and old
 objects is still necessary.
+
+---
+** The JSON encoder and decoder now accept arbitarily large integers.
+Previously, they were limited to the range of signed 64-bit integers.
 
 
 * Changes in Emacs 30.1 on Non-Free Operating Systems
