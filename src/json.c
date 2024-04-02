@@ -636,16 +636,15 @@ DEFUN ("json-insert", Fjson_insert, Sjson_insert, 1, MANY,
        NULL,
        doc: /* Insert the JSON representation of OBJECT before point.
 This is the same as (insert (json-serialize OBJECT ...)), but potentially
-faster.  See the function `json-serialize' for allowed values of
-OBJECT and ARGS.
+faster, and with the difference that Unicode characters are inserted as
+themselves into multibyte buffers, as UTF-8 bytes into unibyte buffers.
+See the function `json-serialize' for allowed values of OBJECT and ARGS.
 usage: (json-insert OBJECT &rest ARGS)  */)
   (ptrdiff_t nargs, Lisp_Object *args)
 {
   specpdl_ref count = SPECPDL_INDEX ();
   json_out_t jo;
   json_serialize (&jo, args[0], nargs - 1, args + 1);
-
-  /* FIXME: All the work below just to insert a string into a buffer?  */
 
   prepare_to_modify_buffer (PT, PT, NULL);
   move_gap_both (PT, PT_BYTE);
@@ -656,48 +655,22 @@ usage: (json-insert OBJECT &rest ARGS)  */)
   /* No need to keep allocation beyond this point.  */
   unbind_to (count, Qnil);
 
-  ptrdiff_t inserted = 0;
+  bool ub_buffer = NILP (BVAR (current_buffer, enable_multibyte_characters));
   ptrdiff_t inserted_bytes = jo.size;
+  ptrdiff_t inserted = ub_buffer ? jo.size : jo.size - jo.chars_delta;
+  eassert (inserted > 0);
 
-  /* If required, decode the stuff we've read into the gap.  */
-  struct coding_system coding;
-  /* JSON strings are UTF-8 encoded strings.  */
-  setup_coding_system (Qutf_8_unix, &coding);
-  coding.dst_multibyte = !NILP (BVAR (current_buffer,
-				      enable_multibyte_characters));
-  if (CODING_MAY_REQUIRE_DECODING (&coding))
-    {
-      /* Now we have all the new bytes at the beginning of the gap,
-	 but `decode_coding_gap` needs them at the end of the gap, so
-	 we need to move them.  */
-      memmove (GAP_END_ADDR - inserted_bytes, GPT_ADDR, inserted_bytes);
-      decode_coding_gap (&coding, inserted_bytes);
-      inserted = coding.produced_char;
-    }
-  else
-    {
-      /* Make the inserted text part of the buffer, as unibyte text.  */
-      eassert (NILP (BVAR (current_buffer, enable_multibyte_characters)));
-      insert_from_gap_1 (inserted_bytes, inserted_bytes, false);
-
-      /* The target buffer is unibyte, so we don't need to decode.  */
-      invalidate_buffer_caches (current_buffer,
-				PT, PT + inserted_bytes);
-      adjust_after_insert (PT, PT_BYTE,
-			   PT + inserted_bytes,
-			   PT_BYTE + inserted_bytes,
-			   inserted_bytes);
-      inserted = inserted_bytes;
-    }
+  insert_from_gap_1 (inserted, inserted_bytes, false);
+  invalidate_buffer_caches (current_buffer, PT, PT + inserted);
+  adjust_after_insert (PT, PT_BYTE, PT + inserted, PT_BYTE + inserted_bytes,
+		       inserted);
 
   /* Call after-change hooks.  */
   signal_after_change (PT, 0, inserted);
-  if (inserted > 0)
-    {
-      update_compositions (PT, PT, CHECK_BORDER);
-      /* Move point to after the inserted text.  */
-      SET_PT_BOTH (PT + inserted, PT_BYTE + inserted_bytes);
-    }
+
+  update_compositions (PT, PT, CHECK_BORDER);
+  /* Move point to after the inserted text.  */
+  SET_PT_BOTH (PT + inserted, PT_BYTE + inserted_bytes);
 
   return Qnil;
 }
