@@ -637,7 +637,8 @@ DEFUN ("json-insert", Fjson_insert, Sjson_insert, 1, MANY,
        doc: /* Insert the JSON representation of OBJECT before point.
 This is the same as (insert (json-serialize OBJECT ...)), but potentially
 faster, and with the difference that Unicode characters are inserted as
-themselves into multibyte buffers, as UTF-8 bytes into unibyte buffers.
+themselves into multibyte buffers, and as UTF-8 byte sequences into
+unibyte buffers.
 See the function `json-serialize' for allowed values of OBJECT and ARGS.
 usage: (json-insert OBJECT &rest ARGS)  */)
   (ptrdiff_t nargs, Lisp_Object *args)
@@ -1414,7 +1415,6 @@ json_parse_array (struct json_parser *parser)
       if (parser->available_depth < 0)
 	json_signal_error (parser, Qjson_object_too_deep);
 
-      size_t number_of_elements = 0;
       Lisp_Object *cdr = &result;
       /* This loop collects the array elements in the object workspace
        */
@@ -1441,8 +1441,6 @@ json_parse_array (struct json_parser *parser)
 	    }
 
 	  c = json_skip_whitespace (parser);
-
-	  number_of_elements++;
 	  if (c == ']')
 	    {
 	      parser->available_depth++;
