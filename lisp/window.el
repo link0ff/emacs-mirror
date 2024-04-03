@@ -4542,6 +4542,22 @@ before was current this also makes BUFFER the current buffer."
     (when point
       (set-window-point window point))))
 
+(defcustom switch-to-prev-buffer-wrap nil
+  "Wrap to the first or last window buffer while cycling.
+The value t means wrapping around while cycling buffers appeared in the
+window before.  So when the commands that switch buffers in the selected
+window `previous-buffer' and `next-buffer' reach the first or the last
+buffer (these buffers are visible when using `tab-line-mode'),
+then wrap around to another end of the list of previous/next buffers.
+
+When the value is `stop', stop at the first or last buffer
+in the list of previous/next buffers, but don't wrap around."
+  :type '(choice (const :tag "Never wrap" nil)
+                 (const :tag "Stop at window-local buffers" stop)
+                 (const :tag "Wrap to window-local buffers" t))
+  :version "30.1"
+  :group 'windows)
+
 (defcustom switch-to-visible-buffer t
   "If non-nil, allow switching to an already visible buffer.
 If this variable is non-nil, `switch-to-prev-buffer' and
@@ -4676,7 +4692,8 @@ This function is called by `previous-buffer'."
            ((or switch-to-prev-buffer-skip
                 (not switch-to-visible-buffer))
             frame)))
-         entry new-buffer killed-buffers skipped)
+         (wrap (and (not bury-or-kill) switch-to-prev-buffer-wrap))
+         entry new-buffer killed-buffers skipped wrapped)
     (when (window-minibuffer-p window)
       ;; Don't switch in minibuffer window.
       (unless (setq window (minibuffer-selected-window))
@@ -4710,8 +4727,8 @@ This function is called by `previous-buffer'."
       ;; a buried buffer instead.  Otherwise, we must reverse the global
       ;; buffer list in order to make sure that switching to the
       ;; previous/next buffer traverse it in opposite directions.  Skip
-      ;; this step for side windows.
-      (unless window-side
+      ;; this step for side windows or when wrapping.
+      (unless (or window-side wrap)
         (dolist (buffer (if bury-or-kill
                             (buffer-list frame)
                           (nreverse (buffer-list frame))))
@@ -4729,7 +4746,8 @@ This function is called by `previous-buffer'."
               (set-window-buffer-start-and-point window new-buffer)
               (throw 'found t)))))
 
-      (unless bury-or-kill
+      (when (eq wrap 'stop) (setq wrapped 'stop))
+      (unless (or bury-or-kill (eq wrap 'stop))
 	;; Scan reverted next buffers last (must not use nreverse
 	;; here!).
 	(dolist (buffer (reverse next-buffers))
@@ -4743,12 +4761,13 @@ This function is called by `previous-buffer'."
 		     (setq entry (assq buffer (window-prev-buffers window))))
             (if (switch-to-prev-buffer-skip-p skip window buffer bury-or-kill)
 	        (setq skipped (or skipped buffer))
-	      (setq new-buffer buffer)
+	      (setq new-buffer buffer wrapped t)
 	      (set-window-buffer-start-and-point
 	       window new-buffer (nth 1 entry) (nth 2 entry))
 	      (throw 'found t)))))
 
-      (when (and skipped (not (functionp switch-to-prev-buffer-skip)))
+      (when (and skipped (not (functionp switch-to-prev-buffer-skip))
+                 (not wrapped))
         ;; Show first skipped buffer, unless skip was a function.
 	(setq new-buffer skipped)
 	(set-window-buffer-start-and-point window new-buffer)))
@@ -4768,10 +4787,28 @@ This function is called by `previous-buffer'."
 	    ;; it.
 	    (set-window-prev-buffers
 	     window (append (window-prev-buffers window) (list entry)))))
-      ;; Move `old-buffer' to head of WINDOW's restored list of next
-      ;; buffers.
-      (set-window-next-buffers
-       window (cons old-buffer (delq old-buffer next-buffers))))
+      (if (not (and wrap wrapped))
+          ;; Move `old-buffer' to head of WINDOW's restored list of next
+          ;; buffers.
+          (set-window-next-buffers
+           window (cons old-buffer (delq old-buffer next-buffers)))
+        (if (eq wrapped 'stop)
+            (setq new-buffer nil)
+          ;; Restore the right order of previous buffers.
+          (let ((prev-buffers (window-prev-buffers window)))
+            ;; Use the same sorting order as was in next-buffers
+            ;; with old-buffer at the bottom.
+            (setq prev-buffers
+                  (sort prev-buffers
+                        (lambda (a b)
+                          (cond
+                           ((eq (car a) old-buffer) nil)
+                           ((eq (car b) old-buffer) t)
+                           (t (< (length (memq (car a) next-buffers))
+                                 (length (memq (car b) next-buffers))))))))
+            (set-window-prev-buffers window prev-buffers)
+            ;; When record-window-buffer doesn't reset next-buffers.
+            (set-window-next-buffers window nil)))))
 
     ;; Remove killed buffers from WINDOW's previous and next buffers.
     (when killed-buffers
@@ -4812,7 +4849,8 @@ This function is called by `next-buffer'."
            ((or switch-to-prev-buffer-skip
                 (not switch-to-visible-buffer))
             frame)))
-	 new-buffer entry killed-buffers skipped)
+	 (wrap switch-to-prev-buffer-wrap)
+	 new-buffer entry killed-buffers skipped wrapped)
     (when (window-minibuffer-p window)
       ;; Don't switch in minibuffer window.
       (unless (setq window (minibuffer-selected-window))
@@ -4839,7 +4877,7 @@ This function is called by `next-buffer'."
 	    (throw 'found t))))
       ;; Scan the buffer list of WINDOW's frame next, skipping previous
       ;; buffers entries.  Skip this step for side windows.
-      (unless window-side
+      (unless (or window-side wrap)
         (dolist (buffer (buffer-list frame))
           (when (and (buffer-live-p buffer)
                      (not (eq buffer old-buffer))
@@ -4856,27 +4894,37 @@ This function is called by `next-buffer'."
               (throw 'found t)))))
       ;; Scan WINDOW's reverted previous buffers last (must not use
       ;; nreverse here!)
-      (dolist (entry (reverse (window-prev-buffers window)))
-	(when (and (not (eq new-buffer (car entry)))
-                   (not (eq old-buffer (car entry)))
-                   (setq new-buffer (car entry))
-		   (or (buffer-live-p new-buffer)
-		       (not (setq killed-buffers
-				  (cons new-buffer killed-buffers))))
-                   (or (null pred) (funcall pred new-buffer)))
-          (if (switch-to-prev-buffer-skip-p skip window new-buffer)
-	      (setq skipped (or skipped new-buffer))
-	    (set-window-buffer-start-and-point
-	     window new-buffer (nth 1 entry) (nth 2 entry))
-	    (throw 'found t))))
+      (if (eq wrap 'stop) (setq wrapped 'stop)
+        (dolist (entry (reverse (window-prev-buffers window)))
+          (when (and (not (eq new-buffer (car entry)))
+                     (not (eq old-buffer (car entry)))
+                     (setq new-buffer (car entry))
+                     (or (buffer-live-p new-buffer)
+                         (not (setq killed-buffers
+                                    (cons new-buffer killed-buffers))))
+                     (or (null pred) (funcall pred new-buffer)))
+            (if (switch-to-prev-buffer-skip-p skip window new-buffer)
+                (setq skipped (or skipped new-buffer))
+              (setq wrapped t)
+              (set-window-buffer-start-and-point
+               window new-buffer (nth 1 entry) (nth 2 entry))
+              (throw 'found t)))))
 
-      (when (and skipped (not (functionp switch-to-prev-buffer-skip)))
+      (when (and skipped (not (functionp switch-to-prev-buffer-skip))
+                 (not wrapped))
         ;; Show first skipped buffer, unless skip was a function.
 	(setq new-buffer skipped)
 	(set-window-buffer-start-and-point window new-buffer)))
 
-    ;; Remove `new-buffer' from and restore WINDOW's next buffers.
-    (set-window-next-buffers window (delq new-buffer next-buffers))
+    (if (not (and wrap wrapped))
+        ;; Remove `new-buffer' from and restore WINDOW's next buffers.
+        (set-window-next-buffers window (delq new-buffer next-buffers))
+      (if (eq wrapped 'stop)
+          (setq new-buffer nil)
+        (let ((prev-buffers (window-prev-buffers window)))
+          (setq prev-buffers
+                (nreverse (delq new-buffer (mapcar #'car prev-buffers))))
+          (set-window-next-buffers window prev-buffers))))
 
     ;; Remove killed buffers from WINDOW's previous and next buffers.
     (when killed-buffers
