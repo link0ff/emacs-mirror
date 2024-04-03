@@ -110,7 +110,7 @@ Return the buffer."
 ;; Defined in help.el.
 (defvar resize-temp-buffer-window-inhibit)
 
-(defun temp-buffer-window-show (buffer &optional action no-resize)
+(defun temp-buffer-window-show (buffer &optional action)
   "Show temporary buffer BUFFER in a window.
 Return the window showing BUFFER.  Pass ACTION as action argument
 to `display-buffer'."
@@ -139,7 +139,7 @@ to `display-buffer'."
 	(set-window-hscroll window 0)
 	(with-selected-window window
 	  (run-hooks 'temp-buffer-window-show-hook)
-	  (when (and (not no-resize) temp-buffer-resize-mode)
+	  (when temp-buffer-resize-mode
 	    (resize-temp-buffer-window window)))
 	;; Return the window.
 	window))))
@@ -8453,6 +8453,14 @@ indirectly called by the latter."
 	 (t
 	  (setq direction 'below)))
 
+	(setq alist
+	      (append alist
+		      `(,(if temp-buffer-resize-mode
+		             '(window-height . resize-temp-buffer-window)
+	                   '(window-height . fit-window-to-buffer))
+	                ,(when temp-buffer-resize-mode
+	                   '(preserve-size . (nil . t))))))
+
 	(setq windows (windows-sharing-edge window direction within))
 	(dolist (other windows)
 	  (cond
@@ -8529,10 +8537,15 @@ indirectly called by the latter."
 	     (window--display-buffer buffer window 'reuse alist)))))
 
 (defun display-buffer--maybe-at-bottom (buffer alist)
-  (or (display-buffer--maybe-same-window buffer alist)
+  (let ((alist (append alist `(,(if temp-buffer-resize-mode
+		                    '(window-height . resize-temp-buffer-window)
+	                          '(window-height . fit-window-to-buffer))
+	                       ,(when temp-buffer-resize-mode
+	                          '(preserve-size . (nil . t)))))))
+    (or (display-buffer--maybe-same-window buffer alist)
         (display-buffer-reuse-window buffer alist)
         (display-buffer--maybe-pop-up-frame buffer alist)
-        (display-buffer-at-bottom buffer alist)))
+        (display-buffer-at-bottom buffer alist))))
 
 ;; This should be rewritten as
 ;; (display-buffer-in-direction buffer (cons '(direction . bottom) alist))
