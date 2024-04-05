@@ -2883,8 +2883,6 @@ Used in `repeat-mode'."
   :repeat t
   "o" #'tab-next
   "O" #'tab-previous)
-;; (put 'tab-next 'repeat-same-keys t)
-;; (put 'tab-next 'repeat-start-keys '([?\C-x ?t ?o]))
 
 (defvar-keymap tab-bar-move-repeat-map
   :doc "Keymap to repeat tab move commands `tab-move' and `tab-bar-move-tab-backward'.
