@@ -1866,7 +1866,11 @@ buffer."
                        (current-buffer)))))
     (with-current-buffer target
       (setq flymake--diagnostics-buffer-source source)
-      (display-buffer (current-buffer))
+      (display-buffer (current-buffer)
+                      `((display-buffer-reuse-window
+                         display-buffer-below-selected)
+                        (window-height . (lambda (window)
+                          (fit-window-to-buffer window 10)))))
       (revert-buffer))))
 
 
