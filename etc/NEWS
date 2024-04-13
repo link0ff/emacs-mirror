@@ -15,6 +15,12 @@ in older Emacs versions.
 You can narrow news to a specific version by calling 'view-emacs-news'
 with a prefix argument or by typing 'C-u C-h C-n'.
 
+Temporary note:
++++ indicates that all relevant manuals in doc/ have been updated.
+--- means no change in the manuals is needed.
+When you add a new item, use the appropriate mark if you are sure it
+applies, and please also update docstrings as needed.
+
 
 * Installation Changes in Emacs 30.1
 
@@ -1590,6 +1596,18 @@ options of GNU 'ls'.
 
 * New Modes and Packages in Emacs 30.1
 
++++
+** New package Track-Changes.
+This library is a layer of abstraction above 'before-change-functions'
+and 'after-change-functions' which provides a superset of
+the functionality of 'after-change-functions':
+- It provides the actual previous text rather than only its length.
+- It takes care of accumulating and bundling changes until a time when
+  its client finds it convenient to react to them.
+- It detects most cases where some changes were not properly
+  reported (calls to 'before/after-change-functions' that are
+  incorrectly paired, missing, etc...) and reports them adequately.
+
 ** New major modes based on the tree-sitter library
 
 +++
@@ -1661,6 +1679,14 @@ documentation and examples.
 
 
 * Incompatible Lisp Changes in Emacs 30.1
+
++++
+** 'define-globalized-minor-mode' requires that modes use 'run-mode-hooks'.
+Minor modes defined with 'define-globalized-minor-mode', such as
+'global-font-lock-mode', will not be enabled any more in those buffers
+whose major modes fails to use 'run-mode-hooks'.  Major modes defined
+with 'define-derived-mode' are not affected.  `run-mode-hooks` has been the
+recommended way to run major mode hooks since Emacs-22.
 
 ---
 ** Old derived.el functions removed.
@@ -1846,6 +1872,13 @@ It provides a functionality similar to 'condition-case' except it runs
 the handler code without unwinding the stack, such that we can record
 the backtrace and other dynamic state at the point of the error.  See
 the Info node "(elisp) Handling Errors".
+
++++
+** Tooltips on fringes.
+It is now possible to provide tooltips on fringes by adding special text
+properties 'left-fringe-help' and 'right-fringe-help'.  See the "Special
+Properties" Info node in the Emacs Lisp Reference Manual for more
+details.
 
 +++
 ** New 'pop-up-frames' action alist entry for 'display-buffer'.
@@ -2411,34 +2444,38 @@ correctly UTF-8 encoded.
 *** The parser and encoder now accept arbitrarily large integers.
 Previously, they were limited to the range of signed 64-bit integers.
 
-** New tree-sitter functions and variables for defining and using "things"
+** New tree-sitter functions and variables for defining and using "things".
 
 +++
 *** New variable 'treesit-thing-settings'.
-
-New variable that allows users to define "things" like 'defun', 'text',
-'sexp', for navigation commands and tree-traversal functions.
+It allows modes to define "things" like 'defun', 'text', 'sexp', and
+'sentence' for navigation commands and tree-traversal functions.
 
 +++
-*** New navigation functions 'treesit-thing-prev', 'treesit-thing-next', 'treesit-navigate-thing', 'treesit-beginning-of-thing', 'treesit-end-of-thing'.
+*** New functions for navigating "things".
+There are new navigation functions 'treesit-thing-prev',
+'treesit-thing-next', 'treesit-navigate-thing',
+'treesit-beginning-of-thing', and 'treesit-end-of-thing'.
 
 +++
 *** New functions 'treesit-thing-at', 'treesit-thing-at-point'.
 
 +++
-*** Tree-tarversing functions 'treesit-search-subtree', 'treesit-search-forward', 'treesit-search-forward-goto', 'treesit-induce-sparse-tree' now accepts more kinds of predicates.
+*** Tree-traversing functions.
+The functions 'treesit-search-subtree', 'treesit-search-forward',
+'treesit-search-forward-goto', and 'treesit-induce-sparse-tree' now
+accept more kinds of predicates.  Lisp programs can now use thing
+symbols (defined in 'treesit-thing-settings') and any thing definitions
+for the predicate argument.
 
-Now users can use thing symbols (defined in 'treesit-thing-settings'),
-and any thing definitions for the predicate argument.
-
-** Other tree-sitter function and variable changes
+** Other tree-sitter function and variable changes.
 
 +++
-*** 'treesit-parser-list' now takes additional optional arguments, LANGUAGE and TAG.
-
-If LANGUAGE is given, only return parsers for that language.  If TAG is
-given, only return parsers with that tag.  Note that passing nil as tag
-doesn't mean return all parsers, but rather "all parsers with no tags".
+*** 'treesit-parser-list' now takes additional optional arguments.
+The additional arguments are LANGUAGE and TAG.  If LANGUAGE is given,
+only return parsers for that language.  If TAG is given, only return
+parsers with that tag.  Note that passing nil as tag doesn't mean return
+all parsers, but rather "all parsers with no tags".
 
 
 * Changes in Emacs 30.1 on Non-Free Operating Systems
