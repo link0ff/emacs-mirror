@@ -1061,6 +1061,7 @@ However, return the correct mouse position list if EVENT is a
 
 
 (defvar-keymap tab-line-mode-map
+  :doc "Keymap for keys of `tab-line-mode'."
   "C-x <left>"    #'tab-line-switch-to-prev-tab
   "C-x C-<left>"  #'tab-line-switch-to-prev-tab
   "C-x <right>"   #'tab-line-switch-to-next-tab
