@@ -16864,7 +16864,7 @@ redisplay_internal (void)
   redisplay_trace ("redisplay_internal %d\n", redisplaying_p);
 
   /* I don't think this happens but let's be paranoid.  In particular,
-     this was observed happening when Emacs shuits down to to losing X
+     this was observed happening when Emacs shuts down due to losing X
      connection, in which case accessing SELECTED_FRAME and the frame
      structure is likely to barf.  */
   if (redisplaying_p)
@@ -35770,7 +35770,8 @@ note_fringe_highlight (struct frame *f, Lisp_Object window, int x, int y,
   /* Translate windows coordinates into a vertical window position.  */
   int hpos, vpos, area;
   struct window *w = XWINDOW (window);
-  x_y_to_hpos_vpos (w, x, y, &hpos, &vpos, 0, 0, &area);
+  if (x_y_to_hpos_vpos (w, x, y, &hpos, &vpos, 0, 0, &area) == NULL)
+    return;	/* not all glyph rows between 0 and Y are enabled */
 
   /* Don't access the TEXT_AREA of a row that does not display text,
      when the window is outdated, or when vpos overflows the current
