@@ -210,6 +210,11 @@ If the value is a function, call it with no arguments."
               'help-echo "Click to add tab")
   "Button for creating a new tab.")
 
+(defvar tab-line-new-button-functions
+  '(tab-line-tabs-window-buffers
+    tab-line-tabs-fixed-window-buffers)
+  "Functions of `tab-line-tabs-function' for which to show a new button.")
+
 (defcustom tab-line-close-button-show t
   "Defines where to show the close tab button.
 If t, show the close tab button on all tabs.
@@ -337,8 +342,9 @@ If truncated, append ellipsis per `tab-line-tab-name-ellipsis'."
   "Function to get a list of tabs to display in the tab line.
 This function should return either a list of buffers whose names will
 be displayed, or just a list of strings to display in the tab line.
-By default, use function `tab-line-tabs-window-buffers' that
-returns a list of buffers associated with the selected window.
+By default, use function `tab-line-tabs-fixed-window-buffers' that
+returns a list of buffers associated with the selected window where
+buffers always keep the original order after switching buffers.
 When `tab-line-tabs-mode-buffers', return a list of buffers
 with the same major mode as the current buffer.
 When `tab-line-tabs-buffer-groups', return a list of buffers
@@ -403,13 +409,10 @@ as a group name."
   :version "30.1")
 
 (defvar tab-line-tabs-buffer-group-sort-function
-  #'tab-line-tabs-buffer-group-sort-default
+  #'tab-line-tabs-buffer-group-sort-by-name
   "Function to sort buffers in a group.")
 
-(defun tab-line-tabs-buffer-group-sort-default (a b)
-  ;; (let ((prev-buffers (mapcar #'car (window-prev-buffers))))
-  ;;   (< (length (memq a prev-buffers))
-  ;;      (length (memq b prev-buffers))))
+(defun tab-line-tabs-buffer-group-sort-by-name (a b)
   (string< (buffer-name a) (buffer-name b)))
 
 (defvar tab-line-tabs-buffer-groups-sort-function #'string<
@@ -524,15 +527,18 @@ variable `tab-line-tabs-function'."
             (list buffer)
             next-buffers)))
 
-;; TODO: drag/drop should allow manual reordering
 (defun tab-line-tabs-fixed-window-buffers ()
-  "Like `tab-line-tabs-window-buffers' but keep stable sorting order."
-  (let ((old-buffers (window-parameter nil 'tab-line-fixed-window-buffers))
-        (new-buffers (tab-line-tabs-window-buffers)))
-    (setq new-buffers (sort new-buffers
+  "Like `tab-line-tabs-window-buffers' but keep stable sorting order.
+This means that switching to a buffer previously shown in the same
+window will keep the same order of tabs that was before switching.
+And newly displayed buffers are added to the end of the tab line."
+  (let* ((old-buffers (window-parameter nil 'tab-line-fixed-window-buffers))
+         (new-buffers (sort (tab-line-tabs-window-buffers)
                             (lambda (a b)
-                              (> (length (memq a old-buffers))
-                                 (length (memq b old-buffers))))))
+                              (< (or (seq-position old-buffers a)
+                                     most-positive-fixnum)
+                                 (or (seq-position old-buffers b)
+                                     most-positive-fixnum))))))
     (set-window-parameter nil 'tab-line-fixed-window-buffers new-buffers)
     new-buffers))
 
@@ -620,9 +626,7 @@ This is used by `tab-line-format'."
                tab-line-right-button)))
      (if hscroll (nthcdr (truncate hscroll) strings) strings)
      (list separator)
-     ;; TODO: move this list to a variable
-     (when (and (memq tab-line-tabs-function '(tab-line-tabs-window-buffers
-                                               tab-line-tabs-fixed-window-buffers))
+     (when (and (memq tab-line-tabs-function tab-line-new-button-functions)
                 tab-line-new-button-show
                 tab-line-new-button)
        (list tab-line-new-button)))))
@@ -963,7 +967,7 @@ buffers, which effectively hides the buffer's tab from the tab line.
 If `kill-buffer', kills the tab's buffer.
 When a function, it is called with the tab as its argument.
 This option is useful when `tab-line-tabs-function' has the value
-`tab-line-tabs-window-buffers'."
+`tab-line-tabs-window-buffers' or `tab-line-tabs-fixed-window-buffers'."
   :type '(choice (const :tag "Bury buffer" bury-buffer)
                  (const :tag "Kill buffer" kill-buffer)
                  (function :tag "Function"))
@@ -1056,30 +1060,16 @@ However, return the correct mouse position list if EVENT is a
       (event-start event)))
 
 
-(defun tab-line--cycling-key-bind (binding)
-  "Use BINDING when cycling buffers.
-Return an item that is enabled only when
-`tab-line-switch-cycling' is non-nil."
-  `(menu-item
-    "" ,binding
-    ;; TODO: maybe add a new variable for anyone who wants to use
-    ;; 'C-x left' with 'previous-buffer' even with fixed tab order.
-    ;; TODO: or better just to remove 'tab-line--cycling-key-bind',
-    ;; so anyone can just unbind "C-x <left>" in 'tab-line-mode-map'.
-    :filter ,(lambda (cmd) (unless (eq tab-line-tabs-function
-                                       #'tab-line-tabs-window-buffers)
-                             cmd))))
-
 (defvar-keymap tab-line-mode-map
-  "C-x <left>"    (tab-line--cycling-key-bind #'tab-line-switch-to-prev-tab)
-  "C-x C-<left>"  (tab-line--cycling-key-bind #'tab-line-switch-to-prev-tab)
-  "C-x <right>"   (tab-line--cycling-key-bind #'tab-line-switch-to-next-tab)
-  "C-x C-<right>" (tab-line--cycling-key-bind #'tab-line-switch-to-next-tab))
+  "C-x <left>"    #'tab-line-switch-to-prev-tab
+  "C-x C-<left>"  #'tab-line-switch-to-prev-tab
+  "C-x <right>"   #'tab-line-switch-to-next-tab
+  "C-x C-<right>" #'tab-line-switch-to-next-tab)
 
 (defvar-keymap tab-line-switch-repeat-map
   :doc "Keymap to repeat tab/buffer cycling.  Used in `repeat-mode'."
   :repeat t
-  "<left>" #'tab-line-switch-to-prev-tab
+  "<left>"  #'tab-line-switch-to-prev-tab
   "<right>" #'tab-line-switch-to-next-tab)
 
 ;;;###autoload
