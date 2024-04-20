@@ -1090,13 +1090,15 @@ ACTION is an LSP object of either `CodeAction' or `Command' type."
 
 (defun eglot-path-to-uri (path)
   "Convert PATH, a file name, to LSP URI string and return it."
+  ;; Some LSP servers don't resolve symlinks, so we must do that
+  ;; for them by calling 'file-truename below'.
   (let ((truepath (file-truename path)))
     (if (and (url-type (url-generic-parse-url path))
-             ;; It might be MS Windows path which includes a drive
-             ;; letter that looks like a URL scheme (bug#59338)
+             ;; PATH might be MS Windows file name which includes a
+             ;; drive letter that looks like a URL scheme (bug#59338).
              (not (and (eq system-type 'windows-nt)
                        (file-name-absolute-p truepath))))
-        ;; Path is already a URI, so forward it to the LSP server
+        ;; PATH is already a URI, so forward it to the LSP server
         ;; untouched.  The server should be able to handle it, since
         ;; it provided this URI to clients in the first place.
         path
@@ -2381,8 +2383,11 @@ still unanswered LSP requests to the server\n")))
                         (lambda ()
                           (remhash token (eglot--progress-reporters server))))))))))
 
+(defvar-local eglot--TextDocumentIdentifier-uri nil
+  "A cached LSP TextDocumentIdentifier URI string.")
+
 (cl-defmethod eglot-handle-notification
-  (_server (_method (eql textDocument/publishDiagnostics)) &key uri diagnostics
+  (server (_method (eql textDocument/publishDiagnostics)) &key uri diagnostics
            &allow-other-keys) ; FIXME: doesn't respect `eglot-strict-mode'
   "Handle notification publishDiagnostics."
   (cl-flet ((eglot--diag-type (sev)
@@ -2391,9 +2396,18 @@ still unanswered LSP requests to the server\n")))
                     ((= sev 2)  'eglot-warning)
                     (t          'eglot-note)))
             (mess (source code message)
-              (concat source (and code (format " [%s]" code)) ": " message)))
+              (concat source (and code (format " [%s]" code)) ": " message))
+            (find-it (uri)
+              ;; Search managed buffers with server-provided URIs since
+              ;; that's what we give them in the "didOpen" notification
+              ;; `find-buffer-visiting' would be nicer, but it calls the
+              ;; the potentially slow `file-truename' (bug#70036).
+              (cl-loop for b in (eglot--managed-buffers server)
+                       when (with-current-buffer b
+                              (equal eglot--TextDocumentIdentifier-uri uri))
+                       return b)))
     (if-let* ((path (expand-file-name (eglot-uri-to-path uri)))
-              (buffer (find-buffer-visiting path)))
+              (buffer (find-it uri)))
         (with-current-buffer buffer
           (cl-loop
            initially
@@ -2518,13 +2532,11 @@ THINGS are either registrations or unregisterations (sic)."
      (t (setq success :json-false)))
     `(:success ,success)))
 
-(defvar-local eglot--cached-tdi nil
-  "A cached LSP TextDocumentIdentifier URI string.")
-
 (defun eglot--TextDocumentIdentifier ()
-  "Compute TextDocumentIdentifier object for current buffer."
-  `(:uri ,(or eglot--cached-tdi
-              (setq eglot--cached-tdi
+  "Compute TextDocumentIdentifier object for current buffer.
+Sets `eglot--TextDocumentIdentifier-uri' (which see) as a side effect."
+  `(:uri ,(or eglot--TextDocumentIdentifier-uri
+              (setq eglot--TextDocumentIdentifier-uri
                     (eglot-path-to-uri (or buffer-file-name
                                            (ignore-errors
                                              (buffer-file-name
@@ -2824,7 +2836,7 @@ When called interactively, use the currently active server"
   "Send textDocument/didOpen to server."
   (setq eglot--recent-changes nil
         eglot--versioned-identifier 0
-        eglot--cached-tdi nil)
+        eglot--TextDocumentIdentifier-uri nil)
   (jsonrpc-notify
    (eglot--current-server-or-lose)
    :textDocument/didOpen `(:textDocument ,(eglot--TextDocumentItem))))
