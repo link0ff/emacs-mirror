@@ -1171,7 +1171,20 @@ leading double colon is not added."
                                 "global_variable"
                                 )
                                eol)
-                              #'ruby-ts--sexp-p)))))
+                              #'ruby-ts--sexp-p))
+                 (text ,(lambda (node)
+                          (or (member (treesit-node-type node)
+                                      '("comment" "string_content"))
+                              (and (member (treesit-node-text node)
+                                           '("[" "]"))
+                                   (equal (treesit-node-type
+                                           (treesit-node-parent node))
+                                          "element_reference"))
+                              (and (member (treesit-node-text node)
+                                           '("#{" "}"))
+                                   (equal (treesit-node-type
+                                           (treesit-node-parent node))
+                                          "interpolation"))))))))
 
   ;; AFAIK, Ruby can not nest methods
   (setq-local treesit-defun-prefer-top-level nil)
