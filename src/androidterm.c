@@ -3740,19 +3740,15 @@ static void
 android_get_scale_factor (int *scale_x, int *scale_y)
 {
   /* This is 96 everywhere else, but 160 on Android.  */
-  const int base_res = 160;
-  struct android_display_info *dpyinfo;
+  int base_res = 160;
 
-  dpyinfo = x_display_list;
   *scale_x = *scale_y = 1;
+  eassert (x_display_list);
 
-  if (dpyinfo)
-    {
-      if (dpyinfo->resx > base_res)
-	*scale_x = floor (dpyinfo->resx / base_res);
-      if (dpyinfo->resy > base_res)
-	*scale_y = floor (dpyinfo->resy / base_res);
-    }
+  if (x_display_list->resx > base_res)
+    *scale_x = floor (x_display_list->resx / base_res);
+  if (x_display_list->resy > base_res)
+    *scale_y = floor (x_display_list->resy / base_res);
 }
 
 static void
@@ -4158,7 +4154,7 @@ android_draw_glyph_string (struct glyph_string *s)
       /* Draw underline.  */
       if (s->face->underline)
         {
-          if (s->face->underline == FACE_UNDER_WAVE)
+          if (s->face->underline == FACE_UNDERLINE_WAVE)
             {
               if (s->face->underline_defaulted_p)
                 android_draw_underwave (s, decoration_width);
@@ -4171,13 +4167,16 @@ android_draw_glyph_string (struct glyph_string *s)
                   android_set_foreground (s->gc, xgcv.foreground);
                 }
             }
-          else if (s->face->underline == FACE_UNDER_LINE)
+          else if (s->face->underline == FACE_UNDERLINE_SINGLE
+		   || s->face->underline == FACE_UNDERLINE_DOUBLE_LINE)
             {
               unsigned long thickness, position;
               int y;
 
               if (s->prev
-		  && s->prev->face->underline == FACE_UNDER_LINE
+		  && ((s->prev->face->underline == FACE_UNDERLINE_SINGLE)
+		      || (s->prev->face->underline
+			  == FACE_UNDERLINE_DOUBLE_LINE))
 		  && (s->prev->face->underline_at_descent_line_p
 		      == s->face->underline_at_descent_line_p)
 		  && (s->prev->face->underline_pixels_above_descent_line
@@ -4254,19 +4253,38 @@ android_draw_glyph_string (struct glyph_string *s)
                 thickness = (s->y + s->height) - (s->ybase + position);
               s->underline_thickness = thickness;
               s->underline_position = position;
-              y = s->ybase + position;
-              if (s->face->underline_defaulted_p)
-                android_fill_rectangle (FRAME_ANDROID_DRAWABLE (s->f), s->gc,
-					s->x, y, decoration_width, thickness);
-              else
-                {
-                  struct android_gc_values xgcv;
-                  android_get_gc_values (s->gc, ANDROID_GC_FOREGROUND, &xgcv);
-                  android_set_foreground (s->gc, s->face->underline_color);
-                  android_fill_rectangle (FRAME_ANDROID_DRAWABLE (s->f), s->gc,
+
+	      {
+		struct android_gc_values xgcv;
+
+		y = s->ybase + position;
+		if (s->face->underline_defaulted_p)
+		  android_fill_rectangle (FRAME_ANDROID_DRAWABLE (s->f), s->gc,
 					  s->x, y, decoration_width, thickness);
-                  android_set_foreground (s->gc, xgcv.foreground);
-                }
+		else
+		  {
+		    android_get_gc_values (s->gc, ANDROID_GC_FOREGROUND, &xgcv);
+		    android_set_foreground (s->gc, s->face->underline_color);
+		    android_fill_rectangle (FRAME_ANDROID_DRAWABLE (s->f), s->gc,
+					    s->x, y, decoration_width, thickness);
+		  }
+
+		/* Place a second underline above the first if this was
+		   requested in the face specification.  */
+
+		if (s->face->underline == FACE_UNDERLINE_DOUBLE_LINE)
+		  {
+		    /* Compute the position of the second underline.  */
+		    position = position - thickness - 1;
+		    y        = s->ybase + position;
+		    android_fill_rectangle (FRAME_ANDROID_DRAWABLE (s->f),
+					    s->gc, s->x, y, decoration_width,
+					    thickness);
+		  }
+
+		if (!s->face->underline_defaulted_p)
+		  android_set_foreground (s->gc, xgcv.foreground);
+	      }
             }
         }
       /* Draw overline.  */
@@ -6702,6 +6720,22 @@ so it is important to limit the wait.
 
 If set to a non-float value, there will be no wait at all.  */);
   Vandroid_wait_for_event_timeout = make_float (0.1);
+
+  DEFVAR_INT ("android-quit-keycode", android_quit_keycode,
+    doc: /* Keycode that signals quit when typed twice in rapid succession.
+
+This is the key code of a key whose repeated activation should prompt
+Emacs to quit, enabling quitting on systems where a keyboard capable of
+typing C-g is unavailable, when set to a key that does exist on the
+device.  Its value must be a keycode defined by the operating system,
+and defaults to 25 (KEYCODE_VOLUME_DOWN), though one of the following
+values might be desired on those devices where this default is also
+unavailable, or if another key must otherwise serve this function
+instead:
+
+  - 4  (KEYCODE_BACK)
+  - 24 (KEYCODE_VOLUME_UP)  */);
+  android_quit_keycode = 25;
 
   DEFVAR_BOOL ("x-use-underline-position-properties",
 	       x_use_underline_position_properties,
