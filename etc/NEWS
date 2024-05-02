@@ -352,9 +352,9 @@ points after switching back to that tab.
 ---
 *** New user option 'tab-bar-select-restore-windows'.
 It defines what to do with windows whose buffer was killed since the tab
-was last selected.  By default it displays a placeholder buffer that
-provides information about the name of the killed buffer that was
-displayed in that window.
+was last selected.  By default it displays a placeholder buffer
+with the name " *Old buffer <name>*" that provides information about
+the name of the killed buffer that was displayed in that window.
 
 ---
 *** New user option 'tab-bar-tab-name-format-functions'.
@@ -1940,9 +1940,9 @@ unibyte string.
 * Lisp Changes in Emacs 30.1
 
 +++
-** Function type declaration
-It is now possible, using the 'declare' macro, to declare expected types
-of function arguments and return type.
+** Function type declaration.
+It is now possible to declare the expected type of a function's
+arguments and its return type using the 'declare' macro.
 
 ** New types 'closure' and 'interpreted-function'.
 'interpreted-function' is the new type used for interpreted functions,
