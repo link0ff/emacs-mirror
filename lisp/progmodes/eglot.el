@@ -565,13 +565,6 @@ This can be useful when using docker to run a language server.")
 
 ;;; Constants
 ;;;
-(defconst eglot--version
-  (eval-when-compile
-    (when byte-compile-current-file
-      (require 'lisp-mnt)
-      (lm-version byte-compile-current-file)))
-  "The version as a string of this version of Eglot.
-It is nil if Eglot is not byte-complied.")
 
 (defconst eglot--symbol-kind-names
   `((1 . "File") (2 . "Module")
@@ -1606,8 +1599,10 @@ This docstring appeases checkdoc, that's all."
                                             'network))
                               (emacs-pid))
                             :clientInfo
-                            `(:name "Eglot" ,@(when eglot--version
-                                                `(:version ,eglot--version)))
+                            (append
+                             '(:name "Eglot")
+                             (let ((v (package-get-version)))
+                               (and v (list :version v))))
                             ;; Maybe turn trampy `/ssh:foo@bar:/path/to/baz.py'
                             ;; into `/path/to/baz.py', so LSP groks it.
                             :rootPath (file-local-name
@@ -2684,6 +2679,15 @@ Records BEG, END and PRE-CHANGE-LENGTH locally."
                     ,(buffer-substring-no-properties beg end))
                   eglot--recent-changes))))))
 
+(defun eglot--add-one-shot-hook (hook function &optional append local)
+  "Like `add-hook' but calls FUNCTION only once."
+  (let* ((fname (make-symbol (format "eglot--%s-once" function)))
+         (fun (lambda (&rest args)
+                (remove-hook hook fname local)
+                (apply function args))))
+    (fset fname fun)
+    (add-hook hook fname append local)))
+
 (defun eglot--track-changes-signal (id &optional distance)
   (cond
    (distance
@@ -2694,14 +2698,24 @@ Records BEG, END and PRE-CHANGE-LENGTH locally."
    ;; who check it as a boolean.
    (t (setq eglot--recent-changes :pending)))
   (when eglot--change-idle-timer (cancel-timer eglot--change-idle-timer))
-  (let ((buf (current-buffer)))
-    (setq eglot--change-idle-timer
-          (run-with-idle-timer
-           eglot-send-changes-idle-time
-           nil (lambda () (eglot--when-live-buffer buf
-                            (when eglot--managed-mode
-                              (run-hooks 'eglot--document-changed-hook)
-                              (setq eglot--change-idle-timer nil))))))))
+  (setq eglot--change-idle-timer
+        (run-with-idle-timer
+         eglot-send-changes-idle-time nil
+         (lambda (buf)
+           (eglot--when-live-buffer buf
+             (when eglot--managed-mode
+               (if (and (fboundp 'track-changes-inconsistent-state-p)
+                        (track-changes-inconsistent-state-p))
+                   ;; Not a good time (e.g. in the middle of Quail thingy,
+                   ;; bug#70541): reschedule for the next idle period.
+                (eglot--add-one-shot-hook
+                 'post-command-hook
+                 (lambda ()
+                   (eglot--when-live-buffer buf
+                     (eglot--track-changes-signal id))))
+                 (run-hooks 'eglot--document-changed-hook)
+                 (setq eglot--change-idle-timer nil)))))
+         (current-buffer))))
 
 (defvar-local eglot-workspace-configuration ()
   "Configure LSP servers specifically for a given project.

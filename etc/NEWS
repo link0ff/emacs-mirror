@@ -696,6 +696,12 @@ you can add this to your init script:
 
     (setopt project-switch-commands #'project-prefix-or-any-command)
 
+---
+*** New variable 'project-files-relative-names'.
+If it's non-nil, 'project-files' can return file names relative to the
+project root.  Project backends can use this to improve the performance
+of their 'project-files' implementation.
+
 ** VC
 
 ---
@@ -1350,6 +1356,14 @@ interactive Python interpreter specified by 'python-interpreter'.
 *** New function 'python-shell-send-block'.
 It sends the python block delimited by 'python-nav-beginning-of-block'
 and 'python-nav-end-of-block' to the inferior Python process.
+
+** Inferior Python mode
+
+---
+*** Default value of 'python-shell-compilation-regexp-alist' is changed.
+Support for Python's ExceptionGroup has been added, so in the Python
+shell, the line indicating the source of error in the error messages
+from ExceptionGroup will be recognized as well.
 
 ** Scheme mode
 Scheme mode now handles regular expression literal '#/regexp/' that is
@@ -2421,6 +2435,15 @@ The warning name is 'docstrings-control-chars'.
 ---
 *** The warning about wide docstrings can now be disabled separately.
 Its warning name is 'docstrings-wide'.
+
+---
+** Warn about missing 'lexical-binding' directive when loading .el files.
+Emacs now emits a run-time warning if an Elisp source file being loaded
+lacks the '-*- lexical-binding: ... -*-' cookie on the first line.
+See the lexical-binding compiler warning described above for how to make
+the warning go away by adding a declaration to the file.  You can also
+suppress the warning by adding an entry for the warning type
+'lexical-warning' to 'warning-suppress-types'.
 
 ---
 ** New user option 'native-comp-async-warnings-errors-kind'.
