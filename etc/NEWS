@@ -340,6 +340,13 @@ and 'window-state-get'.  Then later another new variable
 'window-state-put' to restore positions of window points
 according to the context stored in a window parameter.
 
++++
+*** New functions 'set-window-cursor-type' and 'window-cursor-type'.
+'set-window-cursor-type' sets a per-window cursor type, and
+'window-cursor-type' queries this setting for a given window.  Windows
+are always created with a 'window-cursor-type' of t, which means to
+consult the variable 'cursor-type' as before.
+
 ** Tab Bars and Tab Lines
 
 ---
@@ -1748,6 +1755,17 @@ that is, buffers not visiting a file and whose names start with a space.
 Previously, such buffers were never shown.  This command is bound to 'I'
 in Buffer Menu mode.
 
+---
+*** nXML Mode now comes with schemas for Mono/.NET development.
+The following new XML schemas are now supported:
+- MSBuild project files
+- Dotnet package properties files
+- Dotnet resource extension files
+- Dotnet Application config files
+- Nuget config file
+- Nuget package specification file
+- Nuget packages config file
+
 
 * New Modes and Packages in Emacs 30.1
 
@@ -2634,6 +2652,19 @@ arguments.  (Previously the 'old-object' argument was required which, in
 this case, would mean repeating the object in the argument list.)  When
 replacing an object with a different one, passing both the new and old
 objects is still necessary.
+
+** 'vtable-insert-object' can insert "before" or at an index.
+The signature of 'vtable-insert-object' has changed and is now:
+
+(vtable-insert-object table object &optional location before)
+
+'location' corresponds to the old 'after-object' argument; if 'before'
+is non-nil, the new object is inserted before the 'location' object,
+making it possible to insert a new object at the top of the
+table. (Before, this was not possible.)  In addition, 'location' can be
+an integer, a (zero-based) index into the table at which the new object
+is inserted ('before' is ignored in this case).
+
 
 ** JSON
 
