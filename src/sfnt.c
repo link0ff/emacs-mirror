@@ -14089,17 +14089,14 @@ sfnt_map_table (int fd, struct sfnt_offset_subtable *subtable,
 
   /* Find the table in the directory.  */
 
-  for (i = 0; i < subtable->num_tables; ++i)
+  for (i = 0; ; i++)
     {
-      if (subtable->subtables[i].tag == tag)
-	{
-	  directory = &subtable->subtables[i];
-	  break;
-	}
+      if (! (i < subtable->num_tables))
+	return 1;
+      directory = &subtable->subtables[i];
+      if (directory->tag == tag)
+	break;
     }
-
-  if (i == subtable->num_tables)
-    return 1;
 
   /* Now try to map the glyph data.  Make sure offset is a multiple of
      the page size.  */
@@ -14156,17 +14153,14 @@ sfnt_read_table (int fd, struct sfnt_offset_subtable *subtable,
 
   /* Find the table in the directory.  */
 
-  for (i = 0; i < subtable->num_tables; ++i)
+  for (i = 0; ; i++)
     {
-      if (subtable->subtables[i].tag == tag)
-	{
-	  directory = &subtable->subtables[i];
-	  break;
-	}
+      if (! (i < subtable->num_tables))
+	return NULL;
+      directory = &subtable->subtables[i];
+      if (directory->tag == tag)
+	break;
     }
-
-  if (i == subtable->num_tables)
-    return NULL;
 
   /* Seek to the table.  */
 
@@ -15160,7 +15154,7 @@ sfnt_read_cvar_table (int fd, struct sfnt_offset_subtable *subtable,
 	  /* Copy in the shared point numbers instead.  */
 	  cvar->variation[i].num_points = npoints;
 
-	  if (npoints != UINT16_MAX)
+	  if (points && npoints != UINT16_MAX)
 	    {
 	      if (cvar->variation[i].num_points > cvt->num_elements)
 		cvar->variation[i].num_points = cvt->num_elements;
