@@ -502,6 +502,16 @@ def f(x: CustomInt) -> CustomInt:
      (31 . font-lock-type-face) (40)
      (43 . font-lock-operator-face) (44))))
 
+(ert-deftest python-font-lock-assignment-statement-20 ()
+  (python-tests-assert-faces
+   "a = b = c = 1"
+   '((1 . font-lock-variable-name-face) (2)
+     (3 . font-lock-operator-face) (4)
+     (5 . font-lock-variable-name-face) (6)
+     (7 . font-lock-operator-face) (8)
+     (9 . font-lock-variable-name-face) (10)
+     (11 . font-lock-operator-face) (12))))
+
 (ert-deftest python-font-lock-operator-1 ()
   (python-tests-assert-faces
    "1 << 2 ** 3 == +4%-5|~6&7^8%9"
@@ -7514,7 +7524,7 @@ print('current 3')"
     (goto-char (point-min))
     (should-error (python-shell-send-block) :type 'user-error)
     (forward-line)
-    (python-shell-send-block)
+    (python-shell-send-block t) ;; send block with header
     (python-tests-shell-wait-for-prompt)
     (python-shell-with-shell-buffer
       (goto-char (point-min))
@@ -7523,7 +7533,7 @@ print('current 3')"
       (should (re-search-forward "current 2" nil t))
       (should-not (re-search-forward "current 3" nil t)))
     (forward-line)
-    (python-shell-send-block t) ;; send block body only
+    (python-shell-send-block) ;; send block body only
     (python-tests-shell-wait-for-prompt)
     (python-shell-with-shell-buffer
       ;; should only 1 line output from the block body
