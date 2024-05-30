@@ -871,6 +871,13 @@ using this new option.  (Or set 'display-buffer-alist' directly.)
 ** Eshell
 
 +++
+*** You can now run Eshell scripts in batch mode.
+By adding the following interpreter directive to an Eshell script, you
+can make it executable like other shell scripts:
+
+    #!/usr/bin/env -S emacs --batch -f eshell-batch-file
+
++++
 *** New builtin Eshell command 'compile'.
 This command runs another command, sending its output to a compilation
 buffer when the command would output interactively.  This can be useful
@@ -1059,8 +1066,8 @@ point is not in a comment or a string.  It is by default bound to
 
 +++
 *** New user option 'imenu-flatten'.
-It defines whether to flatten the list of sections in an imenu
-or show it nested.
+It controls  whether to flatten the list of sections in an imenu, and
+how to display the sections in the flattened list.
 
 +++
 *** The sort order of Imenu completions can now be customized.
