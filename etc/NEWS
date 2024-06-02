@@ -520,10 +520,11 @@ function call.
 
 +++
 ** Emacs now has better support for touchscreen devices.
-Many touch screen gestures are now implemented and translated into
-mouse or gesture events, and support for tapping tool bar buttons and
-opening menus has been written.  Countless packages, such as Dired and
-Custom have been adjusted to better understand touch screen input.
+On systems that understand them, many touch screen gestures are now
+implemented and translated into mouse or gesture events, and support for
+tapping tool bar buttons and opening menus has been written.  Countless
+packages, such as Dired and Custom have been adjusted to better
+understand touch screen input.
 
 ---
 ** On X, Emacs now supports input methods which perform "string conversion".
@@ -1901,6 +1902,11 @@ than regular expressions, but less complexity than context-free
 grammars.  The Info manual "(elisp) Parsing Expression Grammars" has
 documentation and examples.
 
+** New major mode 'shell-command-mode'.
+This mode is used by default for the output of 'async-shell-command'.
+To revert to the previous behavior, set the (also new) variable
+'async-shell-command-mode' to 'shell-mode'.  Any hooks or mode-specific
+variables used should be adapted appropriately.
 
 * Incompatible Lisp Changes in Emacs 30.1
 

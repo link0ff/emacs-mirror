@@ -37,7 +37,7 @@
 ;; the hooks available for customizing it, see the file comint.el.
 ;; For further information on shell mode, see the comments below.
 
-;; Needs fixin:
+;; Needs fixing:
 ;; When sending text from a source file to a subprocess, the process-mark can
 ;; move off the window, so you can lose sight of the process interactions.
 ;; Maybe I should ensure the process mark is in the window when I send
@@ -837,6 +837,13 @@ Sentinels will always get the two parameters PROCESS and EVENT."
     (when (buffer-live-p buf)
       (with-current-buffer buf
         (insert (format "\nProcess %s %s\n" process event))))))
+
+(define-derived-mode shell-command-mode comint-mode "Shell"
+  "Major mode for the output of asynchronous `shell-command'."
+  (setq-local font-lock-defaults '(shell-font-lock-keywords t))
+  ;; See comments in `shell-mode'.
+  (setq-local ansi-color-apply-face-function #'shell-apply-ansi-color)
+  (setq list-buffers-directory (expand-file-name default-directory)))
 
 ;;;###autoload
 (defun shell (&optional buffer file-name)
