@@ -132,7 +132,6 @@
        (repeat-tests--check
         "C-2 C-x w a b a b c"
         '((2 a) (2 b) (2 a) (2 b)) "c")
-       ;; TODO:
        ;; (repeat-tests--check
        ;;  "C-2 C-x w a C-1 C-2 b a C-3 C-4 b c"
        ;;  '((2 a) (12 b) (12 a) (34 b)) "c")
