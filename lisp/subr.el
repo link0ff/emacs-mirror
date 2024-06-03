@@ -3585,8 +3585,7 @@ If there is a natural number at point, use it as default."
     (set-keymap-parent map minibuffer-local-map)
 
     ;; (define-key map [remap self-insert-command] #'read-char-from-minibuffer-insert-char)
-    ;; Actually need a new command to check if buffer contains exactly 1 character:
-    ;; (define-key map [remap exit-minibuffer] #'read-char-from-minibuffer-insert-other)
+    (define-key map [remap exit-minibuffer] #'read-char-from-minibuffer-insert-other)
 
     (define-key map [remap recenter-top-bottom] #'minibuffer-recenter-top-bottom)
     (define-key map [remap scroll-up-command] #'minibuffer-scroll-up-command)
@@ -3734,6 +3733,9 @@ There is no need to explicitly add `help-char' to CHARS;
     (dolist (symbol '(exit-prefix quit))
       (define-key map (vector 'remap symbol) #'abort-recursive-edit))
     (define-key map [escape] #'abort-recursive-edit)
+
+    ;; FIXME: try catch-all instead of explicit bindings:
+    ;; (define-key map [remap t] #'y-or-n-p-insert-other)
 
     map)
   "Keymap that defines additional bindings for `y-or-n-p' answers.")
