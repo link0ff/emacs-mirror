@@ -880,6 +880,40 @@ as the ewoc pretty-printer."
 
 (put 'tabulated-list-mode 'mode-class 'special)
 
+;;; Tabulated list groups
+
+(defun tabulated-list-groups (entries meta)
+  (let ((path-fun (alist-get 'path-fun meta))
+        (sort-fun (alist-get 'sort-fun meta))
+        (group-tree nil)
+        (group-hash (make-hash-table :test #'equal)))
+    (cl-labels
+        ((trie-add (list tree)
+           (when list
+             (setf (alist-get (car list) tree nil nil #'equal)
+                   (trie-add (cdr list)
+                             (alist-get (car list) tree nil nil #'equal)))
+             tree))
+         (trie-get (tree path)
+           (mapcar (lambda (elt)
+                     (cons (car elt)
+                           (if (cdr elt)
+                               (trie-get (cdr elt) (cons (car elt) path))
+                             (nreverse (gethash (reverse (cons (car elt) path))
+                                                group-hash)))))
+                   (reverse tree))))
+      (dolist (entry entries)
+        (dolist (path (funcall path-fun entry))
+          (unless (gethash path group-hash)
+            (setq group-tree (trie-add path group-tree)))
+          (cl-pushnew entry (gethash path group-hash))))
+      (setq group-tree (trie-get group-tree nil))
+      ;; (when sort-fun
+      ;;   (setq group-tree (tree-sort group-tree sort-fun)))
+      ;; (setq group-tree (tree-count group-tree)) ;; should also prepend "* "
+      ;; (setq group-tree (tree-flatten group-tree))
+      group-tree)))
+
 (provide 'tabulated-list)
 
 ;;; tabulated-list.el ends here

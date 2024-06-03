@@ -783,10 +783,25 @@ See more at `Buffer-menu-filter-predicate'."
 		  '("File" 1 t)))
     (setq tabulated-list-use-header-line Buffer-menu-use-header-line)
     (setq tabulated-list-entries (nreverse entries))
-    (when Buffer-menu-group-by
-      (setq tabulated-list-groups
-            (seq-group-by Buffer-menu-group-by
-                          tabulated-list-entries))))
+
+    ;; (when Buffer-menu-group-by
+    ;;   (setq tabulated-list-groups
+    ;;         (seq-group-by Buffer-menu-group-by
+    ;;                       tabulated-list-entries)))
+
+    (setq tabulated-list-groups
+          (tabulated-list-groups
+           tabulated-list-entries
+           ;; Buffer-menu-groups
+           '((path-fun . (lambda (b) (list (list (funcall Buffer-menu-group-by b))))))
+           ;; '((path-fun . (lambda (b) (if-let ((tabs (tab-bar-get-buffer-tab (car b) nil nil t)))
+           ;;                               (mapcar (lambda (tab) (list (format "* %s" (alist-get 'name tab)))) tabs)
+           ;;                             (list (list "* No tab"))))))
+
+           ))
+
+    )
+
   (tabulated-list-init-header))
 
 (defun tabulated-list-entry-size-> (entry1 entry2)
