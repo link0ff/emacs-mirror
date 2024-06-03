@@ -941,9 +941,29 @@ point."
 
 ;; FIXME: Write a nicer UI.
 (defun xref--query-replace-1 (from to iter)
-  (let* ((continue t)
+  (let* ((query-replace-lazy-highlight nil)
+         (continue t)
          did-it-once buf-pairs pairs
-         (region-extract-function (lambda (_) pairs)))
+         current-beg current-end
+         ;; Counteract the "do the next match now" hack in
+         ;; `perform-replace'.  And still, it'll report that those
+         ;; matches were "filtered out" at the end.
+         (isearch-filter-predicate
+          (lambda (beg end)
+            (and current-beg
+                 (>= beg current-beg)
+                 (<= end current-end))))
+         (replace-re-search-function
+          (lambda (from &optional _bound noerror)
+            (let (found pair)
+              (while (and (not found) pairs)
+                (setq pair (pop pairs)
+                      current-beg (car pair)
+                      current-end (cdr pair))
+                (goto-char current-beg)
+                (when (re-search-forward from current-end noerror)
+                  (setq found t)))
+              found))))
     (while (and continue (setq buf-pairs (funcall iter :next)))
       (if did-it-once
           ;; Reuse the same window for subsequent buffers.
@@ -952,10 +972,8 @@ point."
          (pop-to-buffer (car buf-pairs)))
         (setq did-it-once t))
       (setq pairs (cdr buf-pairs))
-      (goto-char (point-min))
       (setq continue
-            (perform-replace from to t t nil nil multi-query-replace-map
-                             nil nil nil t)))
+            (perform-replace from to t t nil nil multi-query-replace-map)))
     (unless did-it-once
       (user-error
        "Cannot perform global renaming of symbols using find-definition results"))
@@ -2136,8 +2154,6 @@ Such as the current syntax table and the applied syntax properties."
       (if (and
            ;; REGEXP might match an empty string.  Or line.
            (not (and last-beg (eql end line-beg)))
-           ;; Should let-bind case-fold-search?
-           ;; to test try to search Capitalized
            (re-search-forward regexp line-end t))
           (setq beg (match-beginning 0)
                 end (match-end 0)

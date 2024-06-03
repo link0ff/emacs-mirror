@@ -2851,7 +2851,6 @@ The command accepts Unicode names like \"smiling face\" or
 		   (if (and (eq case-fold-search t) search-upper-case)
 		       (setq case-fold-search
 			     (isearch-no-upper-case-p isearch-string isearch-regexp)))
-                   ;; on the second line of *scratch*: C-M-r ^ ;
 		   (looking-at (cond
 				((functionp isearch-regexp-function)
 				 (funcall isearch-regexp-function isearch-string t))
@@ -4469,7 +4468,6 @@ Attempt to do the search exactly the way the pending Isearch would."
           (cleanup lazy-highlight-cleanup)
           (transform #'identity)
           (filter nil)
-          (search-fun nil)
           (regexp isearch-regexp)
           (regexp-function isearch-regexp-function)
           (case-fold isearch-case-fold-search)
@@ -4489,7 +4487,6 @@ exits.
 TRANSFORM: A function taking one argument, the minibuffer contents,
 and returning the `isearch-string' to use for lazy highlighting.
 FILTER: A function to add to `isearch-filter-predicate'.
-SEARCH-FUN: A function to add to `isearch-search-fun-function'.
 REGEXP: The value of `isearch-regexp' to use for lazy highlighting.
 REGEXP-FUNCTION: The value of `isearch-regexp-function' to use for
 lazy highlighting.
@@ -4509,9 +4506,6 @@ LAX-WHITESPACE: The value of `isearch-lax-whitespace' and
               (when filter
                 (with-current-buffer buffer
                   (remove-function (local 'isearch-filter-predicate) filter)))
-              (when search-fun
-                (with-current-buffer buffer
-                  (remove-function (local 'isearch-search-fun-function) search-fun)))
               (remove-hook 'lazy-count-update-hook display-count)
               (when overlay (delete-overlay overlay))
               (remove-hook 'after-change-functions after-change t)
@@ -4547,9 +4541,6 @@ LAX-WHITESPACE: The value of `isearch-lax-whitespace' and
         (when filter
           (with-current-buffer buffer
             (add-function :after-while (local 'isearch-filter-predicate) filter)))
-        (when search-fun
-          (with-current-buffer buffer
-            (add-function :around (local 'isearch-search-fun-function) search-fun)))
         (funcall after-change nil nil nil)))))
 
 

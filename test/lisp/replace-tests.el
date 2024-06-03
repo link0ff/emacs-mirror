@@ -447,7 +447,7 @@ Each element has the format:
       (dolist (case tests)
         ;; Ensure empty input means empty string to replace:
         (setq query-replace-defaults nil)
-        (erase-buffer)
+        (delete-region (point-min) (point-max))
         (insert (nth 0 case))
         (goto-char (point-min))
         (execute-kbd-macro (kbd (nth 1 case)))
@@ -460,24 +460,22 @@ Each element has the format:
   (let* ((replace-re-search-function #'re-search-forward))
     (query-replace--run-tests query-replace-tests))
 
-  (let* ((bounds '((1 . 2) (3 . 4)))
+  (let* ((pairs '((1 . 2) (3 . 4)))
          (replace-re-search-function
-          (isearch-search-fun-in-noncontiguous-region nil bounds))
+          (lambda (string &optional _bound noerror count)
+            (let (found)
+              (while (and (not found) pairs)
+                (goto-char (caar pairs))
+                (when (re-search-forward string (cdar pairs) noerror count)
+                  (setq found t))
+                (pop pairs))
+              found)))
          (tests
           '(
-            ("aaaa" "C-M-% .* RET 1 RET !" "1a1a")
+            ;; FIXME: this test should pass after fixing bug#54733:
+            ;; ("aaaa" "C-M-% .* RET 1 RET !" "1a1a")
             )))
     (query-replace--run-tests tests)))
-
-;; (ert-deftest query-replace-search-noncontiguous-region-tests ()
-;;   (let* ((tests
-;;           '(
-;;             ;; ("aaa\naaa\n" "<right> C-x SPC <right> <down>" "a1a\na1a\n")
-;;             ("aaa\naaa\n" "<right> C-x SPC <right> <down> C-M-% .* RET 1 RET !" "a1a\na1a\n")
-;;             ;; ("aaa\naaa\n" "C-M-% .* RET 1 RET !" "a1a\na1a\n")
-;;             ;; ("aaa\naaa\n" "C-M-% a RET 1 RET !" "a1a\na1a\n")
-;;             )))
-;;     (query-replace--run-tests tests)))
 
 
 ;;; General tests for `perform-replace'.
@@ -487,15 +485,14 @@ Each element has the format:
     ;; Test case from commit 5632eb272c7
     ("a a a " "\\ba " "c" nil t nil nil nil nil nil nil nil "ccc") ; not "ca c"
     ;; The same with region inside the second match
-    ("a a a " "\\ba " "c" nil t nil nil nil 1 3 nil nil "ca a ")
-    ("a a a " "\\ba " "c" nil t nil nil nil 1 4 nil nil "ca a ")
-    ("a a a " "\\ba " "c" nil t nil nil nil 1 5 nil nil "cca ")
+    ;; FIXME: this test should pass after fixing bug#54733:
+    ;; ("a a a " "\\ba " "c" nil t nil nil nil 1 4 nil nil "ca a ")
     ))
 
 (defun perform-replace--run-tests (tests)
   (with-temp-buffer
     (dolist (case tests)
-      (erase-buffer)
+      (delete-region (point-min) (point-max))
       (insert (pop case))
       (goto-char (point-min))
       (apply 'perform-replace (butlast case))
@@ -503,11 +500,6 @@ Each element has the format:
 
 (ert-deftest perform-replace-tests ()
   (perform-replace--run-tests perform-replace-tests))
-
-(ert-deftest perform-replace-noncontiguous-region-tests ()
-  (let ((region-extract-function (lambda (_) '((2 . 3) (6 . 7)))))
-    (perform-replace--run-tests
-     '(("aaa\naaa\n" ".*" "1" nil t nil nil nil nil nil nil t "a1a\na1a\n")))))
 
 
 ;;; Tests for `query-replace' undo feature.
