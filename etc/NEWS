@@ -520,11 +520,11 @@ function call.
 
 +++
 ** Emacs now has better support for touchscreen devices.
-On systems that understand them, many touch screen gestures are now
-implemented and translated into mouse or gesture events, and support for
-tapping tool bar buttons and opening menus has been written.  Countless
-packages, such as Dired and Custom have been adjusted to better
-understand touch screen input.
+On systems that understand them (at present X, Android, and PGTK), many
+touch screen gestures are now implemented and translated into mouse or
+gesture events, and support for tapping tool bar buttons and opening
+menus has been written.  Countless packages, such as Dired and Custom
+have been adjusted to better understand touch screen input.
 
 ---
 ** On X, Emacs now supports input methods which perform "string conversion".
@@ -1047,6 +1047,15 @@ When this user option is non-nil, 'shell-get-old-input' ('C-RET')
 includes multiple shell "\" continuation lines from command output.
 Default is nil.
 
++++
+*** New user option 'shell-history-file-name'.
+When this user option is set to t, 'shell-mode' does not read the shell
+history file.  Setting this user option to a string specifies the name
+of the shell history file to be read.  A nil value triggers reading the
+environment variable 'HISTFILE'.
+
+In a 'shell' buffer, this user option is connection-local.
+
 ** Make mode
 
 *** The Makefile browser is now obsolete.
@@ -1182,7 +1191,7 @@ manual "(tramp) Improving performance of asynchronous remote processes".
 ---
 *** Direct asynchronous processes use 'tramp-remote-path'.
 When a direct asynchronous process is invoked, it uses 'tramp-remote-path'
-for setting the remote PATH environment variable.
+for setting the remote 'PATH' environment variable.
 
 ** File Notifications
 
@@ -1683,6 +1692,25 @@ The user option 'proced-auto-update-flag' can now be set to 2 additional
 values, which control automatic updates of Proced buffers that are not
 displayed in some window.
 
+** Kmacro
+
++++
+*** New Advanced Macro Counter functions.
+New commands have been added to implement advanced macro counter
+functions.
+
+The commands 'C-x C-k C-r l' and 'C-x C-k C-r s' load and save the
+macro counter from and to a number register, respectively.
+
+The commands 'C-x C-k C-r a =', 'C-x C-k C-r a <', and
+'C-x C-k C-r a >' compare the macro counter with the contents of a
+number register and increment the counter by an optional prefix if the
+comparison succeeds.
+
+The commands 'C-x C-k C-q =', 'C-x C-k C-q <', and 'C-x C-k C-q >'
+compare the macro counter with an optional prefix and terminate the
+macro if the comparison succeeds.
+
 ** Kmacro Menu mode
 
 +++
@@ -1903,10 +1931,11 @@ grammars.  The Info manual "(elisp) Parsing Expression Grammars" has
 documentation and examples.
 
 ** New major mode 'shell-command-mode'.
-This mode is used by default for the output of 'async-shell-command'.
+This mode is used by default for the output of asynchronous 'shell-command'.
 To revert to the previous behavior, set the (also new) variable
 'async-shell-command-mode' to 'shell-mode'.  Any hooks or mode-specific
 variables used should be adapted appropriately.
+
 
 * Incompatible Lisp Changes in Emacs 30.1
 
@@ -2832,6 +2861,9 @@ will now use its own function 'w32image-create-thumbnail' to create
 thumbnail images and show them in the thumbnail buffer.  Unlike with
 using 'convert', this fallback method is synchronous, so Emacs will wait
 until all the thumbnails are created and displayed, before showing them.
+
+---
+*** Emacs on MS-Windows now supports the ':stipple' face attribute.
 
 
 ----------------------------------------------------------------------
