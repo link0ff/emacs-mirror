@@ -786,16 +786,23 @@ See more at `Buffer-menu-filter-predicate'."
            tabulated-list-entries
            ;; Buffer-menu-groups
            ;; '((path-fun . (lambda (b) (list (list (funcall Buffer-menu-group-by b))))))
-           '((path-fun . (lambda (b) (if-let ((tabs (tab-bar-get-buffer-tab (car b) nil nil t)))
-                                         (mapcar (lambda (tab) (list (cdr (assq 'name (frame-parameters)))
-                                                                     (alist-get 'name tab)))
-                                                 tabs)
-                                       (list (list "No tab"))))))
 
-           ))
+           ;; TODO: by Project -> by File/Buffer
 
-    )
-
+           '((path-fun . (lambda (b)
+                           (if-let ((tabs (tab-bar-get-buffer-tab (car b) nil nil t)))
+                               (mapcar (lambda (tab) (list (cdr (assq 'name (frame-parameters)))
+                                                           (alist-get 'name tab)))
+                                       tabs)
+                             (list (list "No tab")))))
+             (sort-fun . (lambda (groups)
+                           ;; (sort groups :key #'car :in-place t)
+                           (let ((tab-names (mapcar (lambda (tab)
+                                                      (alist-get 'name tab))
+                                                    (funcall tab-bar-tabs-function nil))))
+                             (sort groups :key (lambda (group)
+                                                 (or (seq-position tab-names (car group))
+                                                     most-positive-fixnum))))))))))
   (tabulated-list-init-header))
 
 (defun tabulated-list-entry-size-> (entry1 entry2)

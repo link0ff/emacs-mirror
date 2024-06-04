@@ -909,11 +909,18 @@ as the ewoc pretty-printer."
             (setq group-tree (trie-add path group-tree)))
           (cl-pushnew entry (gethash path group-hash))))
       (setq group-tree (trie-get group-tree nil))
-      ;; (when sort-fun
-      ;;   (setq group-tree (tree-sort group-tree sort-fun)))
-      ;; (setq group-tree (tree-count group-tree))
+      (when sort-fun
+        (setq group-tree (tabulated-list-groups-sort group-tree sort-fun)))
+      ;; BAD: (setq group-tree (tree-count group-tree))
       (setq group-tree (tabulated-list-groups-flatten group-tree))
       group-tree)))
+
+(defun tabulated-list-groups-sort (tree fun)
+  (mapcar (lambda (elt)
+            (if (vectorp (cdr elt))
+                elt
+              (cons (car elt) (tabulated-list-groups-sort (cdr elt) fun))))
+          (funcall fun tree)))
 
 (defun tabulated-list-groups-flatten (tree)
   (let ((header "") acc)
