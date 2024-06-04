@@ -785,10 +785,12 @@ See more at `Buffer-menu-filter-predicate'."
           (tabulated-list-groups
            tabulated-list-entries
            ;; Buffer-menu-groups
-           '((path-fun . (lambda (b) (list (list (funcall Buffer-menu-group-by b))))))
-           ;; '((path-fun . (lambda (b) (if-let ((tabs (tab-bar-get-buffer-tab (car b) nil nil t)))
-           ;;                               (mapcar (lambda (tab) (list (format "* %s" (alist-get 'name tab)))) tabs)
-           ;;                             (list (list "* No tab"))))))
+           ;; '((path-fun . (lambda (b) (list (list (funcall Buffer-menu-group-by b))))))
+           '((path-fun . (lambda (b) (if-let ((tabs (tab-bar-get-buffer-tab (car b) nil nil t)))
+                                         (mapcar (lambda (tab) (list (cdr (assq 'name (frame-parameters)))
+                                                                     (alist-get 'name tab)))
+                                                 tabs)
+                                       (list (list "No tab"))))))
 
            ))
 

@@ -899,8 +899,9 @@ as the ewoc pretty-printer."
                      (cons (car elt)
                            (if (cdr elt)
                                (trie-get (cdr elt) (cons (car elt) path))
-                             (nreverse (gethash (reverse (cons (car elt) path))
-                                                group-hash)))))
+                             (apply #'vector (nreverse
+                                              (gethash (reverse (cons (car elt) path))
+                                                       group-hash))))))
                    (reverse tree))))
       (dolist (entry entries)
         (dolist (path (funcall path-fun entry))
@@ -910,9 +911,30 @@ as the ewoc pretty-printer."
       (setq group-tree (trie-get group-tree nil))
       ;; (when sort-fun
       ;;   (setq group-tree (tree-sort group-tree sort-fun)))
-      ;; (setq group-tree (tree-count group-tree)) ;; should also prepend "* "
-      ;; (setq group-tree (tree-flatten group-tree))
+      ;; (setq group-tree (tree-count group-tree))
+      (setq group-tree (tabulated-list-groups-flatten group-tree))
       group-tree)))
+
+(defun tabulated-list-groups-flatten (tree)
+  (let ((header "") acc)
+    (cl-labels
+        ((flatten (tree level)
+           (mapcar (lambda (elt)
+                     (setq header (format "%s%s %s\n"
+                                          header
+                                          (make-string level ?*)
+                                          (car elt)))
+                     (cond
+                      ((vectorp (cdr elt))
+                       (setq acc (cons (cons (string-trim-right header)
+                                             (append (cdr elt) nil))
+                                       acc))
+                       (setq header ""))
+                      (t
+                       (flatten (cdr elt) (1+ level)))))
+                   tree)))
+      (flatten tree 1)
+      (nreverse acc))))
 
 (provide 'tabulated-list)
 
