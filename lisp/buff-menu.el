@@ -96,8 +96,10 @@ as it is by default."
   :version "22.1")
 
 (defcustom Buffer-menu-group-by nil
-  "If non-nil, a function to call to divide buffer-menu buffers into groups.
-This function is called with one argument: a list of entries in the same
+  "If non-nil, functions to call to divide buffer-menu buffers into groups.
+When customized to a list of functions, then each function defines
+the group name at each nested level of multiple levels.
+Each function is called with one argument: a list of entries in the same
 format as in `tabulated-list-entries', and should return a list in the
 format suitable for `tabulated-list-groups'.  Also, when this variable
 is non-nil, `outline-minor-mode' is enabled in the Buffer Menu and you
@@ -107,11 +109,13 @@ The default options can group by a mode, and by a root directory of
 a project or just `default-directory'.
 If this is nil, buffers are not divided into groups."
   :type '(choice (const :tag "No grouping" nil)
-                 (const :tag "Group by mode"
-                        Buffer-menu-group-by-mode)
-                 (const :tag "Group by project root or directory"
-                        Buffer-menu-group-by-root)
-                 (function :tag "Custom function"))
+                 (repeat :tag "Group by"
+                  (choice
+                   (const :tag "Group by project root or directory"
+                          Buffer-menu-group-by-root)
+                   (const :tag "Group by mode"
+                          Buffer-menu-group-by-mode)
+                   (function :tag "Custom function"))))
   :group 'Buffer-menu
   :version "30.1")
 
@@ -775,52 +779,17 @@ See more at `Buffer-menu-filter-predicate'."
 		  '("File" 1 t)))
     (setq tabulated-list-use-header-line Buffer-menu-use-header-line)
     (setq tabulated-list-entries (nreverse entries))
-
-    ;; (when Buffer-menu-group-by
-    ;;   (setq tabulated-list-groups
-    ;;         (seq-group-by Buffer-menu-group-by
-    ;;                       tabulated-list-entries)))
-
     (setq tabulated-list-groups
           (tabulated-list-groups
            tabulated-list-entries
-           ;; Buffer-menu-groups
-           ;; '((path-fun . (lambda (b) (list (list (funcall Buffer-menu-group-by b))))))
-
-           ;; by Project -> by File/Buffer
-           '((path-fun . (lambda (b)
-                           (list (list
-                                  ;; Project names
-                                  (with-current-buffer (car b)
-                                    (if-let ((project (project-current)))
-                                        (project-name project)
-                                      default-directory))
-                                  ;; Mode names
-                                  (let ((mode (aref (cadr b) 5)))
-                                    (or (cdr (seq-find (lambda (group)
-                                                         (string-match-p (car group) mode))
-                                                       mouse-buffer-menu-mode-groups))
-                                        mode))))))
-             (sort-fun . (lambda (groups)
-                           ;; Sort groups by name
-                           (sort groups :key #'car :in-place t))))
-
-           ;; '((path-fun . (lambda (b)
-           ;;                 (if-let ((tabs (tab-bar-get-buffer-tab (car b) nil nil t)))
-           ;;                     (mapcar (lambda (tab) (list (cdr (assq 'name (frame-parameters)))
-           ;;                                                 (alist-get 'name tab)))
-           ;;                             tabs)
-           ;;                   (list (list "No tab")))))
-           ;;   (sort-fun . (lambda (groups)
-           ;;                 ;; (sort groups :key #'car :in-place t)
-           ;;                 (let ((tab-names (mapcar (lambda (tab)
-           ;;                                            (alist-get 'name tab))
-           ;;                                          (funcall tab-bar-tabs-function nil))))
-           ;;                   (sort groups :key (lambda (group)
-           ;;                                       (or (seq-position tab-names (car group))
-           ;;                                           most-positive-fixnum)))))))
-
-           )))
+           `(:path-function
+             ,(lambda (entry)
+                (list (mapcar (lambda (f) (funcall f entry))
+                              Buffer-menu-group-by)))
+             :sort-function
+             ,(lambda (groups)
+                ;; Sort groups by name
+                (sort groups :key #'car :in-place t))))))
   (tabulated-list-init-header))
 
 (defun tabulated-list-entry-size-> (entry1 entry2)
@@ -841,16 +810,16 @@ See more at `Buffer-menu-filter-predicate'."
 
 (defun Buffer-menu-group-by-mode (entry)
   (let ((mode (aref (cadr entry) 5)))
-    (concat "* " (or (cdr (seq-find (lambda (group)
-                                      (string-match-p (car group) mode))
-                                    mouse-buffer-menu-mode-groups))
-                     mode))))
+    (or (cdr (seq-find (lambda (group)
+                         (string-match-p (car group) mode))
+                       mouse-buffer-menu-mode-groups))
+        mode)))
 
 (declare-function project-root "project" (project))
 (defun Buffer-menu-group-by-root (entry)
-  (concat "* " (with-current-buffer (car entry)
-                 (if-let ((project (project-current)))
-                     (project-root project)
-                   default-directory))))
+  (with-current-buffer (car entry)
+    (if-let ((project (project-current)))
+        (project-root project)
+      default-directory)))
 
 ;;; buff-menu.el ends here

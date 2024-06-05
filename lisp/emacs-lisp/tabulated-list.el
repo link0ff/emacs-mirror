@@ -882,24 +882,24 @@ as the ewoc pretty-printer."
 
 ;;; Tabulated list groups
 
-(defun tabulated-list-groups (entries meta)
+(defun tabulated-list-groups (entries metadata)
   "Make a flat list of groups from list of ENTRIES.
 Return the data structure suitable to be set to the variable
-`tabulated-list-groups'.  META is an alist with two keys:
-PATH-FUN is a function to put an entry from ENTRIES to the tree
-\(see `tabulated-list-groups-treefy' for more information);
-SORT-FUN is a function to sort groups in the tree
+`tabulated-list-groups'.  METADATA is a property list with two keys:
+PATH-FUNCTION is a function to put an entry from ENTRIES to the tree
+\(see `tabulated-list-groups-categorize' for more information);
+SORT-FUNCTION is a function to sort groups in the tree
 \(see `tabulated-list-groups-sort' for more information)."
-  (let* ((path-fun (alist-get 'path-fun meta))
-         (sort-fun (alist-get 'sort-fun meta))
-         (tree (tabulated-list-groups-treefy entries path-fun)))
-    (when sort-fun
-      (setq tree (tabulated-list-groups-sort tree sort-fun)))
+  (let* ((path-function (plist-get metadata :path-function))
+         (sort-function (plist-get metadata :sort-function))
+         (tree (tabulated-list-groups-categorize entries path-function)))
+    (when sort-function
+      (setq tree (tabulated-list-groups-sort tree sort-function)))
     (tabulated-list-groups-flatten tree)))
 
-(defun tabulated-list-groups-treefy (entries path-fun)
+(defun tabulated-list-groups-categorize (entries path-function)
   "Make a tree of groups from list of ENTRIES.
-On each entry from ENTRIES apply PATH-FUN that should return a list of
+On each entry from ENTRIES apply PATH-FUNCTION that should return a list of
 paths that the entry has on the group tree that means that every entry
 can belong to multiple categories.  Every path is a list of strings
 where every string is an outline heading at increasing level of deepness."
@@ -923,20 +923,20 @@ where every string is an outline heading at increasing level of deepness."
                                                        hash))))))
                    (reverse tree))))
       (dolist (entry entries)
-        (dolist (path (funcall path-fun entry))
+        (dolist (path (funcall path-function entry))
           (unless (gethash path hash)
             (setq tree (trie-add path tree)))
           (cl-pushnew entry (gethash path hash))))
       (trie-get tree nil))))
 
-(defun tabulated-list-groups-sort (tree sort-fun)
+(defun tabulated-list-groups-sort (tree sort-function)
   "Sort TREE using the sort function SORT-FUN."
   (mapcar (lambda (elt)
             (if (vectorp (cdr elt))
                 elt
               (cons (car elt) (tabulated-list-groups-sort
-                               (cdr elt) sort-fun))))
-          (funcall sort-fun tree)))
+                               (cdr elt) sort-function))))
+          (funcall sort-function tree)))
 
 (defun tabulated-list-groups-flatten (tree)
   "Flatten multi-level TREE to single level."
