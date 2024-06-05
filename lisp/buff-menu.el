@@ -789,16 +789,20 @@ See more at `Buffer-menu-filter-predicate'."
 
            ;; by Project -> by File/Buffer
            '((path-fun . (lambda (b)
-                           (list (list (with-current-buffer (car b)
-                                         (if-let ((project (project-current)))
-                                             (project-name project)
-                                           default-directory))
-                                       (let ((mode (aref (cadr b) 5)))
-                                         (or (cdr (seq-find (lambda (group)
-                                                              (string-match-p (car group) mode))
-                                                            mouse-buffer-menu-mode-groups))
-                                             mode))))))
+                           (list (list
+                                  ;; Project names
+                                  (with-current-buffer (car b)
+                                    (if-let ((project (project-current)))
+                                        (project-name project)
+                                      default-directory))
+                                  ;; Mode names
+                                  (let ((mode (aref (cadr b) 5)))
+                                    (or (cdr (seq-find (lambda (group)
+                                                         (string-match-p (car group) mode))
+                                                       mouse-buffer-menu-mode-groups))
+                                        mode))))))
              (sort-fun . (lambda (groups)
+                           ;; Sort groups by name
                            (sort groups :key #'car :in-place t))))
 
            ;; '((path-fun . (lambda (b)
