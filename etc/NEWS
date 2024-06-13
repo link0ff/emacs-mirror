@@ -1983,17 +1983,22 @@ the functionality of 'after-change-functions':
 An optional major mode based on the tree-sitter library for editing
 HTML files.
 
----
++++
 *** New major mode 'heex-ts-mode'.
 A major mode based on the tree-sitter library for editing HEEx files.
 
----
++++
 *** New major mode 'elixir-ts-mode'.
 A major mode based on the tree-sitter library for editing Elixir files.
 
----
++++
 *** New major mode 'lua-ts-mode'.
 A major mode based on the tree-sitter library for editing Lua files.
+
++++
+*** New major mode 'php-ts-mode'.
+A major mode based on the tree-sitter library for editing PHP files.
+
 
 ** Minibuffer and Completions
 
@@ -2264,6 +2269,7 @@ it returns a short "unique" string that identifies the function.
 In either case, the string is propertized so clicking on it gives
 further details.
 
++++
 ** New function 'char-to-name'.
 This is a convenience function to return the Unicode name of a char (if
 it has one).
