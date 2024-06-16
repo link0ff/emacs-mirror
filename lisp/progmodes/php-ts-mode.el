@@ -76,6 +76,9 @@
 (declare-function treesit-parser-included-ranges "treesit.c")
 (declare-function treesit-parser-list "treesit.c")
 (declare-function treesit-parser-language "treesit.c")
+(declare-function treesit-search-forward "treesit.c")
+(declare-function treesit-node-prev-sibling "treesit.c")
+(declare-function treesit-node-first-child-for-pos "treesit.c")
 
 ;;; Install treesitter language parsers
 (defvar php-ts-mode--language-source-alist
@@ -130,7 +133,7 @@ If nil the default one is used to run the embedded webserver or
 inferior PHP process."
   :tag "PHP Init file"
   :version "30.1"
-  :type 'file)
+  :type '(choice (const :tag "Default init file" nil) file))
 
 (defcustom php-ts-mode-ws-hostname "localhost"
   "The hostname that will be served by the PHP built-in webserver.
@@ -146,23 +149,23 @@ See `https://www.php.net/manual/en/features.commandline.webserver.php'."
 If nil `php-ts-mode-run-php-webserver' will ask you for the port number."
   :tag "PHP built-in web server port"
   :version "30.1"
-  :type 'integer
-  :safe 'integerp)
+  :type '(choice (const :tag "Ask which port to use" nil) integer)
+  :safe 'integer-or-null-p)
 
 (defcustom php-ts-mode-ws-document-root nil
   "The root of the documents that the PHP built-in webserver will serve.
 If nil `php-ts-mode-run-php-webserver' will ask you for the document root."
   :tag "PHP built-in web server document root"
   :version "30.1"
-  :type 'directory)
+  :type '(choice (const :tag "Ask for document root" nil) directory))
 
 (defcustom php-ts-mode-ws-workers nil
   "The number of workers the PHP built-in webserver will fork.
 Useful for testing code against multiple simultaneous requests."
   :tag "PHP built-in number of workers"
   :version "30.1"
-  :type 'integer
-  :safe 'integerp)
+  :type '(choice (const :tag "No workers" nil) integer)
+  :safe 'integer-or-null-p)
 
 (defcustom php-ts-mode-inferior-php-buffer "*PHP*"
   "Name of the inferior PHP buffer."
@@ -1464,7 +1467,7 @@ for PORT, HOSTNAME, DOCUMENT-ROOT and ROUTER-SCRIPT."
 (derived-mode-add-parents 'php-ts-mode '(php-mode))
 
 (defun php-ts-mode--webserver-read-args (&optional type)
-  "Helper for php-ts-mode-run-php-webserver.
+  "Helper for `php-ts-mode-run-php-webserver'.
 The optional TYPE can be the symbol \"port\", \"hostname\", \"document-root\" or
 \"router-script\", otherwise it requires all of them."
   (let ((ask-port (lambda ()
@@ -1474,11 +1477,15 @@ The optional TYPE can be the symbol \"port\", \"hostname\", \"document-root\" or
         (ask-document-root (lambda ()
                              (expand-file-name
                               (read-directory-name "Document root: "
-                                                   (file-name-directory (buffer-file-name))))))
+                                                   (file-name-directory
+                                                    (or (buffer-file-name)
+                                                        default-directory))))))
         (ask-router-script (lambda ()
                              (expand-file-name
                               (read-file-name "Router script: "
-                                              (file-name-directory (buffer-file-name)))))))
+                                              (file-name-directory
+                                               (or (buffer-file-name)
+                                                   default-directory)))))))
     (cl-case type
       (port (funcall ask-port))
       (hostname (funcall ask-hostname))
