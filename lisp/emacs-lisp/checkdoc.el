@@ -262,14 +262,15 @@ with these words enabled."
 ;;;###autoload(put 'checkdoc-ispell-list-words 'safe-local-variable #'list-of-strings-p)
 
 (defcustom checkdoc-max-keyref-before-warn nil
-  "If non-nil, number of \\\\=[command-to-keystroke] tokens allowed in a doc string.
-Any more than this and a warning is generated suggesting that the construct
-\\\\={mapvar} be used instead.  If the value is nil, never warn.
+  "Maximum number of \\\\=[command-to-keystroke] tokens allowed in a doc string.
 
-It used to not be practical to use `\\\\=[...]' very many times,
-because display of the documentation string would become slow.
-This is not an issue on modern machines, unless you have
-thousands of substitutions."
+Any more than this and a warning is generated suggesting that the
+construct \\\\={mapvar} be used instead.  If the value is nil, never
+warn.
+
+It used to be impractical to use `\\\\=[...]' very many times, because
+display of the documentation string would become slow.  This is not an
+issue on modern machines, unless you have thousands of substitutions."
   :type '(choice (const nil)
                  integer)
   :version "28.1")
@@ -2136,7 +2137,7 @@ Examples of recognized abbreviations: \"e.g.\", \"i.e.\", \"cf.\"."
                   (seq (any "cC") "f")            ; cf.
                   (seq (any "eE") ".g")           ; e.g.
                   (seq (any "iI") "." (any "eE")) ; i.e.
-                  "a.k.a" "etc" "vs" "N.B"
+                  "a.k.a" "etc" "vs" "N.B" "U.S"
                   ;; Some non-standard or less common ones that we
                   ;; might as well accept.
                   "Inc" "Univ" "misc" "resp")
