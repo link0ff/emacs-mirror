@@ -129,6 +129,7 @@ To add or remove elements of this list, see
 (declare-function eshell-reset "esh-mode" (&optional no-hooks))
 (declare-function eshell-send-eof-to-process "esh-mode")
 (declare-function eshell-interactive-filter "esh-mode" (buffer string))
+(declare-function eshell-set-exit-info "esh-cmd" (status result))
 (declare-function eshell-tail-process "esh-cmd")
 
 (defvar-keymap eshell-proc-mode-map
@@ -393,6 +394,9 @@ Used only on systems which do not support async subprocesses.")
         (mapconcat #'shell-quote-argument (process-command proc) " "))
       (eshell-record-process-object proc)
       (eshell-record-process-properties proc)
+      ;; Don't set exit info for processes being piped elsewhere.
+      (when (memq (bound-and-true-p eshell-in-pipeline-p) '(nil last))
+        (process-put proc :eshell-set-exit-info t))
       (when stderr-proc
         ;; Provide a shared flag between the primary and stderr
         ;; processes.  This lets the primary process wait to clean up
@@ -460,10 +464,11 @@ Used only on systems which do not support async subprocesses.")
 	    (setq lbeg lend)
 	    (set-buffer proc-buf))
 	  (set-buffer oldbuf))
-	;; Simulate the effect of eshell-sentinel.
-	(eshell-close-handles
+        ;; Simulate the effect of `eshell-sentinel'.
+        (eshell-set-exit-info
          (if (numberp exit-status) exit-status -1)
-         (list 'quote (and (numberp exit-status) (= exit-status 0))))
+         (and (numberp exit-status) (= exit-status 0)))
+        (eshell-close-handles)
 	(run-hook-with-args 'eshell-kill-hook command exit-status)
 	(or (bound-and-true-p eshell-in-pipeline-p)
 	    (setq eshell-last-sync-output-start nil))
@@ -544,10 +549,8 @@ PROC is the process that's exiting.  STRING is the exit message."
           (let* ((handles (process-get proc :eshell-handles))
                  (index (process-get proc :eshell-handle-index))
                  (primary (= index eshell-output-handle))
+                 (set-exit-info (process-get proc :eshell-set-exit-info))
                  (data (process-get proc :eshell-pending))
-                 ;; Only get the status for the primary subprocess,
-                 ;; not the pipe process (if any).
-                 (status (when primary (process-exit-status proc)))
                  (stderr-live (process-get proc :eshell-stderr-live)))
             ;; Write the exit message for the last process in the
             ;; foreground pipeline if its status is abnormal and
@@ -577,10 +580,10 @@ PROC is the process that's exiting.  STRING is the exit message."
                                   (ignore-error eshell-pipe-broken
                                     (eshell-output-object
                                      data index handles)))
-                                (eshell-close-handles
-                                 status
-                                 (when status (list 'quote (= status 0)))
-                                 handles)
+                                (when set-exit-info
+                                  (let ((status (process-exit-status proc)))
+                                    (eshell-set-exit-info status (= status 0))))
+                                (eshell-close-handles handles)
                                 ;; Clear the handles to mark that we're 100%
                                 ;; finished with the I/O for this process.
                                 (process-put proc :eshell-handles nil)
