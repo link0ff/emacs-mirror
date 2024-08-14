@@ -75,7 +75,6 @@ default:
   cache:
     key: ${CI_COMMIT_SHA}
     paths: []
-    policy: pull-push
   # These will be saved for followup builds.
   artifacts:
     expire_in: 24 hrs
@@ -83,8 +82,6 @@ default:
   # Using the variables for each job.
   script:
     - docker pull ${CI_REGISTRY_IMAGE}:${target}-${BUILD_TAG}
-    # TODO: with make -j4 several of the tests were failing, for
-    # example shadowfile-tests, but passed without it.
     - 'export PWD=$(pwd)'
     - 'docker run -i -e EMACS_EMBA_CI=${EMACS_EMBA_CI} -e EMACS_TEST_JUNIT_REPORT=${EMACS_TEST_JUNIT_REPORT} -e EMACS_TEST_TIMEOUT=${EMACS_TEST_TIMEOUT} -e EMACS_TEST_VERBOSE=${EMACS_TEST_VERBOSE} -e NPROC=`nproc` --volumes-from $(docker ps -q -f "label=com.gitlab.gitlab-runner.job.id=${CI_JOB_ID}"):ro --name ${test_name} ${CI_REGISTRY_IMAGE}:${target}-${BUILD_TAG} /bin/bash -xvc "git fetch ${PWD} HEAD && echo checking out these updated files && git diff --name-only FETCH_HEAD && ( git diff --name-only FETCH_HEAD | xargs git checkout -f FETCH_HEAD ) && make -j \$NPROC && make -k -j \$NPROC ${make_params}"'
   after_script:
@@ -146,8 +143,6 @@ default:
       junit: ${test_name}/${EMACS_TEST_JUNIT_REPORT}
 
 .gnustep-template:
-  cache:
-    key: gnustep-${CI_COMMIT_SHA}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -160,8 +155,6 @@ default:
         - test/infra/*
 
 .filenotify-gio-template:
-  cache:
-    key: filenotify-gio-${CI_COMMIT_SHA}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
     # - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -176,8 +169,6 @@ default:
         - test/lisp/filenotify-tests.el
 
 .eglot-template:
-  cache:
-    key: eglot-${CI_COMMIT_SHA}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
@@ -188,21 +179,23 @@ default:
         - test/lisp/progmodes/eglot-tests.el
 
 .tree-sitter-template:
-  cache:
-    key: tree-sitter-${CI_COMMIT_SHA}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
       changes:
         - "**.in"
+        - lisp/align.el
         - lisp/progmodes/*-ts-mode.el
+        - lisp/progmodes/csharp-mode.el
         - lisp/progmodes/js.el
         - lisp/progmodes/python.el
         - lisp/textmodes/*-ts-mode.el
         - src/treesit.{h,c}
         - test/infra/*
+        - test/lisp/align-tests.el
         - test/lisp/progmodes/*-ts-mode-resources/**
         - test/lisp/progmodes/*-ts-mode-tests.el
+        - test/lisp/progmodes/csharp-mode-tests.el
         - test/lisp/progmodes/js-tests.el
         - test/lisp/progmodes/python-tests.el
         - test/lisp/textmodes/*-ts-mode-resources/**
@@ -210,8 +203,6 @@ default:
         - test/src/treesit-tests.el
 
 .native-comp-template:
-  cache:
-    key: native-comp-${CI_COMMIT_SHA}
   rules:
     - if: '$CI_PIPELINE_SOURCE == "web"'
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
