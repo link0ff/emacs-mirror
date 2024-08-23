@@ -381,7 +381,7 @@ bootstrap-all:
 
 .PHONY: bootstrap-all actual-all advice-on-failure sanity-check
 
-actual-all: ${SUBDIR} info $(gsettings_SCHEMAS:.xml=.valid) src-depending-on-lisp
+actual-all: ${SUBDIR} info $(gsettings_SCHEMAS:.xml=.valid) src-depending-on-lisp blessmail
 
 # ADVICE-ON-FAILURE-BEGIN:all
 # You could try to:
@@ -602,7 +602,7 @@ $(srcdir)/configure: $(srcdir)/configure.ac $(srcdir)/m4/*.m4
 ## don't have to duplicate the list of utilities to install in
 ## this Makefile as well.
 
-install: actual-all install-arch-indep install-etcdoc install-arch-dep install-$(NTDIR) blessmail install-eln install-gsettings-schemas
+install: actual-all install-arch-indep install-etcdoc install-arch-dep install-$(NTDIR) install-eln install-gsettings-schemas
 	@true
 
 ## Ensure that $subdir contains a subdirs.el file.
