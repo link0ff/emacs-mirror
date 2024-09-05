@@ -17,27 +17,26 @@
 
 /* Written by Paul Eggert.  */
 
+/* This file uses HAVE_* macros.  */
+# if !_GL_CONFIG_H_INCLUDED
+#  error "Please include config.h first."
+# endif
+
 #include <signal.h>
 
-/* Don't override system declarations of SIG2STR_MAX, sig2str, str2sig.  */
+/* Maximum size of a signal name returned by sig2str(), including the
+   terminating NUL byte.  */
 #ifndef SIG2STR_MAX
-
-# include "intprops.h"
-
-/* Size of a buffer needed to hold a signal name like "HUP".  */
-# define SIG2STR_MAX (sizeof "SIGRTMAX" + INT_STRLEN_BOUND (int) - 1)
-
-#ifdef __cplusplus
-extern "C" {
+/* The longest one: "RTMAX", then "+" or "-", then up to 10 digits, then NUL.
+   Add + 2 as a reserve for the future.  */
+# define SIG2STR_MAX (5 + 1 + 10 + 1 + 2)
 #endif
 
+#ifdef __MINGW32__
 int sig2str (int, char *);
-int str2sig (char const *, int *);
-
-#ifdef __cplusplus
-}
 #endif
-
+#ifdef __MINGW32__
+int str2sig (char const *, int *);
 #endif
 
 /* An upper bound on signal numbers allowed by the system.  */
