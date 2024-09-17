@@ -1481,10 +1481,6 @@ If LIMIT is a revision string, use it as an end-revision."
     ;; read-only.
     (let ((inhibit-read-only t))
       (with-current-buffer buffer
-        ;; FIXME: This line should not be shown in output of vc-print-branch-log!!!
-        (when (memq vc-log-view-type '(long short))
-          (insert (propertize "(Type 'd' here to show diffs with working version)\n"
-                              'font-lock-face 'shadow)))
 	(apply #'vc-git-command buffer
 	       'async files
 	       (append
