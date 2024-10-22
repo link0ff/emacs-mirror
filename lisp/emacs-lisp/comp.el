@@ -3643,12 +3643,8 @@ the deferred compilation mechanism."
 Search happens in `native-comp-eln-load-path'."
   (cl-loop
    with eln-filename = (comp-el-to-eln-rel-filename filename)
-   for dir in native-comp-eln-load-path
-   for f = (expand-file-name eln-filename
-                             (expand-file-name comp-native-version-dir
-                                               (expand-file-name
-                                                dir
-                                                invocation-directory)))
+   for dir in (comp-eln-load-path-eff)
+   for f = (expand-file-name eln-filename dir)
    when (file-exists-p f)
      do (cl-return f)))
 
@@ -3665,6 +3661,17 @@ the compilation was successful return the compiled function."
   (declare (ftype (function ((or string symbol) &optional string)
                             (or native-comp-function string))))
   (comp--native-compile function-or-file nil output))
+
+;;;###autoload
+(defun native-compile-directory (directory)
+  "Native compile if necessary all the .el files present in DIRECTORY.
+Each .el file is native compiled if the corresponding .eln file is not
+found inside the current `native-comp-eln-load-path'. The search within
+DIRECTORY is perfomed recursively."
+  (mapc (lambda (file)
+	  (unless (comp-lookup-eln file)
+	    (native-compile file)))
+	(directory-files-recursively directory ".+\\.el\\'")))
 
 ;;;###autoload
 (defun batch-native-compile (&optional for-tarball)
