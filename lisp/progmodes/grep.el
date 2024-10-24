@@ -1363,7 +1363,7 @@ command before it's run."
 		       regexp
 		       files
 		       nil
-                       (when-let ((ignores (grep-find-ignored-files dir)))
+                       (when-let* ((ignores (grep-find-ignored-files dir)))
 			 (concat (if (equal grep-program "rg") " -g=!" " --exclude=")
 				 (mapconcat
                                   (lambda (ignore)
@@ -1482,7 +1482,7 @@ to indicate whether the grep should be case sensitive or not."
   "Compute the command for \\[rgrep] to use by default."
   (require 'find-dired)                 ; for `find-name-arg'
   (let ((ignored-files-arg
-         (when-let ((ignored-files (grep-find-ignored-files dir)))
+         (when-let* ((ignored-files (grep-find-ignored-files dir)))
            (concat (shell-quote-argument "(" grep-quoting-style)
                    ;; we should use shell-quote-argument here
                    " -name "
@@ -1506,7 +1506,7 @@ to indicate whether the grep should be case sensitive or not."
                (concat " " (shell-quote-argument "!" grep-quoting-style) " " ignored-files-arg)))
      dir
      (concat
-      (when-let ((ignored-dirs (rgrep-find-ignored-directories dir)))
+      (when-let* ((ignored-dirs (rgrep-find-ignored-directories dir)))
         (concat "-type d "
                 (shell-quote-argument "(" grep-quoting-style)
                 ;; we should use shell-quote-argument here
@@ -1587,8 +1587,8 @@ command before it's run."
 (defun grep-file-at-point (point)
   "Return the name of the file at POINT a `grep-mode' buffer.
 The returned file name is relative."
-  (when-let ((msg (get-text-property point 'compilation-message))
-             (loc (compilation--message->loc msg)))
+  (when-let* ((msg (get-text-property point 'compilation-message))
+              (loc (compilation--message->loc msg)))
     (caar (compilation--loc->file-struct loc))))
 
 ;;;###autoload
