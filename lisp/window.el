@@ -11113,33 +11113,64 @@ found by the provided context."
            . ,(buffer-substring-no-properties
                point (max (- point 16) (point-min)))))))))
 
+;; TODO: also fails when at the end of buffer, i.e. (front-context-string . "")
+;; then (search-forward "" (point-max) t)
+;; should be:
+;; 1. (search-forward both)
+;; 2. (search-backward both)
+;; 3. (goto-char (point-min)) (search-forward both)
+;; 4. REDUNDANT! (goto-char (point-max)) (search-backward both)
+;; BETTER:
+;; 1. keep existing (search-forward front-context)
+;; 2. keep existing (search-backward rear-context)
+;; 3. (goto-char (point-min)) (search-forward both)
+;; THIS solves problem when point is on a match,
+;; BUT THIS still doesn't solve problem of false matches
+;; but increasing context is not good
+;; Actually, the problem is that front-context and rear-context are disjoint.
 (defun window-point-context-use-default-function (w context)
   "Restore context of file buffers by the front and rear strings."
   (with-current-buffer (window-buffer w)
     (let ((old-point (window-point w)) new-point)
       (or
+       ;; Search forward near point
        (save-excursion
          (goto-char old-point)
-         (when-let ((f (alist-get 'front-context-string context))
-                    ((search-forward f (point-max) t))
-                    ((goto-char (match-beginning 0)))
-                    (r (alist-get 'rear-context-string context))
-                    ((search-backward r (point-min) t))
-                    ((goto-char (match-end 0))))
+         (when-let* ((f (alist-get 'front-context-string context))
+                     ((search-forward f (point-max) t))
+                     ((goto-char (match-beginning 0)))
+                     (r (alist-get 'rear-context-string context))
+                     ;; (looking-back)
+                     ((search-backward r (point-min) t))
+                     ((goto-char (match-end 0))))
            (unless (eq old-point (point))
-             (warn "!!! %S -> %S r=%S f=%S" old-point (point) r f))
+             (warn "!OK %S -> %S r=%S f=%S" old-point (point) r f))
            (setq new-point (point))))
+       ;; Search backward near point
        (save-excursion
          (goto-char old-point)
-         (when-let ((r (alist-get 'rear-context-string context))
-                    ((search-backward r (point-min) t))
-                    ((goto-char (match-end 0)))
-                    (f (alist-get 'front-context-string context))
-                    ((search-forward f (point-max) t))
-                    ((goto-char (match-beginning 0))))
+         (when-let* ((r (alist-get 'rear-context-string context))
+                     ((search-backward r (point-min) t))
+                     ((goto-char (match-end 0)))
+                     (f (alist-get 'front-context-string context))
+                     ;; (looking-at)
+                     ((search-forward f (point-max) t))
+                     ((goto-char (match-beginning 0))))
            (unless (eq old-point (point))
-             (warn "!!! %S -> %S r=%S f=%S" old-point (point) r f))
-           (setq new-point (point)))))
+             (warn "!OK %S -> %S r=%S f=%S" old-point (point) r f))
+           (setq new-point (point))))
+       ;; Search from the top
+       ;; ADDED LATER: actually when point on match then previous two searches already should handle
+       (save-excursion
+         ;; (goto-char (point-min))
+         ;; (search-forward both)
+         nil
+         ))
+      ;; This always fails in PDF, maybe disable this in PDF?
+      (unless new-point
+        (warn "!NO %S r=%S f=%S" old-point
+              (alist-get 'rear-context-string context)
+              (alist-get 'front-context-string context)))
       (when (and new-point (not (eq new-point old-point)))
         (set-window-point w new-point)))))
 
