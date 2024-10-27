@@ -168,10 +168,10 @@ uses a full scan)."
 
 (defcustom vc-git-resolve-conflicts t
   "When non-nil, mark conflicted file as resolved upon saving.
-That is performed after all conflict markers in it have been
-removed.  If the value is `unstage-maybe', and no merge is in
-progress, then after the last conflict is resolved, also clear
-the staging area."
+That is performed after all conflict markers in it have been removed.
+If the value is `unstage-maybe', and no merge, rebase or similar
+operation is in progress, then after the last conflict is resolved, also
+clear the staging area."
   :type '(choice (const :tag "Don't resolve" nil)
                  (const :tag "Resolve" t)
                  (const :tag "Resolve and maybe unstage all files"
@@ -766,6 +766,10 @@ or an empty string if none."
   (let ((gitdir (vc-git--git-path))
         cmds)
     ;; See contrib/completion/git-prompt.sh in git.git.
+    (when (file-exists-p (expand-file-name "REVERT_HEAD" gitdir))
+      (push 'revert cmds))
+    (when (file-exists-p (expand-file-name "CHERRY_PICK_HEAD" gitdir))
+      (push 'cherry-pick cmds))
     (when (or (file-directory-p
 	       (expand-file-name "rebase-merge" gitdir))
 	      (file-exists-p
@@ -1040,6 +1044,7 @@ See `vc-git-log-edit-summary-max-len'.")
   "Toggle whether this will amend the previous commit.
 If toggling on, also insert its message into the buffer."
   (interactive)
+  (vc-git--assert-allowed-rewrite (vc-git--rev-parse "HEAD"))
   (log-edit--toggle-amend (lambda ()
                             (vc-git-get-change-comment nil "HEAD"))))
 
@@ -1418,8 +1423,14 @@ This prompts for a branch to merge from."
       (vc-git-command nil 0 buffer-file-name "add")
       (unless (or
                (not (eq vc-git-resolve-conflicts 'unstage-maybe))
-               ;; Doing a merge, so bug#20292 doesn't apply.
-               (file-exists-p (vc-git--git-path "MERGE_HEAD"))
+               ;; Doing a merge or rebase-like operation, so bug#20292
+               ;; doesn't apply.
+               ;;
+               ;; If we were to 'git reset' in the middle of a
+               ;; cherry-pick, for example, it would effectively abort
+               ;; the cherry-pick, losing the user's progress.
+               (cl-intersection '(merge rebase am revert cherry-pick)
+                                (vc-git--cmds-in-progress))
                (vc-git-conflicted-files (vc-git-root buffer-file-name)))
         (vc-git-command nil 0 nil "reset"))
       (vc-resynch-buffer buffer-file-name t t)
@@ -1981,9 +1992,11 @@ This requires git 1.8.4 or later, for the \"-L\" option of \"git log\"."
       (unless (or (cl-member rev outgoing :test #'string-prefix-p)
                   (and (eq vc-allow-rewriting-published-history 'ask)
                        (yes-or-no-p
-                        (format "Commit %s appears published; allow rewriting history?"
+                        (format "\
+Commit %s appears published; allow rewriting history?"
                                 rev))))
-        (user-error "Will not rewrite likely-public history; see option `vc-allow-rewriting-published-history'")))))
+        (user-error "\
+Will not rewrite likely-public history; see option `vc-allow-rewriting-published-history'")))))
 
 (defun vc-git-modify-change-comment (files rev comment)
   (vc-git--assert-allowed-rewrite rev)
@@ -2024,8 +2037,8 @@ This requires git 1.8.4 or later, for the \"-L\" option of \"git log\"."
                                       "log" "--oneline" "-E"
                                       "--grep" "^(squash|fixup|amend)! "
                                       (format "%s~1.." rev))))
-                   (not (yes-or-no-p
-"Rebase may --autosquash your other squash!/fixup!/amend!; proceed?")))
+                   (not (yes-or-no-p "\
+Rebase may --autosquash your other squash!/fixup!/amend!; proceed?")))
             (user-error "Aborted"))
 
           (when msg-file
