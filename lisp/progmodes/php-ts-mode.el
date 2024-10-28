@@ -437,7 +437,7 @@ Useful for debugging."
 
 Return `php-ts-mode-indent-offset' plus 1 when BOL is after
 `php-ts-mode--possibly-braceless-keyword-re', otherwise return 0.  It's
-usefull for matching incomplete compound_statement or colon_block.
+useful for matching incomplete compound_statement or colon_block.
 PARENT is NODE's parent, BOL is the beginning of non-whitespace
 characters of the current line."
   (and (null node)
@@ -967,6 +967,7 @@ characters of the current line."
      ,@(when (not (php-ts-mode--test-namespace-use-group-clause-p))
          '((namespace_use_group
             (namespace_use_clause (name) @font-lock-type-face))))
+     (namespace_use_clause (name) @font-lock-type-face)
      (namespace_name "\\" @font-lock-delimiter-face)
      (namespace_name (name) @font-lock-type-face)
      (use_declaration (name) @font-lock-property-use-face)
