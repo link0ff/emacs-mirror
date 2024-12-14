@@ -103,6 +103,14 @@ files and features.
 ** Minibuffer and Completions
 
 +++
+*** New user option 'completion-eager-display'.
+This option configures whether completion commands should display
+the *Completions* buffer immediately.  When the variable is set to t all
+completion commands show *Completions* immediately, respectively nil
+disables the eager display for all commands.  The default setting auto
+enables eager completion only if requested by the command.
+
++++
 *** New user option 'completion-pcm-leading-wildcard'.
 This option configures how the partial-completion style does completion.
 It defaults to nil, which preserves the existing behavior.  When it is set
@@ -293,6 +301,12 @@ modal editing packages.
 
 
 * Changes in Specialized Modes and Packages in Emacs 31.1
+
+** Browse URL
+
+*** New function 'browse-url-qutebrowser' for the Qutebrowser.
+For better integration with the Qutebrowser, set
+'browse-url(-secondary)-browser-function' to 'browse-url-qutebrowser'.
 
 ** CL-Lib
 +++
