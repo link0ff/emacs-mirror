@@ -1,3 +1,855 @@
+2024-12-19  Andrea Corallo  <acorallo@gnu.org>
+
+	* Update authors.el
+
+	* admin/authors.el (authors-aliases, authors-valid-file-names)
+	(authors-renamed-files-alist): Add entry.
+
+2024-12-18  Eli Zaretskii  <eliz@gnu.org>
+
+	Document 'trusted-content
+
+	* doc/emacs/misc.texi (Host Security): Document 'trusted-content'.
+
+	* lisp/files.el (trusted-content): Doc fix.
+
+	* etc/NEWS: Mark its entry as "documented".
+
+2024-12-18  Robert Pluim  <rpluim@gmail.com>
+
+	Mention network-interface-list in network-interface-info docstring
+
+	* src/process.c (Fnetwork_interface_info): Reference
+	'network-interface-list'.
+
+2024-12-17  Stefan Kangas  <stefankangas@gmail.com>
+
+	Move NEWS items from unreleased 28.3 to released 29.1
+
+	* etc/NEWS.28: Remove empty sections for 28.3.
+	Move single pertinent item from here...
+	* etc/NEWS.29: ...to here.
+
+2024-12-17  Stefan Kangas  <stefankangas@gmail.com>
+
+	Improve browse-url-android-share docstring
+
+	* lisp/net/browse-url.el (browse-url-android-share): Clarify that
+	the option only applies to Android systems.
+
+2024-12-17  Stefan Kangas  <stefankangas@gmail.com>
+
+	Minor doc fix for url-handler-regexp
+
+	* lisp/url/url-handlers.el (url-handler-regexp): Remove mention of
+	obsolete internal protocol "about" (i.e. url-about.el).  Reflow.
+
+2024-12-16  Stefan Kangas  <stefankangas@gmail.com>
+
+	Improve reb-change-syntax docstring
+
+	* lisp/emacs-lisp/re-builder.el (reb-change-syntax): Improve docstring.
+
+2024-12-16  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* lisp/files.el (trusted-content-p): Make `:all` work in non-file buffers
+
+2024-12-15  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* lisp/org/ox-texinfo.el (org-texinfo-template): Fix Info format (bug#74844)
+
+2024-12-15  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	trusted-content: Adjust the last patch based on preliminary feedback
+
+	* lisp/files.el (trusted-content): Rename from `trusted-files`.
+	Update all references.
+
+	* lisp/progmodes/elisp-mode.el (lisp-interaction-mode):
+	* lisp/ielm.el (inferior-emacs-lisp-mode):
+	* lisp/simple.el (read--expression): Set `trusted-content` since
+	these buffers contain code that the user presumably intends to run anyway.
+	(elisp--safe-macroexpand-all): Make the warning more discreet.
+
+2024-12-15  Paul Eggert  <eggert@cs.ucla.edu>
+
+	Update documentation of 'etags' regexps some more
+
+	* doc/emacs/maintaining.texi (Etags Regexps):
+	* doc/man/etags.1: Give more details about what's not supported.
+
+2024-12-15  Eli Zaretskii  <eliz@gnu.org>
+
+	Update documentation of 'etags' regexps
+
+	* doc/emacs/maintaining.texi (Etags Regexps):
+	* doc/man/etags.1: Say that shy groups are not supported (bug#74861).
+
+2024-12-14  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	elisp-mode.el: Disable Flymake byte-compile backend in untrusted files
+
+	To address serious security issues (CVE-2024-53920), disable
+	`elisp-flymake-byte-compile` except in those files explicitly
+	specified as "trusted".
+
+	For that introduce a new custom var `trusted-files` and new
+	function `trusted-content-p`.
+
+	While at it, similarly skip the implicit macroexpansion done during
+	completion if the current file is not trusted.
+
+	* lisp/files.el (trusted-files): New variable.
+	(trusted-content-p): New function.
+
+	* lisp/progmodes/elisp-mode.el (elisp--safe-macroexpand-all):
+	New function, extracted from `elisp--local-variables`.
+	Use `trusted-content-p`.
+	(elisp--local-variables): Use it.
+	(elisp-flymake-byte-compile): Disable according to `trusted-content-p`.
+
+2024-12-13  Stephen Gildea  <stepheng+emacs@gildea.com>
+
+	* lisp/time-stamp.el: Limit field width to two digits.
+
+2024-12-10  Philip Kaludercic  <philipk@posteo.net>
+
+	Revert "Attempt to install package first when upgrading"
+
+	This reverts commit 3d8e49c41a66a7f05cb96f84e2a10f0f308ac9ca.
+
+2024-12-10  Robert Pluim  <rpluim@gmail.com>
+
+	Fix 'gnus-select-method' custom type
+
+	* lisp/gnus/gnus.el (gnus-redefine-select-method-widget): Cater
+	for the 'gnus-search-engine' configuration variable, which takes
+	2 args instead of 1.   (Bug#74759)
+
+2024-12-10  Chu  <maedaqu@gmail.com>  (tiny change)
+
+	Fix typo in maps.texi
+
+	* doc/lispref/maps.texi (Standard Keymaps): Fix typo.  (Bug#74761)
+
+2024-12-09  Michael Albinus  <michael.albinus@gmx.de>
+
+	* doc/misc/tramp.texi (FUSE-based methods): Fix sshfs reference.
+
+2024-12-08  Stefan Kangas  <stefankangas@gmail.com>
+
+	Improve gnus.texi indexing
+
+	* doc/misc/gnus.texi (Common Variables): Improve indexing.
+
+2024-12-07  Philip Kaludercic  <philipk@posteo.net>
+
+	Attempt to install package first when upgrading
+
+	* lisp/emacs-lisp/package.el (package-upgrade): Swap the
+	'package-install' and the 'package-delete' invocations.
+	(Bug#74556)
+
+2024-12-07  john muhl  <jm@pub.pink>
+
+	Don't restrict 'lua-ts-send-file' to 'lua-ts-mode'
+
+	* lisp/progmodes/lua-ts-mode.el (lua-ts-send-file): Remove
+	restriction on interactive use.  Unlike related send-* commands
+	it can be useful to send a file to the Lua interpreter outside of
+	a 'lua-ts-mode' buffer.  (Bug#74705)
+
+2024-12-07  Vincenzo Pupillo  <vincenzo.pupillo@unimi.it>
+
+	Remove unnecessary function call from 'php-ts-mode'
+
+	* lisp/progmodes/php-ts-mode.el (php-ts-mode): Remove
+	unnecessary function call 'treesit-font-lock-recompute-features'.
+	(Bug#74688)
+
+	(cherry picked from commit c87c5b95e1309b59b6cb07d07a20234a74a73f35)
+
+2024-12-04  Robert Pluim  <rpluim@gmail.com>
+
+	Add tags to 'compilation-transform-file-match-alist' custom type
+
+	* lisp/progmodes/compile.el (compilation-filter-start): Add some
+	more meaningful tags, and switch to using 'radio' instead of
+	'choice'.
+
+2024-12-04  Robert Pluim  <rpluim@gmail.com>
+
+	Improve 'compilation-transform-file-match-alist' documentation
+
+	* doc/emacs/building.texi (Compilation Mode): Document
+	'compilation-transform-file-match-alist'.
+	* lisp/progmodes/compile.el
+	(compilation-transform-file-match-alist):
+	Expand docstring and add some examples.
+
+2024-12-04  Robert Pluim  <rpluim@gmail.com>
+
+	Improve 'compilation-hidden-output' docstring
+
+	* lisp/progmodes/compile.el (compilation-hidden-output): Escape
+	the newline so the example value is more suitable for copying.
+
+2024-12-04  Robert Pluim  <rpluim@gmail.com>
+
+	Improve docstrings of functions for moving to message headers
+
+	* lisp/gnus/message.el (message-goto-to, message-goto-from,
+	message-goto-subject, message-goto-cc, message-goto-bcc,
+	message-goto-fcc, message-goto-reply-to,
+	message-goto-newsgroups, message-goto-distribution,
+	message-goto-followup-to, message-goto-mail-followup-to,
+	message-goto-keywords, message-goto-summary): Mention that these
+	will insert an empty header if the header is not found.
+	(message-position-on-field): Explain that this inserts an empty
+	header if the header is missing, and that insertion is done
+	after the headers mentioned in AFTERS.
+
+	(cherry picked from commit 9f266e2d7cde41f5872304bae0b6d2415655f1c8)
+
+2024-12-03  Stephen Berman  <stephen.berman@gmx.net>
+
+	Fix the latest dabbrev-expand test fix
+
+	* test/lisp/dabbrev-tests.el (dabbrev-expand-after-killing-buffer):
+	In batch runs of this file, the user-error message contains curved
+	quotes, but grave quotes when running `make check' (so here was
+	evidently not passed to `substitute-command-keys'), so use grave
+	quotes so the test succeeds in both modes of execution.
+
+2024-12-02  Michael Albinus  <michael.albinus@gmx.de>
+
+	Fix password prompt in comint (don't merge)
+
+	* lisp/comint.el (comint-watch-for-password-prompt): Use whole
+	string for setting the prompt.  (Bug#74626)
+
+2024-12-02  Manuel Giraud  <manuel@ledu-giraud.fr>
+
+	Fix the version of librsvg API change
+
+	* src/image.c (init_svg_functions, svg_load_image): The first
+	official version that introduces
+	'rsvg_handle_get_pixbuf_and_error' is 2.59.0 not 2.58.0.
+	(Bug#74606)
+
+2024-12-02  Stephen Berman  <stephen.berman@gmx.net>
+
+	Fix latest test for dabbrev-expand
+
+	* test/lisp/dabbrev-tests.el (dabbrev-expand-after-killing-buffer):
+	Fix typo in a 'should' test, use part of return value of 'should-error'
+	test, and remove mistaken and unfounded FIXME comment.
+
+2024-12-01  Yuan Fu  <casouri@gmail.com>
+
+	Allow passing nil to treesit-node-match-p (bug#74612)
+
+	* src/treesit.c (Ftreesit_node_match_p): Return nil if NODE is nil.
+
+2024-12-01  Manuel Giraud  <manuel@ledu-giraud.fr>
+
+	Update to version 2.58 of librsvg API (bug#74606)
+
+	* src/image.c (init_svg_functions): Declare new function.
+	(svg_load_image): Use it.
+
+2024-12-01  Visuwesh  <visuweshm@gmail.com>
+
+	Fix decoding of non-ASCII email attachments
+
+	* lisp/mail/rfc2231.el (rfc2231-parse-string): Fix logic when a
+	non-ASCII file name is split between two filename*N* parts.
+	(Bug#74624)
+
+2024-11-30  Stephen Berman  <stephen.berman@gmx.net>
+
+	Prevent "Selecting deleted buffer" error with dabbrev-expand
+
+	* lisp/dabbrev.el (dabbrev-expand): Use the buffer where the last
+	expansion was found only if it is still a live buffer (bug#74090).
+
+	* test/lisp/dabbrev-tests.el (dabbrev-expand-test-minibuffer-3):
+	Fix typo in doc string.
+	(dabbrev-expand-after-killing-buffer): New test.
+
+2024-11-30  Yuan Fu  <casouri@gmail.com>
+
+	Fix docstring of c-ts-mode-indent-style
+
+	* lisp/progmodes/c-ts-mode.el (c-ts-mode-indent-style): Make the
+	docstring reflect what's expected by the code.
+
+2024-11-29  Vincenzo Pupillo  <v.pupillo@gmail.com>
+
+	Support PHP 8.4 and more reliable indentation (bug#74525)
+
+	Added support for PHP 8.4 property hook. More reliable CSS and
+	Javascript syntax indentation when there are attributes in
+	<script> and <style>.
+
+	* lisp/progmodes/php-ts-mode.el:
+	(php-ts-mode--language-source-alist): Switch to the latest php
+	grammar.
+	(php-ts-mode--js-css-tag-bol): CSS and Javascript indentation is
+	now more more reliable in different formatting styles.
+	(php-ts-mode--test-property-hook-clause-p): New function that
+	tests property_hook support.
+	(php-ts-mode--font-lock-settings): Use the new function.
+	(php-ts-mode--colorize-css-value): The function now behaves
+	exactly like the one in css-ts-mode.
+	(php-ts-mode--feature-list): Changed the list to match
+	css-ts-mode.
+
+2024-11-28  Martin Rudalics  <rudalics@gmx.at>
+
+	Don't inadvertently reset frame scroll bar sizes (Bug#74435)
+
+	* src/frame.c (gui_set_scroll_bar_width)
+	(gui_set_scroll_bar_height): When the new size equals the old one
+	do not reset size to default size (Bug#74435).
+
+2024-11-28  Mike Kupfer  <kupfer@rawbw.com>
+
+	Mention special variables in lexical binding documentation
+
+	* doc/lispref/variables.texi (Lexical Binding): Briefly mention
+	special variables and their semantics.  (Bug#74540)
+
+2024-11-28  Eli Zaretskii  <eliz@gnu.org>
+
+	Allow to go back to using 'ruby-mode' after loading 'ruby-ts-mode'
+
+	* lisp/progmodes/ruby-ts-mode.el (major-mode-remap-defaults):
+	Remap 'ruby-mode' to 'ruby-ts-mode'.  Add commentary.
+	* lisp/progmodes/ruby-mode.el (major-mode-remap-defaults): Remove
+	any remappings of ruby-mode'.
+	* lisp/progmodes/c-ts-mode.el: Fix a typo in a comment.  (Bug#74339)
+
+2024-11-25  Stefan Kangas  <stefankangas@gmail.com>
+
+	Delete obsolete section in admin/notes/repo
+
+	* admin/notes/repo: Delete section "How to merge changes from emacs-24
+	to master", which is documented in admin/notes/git-workflow.  Also
+	delete out-of-date autoload advice.
+
+2024-11-25  Joost Kremers  <joostkremers@fastmail.com>
+
+	Improve documentation for 'while-let'
+
+	* doc/lispref/control.texi (Conditionals): Reorganise describing
+	what's overlapping between the macros (and between the macros
+	and let*), and then improve the documentation for 'while-let'.
+
+2024-11-25  Yuan Fu  <casouri@gmail.com>
+
+	Remove mention of treesit-defun-prefer-top-level (bug#74474)
+
+	treesit-defun-prefer-top-level is removed before Emacs 29
+	released and was replaced by treesit-defun-tactic.  These
+	statements that set it doesn't do anything other than introduce
+	confusion, so we should remove them.
+
+	* lisp/progmodes/c-ts-mode.el (c-ts-base-mode):
+	* lisp/progmodes/js.el (js-ts-mode):
+	* lisp/progmodes/php-ts-mode.el (php-ts-mode):
+	* lisp/progmodes/ruby-ts-mode.el (ruby-ts-mode):
+	* lisp/progmodes/typescript-ts-mode.el:
+	(typescript-ts-base-mode):
+	Remove statements setting treesit-defun-prefer-top-level.
+
+2024-11-24  Aaron Jensen  <aaronjensen@gmail.com>
+
+	Fix NS non-native fullscreen on initial frame load (bug#59790)
+
+	* src/nsterm.m ([EmacsView toggleFullScreen:]): Reset fs_is_native
+
+2024-11-24  Eli Zaretskii  <eliz@gnu.org>
+
+	Fix user options for listing and marking diary files
+
+	* lisp/calendar/diary-lib.el (diary-nongregorian-listing-hook)
+	(diary-nongregorian-marking-hook): Add Chinese functions to the
+	list of variable's options.  (Bug#74498)
+
+2024-11-24  john muhl  <jm@pub.pink>
+
+	Avoid loading 'rx' at runtime in 'lua-ts-mode'
+
+	* lisp/progmodes/lua-ts-mode.el (lua-ts-inferior-lua):
+	Replace 'rx-to-string' and substitution with 'rx' and 'literal'.
+	(Bug#74499)
+
+	(cherry picked from commit e71d714a815e1088f8cfe946b1e431356ec85b24)
+
+2024-11-23  Eli Zaretskii  <eliz@gnu.org>
+
+	Make 'jsonrpc-default-request-timeout' a defcustom
+
+	* lisp/jsonrpc.el (jsonrpc-default-request-timeout): New
+	defcustom, replaces a defconst.
+	(jsonrpc): New customization group.
+
+	* etc/NEWS: Announce the change.  (Bug#74338)
+
+2024-11-23  Eli Zaretskii  <eliz@gnu.org>
+
+	Update MS-Windows build instructions
+
+	* nt/INSTALL.W64:
+	* nt/README.W32: Update the name of the MSYS2 libtree-sitter
+	distribution.  Reported by Nerd <hiweedmandriva3@163.com>.
+	(Bug#74429)
+
+2024-11-22  Laurence Warne  <laurencewarne@gmail.com>
+
+	Skip proced refine tests on Darwin
+
+	* test/lisp/proced-tests.el (proced-refine-test)
+	(proced-refine-with-update-test): Skip if the system is Darwin.
+
+2024-11-21  Eli Zaretskii  <eliz@gnu.org>
+
+	Future-proof loading tree-sitter library on MS-Windows
+
+	* src/treesit.c (syms_of_treesit) <tree-sitter--library-abi>: New
+	internal variable.
+
+	* lisp/term/w32-win.el (dynamic-library-alist): Use
+	'tree-sitter--library-abi' to select a proper libtree-sitter DLL
+	version.
+
+2024-11-21  Eli Zaretskii  <eliz@gnu.org>
+
+	Fix overriding 'c-ts-mode' by 'c-mode'
+
+	* lisp/progmodes/c-ts-mode.el: Remove all c- and c++-mode
+	associations from 'major-mode-remap-defaults' before installing
+	entries that remap to 'c-ts-mode' and 'c++-ts-mode'.  (Bug#74339)
+
+2024-11-18  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	lisp/progmodes/c-ts-mode.el: Demote loading c-ts-mode as a configuration
+
+	See bug#74367.
+
+2024-11-16  F. Jason Park  <jp@neverwas.me>
+
+	Backport: Don't autoload erc-modules
+
+	* doc/misc/erc.texi (Modules): Recommend using `describe-variable'
+	instead of `customize-option' because the latter needs the symbol to be
+	loaded.
+	* lisp/erc/erc.el (erc-modules): Remove autoload cookie because it
+	caused customizations for this option to load the main library.  This
+	reverts the thrust of bb894845 "Teach customize-option about
+	erc-modules", which was added in ERC 5.6 and Emacs 30.  The motivation
+	for the original offending change was to allow new users to run M-x
+	customize-option RET erc-modules RET immediately after startup instead
+	of M-x customize-group RET, followed by an I-search.  (Bug#73812)
+
+	(Cherry picked from commit 1854f2751e3f73e1e5f12f6de993b6357de1766b)
+
+	Do not merge to master.
+
+2024-11-16  Eli Zaretskii  <eliz@gnu.org>
+
+	Improve the documentation of major-mode remapping
+
+	* etc/NEWS (example):
+	* doc/emacs/files.texi (Reverting):
+	* doc/emacs/modes.texi (Choosing Modes): Improve the documentation
+	of 'major-mode-remap-alist' and mode remapping.  (Bug#74339)
+
+2024-11-15  Robert Pluim  <rpluim@gmail.com>
+
+	Improve 'which-key-special-keys' docstring
+
+	* lisp/which-key.el (which-key-special-keys): Explain the format
+	and use 'setopt'.
+
+2024-11-15  Laurence Warne  <laurencewarne@gmail.com>
+
+	Don't error in Proced tests if %CPU is a NaN
+
+	* test/lisp/proced-tests.el (proced--cpu-at-point): New function.
+	(proced--assert-process-valid-cpu-refinement)
+	(proced-refine-test, proced-refine-with-update-test): If %CPU for any
+	process visited is a NaN skip the test.
+	(proced-update-preserves-pid-at-point-test): Fix typo in comment.
+	(proced--assert-process-valid-cpu-refinement-explainer): Add process
+	attributes to the explainer along with tweaking how the process %CPU is
+	obtained to account for circumstances where it's not numeric (most
+	notably '-nan').
+
+2024-11-15  Joseph Turner  <joseph@breatheoutbreathe.in>
+
+	* lisp/subr.el (read-number): Document collision with 'format-prompt'.
+
+2024-11-14  Vincenzo Pupillo  <v.pupillo@gmail.com>
+
+	Improve font-locking and indentation in 'php-ts-mode'
+
+	* lisp/progmodes/php-ts-mode.el (php-ts-mode--language-source-alist):
+	Updated to latest version of PHP grammar.
+	(php-ts-mode--indent-styles): 'namespace_use_declaration' is now
+	correctly indented.
+	(php-ts-mode--operators): Support of the "argument unpacking
+	operator".
+	(php-ts-mode--font-lock-settings): 'nullsafe_member_call_expression'
+	is now highlighted correctly.
+	(php-ts-mode--comment-indent-new-line): Delete trailing whitespace
+	before inserting newline (see bug#73900 for more information).
+	Bug#74239
+
+2024-11-14  john muhl  <jm@pub.pink>
+
+	Fix some 'lua-ts-mode' options (Bug#74235)
+
+	* lisp/progmodes/lua-ts-mode.el (lua-ts-luacheck-program):
+	(lua-ts-inferior-program): Switch to 'file' type and remove 'nil'
+	as a choice.
+	(lua-ts-inferior-lua): Ensure 'lua-ts-inferior-program' is set.
+
+2024-11-14  john muhl  <jm@pub.pink>
+
+	Improve comment indenting in 'lua-ts-mode'
+
+	* lisp/progmodes/lua-ts-mode.el (lua-ts--simple-indent-rules):
+	Align single line comments with the surrounding context.
+	(lua-ts--comment-first-sibling-matcher): Check that comment is
+	the first sibling.
+	(lua-ts--multi-line-comment-start): New function.
+	* test/lisp/progmodes/lua-ts-mode-resources/indent.erts:
+	Add tests.  (Bug#74298)
+
+2024-11-14  Eshel Yaron  <me@eshelyaron.com>
+
+	Update 'xref-num-matches-found' when reverting *xref* buffer
+
+	* lisp/progmodes/xref.el (xref--insert-xrefs):
+	Update 'xref-num-matches-found' here...
+	(xref--show-xref-buffer): ...instead of here (bug#74313).
+
+2024-11-13  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* lisp/files.el (require-with-check): Fix last fix (bug#74289)
+
+2024-11-10  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	lisp/files.el (require-with-check): Fix bug#74091.
+
+2024-11-10  Eli Zaretskii  <eliz@gnu.org>
+
+	Fix handling of permanent-local variables in 'kill-all-local-variables'
+
+	The original implementation went too far and caused unexpected
+	results.
+	* src/buffer.c (reset_buffer_local_variables): Second argument is
+	now 'int', and can be 0, 1, or 2.
+	(Fkill_all_local_variables): Call 'reset_buffer_local_variables'
+	with 2nd argument 2 if KILL-PERMANENT is non-nil.  (Bug#74091)
+
+2024-11-10  Michael Albinus  <michael.albinus@gmx.de>
+
+	Precise password cache in Tramp
+
+	* doc/misc/tramp.texi (Password handling):
+	Describe auth-source-cache-expiry and auth-source-do-cache instead
+	of password-cache-expiry and password-cache.  (Bug#74105)
+
+	* lisp/net/tramp.el (tramp-read-passwd): Check for `auth-sources'
+	being non-nil.
+
+2024-11-10  Eli Zaretskii  <eliz@gnu.org>
+
+	Fix picture-mode with full-width characters
+
+	* lisp/textmodes/picture.el (picture-insert): Don't rely on
+	'move-to-column' to move to the column that is its argument: this
+	might be false when full-width characters are involved.
+
+2024-11-10  Eli Zaretskii  <eliz@gnu.org>
+
+	Fix movement to the left in picture-mode
+
+	* lisp/textmodes/picture.el (picture-insert): Measure width by
+	counting columns on display, not by using 'string-width', because
+	the latter is inaccurate when TABs are involved.  (Bug#74255)
+
+2024-11-09  Eli Zaretskii  <eliz@gnu.org>
+
+	Fix documentation and error message of adding local variables
+
+	* lisp/files-x.el (add-file-local-variable)
+	(add-file-local-variable-prop-line): Doc fixes.
+	(add-file-local-variable): Improve the user-error text.  (Bug#74267)
+
+2024-11-09  Eli Zaretskii  <eliz@gnu.org>
+
+	Document the 'display-line-numbers-disable' property
+
+	* doc/lispref/display.texi (Overlay Properties):
+	* doc/lispref/text.texi (Special Properties): Document
+	'display-line-numbers-disable'.  Fix indexing.
+
+2024-11-09  Eli Zaretskii  <eliz@gnu.org>
+
+	Document issues with 'use-package's ':custom' and byte compilation
+
+	* doc/misc/use-package.texi (User options): Warn against
+	byte-compiling init files that use ':custom'.  (Bug#73609)
+
+2024-11-08  Tim Ruffing  <dev@real-or-random.org>
+
+	Fix display of compositions when font style changes (Cairo backend)
+
+	* src/ftcrfont.c (ftcrhbfont_end_hb_font): Don't persist the
+	result of 'cairo_ft_scaled_font_lock_face' in violation of the
+	API contract.  (Bug#73752)
+
+2024-11-06  Mattias Engdegård  <mattiase@acm.org>
+
+	Fix wrong value of `when` and `unless` with empty body (bug#74215)
+
+	* lisp/subr.el (when, unless): Return nil when the body is empty.
+	Reported by Brennan Vincent.
+	* test/lisp/subr-tests.el (subr-test-when): Add test cases.
+
+	(cherry picked from commit 9ee9154247454c18f9f75d0d32592b817d7e977a)
+
+2024-11-05  Robert Pluim  <rpluim@gmail.com>
+
+	Improve 'open-network-stream' documentation.
+
+	* doc/lispref/processes.texi (Network): Correct explanation of
+	':warn-unless-encrypted'.  Document ':error' return keyword.
+	* lisp/net/network-stream.el (open-network-stream): Improve
+	':return-list' documentation.  Document ':error'.  Correct
+	explanation of ':warn-unless-encrypted'.
+
+2024-11-03  Michael Albinus  <michael.albinus@gmx.de>
+
+	Improve Tramp documentation on direct async processes
+
+	* doc/misc/tramp.texi (Remote processes): Add another example
+	enabling direct async processes based on method name.  (Bug#74105)
+
+	* etc/NEWS: Rephrase Tramp entry on direct async processes.
+
+2024-11-01  Eli Zaretskii  <eliz@gnu.org>
+
+	Improve documentation of letter-case conversions
+
+	* doc/lispref/nonascii.texi (Character Properties):
+	* doc/lispref/strings.texi (Case Conversion, Case Tables):
+	Document that special-casing rules override the case-table
+	conversions.  (Bug#74155)
+
+2024-11-01  Dmitry Gutov  <dmitry@gutov.dev>
+
+	project-tests: Add test assertion for bug#73801
+
+	* test/lisp/progmodes/project-tests.el
+	(project-vc-extra-root-markers-supports-wildcards): End with a
+	check that we didn't cache a wrong value for parent (bug#73801).
+
+	(cherry picked from commit 94a9e40e82d4180563d7bddfa0cc6c8990824f8d)
+
+2024-11-01  Dmitry Gutov  <dmitry@gutov.dev>
+
+	project-try-vc: Fix the "sometimes wrong cache" issue
+
+	* lisp/progmodes/project.el (project-try-vc--search):
+	Extract from 'project-try-vc'.
+	(project-try-vc): Use it.
+	(project-try-vc--search): Call itself recursively directly, to
+	avoid creating invalid cache entry (bug#73801).
+
+	(cherry picked from commit 29b30eb49f8bd8bad4f9e24dd56f32d62bf70121)
+
+2024-10-31  Stephen Berman  <stephen.berman@gmx.net>
+
+	Fix bugs in dabbrev-expand (bug#74090)
+
+	* lisp/dabbrev.el (dabbrev-expand): Use the buffer where the
+	expansion was found when setting the internal variables used to
+	determine the next expansion or a replacement expansion.
+
+	* test/lisp/dabbrev-tests.el (ert-x): Require for
+	'ert-with-temp-directory', 'ert-resource-directory' and
+	'ert-resource-file'.
+	(with-dabbrev-test): New macro.
+	(dabbrev-expand-test-same-buffer-{1,2,3,4})
+	(dabbrev-expand-test-other-buffer-{1,2,3,4})
+	(dabbrev-expand-test-minibuffer-{1,2,3,4}): New tests.
+
+	* test/lisp/dabbrev-resources/dabbrev-expand.el:
+	* test/lisp/dabbrev-resources/INSTALL_BEGIN: New test resources.
+
+	(cherry picked from commit f6c359cb66a0e9b851e3467b1ba9cab7efa8f744)
+
+2024-10-31  Yuan Fu  <casouri@gmail.com>
+
+	Fix undefined variable in previous commit (bug#73900)
+
+	I somehow thought allow-auto-fill is a global variable that's
+	used by cc.  But it's not.  It's just a function param used by
+	c-indent-new-comment-line.
+
+	* lisp/progmodes/c-ts-common.el:
+	(c-ts-common-comment-indent-new-line): Remove reference to
+	allow-auto-fill.
+
+2024-10-31  Yuan Fu  <casouri@gmail.com>
+
+	Fix c-ts-common-comment-indent-new-line (bug#73900)
+
+	* lisp/progmodes/c-ts-common.el:
+	(c-ts-common-comment-indent-new-line): Delete trailing
+	whitespace before inserting newline.  The insert-line-break
+	function is the same as in c-indent-new-comment-line.
+
+2024-10-31  Yuan Fu  <casouri@gmail.com>
+
+	Fix the call to treesit-thing-defined-p
+
+	* lisp/treesit.el (treesit-defun-at-point): Add the necessary
+	2nd argument.
+
+2024-10-30  Juri Linkov  <juri@linkov.net>
+
+	Backport: Call tab-bar-tab-post-open-functions during tabs initialization
+
+	* lisp/tab-bar.el (tab-bar-tabs): Run the hook
+	'tab-bar-tab-post-open-functions' after creating the first tab
+	in the selected frame's tab-bar list of tabs (bug#74087).
+	Suggested by Ship Mints <shipmints@gmail.com>.
+
+	(cherry picked from commit 2c062dfdf50970766db179ccbad7ce71c541cd72)
+
+2024-10-30  Laurence Warne  <laurencewarne@gmail.com>
+
+	Work on proced-tests.el
+
+	* test/lisp/proced-tests.el
+	(proced--assert-process-valid-cpu-refinement-explainer): New function
+	for explaining refinement test failures in greater detail.
+
+2024-10-29  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* lisp/files.el (require-with-check): Be a bit more lenient (bug74040)
+
+2024-10-29  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	(with-peg-rules): Fix references to rulesets (bug#74018)
+
+	PEG rules get "compiled" to functions with name `peg-rule <RULE>`.
+	`define-peg-ruleset` instead defines it PEG rules with name
+	`peg-rule <RULESET> <RULE>`, so that they can be made visible
+	by `with-peg-rules` simply by adding local aliases from
+	`peg-rule <RULE>` to `peg-rule <RULESET> <RULE>`.
+
+	Apparently when I added `define-peg-ruleset` I somehow failed to
+	install some of the corresponding code in `with-peg-rules`, so
+	the aliases were not installed, making it "impossible" to use
+	rulesets.
+	[ I still have no idea how this happened and/or where
+	  the missing code went, so I "recreated" it.  ]
+
+	* lisp/progmodes/peg.el (with-peg-rules): Install the aliases
+	for the rulesets.
+	(peg--translate-rule-body): Try and preserve
+	location info when emitting a warning.
+
+	* test/lisp/progmodes/peg-tests.el (peg-test-myrules): New ruleset.
+	(peg-test-ruleset): New test.
+
+2024-10-27  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	Tweak doc w.r.t to "void function" (bug#73886)
+
+	* doc/lispref/functions.texi (Function Cells): Avoid talking
+	about the function cell being void.
+
+	* src/data.c (Fboundp, Ffmakunbound, Fsymbol_function):
+	Don't suggest that "void" can be considered as a kind of value.
+
+2024-10-27  Laurence Warne  <laurencewarne@gmail.com>
+
+	Fix flakey proced refine tests (Bug#73441)
+
+	* test/lisp/proced-tests.el (proced-refine-test)
+	(proced-refine-with-update-test): Use the much simpler CPU refinement
+	for testing 'proced-refine'.  The previous tests made the incorrect
+	assumption that refining on the PID of process A only filtered the
+	buffer to contain process A and its children, whereas in actuality
+	the children of process A's children, their children, and so on will
+	also be shown.
+	(proced-update-preserves-pid-at-point-test): Mark as unstable.
+
+2024-10-27  Eli Zaretskii  <eliz@gnu.org>
+
+	Another 'void' update
+
+	* doc/lispref/symbols.texi (Symbol Components): Another update due
+	to the change in 'void' function implementation.  (Bug#73886)
+
+2024-10-27  Eli Zaretskii  <eliz@gnu.org>
+
+	Fix doc string of 'wdired-use-dired-vertical-movement'
+
+	* lisp/wdired.el (wdired-use-dired-vertical-movement): Remove the
+	incorrect reference to 'track-eol'.  (Bug#73917)
+
+2024-10-27  Eli Zaretskii  <eliz@gnu.org>
+
+	Update the documentation of void functions
+
+	* doc/lispref/functions.texi (Function Cells):
+	* src/data.c (Ffboundp, Ffmakunbound, Fsymbol_function): Update
+	documentation to the changes of how void functions are represented
+	since Emacs 24.5.  (Bug#73886)
+
+2024-10-27  Sean Whitton  <spwhitton@spwhitton.name>
+
+	Backport some docstring updates, warn about upcoming obsolescence
+
+	Try to save people some time if they're developing on Emacs 30.x.
+
+	Do not merge to master.
+
+	* lisp/subr.el (if-let*, when-let*, if-let, when-let): Move
+	docstring text around so that if-let* and when-let* descriptions
+	no longer refer to if-let and when-let.  Note that if-let and
+	when-let will be marked obsolete, and recommend if-let*,
+	when-let* and and-let* for new code.
+
+2024-10-26  Stefan Monnier  <monnier@iro.umontreal.ca>
+
+	* lisp/editorconfig.el (editorconfig--get-indentation): Fix bug#73991
+
+2024-10-26  Andrea Corallo  <acorallo@gnu.org>
+
+	Update 'ldefs-boot.el' (don't merge)
+
+	* lisp/ldefs-boot.el: Update.
+
+2024-10-26  Andrea Corallo  <acorallo@gnu.org>
+
+	Bump Emacs version to 30.0.92
+
+	* nt/README.W32: Update Emacs version.
+	* msdos/sed2v2.inp: Likewise.
+	* exec/configure.ac: Likewise.
+	* configure.ac: Likewise.
+	* README: Likewise.
+
 2024-10-25  Eli Zaretskii  <eliz@gnu.org>
 
 	Skip *.dylib files in 'loaddefs-generate'
@@ -201640,7 +202492,7 @@
 
 This file records repository revisions from
 commit f2ae39829812098d8269eafbc0fcb98959ee5bb7 (exclusive) to
-commit 8e37b537160c1560048ac53529ef09de7561963c (inclusive).
+commit 1381c6f9591f2851896a41e178a5ccc1a32e7471 (inclusive).
 See ChangeLog.3 for earlier changes.
 
 ;; Local Variables:
