@@ -1,6 +1,6 @@
 /* xfaces.c -- "Face" primitives.
 
-Copyright (C) 1993-1994, 1998-2024 Free Software Foundation, Inc.
+Copyright (C) 1993-1994, 1998-2025 Free Software Foundation, Inc.
 
 This file is part of GNU Emacs.
 
@@ -2511,6 +2511,9 @@ evaluate_face_filter (Lisp_Object filter, struct window *w,
     filter = XCDR (filter);
     if (!NILP (filter))
       goto err;
+
+    if (NILP (Fget (parameter, QCfiltered)))
+      Fput (parameter, QCfiltered, Qt);
 
     bool match = false;
     if (w)
