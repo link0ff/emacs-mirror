@@ -153,6 +153,16 @@ the "*Completions*" buffer is hidden.
 
 ** Windows
 
+*** New functions to modify window layout.
+Several functions to modify the window layout have been added:
+'rotate-window-layout-clockwise'
+'rotate-window-layout-anticlockwise'
+'flip-window-layout-vertically'
+'flip-window-layout-horizontally'
+'transpose-window-layout'
+'rotate-windows'
+'rotate-windows-back'
+
 +++
 *** New hook 'window-deletable-functions'.
 This abnormal hook gives its client a way to save a window from getting
@@ -163,6 +173,13 @@ deleted implicitly by functions like 'kill-buffer', 'bury-buffer' and
 *** New user option 'kill-buffer-quit-windows'.
 This option has 'kill-buffer' call 'quit-restore-window' to handle the
 further destiny of any window showing the buffer to be killed.
+
++++
+*** 'split-window' can optionally resurrect deleted windows.
+A new argument REFER of 'split-window' makes it possible to, instead of
+making a new window object, reuse an existing, deleted one.  This can be
+used to preserve the identity of windows when swapping or transposing
+them.
 
 +++
 *** New window parameter 'quit-restore-prev'.
@@ -314,6 +331,12 @@ modal editing packages.
 
 
 * Changes in Specialized Modes and Packages in Emacs 31.1
+
+---
+** Ibuffer
+*** New column 'recency' in Ibuffer display.
+The variable 'ibuffer-formats' configures the Ibuffer formats.  Add
+'recency' to the format to display the column.
 
 ** Smerge
 *** New command 'smerge-extend' extends a conflict over surrounding lines.
