@@ -445,6 +445,18 @@ NODE and PARENT are the same as other indent rules."
         (cons (funcall parent-bol)
               c-ts-mode-indent-offset))))))
 
+(defun c-ts-mode--emacs-macro-rules (_ parent &rest _)
+  "Rules for indenting macros in Emacs C source.
+
+PARENT is the same as other simple-indent rules."
+  (cond
+   ((and (treesit-node-match-p parent "function_definition")
+         (equal (treesit-node-text
+                 (treesit-node-child-by-field-name parent "type"))
+                "FOR_EACH_TAIL"))
+    (cons (treesit-node-start parent)
+          c-ts-mode-indent-offset))))
+
 (defun c-ts-mode--simple-indent-rules (mode style)
   "Return the indent rules for MODE and STYLE.
 
@@ -466,6 +478,7 @@ MODE can be `c' or `cpp'.  STYLE can be `gnu', `k&r', `linux', `bsd'."
            c-ts-mode--label-indent-rules
            ,@c-ts-mode--preproc-indent-rules
            c-ts-mode--macro-heuristic-rules
+           c-ts-mode--emacs-macro-rules
 
            ;; Make sure type and function definition components align and
            ;; don't indent. Also takes care of GNU style opening braces.
@@ -622,6 +635,25 @@ NODE, PARENT, BOL, ARGS are as usual."
     "__fastcall" "__thiscall" "__vectorcall" "_unaligned" "__unaligned")
   "MSVC keywords.")
 
+(defvar c-ts-mode--type-keywords
+  '("long" "short" "signed" "unsigned")
+  "Keywords that should be considered as part of a type.")
+
+(defvar c-ts-mode--operators
+  '("=" "-" "*" "/" "+" "%" "~" "|" "&" "^" "<<" ">>" "->"
+    "." "<" "<=" ">=" ">" "==" "!=" "!" "&&" "||" "-="
+    "+=" "*=" "/=" "%=" "|=" "&=" "^=" ">>=" "<<=" "--" "++")
+  "C/C++ operators for tree-sitter font-locking.")
+
+(defvar c-ts-mode--c++-operators
+  '(".*" "->*" "<=>")
+  "C++ operators that aren't supported by C.")
+
+(defvar c-ts-mode--c++-operator-keywords
+  '("and" "and_eq" "bitand" "bitor" "compl" "not" "not_eq" "or" "or_eq"
+    "xor" "xor_eq")
+  "C++ operators that we fontify as keywords.")
+
 (defun c-ts-mode--compute-optional-keywords (mode)
   "Return a list of keywords that are supported by the grammar.
 MODE should be either `c' or `cpp'."
@@ -664,25 +696,6 @@ MODE is either `c' or `cpp'."
                   "try" "typename" "using"
                   "thread_local"))
       (append '("auto") c-keywords))))
-
-(defvar c-ts-mode--type-keywords
-  '("long" "short" "signed" "unsigned")
-  "Keywords that should be considered as part of a type.")
-
-(defvar c-ts-mode--operators
-  '("=" "-" "*" "/" "+" "%" "~" "|" "&" "^" "<<" ">>" "->"
-    "." "<" "<=" ">=" ">" "==" "!=" "!" "&&" "||" "-="
-    "+=" "*=" "/=" "%=" "|=" "&=" "^=" ">>=" "<<=" "--" "++")
-  "C/C++ operators for tree-sitter font-locking.")
-
-(defvar c-ts-mode--c++-operators
-  '(".*" "->*" "<=>")
-  "C++ operators that aren't supported by C.")
-
-(defvar c-ts-mode--c++-operator-keywords
-  '("and" "and_eq" "bitand" "bitor" "compl" "not" "not_eq" "or" "or_eq"
-    "xor" "xor_eq")
-  "C++ operators that we fontify as keywords.")
 
 (defvar c-ts-mode--for-each-tail-regexp
   (rx "FOR_EACH_" (or "TAIL" "TAIL_SAFE" "ALIST_VALUE"
