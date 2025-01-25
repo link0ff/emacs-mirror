@@ -3313,17 +3313,30 @@ rect_intersect (struct rect *r, struct rect r1, struct rect r2)
   return true;
 }
 
-/* Return the absolute position of frame F in *X and *Y.  */
+/* Translate (X, Y) relative to frame F to absolute coordinates
+   in (*X, *Y).  */
 
 void
-frame_pos_abs (struct frame *f, int *x, int *y)
+root_xy (struct frame *f, int x, int y, int *rx, int *ry)
 {
-  *x = *y = 0;
+  *rx = x;
+  *ry = y;
   for (; f; f = FRAME_PARENT_FRAME (f))
     {
-      *x += f->left_pos;
-      *y += f->top_pos;
+      *rx += f->left_pos;
+      *ry += f->top_pos;
     }
+}
+
+/* Translate absolute coordinates (X, Y) to coordinates relative to F's origin.  */
+
+void
+child_xy (struct frame *f, int x, int y, int *cx, int *cy)
+{
+  int rx, ry;
+  root_xy (f, 0, 0, &rx, &ry);
+  *cx = x - rx;
+  *cy = y - ry;
 }
 
 /* Return the rectangle frame F occupies.  X and Y are in absolute
@@ -3333,7 +3346,7 @@ static struct rect
 frame_rect_abs (struct frame *f)
 {
   int x, y;
-  frame_pos_abs (f, &x, &y);
+  root_xy (f, 0, 0, &x, &y);
   return (struct rect) { x, y, f->total_cols, f->total_lines };
 }
 
@@ -3875,10 +3888,7 @@ abs_cursor_pos (struct frame *f, int *x, int *y)
 
       wx += max (0, w->left_margin_cols);
 
-      int fx, fy;
-      frame_pos_abs (f, &fx, &fy);
-      *x = fx + wx;
-      *y = fy + wy;
+      root_xy (f, wx, wy, x, y);
       return true;
     }
 
@@ -3896,26 +3906,44 @@ is_in_matrix (struct frame *f, int x, int y)
   return true;
 }
 
-/* Is the terminal cursor of the selected frame obscured by a child
-   frame?  */
+/* Return the frame of the selected window of frame F.
+   Value is NULL if we can't tell.  */
+
+static struct frame *
+frame_selected_window_frame (struct frame *f)
+{
+  /* Paranoia.  It should not happen that window or frame not valid.  */
+  Lisp_Object frame;
+  if (WINDOWP (f->selected_window)
+      && (frame = XWINDOW (f->selected_window)->frame,
+	  FRAMEP (frame)))
+    return XFRAME (frame);
+  return NULL;
+}
+
+/* Is the terminal cursor of ROOT obscured by a child frame?  */
 
 static bool
-is_cursor_obscured (void)
+is_cursor_obscured (struct frame *root)
 {
+  /* Determine in which frame on ROOT the cursor could be.  */
+  struct frame *sf = frame_selected_window_frame (root);
+  if (sf == NULL)
+    return false;
+
   /* Give up if we can't tell where the cursor currently is.  */
   int x, y;
-  if (!abs_cursor_pos (SELECTED_FRAME (), &x, &y))
+  if (!abs_cursor_pos (sf, &x, &y))
     return false;
 
   /* (x, y) may be outside of the root frame in case the selected frame is a
      child frame which is clipped.  */
-  struct frame *root = root_frame (SELECTED_FRAME ());
   if (!is_in_matrix (root, x, y))
     return true;
 
   struct glyph_row *cursor_row = MATRIX_ROW (root->current_matrix, y);
   struct glyph *cursor_glyph = cursor_row->glyphs[0] + x;
-  return cursor_glyph->frame != SELECTED_FRAME ();
+  return cursor_glyph->frame != sf;
 }
 
 /* Decide where to show the cursor, and whether to hide it.
@@ -3929,7 +3957,7 @@ static void
 terminal_cursor_magic (struct frame *root, struct frame *topmost_child)
 {
   /* By default, prevent the cursor "shining through" child frames.  */
-  if (is_cursor_obscured ())
+  if (is_cursor_obscured (root))
     tty_hide_cursor (FRAME_TTY (root));
 
   /* If the terminal cursor is not in the topmost child, the topmost
@@ -3937,7 +3965,8 @@ terminal_cursor_magic (struct frame *root, struct frame *topmost_child)
      non-nil, display the cursor in this "non-selected" topmost child
      frame to compensate for the fact that we can't display a
      non-selected cursor like on a window system frame.  */
-  if (topmost_child != SELECTED_FRAME ())
+  struct frame *sf = frame_selected_window_frame (root);
+  if (sf && topmost_child != sf)
     {
       Lisp_Object frame;
       XSETFRAME (frame, topmost_child);
@@ -3949,25 +3978,23 @@ terminal_cursor_magic (struct frame *root, struct frame *topmost_child)
 	  if (is_in_matrix (root, x, y))
 	    {
 	      cursor_to (root, y, x);
-	      tty_show_cursor (FRAME_TTY (topmost_child));
+	      tty_show_cursor (FRAME_TTY (root));
 	    }
 	  else
 	    tty_hide_cursor (FRAME_TTY (root));
-      }
+	}
     }
 }
-
-#endif /* !HAVE_ANDROID */
 
 void
 combine_updates_for_frame (struct frame *f, bool inhibit_scrolling)
 {
-#ifndef HAVE_ANDROID
   struct frame *root = root_frame (f);
 
   /* Determine visible frames on the root frame, including the root
      frame itself.  Note that there are cases, see bug#75056, where we
-     can be called for invisible frames. */
+     can be called for invisible frames.  This looks like a bug with
+     multi-tty, but the old update code didn't check visibility either.  */
   Lisp_Object z_order = frames_in_reverse_z_order (root, true);
   if (NILP (z_order))
     {
@@ -4008,8 +4035,14 @@ combine_updates_for_frame (struct frame *f, bool inhibit_scrolling)
       add_frame_display_history (f, false);
 #endif
     }
-#endif /* HAVE_ANDROID */
 }
+
+#else /* HAVE_ANDROID */
+void
+combine_updates_for_frame (struct frame *f, bool inhibit_scrolling)
+{
+}
+#endif /* HAVE_ANDROID */
 
 /* Update on the screen all root frames ROOTS.  Called from
    redisplay_internal as the last step of redisplaying.  */

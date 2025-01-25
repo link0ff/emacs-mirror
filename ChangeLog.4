@@ -342,7 +342,7 @@
 
 	Improve documentation for 'while-let'
 
-	* doc/lispref/control.texi (Conditionals): Reorganise describing
+	* doc/lispref/control.texi (Conditionals): Reorganize describing
 	what's overlapping between the macros (and between the macros
 	and let*), and then improve the documentation for 'while-let'.
 
@@ -15155,7 +15155,7 @@
 
 	Remove unnecessary (delq nil...).
 
-	This is presumed to be an artifacto of an old default.
+	This is presumed to be an artifact of an old default.
 
 	* lisp/which-key.el (which-key-replacement-alist):
 	Remove unnecessary (delq nil...).
@@ -50535,7 +50535,7 @@
 
 	The Emacs regexp engine interprets character ranges from ASCII to raw
 	bytes, such as [a-\xfe], as not including non-ASCII Unicode at all;
-	ranges from non-ACII Unicode to raw bytes, such as [ü-\x91], are
+	ranges from non-ASCII Unicode to raw bytes, such as [ü-\x91], are
 	ignored entirely.
 
 	To make rx produce a translation that works as intended, split ranges
@@ -53275,7 +53275,7 @@
 
 	* lisp/emacs-lisp/cl-macs.el (cl--slet): Add `nowarn` arg.
 	(cl--defsubst-expand): Use it.
-	(cl-defstruct): Silence warnings abour lexical shadowing when a slot's
+	(cl-defstruct): Silence warnings about lexical shadowing when a slot's
 	name happens to be the same as a dynbound var.
 
 2023-06-25  Stefan Monnier  <monnier@iro.umontreal.ca>
@@ -68708,7 +68708,7 @@
 	works.
 
 	* lisp/emacs-lisp/byte-opt.el (byte-optimize-lapcode):
-	Instead of re-using local variables through mutation, bind them at
+	Instead of reusing local variables through mutation, bind them at
 	point of use.  This ensures that there is no value leakage by mistake
 	and actually reduces the static size of the bytecode of this function
 	somewhat.
@@ -75501,7 +75501,7 @@
 	4004dde6ea Avoid positional arguments to define-minor-mode
 	cb85f9c274 Fix typo in use-package docstring
 	30b35d6d62 Update use-package.texi
-	9be2580f5f optimization: constand folding for read-kbd-macro
+	9be2580f5f optimization: constant folding for read-kbd-macro
 	1143f14d65 bind-keys-form: error for repeat sub-keywords without :rep...
 	c4bd2aa3b8 bind-key-form: allow :continue keyword inside repeat map
 	5ef327ce9f bind-key-form: allow :exit keyword inside repeat map
