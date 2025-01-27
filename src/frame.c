@@ -1283,8 +1283,6 @@ static struct frame *
 make_terminal_frame (struct terminal *terminal, Lisp_Object parent,
 		     Lisp_Object params)
 {
-  char name[sizeof "F" + INT_STRLEN_BOUND (tty_frame_count)];
-
   if (!terminal->name)
     error ("Terminal is not live, can't create new frames on it");
 
@@ -1364,7 +1362,7 @@ make_terminal_frame (struct terminal *terminal, Lisp_Object parent,
   XSETFRAME (frame, f);
   Vframe_list = Fcons (frame, Vframe_list);
 
-  fset_name (f, make_formatted_string (name, "F%"PRIdMAX, ++tty_frame_count));
+  fset_name (f, make_formatted_string ("F%"PRIdMAX, ++tty_frame_count));
 
   SET_FRAME_VISIBLE (f, true);
 
@@ -3293,11 +3291,7 @@ DEFUN ("frame-visible-p", Fframe_visible_p, Sframe_visible_p,
 Return the symbol `icon' if FRAME is iconified or \"minimized\".
 Return nil if FRAME was made invisible, via `make-frame-invisible'.
 On graphical displays, invisible frames are not updated and are
-usually not displayed at all, even in a window system's \"taskbar\".
-
-If FRAME is a text terminal frame, this always returns t.
-Such frames are always considered visible, whether or not they are
-currently being displayed on the terminal.  */)
+usually not displayed at all, even in a window system's \"taskbar\".  */)
   (Lisp_Object frame)
 {
   CHECK_LIVE_FRAME (frame);
@@ -3508,14 +3502,12 @@ set_term_frame_name (struct frame *f, Lisp_Object name)
   /* If NAME is nil, set the name to F<num>.  */
   if (NILP (name))
     {
-      char namebuf[sizeof "F" + INT_STRLEN_BOUND (tty_frame_count)];
-
       /* Check for no change needed in this very common case
 	 before we do any consing.  */
       if (frame_name_fnn_p (SSDATA (f->name), SBYTES (f->name)))
 	return;
 
-      name = make_formatted_string (namebuf, "F%"PRIdMAX, ++tty_frame_count);
+      name = make_formatted_string ("F%"PRIdMAX, ++tty_frame_count);
     }
   else
     {
@@ -4942,7 +4934,6 @@ gui_report_frame_params (struct frame *f, Lisp_Object *alistptr)
 {
   Lisp_Object tem;
   uintmax_t w;
-  char buf[INT_BUFSIZE_BOUND (w)];
 
   /* Represent negative positions (off the top or left screen edge)
      in a way that Fmodify_frame_parameters will understand correctly.  */
@@ -4993,7 +4984,7 @@ gui_report_frame_params (struct frame *f, Lisp_Object *alistptr)
      warnings.  */
   w = (uintptr_t) FRAME_NATIVE_WINDOW (f);
   store_in_alist (alistptr, Qwindow_id,
-		  make_formatted_string (buf, "%"PRIuMAX, w));
+		  make_formatted_string ("%"PRIuMAX, w));
 #ifdef HAVE_X_WINDOWS
 #ifdef USE_X_TOOLKIT
   /* Tooltip frame may not have this widget.  */
@@ -5001,7 +4992,7 @@ gui_report_frame_params (struct frame *f, Lisp_Object *alistptr)
 #endif
     w = (uintptr_t) FRAME_OUTER_WINDOW (f);
   store_in_alist (alistptr, Qouter_window_id,
-		  make_formatted_string (buf, "%"PRIuMAX, w));
+		  make_formatted_string ("%"PRIuMAX, w));
 #endif
   store_in_alist (alistptr, Qicon_name, f->icon_name);
   store_in_alist (alistptr, Qvisibility,

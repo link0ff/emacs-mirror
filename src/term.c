@@ -2597,6 +2597,7 @@ tty_draw_row_with_mouse_face (struct window *w, struct glyph_row *row,
 static Lisp_Object
 tty_frame_at (int x, int y, int *cx, int *cy)
 {
+#ifndef HAVE_ANDROID
   for (Lisp_Object frames = Ftty_frame_list_z_order (Qnil);
        !NILP (frames);
        frames = Fcdr (frames))
@@ -2613,6 +2614,7 @@ tty_frame_at (int x, int y, int *cx, int *cy)
 	  return frame;
 	}
     }
+#endif /* !HAVE_ANDROID */
 
   return Qnil;
 }
@@ -2765,9 +2767,11 @@ term_mouse_click (struct input_event *result, Gpm_Event *event,
 int
 handle_one_term_event (struct tty_display_info *tty, const Gpm_Event *event_in)
 {
+  int child_x, child_y;
+  Lisp_Object frame = tty_frame_at (event_in->x, event_in->y, &child_x, &child_y);
   Gpm_Event event = *event_in;
-  int gpm_x = event.x, gpm_y = event.y;
-  Lisp_Object frame = tty_frame_at (event_in->x, event_in->y, &gpm_x, &gpm_y);
+  event.x = child_x;
+  event.y = child_y;
   struct frame *f = decode_live_frame (frame);
 
   struct input_event ie;
@@ -3004,7 +3008,7 @@ mouse_get_xy (int *x, int *y)
 
   struct frame *f = XFRAME (XCAR (mouse));
   struct frame *sf = SELECTED_FRAME ();
-  if (f == sf || is_frame_ancestor (sf, f))
+  if (f == sf || frame_ancestor_p (sf, f))
     {
       int mx = XFIXNUM (XCAR (XCDR (mouse)));
       int my = XFIXNUM (XCDR (XCDR (mouse)));
