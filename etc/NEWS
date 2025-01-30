@@ -238,6 +238,24 @@ latter throws an error when the argument FRAME cannot be deleted.
 *** New abnormal hook 'tab-bar-auto-width-functions'.
 This hook allows you to control which tab-bar tabs are auto-resized.
 
+---
+*** New abnormal hook 'tab-bar-post-undo-close-tab-functions'.
+This hook allows you to operate on a reopened tab.
+
+This is useful when you define custom tab parameters that may need
+adjustment when a tab is restored, and avoids advice.
+
+---
+*** New user option 'tab-bar-define-keys'.
+This controls which key bindings tab-bar creates.  Values are t, the
+default, which defines all keys and is backwards compatible, 'numeric'
+(tab number selection only), 'tab' (TAB and SHIFT-TAB keys only), nil
+(which defines none).
+
+This is useful to avoid key binding conflicts, such as when folding in
+outline mode using TAB keys, or when a user wants to define her own
+tab-bar keys without first having to remove the defaults.
+
 ** Project
 
 ---
