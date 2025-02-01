@@ -325,6 +325,7 @@ automatically)."
     ((csharp-mode csharp-ts-mode)
      . ,(eglot-alternatives
          '(("omnisharp" "-lsp")
+           ("OmniSharp" "-lsp")
            ("csharp-ls"))))
     (purescript-mode . ("purescript-language-server" "--stdio"))
     ((perl-mode cperl-mode)
@@ -2283,10 +2284,11 @@ If it is activated, also signal textDocument/didOpen."
     ["Rewrite" eglot-code-action-rewrite
      :visible (eglot-server-capable :codeActionProvider)]
     ["Quickfix" eglot-code-action-quickfix
-     :visible (eglot-server-capable :codeActionProvider)]))
+     :visible (eglot-server-capable :codeActionProvider)]
+    "--"))
 
-(easy-menu-define eglot-server-menu nil "Monitor server communication"
-  '("Debugging the server communication"
+(easy-menu-define eglot-server-menu nil "Manage server communication"
+  '("Server menu"
     ["Reconnect to server" eglot-reconnect]
     ["Quit server" eglot-shutdown]
     "--"
@@ -2296,6 +2298,9 @@ If it is activated, also signal textDocument/didOpen."
      (lambda ()
        (interactive)
        (customize-variable 'eglot-events-buffer-size))]))
+
+(add-to-list 'eglot-menu
+             `(eglot-server-menu menu-item "Server menu" ,eglot-server-menu) t)
 
 
 ;;; Mode-line
