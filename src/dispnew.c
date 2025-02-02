@@ -3909,10 +3909,12 @@ frame_selected_window_frame (struct frame *f)
 static bool
 is_cursor_obscured (struct frame *root)
 {
-  /* Determine in which frame on ROOT the cursor could be.  */
-  struct frame *sf = frame_selected_window_frame (root);
-  if (sf == NULL)
-    return false;
+  /* Which frame contains the cursor?  If the selected frame is in
+     root's z-order, it's the selected frame.  Otherwise fall back to
+     the root itself.  */
+  struct frame *sf = (frame_ancestor_p (root, SELECTED_FRAME ())
+		      ? SELECTED_FRAME ()
+		      : root);
 
   /* Give up if we can't tell where the cursor currently is.  */
   int x, y;
@@ -4594,9 +4596,6 @@ gui_update_window_end (struct window *w, bool cursor_on_p,
 	display_and_set_cursor (w, true,
 				w->output_cursor.hpos, w->output_cursor.vpos,
 				w->output_cursor.x, w->output_cursor.y);
-
-      if (cursor_in_mouse_face_p (w) && cursor_on_p)
-	mouse_face_overwritten_p = 1;
 
       if (draw_window_fringes (w, true))
 	{
