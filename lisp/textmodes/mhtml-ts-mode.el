@@ -315,20 +315,25 @@ NODE and PARENT are ignored."
      (defun ,(regexp-opt (list css--treesit-defun-type-regexp)))))
   "Settings for `treesit-thing-settings'.")
 
-(defvar mhtml-ts-mode--treesit-indent-rules
+;; We use a function instead of a variable, because
+;; `js--treesit-indent-rules' and `css--treesit-indent-rules' doesn't
+;; exist when at compile time (unless we `eval-when-compile', but that
+;; doesn't feel like the right solution to me).
+(defun mhtml-ts-mode--treesit-indent-rules ()
+  "Return intent rules for `mhtml-ts-mode'."
   (treesit--indent-rules-optimize
    (append html-ts-mode--indent-rules
            ;; Extended rules for js and css, to
            ;; indent appropriately when injected
            ;; into html
-           (treesit-modify-indent-rules
+           (treesit-simple-indent-modify-rules
             'javascript
             `((javascript ((parent-is "program")
                            mhtml-ts-mode--js-css-tag-bol
                            mhtml-ts-mode--js-css-indent-offset)))
             js--treesit-indent-rules
             :replace)
-           (treesit-modify-indent-rules
+           (treesit-simple-indent-modify-rules
             'css
             `((css ((parent-is "stylesheet")
                     mhtml-ts-mode--js-css-tag-bol
@@ -535,7 +540,8 @@ Powered by tree-sitter."
     ;; `mhtml-ts-mode-tag-relative-indent' and can be used to indent
     ;; JavaScript and CSS code relative to the HTML that contains them,
     ;; just like in mhtml-mode.
-    (setq-local treesit-simple-indent-rules mhtml-ts-mode--treesit-indent-rules)
+    (setq-local treesit-simple-indent-rules
+                (mhtml-ts-mode--treesit-indent-rules))
 
     ;; Navigation.
 
