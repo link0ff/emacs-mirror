@@ -1,3 +1,52 @@
+2025-02-19  Po Lu  <luangruo@yahoo.com>
+
+	Fix remaining Android bugs reported over the past months
+
+	* java/org/gnu/emacs/EmacsActivity.java (attachWindow):
+	Guarantee that child windows promoted to toplevels receive
+	layout parameters that direct them to receive their parents'
+	dimensions.  Otherwise, the size of the window as a child is
+	retained on Huawei HarmonyOS 4.2 and possibly other Android
+	distributions.
+
+	* java/org/gnu/emacs/EmacsService.java (updateCursorAnchorInfo):
+	Run anchor updates on the UI thread, as
+	`InputMethodManager#updateCursorAnchorInfo' is liable to call
+	`View#requestLayout'.
+
+	* java/org/gnu/emacs/EmacsView.java (onMeasure): Always call
+	`measureChildren', or child frames' onLayout handlers might not
+	be invoked after they request a layout cycle and are duly
+	processed in `onLayout'.
+	(swapBuffers): Delete erroneous commentary.
+
+	* java/org/gnu/emacs/EmacsWindow.java (viewLayout): If
+	overrideRedirect, don't inadvertently clear rect.left and
+	rect.top by recording the window's WM window-relative position.
+	Fix typos.
+	(reparentTo): Invalidate focus after transferring frame.
+	(translateCoordinates): Account for override-redirect windows.
+	Mostly important for mouse-drag-and-drop-region.
+
+2025-02-19  Po Lu  <luangruo@yahoo.com>
+
+	Properly move existing tooltips on Android
+
+	* java/org/gnu/emacs/EmacsWindow.java (requestViewLayout): If an
+	override redirect window, additionally notify the window manager
+	of layout changes.
+
+2025-02-17  Po Lu  <luangruo@yahoo.com>
+
+	Fix crash in frame deletion on Android
+
+	* java/org/gnu/emacs/EmacsWindow.java (destroyHandle):
+	Invalidate the input focus in the UI thread, as is proper.
+
+2025-02-17  Po Lu  <luangruo@yahoo.com>
+
+	* src/pgtkterm.c (pgtk_enumerate_devices): Circumvent bug#76239.
+
 2025-02-16  Michael Albinus  <michael.albinus@gmx.de>
 
 	* lisp/man.el (Man-shell-file-name): Ensure a Bourne shell.  (Bug#75308)
@@ -21510,7 +21559,7 @@
 	* lisp/window.el (display-buffer--lru-window)
 	(display-buffer-use-least-recent-window): In doc-strings write
 	'symbol' instead of 'constant'.
-	* doc/lisprqef/windows.texi (Window Configurations): Write
+	* doc/lispref/windows.texi (Window Configurations): Write
 	'symbol' instead of 'constant'.
 
 2024-03-16  Po Lu  <luangruo@yahoo.com>
@@ -203531,7 +203580,7 @@
 
 This file records repository revisions from
 commit f2ae39829812098d8269eafbc0fcb98959ee5bb7 (exclusive) to
-commit 48f9d6aafea0a9790d1f78d4a4037cbcff4f799a (inclusive).
+commit 375c3622e2dac090c62d99baaaac1314f6c9c5e7 (inclusive).
 See ChangeLog.3 for earlier changes.
 
 ;; Local Variables:
