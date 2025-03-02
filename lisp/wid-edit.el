@@ -621,6 +621,25 @@ and saves that overlay under the :inactive property for WIDGET."
 	 (symbolp (car widget))
 	 (get (car widget) 'widget-type))))
 
+;;;###autoload
+(defun widget-put (widget property value)
+  "In WIDGET, set PROPERTY to VALUE.
+The value can later be retrieved with `widget-get'."
+  (setcdr widget (plist-put (cdr widget) property value))
+  value)
+
+;;;###autoload
+(defun widget-get (widget property)
+  "In WIDGET, get the value of PROPERTY.
+The value could either be specified when the widget was created, or
+later with `widget-put'."
+   (let (value found)
+     (while (and widget (not found))
+       (if (setq found (plist-member (cdr widget) property))
+           (setq value (cadr found))
+         (setq widget (get (widget-type widget) 'widget-type))))
+     value))
+
 (defun widget-get-indirect (widget property)
   "In WIDGET, get the value of PROPERTY.
 If the value is a symbol, return its binding.
@@ -637,6 +656,13 @@ Otherwise, just return the value."
 	((car widget)
 	 (widget-member (get (car widget) 'widget-type) property))
 	(t nil)))
+
+;;;###autoload
+(defun widget-apply (widget property &rest args)
+  "Apply the value of WIDGET's PROPERTY to the widget itself.
+Return the result of applying the value of PROPERTY to WIDGET.
+ARGS are passed as extra arguments to the function."
+  (apply (widget-get widget property) widget args))
 
 (defun widget-value (widget)
   "Extract the current value of WIDGET."

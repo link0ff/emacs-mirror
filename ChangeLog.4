@@ -1,3 +1,44 @@
+2025-02-23  Stefan Kangas  <stefankangas@gmail.com>
+
+	Mention CVE-2025-1244 in NEWS
+
+	* etc/NEWS: Document CVE-2025-1244.
+
+	For anyone looking to backport this, the fix is in commit
+	820f0793f0b46448928905552726c1f1b999062f.
+
+2025-02-23  Yuan Fu  <casouri@gmail.com>
+
+	Use character position for ranges in treesit_sync_visible_region
+
+	* src/treesit.c (treesit_sync_visible_region): Use character position
+	instead of byte position when comparing to ranges, because the
+	ranges are in character position.
+
+2025-02-21  Po Lu  <luangruo@yahoo.com>
+
+	Fix reported Haiku build error in emacs-30.1-rc1
+
+	* src/haiku_support.cc (keysym_from_raw_char): Don't define
+	duplicate cases on the previous release.
+
+2025-02-20  Stefan Kangas  <stefankangas@gmail.com>
+
+	Bump Emacs version to 30.1
+
+	* README:
+	* configure.ac:
+	* exec/configure.ac:
+	* msdos/sed2v2.inp:
+	* nt/README.W32: Bump Emacs version to 30.1.
+
+2025-02-20  Stefan Kangas  <stefankangas@gmail.com>
+
+	Update files for Emacs 30.1
+
+	* ChangeLog.4:
+	* etc/AUTHORS: Update for Emacs 30.1.
+
 2025-02-19  Po Lu  <luangruo@yahoo.com>
 
 	Fix remaining Android bugs reported over the past months
@@ -203580,7 +203621,7 @@
 
 This file records repository revisions from
 commit f2ae39829812098d8269eafbc0fcb98959ee5bb7 (exclusive) to
-commit 375c3622e2dac090c62d99baaaac1314f6c9c5e7 (inclusive).
+commit 1cda0967b4d3c815fc610794ad6a8fc2b913a3c5 (inclusive).
 See ChangeLog.3 for earlier changes.
 
 ;; Local Variables:
