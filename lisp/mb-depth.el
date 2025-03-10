@@ -66,20 +66,30 @@ Use the face `minibuffer-depth-nonselected'."
 ;; An overlay covering the prompt.  This is a buffer-local variable in
 ;; each affected minibuffer.
 ;;
-(defvar-local minibuffer-depth-overlay nil)
-(defvar-local minibuffer-depth-nonselected-overlay nil)
 
-(defun minibuffer-depth-select (w)
-  (if (eq w (selected-window))
-      (when (overlayp minibuffer-depth-nonselected-overlay)
-        (delete-overlay minibuffer-depth-nonselected-overlay))
-    (unless (eq major-mode 'completion-list-mode)
-      (with-current-buffer (window-buffer w)
-        (let ((ov (make-overlay (point-min) (point-max))))
-          (overlay-put ov 'face 'minibuffer-depth-nonselected)
-          (overlay-put ov 'window w)
-          (overlay-put ov 'evaporate t)
-          (setq minibuffer-depth-nonselected-overlay ov))))))
+;; <<<<<<< HEAD
+;; (defvar-local minibuffer-depth-overlay nil)
+;; (defvar-local minibuffer-depth-nonselected-overlay nil)
+
+;; (defun minibuffer-depth-select (w)
+;;   (if (eq w (selected-window))
+;;       (when (overlayp minibuffer-depth-nonselected-overlay)
+;;         (delete-overlay minibuffer-depth-nonselected-overlay))
+;;     (unless (eq major-mode 'completion-list-mode)
+;;       (with-current-buffer (window-buffer w)
+;;         (let ((ov (make-overlay (point-min) (point-max))))
+;;           (overlay-put ov 'face 'minibuffer-depth-nonselected)
+;;           (overlay-put ov 'window w)
+;;           (overlay-put ov 'evaporate t)
+;;           (setq minibuffer-depth-nonselected-overlay ov))))))
+;; ||||||| 2f1b1414f78
+;; (defvar minibuffer-depth-overlay)
+;; (make-variable-buffer-local 'minibuffer-depth-overlay)
+;; =======
+;; (defvar-local minibuffer-depth-overlay)
+;; >>>>>>> origin/master
+
+(defvar-local minibuffer-depth-overlay)
 
 ;; This function goes on minibuffer-setup-hook
 (defun minibuffer-depth-setup ()
