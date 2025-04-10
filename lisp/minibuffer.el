@@ -3590,7 +3590,7 @@ like the `beginning-of-buffer' command."
 
 (defun read-file-name (prompt &optional dir default-filename mustmatch initial predicate)
   "Read a file name, prompting with PROMPT and completing in directory DIR.
-Retrun the file name as a string.
+Return the file name as a string.
 The return value is not expanded---you must call `expand-file-name'
 yourself.
 
