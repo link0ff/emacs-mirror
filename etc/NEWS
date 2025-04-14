@@ -322,6 +322,15 @@ This will inhibit implied resizing while a new frame is made and can be
 useful on tiling window managers where the initial frame size should be
 specified by external means.
 
+** Mode Line
+
++++
+*** New user option 'mode-line-collapse-minor-modes'.
+If non-nil, minor mode lighters on the mode line are collapsed into a
+single button.  The value could also be a list to specify minor mode
+lighters to hide or show.  The default value is nil, which retains the
+previous behavior of showing all minor mode lighters.
+
 ** Tab Bars and Tab Lines
 
 ---
@@ -601,6 +610,13 @@ displayed in 'elisp-eldoc-funcall-with-docstring'.  If set to 'short'
 (the default), only display the first sentence of the docstring.
 Otherwise, if set to 'full', display the full docstring.
 
+---
+*** New user option 'elisp-eldoc-docstring-length-limit'.
+This user option controls the maximum length of doc strings in character
+units that 'elisp-eldoc-funcall-with-docstring' and
+'elisp-eldoc-var-docstring-with-value' will shopw.  By default it is set
+to 1000 characters.
+
 ** Buffer Menu
 
 ---
@@ -756,6 +772,12 @@ is the default.  As before, saved places are scheduled to be saved at
 Emacs exit.
 
 ** Savehist
+
+---
+*** The history file can be modified by external tools.
+Emacs can now handle this case gracefully by merging the external
+and internal history information.
+This feature is activated only when 'savehist-additional-variables' is nil.
 
 ---
 *** Savehist no longer saves additional variables more than once.
@@ -1469,18 +1491,6 @@ appearance of the list can be customized with the new faces
 ** VC
 
 ---
-*** New buffer-local variable 'vc-buffer-overriding-fileset'.
-Primarily intended for buffers not visiting files, this specifies the
-VC backend and VCS-managed file name or file names to which the buffer's
-contents corresponds.  It overrides the behavior of 'vc-deduce-fileset'.
-This replaces and generalizes the old 'vc-annotate-parent-file'.
-
----
-*** New buffer-local variable 'vc-buffer-revision'.
-This specifies the revision to which the buffer's contents corresponds.
-This replaces and generalizes the old 'vc-annotate-parent-rev'.
-
----
 *** Using 'e' from Log View mode to modify change comments now works for Git.
 
 ---
@@ -1548,6 +1558,18 @@ Previously, if some files to be checked in were unregistered but others
 were added, removed or edited, Emacs would refuse to proceed.
 Now Emacs prompts to first register the unregistered files, so that all
 files in the fileset are in a compatible state for a checkin.
+
+---
+*** New buffer-local variable 'vc-buffer-overriding-fileset'.
+Primarily intended for buffers not visiting files, this specifies the
+VC backend and VCS-managed file name or file names to which the buffer's
+contents corresponds.  It overrides the behavior of 'vc-deduce-fileset'.
+This replaces and generalizes the old 'vc-annotate-parent-file'.
+
+---
+*** New buffer-local variable 'vc-buffer-revision'.
+This specifies the revision to which the buffer's contents corresponds.
+This replaces and generalizes the old 'vc-annotate-parent-rev'.
 
 ** Diff mode
 
@@ -1747,6 +1769,14 @@ change their face if the current line exceeds the 'fill-column'.  The
 new face 'display-fill-column-indicator-warning-face' is used to
 highlight the fill-column indicators.  By default this is disabled.
 
+---
+** Flymake
+
+*** Windows without fringes now automatically use margin indicators.
+When 'flymake-indicator-type' is set to 'fringes', as is now the default,
+flymake will automatically fall back to using margin indicators in
+windows without fringes, including any window on a text terminal.
+
 
 * New Modes and Packages in Emacs 31.1
 
@@ -1892,9 +1922,9 @@ This means that you can now call it with just one argument, like
 The following macros, previously only available in the experimental
 'ert-x' module, are now considered stable and have been moved to 'ert':
 
-- ert-with-test-buffer
-- ert-with-buffer-selected
-- ert-with-buffer-renamed
+- 'ert-with-test-buffer'
+- 'ert-with-buffer-selected'
+- 'ert-with-buffer-renamed'
 
 See "(ert) Helper Functions" node in the ERT manual for more information.
 
@@ -2139,6 +2169,12 @@ provide instructions for finding the definition.
 
 New convenience function 'find-function-update-type-alist' offers a
 concise way to update a symbol's 'find-function-type-alist' property.
+
++++
+** 'inhibit-message' can now inhibit clearing of the echo-area.
+Binding 'inhibit-message' to a non-nil value will now suppress both
+the display of messages and the clearing of the echo-area, such as
+caused by calling 'message' with a nil argument.
 
 ** Special Events
 
