@@ -219,17 +219,19 @@ popup interface, such as the interfaces that the GNU ELPA packages Corfu
 and Company provide, you can set this option to the same sort function
 that your popup interface uses for a more integrated experience.
 
-Note: 'completion-preview-sort-function' was present also in Emacs 30.1,
-albeit as a variable, not a user option.
+('completion-preview-sort-function' was already present in Emacs 30.1,
+but as a plain Lisp variable, not a user option.)
 
 ** Windows
 
 +++
-*** New functions to modify window layout.
-Several functions to modify the window layout have been added:
-'window-layout-rotate-clockwise', 'window-layout-rotate-anticlockwise',
-'window-layout-flip-topdown', 'window-layout-flip-leftright',
-'window-layout-transpose', 'rotate-windows', and 'rotate-windows-back'.
+*** New commands to modify window layouts.
+'C-x w t' and 'C-x w r <left>/<right>' rotate the window layout.
+'C-x w o <left>/<right>' rotate the windows within the current layout.
+'C-x w f <left>/<right>/<up>/<down>' flip window layouts.
+
+By default these commands operate on the selected frame's root window.
+With a prefix argument, they operate on the selected window's parent.
 
 +++
 *** Windmove commands now move to skipped windows if invoked twice in a row.
@@ -313,8 +315,9 @@ helps to restore window buffers across Emacs sessions.
 
 +++
 *** New function 'frame-deletable-p'.
-Calling this function before 'delete-frame' is useful to avoid that the
-latter throws an error when the argument FRAME cannot be deleted.
+Calling this function before 'delete-frame' is useful to avoid how the
+latter function signals an error when its FRAME argument cannot be
+deleted.
 
 +++
 *** New value 'force' for user option 'frame-inhibit-implied-resize'.
