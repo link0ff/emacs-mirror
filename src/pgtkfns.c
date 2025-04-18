@@ -2291,7 +2291,7 @@ DEFUN ("x-display-grayscale-p", Fx_display_grayscale_p, Sx_display_grayscale_p, 
        doc: /* SKIP: real doc in xfns.c.  */)
   (Lisp_Object terminal)
 {
-  return Qnil;
+  return Qt;
 }
 
 DEFUN ("x-display-pixel-width", Fx_display_pixel_width, Sx_display_pixel_width, 0, 1, 0,
@@ -3705,7 +3705,9 @@ unwind_gerror_ptr (void* data)
 }
 
 DEFUN ("x-gtk-launch-uri", Fx_gtk_launch_uri, Sx_gtk_launch_uri, 2, 2, 0,
-       doc: /* launch URI */)
+       doc: /* Tell GTK to launch the default application to show given URI.
+
+This function is only available on PGTK.  */)
   (Lisp_Object frame, Lisp_Object uri)
 {
   CHECK_FRAME (frame);
