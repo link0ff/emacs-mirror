@@ -315,9 +315,10 @@ helps to restore window buffers across Emacs sessions.
 
 +++
 *** New function 'frame-deletable-p'.
-Calling this function before 'delete-frame' is useful to avoid how the
-latter function signals an error when its FRAME argument cannot be
-deleted.
+If this function returns nil, the following call to 'delete-frame' might
+fail to delete its argument FRAME or might signal an error.  It is
+therefore advisable to use this function as part of a condition that
+determines whether to call 'delete-frame'.
 
 +++
 *** New value 'force' for user option 'frame-inhibit-implied-resize'.
@@ -549,8 +550,10 @@ This variable has no effect when Transient Mark mode is off.
 
 ** Tree-sitter
 
-*** New user option 'treesit-auto-install'.
-It controls the automatic installation of tree-sitter grammars.
+*** New user option 'treesit-auto-install-grammar'.
+It controls the automatic installation of tree-sitter grammar libraries
+needed for tree-sitter based modes, if these grammar libraries are not
+available when such modes are turned on.
 
 *** The file treesit-x.el defines a number of simple tree-sitter modes.
 Using the new macro 'define-treesit-generic-mode', generic modes are
