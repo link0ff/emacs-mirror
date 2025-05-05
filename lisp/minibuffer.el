@@ -989,12 +989,7 @@ is at its default value `grow-only'."
            ;; Remove old message that is substring of the new message
            (string-prefix-p (aref last-message 1) message))
           (setq multi-message-list (cdr multi-message-list)))))
-      (push (vector (float-time) message (not message-log-max))
-            multi-message-list)
-      (setq multi-message-list
-            ;; Doesn't help with "Garbage collecting..." message
-            (seq-uniq multi-message-list
-                      (lambda (a b) (equal (aref a 1) (aref b 1)))))
+      (push (vector (float-time) message (not message-log-max)) multi-message-list)
       (when (> (length multi-message-list) multi-message-max)
         (setf (nthcdr multi-message-max multi-message-list) nil)))
     (mapconcat (lambda (m) (aref m 1))
