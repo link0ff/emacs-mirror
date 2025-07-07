@@ -1953,10 +1953,57 @@ Runs the normal hooks `vc-before-checkin-hook' and `vc-checkin-hook'."
     (lambda ()
       (vc-call-backend backend 'log-edit-mode))
     (lambda (files comment)
+      ;; Check the user isn't likely to be surprised by what is included
+      ;; in the checkin.  Once a log operation is started, the fileset
+      ;; or patch string is locked in.  In particular, it's probably too
+      ;; late to offer to change it now -- checks in hooks and/or the
+      ;; backend's Log Edit derived mode have all already okayed the
+      ;; checkin.  Restarting with the new fileset or patch is easy.
+      (let* ((start-again
+              (substitute-command-keys "\\[vc-next-action] to check in again"))
+             (instructions
+              (substitute-command-keys
+               (string-join
+                (list "type \\<log-edit-mode-map>\\[log-edit-kill-buffer] to cancel"
+                      start-again
+                      "\\[log-edit-previous-comment] to recall your message")
+                ", "))))
+        (cond (patch-string
+               (unless (or (not (derived-mode-p 'diff-mode))
+                           (equal patch-string (buffer-string))
+                           (yes-or-no-p
+                            (format-message "Patch in buffer \"%s\" \
+has changed; continue with old patch?" (current-buffer))))
+                 (user-error "%s %s"
+                             "To check in the new patch" instructions)))
+              ((vc-dispatcher-browsing)
+               (unless (or (and (length= files 1)
+                                ;; If no files in the dispatcher were
+                                ;; marked and it was just that point
+                                ;; moved to a different line, we don't
+                                ;; want to bother the user.  This isn't
+                                ;; foolproof because we don't know
+                                ;; whether FILES was selected by means
+                                ;; of marking a single file or the
+                                ;; implicit selection of the file at
+                                ;; point in the absence of any marks.
+                                (not (vc-dispatcher--explicit-marks-p)))
+                           (equal files (cadr (vc-deduce-fileset)))
+                           (yes-or-no-p
+                            (format-message "Selected file(s) in buffer \"%s\" \
+have changed; continue with old fileset?" (current-buffer))))
+                 (user-error "%s %s"
+                             "To use the new fileset" instructions)))))
+
       ;; "This log message intentionally left almost blank".
       ;; RCS 5.7 gripes about whitespace-only comments too.
       (unless (and comment (string-match "[^\t\n ]" comment))
         (setq comment "*** empty log message ***"))
+      (unless patch-string
+        ;; Must not pass non-nil NOT-ESSENTIAL because we will shortly
+        ;; call (in `vc-finish-logentry') `vc-resynch-buffer' with its
+        ;; NOQUERY parameter non-nil.
+        (vc-buffer-sync-fileset (list backend files)))
       (when register (vc-register (list backend register)))
       (cl-labels ((do-it ()
                     ;; We used to change buffers to get local value of
@@ -2455,6 +2502,7 @@ The merge base is a common ancestor between REV1 and REV2 revisions."
 ;;;###autoload
 (defun vc-root-diff-incoming (&optional remote-location)
   "Report diff of all changes that would be pulled from REMOTE-LOCATION.
+When unspecified REMOTE-LOCATION is the place \\[vc-update] would pull from.
 When called interactively with a prefix argument, prompt for REMOTE-LOCATION.
 In some version control systems REMOTE-LOCATION can be a remote branch name.
 
@@ -2473,14 +2521,16 @@ global binding."
 ;;;###autoload
 (defun vc-root-diff-outgoing (&optional remote-location)
   "Report diff of all changes that would be pushed to REMOTE-LOCATION.
+When unspecified REMOTE-LOCATION is the place \\[vc-push] would push to.
 When called interactively with a prefix argument, prompt for REMOTE-LOCATION.
 In some version control systems REMOTE-LOCATION can be a remote branch name.
 
 See `vc-use-incoming-outgoing-prefixes' regarding giving this command a
 global binding."
-  ;; For this command we want to ignore uncommitted changes because
-  ;; those are not outgoing, and the point is to make a comparison
-  ;; between locally committed changes and remote committed changes.
+  ;; For this command, for distributed VCS, we want to ignore
+  ;; uncommitted changes because those are not outgoing, and the point
+  ;; for those VCS is to make a comparison between locally committed
+  ;; changes and remote committed changes.
   ;; (Hence why we don't call `vc-buffer-sync-fileset'.)
   (interactive (vc--maybe-read-remote-location))
   (vc--with-backend-in-rootdir "VC root-diff"
@@ -3377,6 +3427,7 @@ The command prompts for the branch whose change log to show."
 ;;;###autoload
 (defun vc-log-incoming (&optional remote-location)
   "Show log of changes that will be received with pull from REMOTE-LOCATION.
+When unspecified REMOTE-LOCATION is the place \\[vc-update] would pull from.
 When called interactively with a prefix argument, prompt for REMOTE-LOCATION.
 In some version control systems REMOTE-LOCATION can be a remote branch name."
   (interactive (vc--maybe-read-remote-location))
@@ -3394,6 +3445,7 @@ In some version control systems REMOTE-LOCATION can be a remote branch name."
 ;;;###autoload
 (defun vc-log-outgoing (&optional remote-location)
   "Show log of changes that will be sent with a push operation to REMOTE-LOCATION.
+When unspecified REMOTE-LOCATION is the place \\[vc-push] would push to.
 When called interactively with a prefix argument, prompt for REMOTE-LOCATION.
 In some version control systems REMOTE-LOCATION can be a remote branch name."
   (interactive (vc--maybe-read-remote-location))
