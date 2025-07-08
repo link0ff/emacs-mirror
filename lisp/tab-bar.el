@@ -1200,10 +1200,10 @@ The argument `rest' is used for special handling of this item
 by `tab-bar-format-list' that collects the rest of formatted items.
 This prevents calling other non-idempotent items like
 `tab-bar-format-global' twice."
-       (let* ((rest (or rest (tab-bar-format-list
-                              (cdr (memq 'tab-bar-format-align-right
-                                         tab-bar-format)))))
-              (rest (mapconcat (lambda (item) (nth 2 item)) rest ""))
+  (let* ((rest (or rest (tab-bar-format-list
+                         (cdr (memq 'tab-bar-format-align-right
+                                    tab-bar-format)))))
+         (rest (mapconcat (lambda (item) (nth 2 item)) rest ""))
          (hpos (progn
                  (add-face-text-property 0 (length rest) 'tab-bar t rest)
                  (string-pixel-width rest)))
