@@ -202,10 +202,10 @@ specific positions on the heading, like only at the line's beginning or
 line's end.  This allows these keys to be bound to their usual commands,
 as determined by the major mode, elsewhere on the heading lines.
 This option is only in effect when `outline-minor-mode-cycle' is non-nil."
-  :type '(choice (const :tag "Everywhere" nil)
+  :type `(choice (const :tag "Everywhere" nil)
                  (const :tag "At line beginning" bolp)
                  (const :tag "Not at line beginning"
-                        (lambda () (not (bolp))))
+                        ,(lambda () (not (bolp))))
                  (const :tag "At line end" eolp)
                  (function :tag "Custom filter function"))
   :version "28.1")
@@ -326,8 +326,8 @@ These buttons can be used to hide and show the body under the heading.
 When the value is `insert', additional placeholders for buttons are
 inserted to the buffer, so buttons are not only clickable,
 but also typing `RET' on them can hide and show the body.
-Using the value `insert' is not recommended in editable
-buffers because it modifies them.
+The value `insert' is for internal use only in some non-editable
+buffers, because it modifies them.
 When the value is `in-margins', then clickable buttons are
 displayed in the margins before the headings.
 When the value is t, clickable buttons are displayed
@@ -341,8 +341,11 @@ don't modify the buffer."
   :safe #'symbolp
   :version "29.1")
 
+(defvar-local outline-button-cover-text nil
+  "If non-nil, buttons can&should cover/hide the first char of the header.")
+
 (defvar-local outline--button-icons nil
-  "A list of pre-computed button icons.")
+  "A memoization table for button icons.")
 
 (defvar-local outline--use-rtl nil
   "Non-nil when direction of clickable buttons is right-to-left.")
@@ -556,14 +559,13 @@ See the command `outline-mode' for more information on this mode."
             :parent outline-minor-mode-cycle-map
             "<menu-bar>" outline-minor-mode-menu-bar-map
             (key-description outline-minor-mode-prefix) outline-mode-prefix-map)
+  (kill-local-variable 'outline--button-icons)
   (if outline-minor-mode
       (progn
         (when outline-minor-mode-use-buttons
-          (add-hook 'after-change-functions
-                    #'outline--fix-buttons-after-change nil t)
+          (jit-lock-register #'outline--fix-buttons)
           (when (eq (current-bidi-paragraph-direction) 'right-to-left)
             (setq-local outline--use-rtl t))
-          (setq-local outline--button-icons (outline--create-button-icons))
           (when (and (eq outline-minor-mode-use-buttons 'in-margins)
                      (> 1 (if outline--use-rtl right-margin-width
                             left-margin-width)))
@@ -596,7 +598,6 @@ See the command `outline-mode' for more information on this mode."
               (outline-minor-mode-highlight-buffer)
               (add-hook 'revert-buffer-restore-functions
                         #'outline-revert-buffer-rehighlight nil t))))
-        (outline--fix-up-all-buttons)
 	;; Turn off this mode if we change major modes.
 	(add-hook 'change-major-mode-hook
 		  (lambda () (outline-minor-mode -1))
@@ -607,8 +608,7 @@ See the command `outline-mode' for more information on this mode."
 	;; Cause use of ellipses for invisible text.
 	(add-to-invisibility-spec '(outline . t))
 	(outline-apply-default-state))
-    (remove-hook 'after-change-functions
-                 #'outline--fix-buttons-after-change t)
+    (jit-lock-unregister #'outline--fix-buttons)
     (remove-hook 'revert-buffer-restore-functions
                  #'outline-revert-buffer-restore-visibility t)
     (remove-hook 'revert-buffer-restore-functions
@@ -624,7 +624,7 @@ See the command `outline-mode' for more information on this mode."
       (font-lock-flush)
       (remove-overlays nil nil 'outline-highlight t))
     (when outline-minor-mode-use-buttons
-      (remove-overlays nil nil 'outline-button t)
+      (outline--remove-buttons (point-min) (point-max))
       (when (and (eq outline-minor-mode-use-buttons 'in-margins)
                  (< 0 (if outline--use-rtl right-margin-width
                         left-margin-width)))
@@ -1040,7 +1040,9 @@ If FLAG is nil then text is shown, while if FLAG is t the text is hidden."
       (overlay-put o 'isearch-open-invisible
 		   (or outline-isearch-open-invisible-function
 		       #'outline-isearch-open-invisible))))
-  (outline--fix-up-all-buttons from to)
+  ;; Jit-lock won't be triggered because we only touched overlays, so we have
+  ;; to update "by hand".
+  (outline--fix-buttons from to)
   (run-hooks 'outline-view-change-hook))
 
 (defun outline-reveal-toggle-invisible (o hidep)
@@ -1947,98 +1949,131 @@ With a prefix argument, show headings up to that LEVEL."
   :parent (make-composed-keymap outline-button-icon-map
                                 outline-overlay-button-map))
 
-(defun outline--create-button-icons ()
-  (pcase outline-minor-mode-use-buttons
-    ('in-margins
-     (mapcar
-      (lambda (icon-name)
-        (let* ((icon (icon-elements icon-name))
-               (face   (plist-get icon 'face))
-               (string (plist-get icon 'string))
-               (image  (plist-get icon 'image))
-               (display `((margin ,(if outline--use-rtl
-                                       'right-margin 'left-margin))
-                          ,(or image (if face (propertize
-                                               string 'face face)
-                                       string))))
-               (space (propertize " " 'display display)))
-          (if (and image face) (propertize space 'face face) space)))
-      (list 'outline-open-in-margins
-            (if outline--use-rtl
-                'outline-close-rtl-in-margins
-              'outline-close-in-margins))))
-    ('insert
-     (mapcar
-      (lambda (icon-name)
-        (icon-elements icon-name))
-      (list 'outline-open
-            (if outline--use-rtl 'outline-close-rtl 'outline-close))))
-    (_
-     (mapcar
-      (lambda (icon-name)
-        (propertize (icon-string icon-name)
-                    'mouse-face 'default
-                    'follow-link 'mouse-face
-                    'keymap outline-button-icon-map))
-      (list 'outline-open
-            (if outline--use-rtl 'outline-close-rtl 'outline-close))))))
+(defun outline--button-icons (type location)
+  (unless outline--button-icons
+    (setq outline--button-icons (make-hash-table)))
+  (let ((buttons
+         (with-memoization (gethash location outline--button-icons)
+           (pcase-exhaustive location
+             ('in-margins
+              (mapcar
+               (lambda (icon-name)
+                 (let* ((icon (icon-elements icon-name))
+                        (face   (plist-get icon 'face))
+                        (string (plist-get icon 'string))
+                        (image  (plist-get icon 'image))
+                        (display `((margin ,(if outline--use-rtl
+                                                'right-margin 'left-margin))
+                                   ,(or image (if face (propertize
+                                                        string 'face face)
+                                                string))))
+                        (space (propertize " " 'display display)))
+                   (if (and image face) (propertize space 'face face) space)))
+               (list 'outline-open-in-margins
+                     (if outline--use-rtl
+                         'outline-close-rtl-in-margins
+                       'outline-close-in-margins))))
+             ('display
+              (mapcar
+               (lambda (icon-name)
+                 (icon-elements icon-name))
+               (list 'outline-open
+                     (if outline--use-rtl 'outline-close-rtl 'outline-close))))
+             ('before-string
+              (mapcar
+               (lambda (icon-name)
+                 (propertize (icon-string icon-name)
+                             'mouse-face 'default
+                             'follow-link 'mouse-face
+                             'keymap outline-button-icon-map))
+               (list 'outline-open
+                     (if outline--use-rtl 'outline-close-rtl 'outline-close))))))))
+    (nth (if (eq type 'close) 1 0) buttons)))
 
 (defun outline--insert-button (type)
-  (with-silent-modifications
-    (save-excursion
-      (forward-line 0)
-      (let ((icon (nth (if (eq type 'close) 1 0) outline--button-icons))
-            (o (seq-find (lambda (o) (overlay-get o 'outline-button))
-                         (overlays-at (point)))))
-        (unless o
-          (when (eq outline-minor-mode-use-buttons 'insert)
-            (let ((inhibit-read-only t))
-              (insert (apply #'propertize "  " (text-properties-at (point))))
-              (forward-line 0)))
-          (setq o (make-overlay (point) (1+ (point))))
-          (overlay-put o 'outline-button t)
-          (overlay-put o 'evaporate t))
-        (pcase outline-minor-mode-use-buttons
-          ('insert
+  (save-excursion
+    (forward-line 0)
+    ;; `icon' is either plist or a string, depending on
+    ;; the `outline-minor-mode-use-buttons' settings
+    (let ((o (seq-find (lambda (o) (overlay-get o 'outline-button))
+                       (overlays-at (point)))))
+      (unless o
+        (when (eq outline-minor-mode-use-buttons 'insert)
+          (let ((inhibit-read-only t))
+            (insert (apply #'propertize "  " (text-properties-at (point))))
+            (forward-line 0)))
+        (setq o (make-overlay (point) (1+ (point))))
+        (overlay-put o 'outline-button t)
+        (overlay-put o 'evaporate t))
+      (pcase outline-minor-mode-use-buttons
+        ('in-margins
+         (when outline-button-cover-text
+           (overlay-put o 'invisible t))
+         (overlay-put o 'before-string
+                      (outline--button-icons type 'in-margins))
+         (overlay-put o 'keymap outline-overlay-button-map))
+        ((or 'insert (guard outline-button-cover-text))
+         (let ((icon (outline--button-icons type 'display)))
            (overlay-put o 'display (or (plist-get icon 'image)
                                        (plist-get icon 'string)))
            (overlay-put o 'face (plist-get icon 'face))
            (overlay-put o 'follow-link 'mouse-face)
            (overlay-put o 'mouse-face 'highlight)
-           (overlay-put o 'keymap outline-inserted-button-map))
-          ('in-margins
-           (overlay-put o 'before-string icon)
-           (overlay-put o 'keymap outline-overlay-button-map))
-          (_
-           (overlay-put o 'before-string icon)
-           (overlay-put o 'keymap outline-overlay-button-map)))))))
+           (overlay-put o 'keymap outline-inserted-button-map)))
+        (_
+         (overlay-put o 'before-string
+                      (outline--button-icons type 'before-string))
+         (overlay-put o 'keymap outline-overlay-button-map))))))
 
-(defun outline--fix-up-all-buttons (&optional from to)
+(defun outline--fix-up-all-buttons (from to)
   (when outline-minor-mode-use-buttons
-    (when from
-      (save-excursion
-        (goto-char from)
-        (setq from (pos-bol))))
-    (outline-map-region
-     (lambda ()
-       (let ((close-p (save-excursion
-                        (outline-end-of-heading)
-                        (seq-some (lambda (o) (eq (overlay-get o 'invisible)
-                                                  'outline))
-                                  (overlays-at (point))))))
-         (outline--insert-button (if close-p 'close 'open))))
-     (or from (point-min)) (or to (point-max)))))
+    ;; If `outline-minor-mode-use-buttons' is `insert',
+    ;; `outline--insert-button' can modify the buffer's text.  We shouldn't
+    ;; use `with-silent-modifications' around changes to the buffer's text,
+    ;; but we still don't want to mark the buffer as modified whenever
+    ;; we expand/collapse an element.
+    (let ((modified (buffer-modified-p)))
+      (outline-map-region
+       (lambda ()
+         (let ((close-p (save-excursion
+                          (outline-end-of-heading)
+                          (seq-some (lambda (o)
+                                      (eq (overlay-get o 'invisible) 'outline))
+                                    (overlays-at (point))))))
+           (outline--insert-button (if close-p 'close 'open))))
+       from to)
+      (restore-buffer-modified-p modified))))
 
 (defvar outline-after-change-functions nil
-  "List of functions to call after each text change in outline-mode.")
+  "Hook run before updating buttons in a region in outline-mode.
+Called with three arguments (BEG END DUMMY).  Don't use DUMMY.")
 
-(defun outline--fix-buttons-after-change (beg end len)
-  (run-hook-with-args 'outline-after-change-functions beg end len)
+(defun outline--fix-buttons (&optional beg end)
+  (run-hook-with-args 'outline-after-change-functions beg end 0)
   ;; Handle whole lines
-  (save-excursion (goto-char beg) (setq beg (pos-bol)))
-  (save-excursion (goto-char end) (setq end (pos-eol)))
-  (remove-overlays beg end 'outline-button t)
-  (save-match-data (outline--fix-up-all-buttons beg end)))
+  (save-excursion
+    (setq beg (if (null beg) (point-min) (goto-char beg) (pos-bol)))
+    ;; Include a final newline in the region, otherwise
+    ;; `outline-search-text-property' may consider a heading to be outside
+    ;; of the bounds.
+    (setq end (if (null end) (point-max) (goto-char end) (pos-bol 2)))
+    (when (eq outline-minor-mode-use-buttons 'insert)
+      ;; `outline--remove-buttons' may change the buffer's text.
+      (setq end (copy-marker end t)))
+    (outline--remove-buttons beg end)
+    (save-match-data (outline--fix-up-all-buttons beg end))
+    `(jit-lock-bounds ,beg . ,end)))
+
+(defun outline--remove-buttons (beg end)
+  (if (not (eq outline-minor-mode-use-buttons 'insert))
+      (remove-overlays beg end 'outline-button t)
+    (save-excursion
+      (dolist (ol (overlays-in beg end))
+        (when (overlay-get ol 'outline-button)
+          (goto-char (overlay-start ol))
+          (let ((inhibit-read-only t))
+            (when (looking-at "  ") (delete-char 2)))
+          (delete-overlay ol))))))
 
 
 (defvar-keymap outline-navigation-repeat-map
