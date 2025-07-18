@@ -1993,9 +1993,8 @@ With a prefix argument, show headings up to that LEVEL."
 (defun outline--insert-button (type)
   (save-excursion
     (forward-line 0)
-    ;; `icon' is either plist or a string, depending on
-    ;; the `outline-minor-mode-use-buttons' settings
-    (let ((o (seq-find (lambda (o) (overlay-get o 'outline-button))
+    (let ((icon (nth (if (eq type 'close) 1 0) outline--button-icons))
+          (o (seq-find (lambda (o) (overlay-get o 'outline-button))
                        (overlays-at (point)))))
       (unless o
         (when (eq outline-minor-mode-use-buttons 'insert)
@@ -2006,23 +2005,18 @@ With a prefix argument, show headings up to that LEVEL."
         (overlay-put o 'outline-button t)
         (overlay-put o 'evaporate t))
       (pcase outline-minor-mode-use-buttons
+        ('insert
+         (overlay-put o 'display (or (plist-get icon 'image)
+                                     (plist-get icon 'string)))
+         (overlay-put o 'face (plist-get icon 'face))
+         (overlay-put o 'follow-link 'mouse-face)
+         (overlay-put o 'mouse-face 'highlight)
+         (overlay-put o 'keymap outline-inserted-button-map))
         ('in-margins
-         (when outline-button-cover-text
-           (overlay-put o 'invisible t))
-         (overlay-put o 'before-string
-                      (outline--button-icons type 'in-margins))
+         (overlay-put o 'before-string icon)
          (overlay-put o 'keymap outline-overlay-button-map))
-        ((or 'insert (guard outline-button-cover-text))
-         (let ((icon (outline--button-icons type 'display)))
-           (overlay-put o 'display (or (plist-get icon 'image)
-                                       (plist-get icon 'string)))
-           (overlay-put o 'face (plist-get icon 'face))
-           (overlay-put o 'follow-link 'mouse-face)
-           (overlay-put o 'mouse-face 'highlight)
-           (overlay-put o 'keymap outline-inserted-button-map)))
         (_
-         (overlay-put o 'before-string
-                      (outline--button-icons type 'before-string))
+         (overlay-put o 'before-string icon)
          (overlay-put o 'keymap outline-overlay-button-map))))))
 
 (defun outline--fix-up-all-buttons (from to)
