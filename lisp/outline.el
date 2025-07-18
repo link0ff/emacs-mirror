@@ -1993,30 +1993,44 @@ With a prefix argument, show headings up to that LEVEL."
 (defun outline--insert-button (type)
   (save-excursion
     (forward-line 0)
-    (let ((icon (nth (if (eq type 'close) 1 0) outline--button-icons))
-          (o (seq-find (lambda (o) (overlay-get o 'outline-button))
-                       (overlays-at (point)))))
+    ;; `icon' is either plist or a string, depending on
+    ;; the `outline-minor-mode-use-buttons' settings
+    (let ((o (seq-find (lambda (o) (overlay-get o 'outline-button))
+                       (overlays-at (point))))
+          ;; When `outline-button-cover-text' but the button is in the margin,
+          ;; the keymap ends up placed on an invisible chunk of text, so we
+          ;; want the cmd-loop to place the cursor *before* the invisible text
+          ;; rather than after, otherwise the keymap is ignored.
+          (cursor-in-front (and (eq outline-minor-mode-use-buttons 'in-margins)
+                                outline-button-cover-text)))
       (unless o
         (when (eq outline-minor-mode-use-buttons 'insert)
           (let ((inhibit-read-only t))
             (insert (apply #'propertize "  " (text-properties-at (point))))
             (forward-line 0)))
-        (setq o (make-overlay (point) (1+ (point))))
+        (setq o (make-overlay (point) (1+ (point)) nil t cursor-in-front))
         (overlay-put o 'outline-button t)
         (overlay-put o 'evaporate t))
       (pcase outline-minor-mode-use-buttons
-        ('insert
-         (overlay-put o 'display (or (plist-get icon 'image)
-                                     (plist-get icon 'string)))
-         (overlay-put o 'face (plist-get icon 'face))
-         (overlay-put o 'follow-link 'mouse-face)
-         (overlay-put o 'mouse-face 'highlight)
-         (overlay-put o 'keymap outline-inserted-button-map))
         ('in-margins
-         (overlay-put o 'before-string icon)
+         (when outline-button-cover-text
+           ;; FIXME: Use the `display' property instead of
+           ;; `invisible+before-string'?
+           (overlay-put o 'invisible t))
+         (overlay-put o 'before-string
+                      (outline--button-icons type 'in-margins))
          (overlay-put o 'keymap outline-overlay-button-map))
+        ((or 'insert (guard outline-button-cover-text))
+         (let ((icon (outline--button-icons type 'display)))
+           (overlay-put o 'display (or (plist-get icon 'image)
+                                       (plist-get icon 'string)))
+           (overlay-put o 'face (plist-get icon 'face))
+           (overlay-put o 'follow-link 'mouse-face)
+           (overlay-put o 'mouse-face 'highlight)
+           (overlay-put o 'keymap outline-inserted-button-map)))
         (_
-         (overlay-put o 'before-string icon)
+         (overlay-put o 'before-string
+                      (outline--button-icons type 'before-string))
          (overlay-put o 'keymap outline-overlay-button-map))))))
 
 (defun outline--fix-up-all-buttons (from to)
