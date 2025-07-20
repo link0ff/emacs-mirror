@@ -861,12 +861,14 @@ This replaces the region with the preprocessed HTML."
     (with-current-buffer buffer
       (plist-put eww-data :source source)))
   (unless document
-    (let ((dom (eww--parse-html-region (point) (point-max) charset)))
+    (let ((dom (eww--parse-html-region (point) (point-max) charset))
+          readable)
       (when-let* (((eww-default-readable-p url))
                   (readable-dom (eww-readable-dom dom)))
-        (setq dom readable-dom)
-        (with-current-buffer buffer
-          (plist-put eww-data :readable t)))
+        (setq dom readable-dom
+              readable t))
+      (with-current-buffer buffer
+        (plist-put eww-data :readable readable))
       (setq document (eww-document-base url dom))))
   (eww-display-document document point buffer))
 
@@ -1164,7 +1166,7 @@ adds a new entry to `eww-history'."
          (base (plist-get eww-data :url)))
     (when make-readable
       (unless (setq dom (eww-readable-dom dom))
-        (message "Unable to find readable content")))
+        (message "Unable to extract readable text from this page")))
     (when dom
       (when eww-readable-adds-to-history
         (eww-save-history)
@@ -1416,7 +1418,7 @@ within text input fields."
   `("eww"
     (:eval (when (plist-get eww-data :readable)
              '(:propertize ":readable"
-               help-echo "Displaying readable content"))))
+               help-echo "Showing only human-readable text of page"))))
   "Mode for browsing the web."
   :interactive nil
   (setq-local eww-data (list :title ""))
