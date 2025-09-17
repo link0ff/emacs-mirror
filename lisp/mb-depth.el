@@ -47,38 +47,10 @@ the `minibuffer-depth-indicator' face."
   :group 'minibuffer
   :version "28.1")
 
-(defface minibuffer-depth-nonselected
-  '((t (:background "yellow" :foreground "dark red" :weight bold)))
-  "Face for non-selected minibuffer prompts.
-It's used after leaving the minibuffer window
-while the minibuffer remains active."
-  :group 'minibuffer
-  :version "28.1")
-
-(defcustom minibuffer-depth-indicate-nonselected t
-  "If non-nil, indicate the non-selected minibuffer.
-Use the face `minibuffer-depth-nonselected'."
-  :type 'boolean
-  :group 'minibuffer
-  :version "28.1")
-
 ;; An overlay covering the prompt.  This is a buffer-local variable in
 ;; each affected minibuffer.
 ;;
 (defvar-local minibuffer-depth-overlay)
-(defvar-local minibuffer-depth-nonselected-overlay)
-
-(defun minibuffer-depth-select (w)
-  (if (eq w (selected-window))
-      (when (overlayp minibuffer-depth-nonselected-overlay)
-        (delete-overlay minibuffer-depth-nonselected-overlay))
-    (unless (eq major-mode 'completion-list-mode)
-      (with-current-buffer (window-buffer w)
-        (let ((ov (make-overlay (point-min) (point-max))))
-          (overlay-put ov 'face 'minibuffer-depth-nonselected)
-          (overlay-put ov 'window w)
-          (overlay-put ov 'evaporate t)
-          (setq minibuffer-depth-nonselected-overlay ov))))))
 
 ;; This function goes on minibuffer-setup-hook
 (defun minibuffer-depth-setup ()
@@ -95,9 +67,7 @@ The prompt should already have been inserted."
                                          'face
                                          'minibuffer-depth-indicator)
                              " ")))
-      (overlay-put minibuffer-depth-overlay 'evaporate t)))
-  (when minibuffer-depth-indicate-nonselected
-    (add-hook 'window-selection-change-functions 'minibuffer-depth-select nil t)))
+      (overlay-put minibuffer-depth-overlay 'evaporate t))))
 
 ;;;###autoload
 (define-minor-mode minibuffer-depth-indicate-mode
