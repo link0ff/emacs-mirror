@@ -141,31 +141,10 @@ the command `global-hl-line-mode' to turn Global Hl-Line mode on."
   :version "24.1"
   :group 'hl-line)
 
-(defcustom global-hl-line-modes '(not completion-list-mode)
-  "Which major modes `hl-line-mode' is switched on in.
-This variable can be either t (all major modes), nil (no major modes),
-or a list of modes and (not modes) to switch use this minor mode or
-not.  For instance
-
-  (c-mode (not message-mode mail-mode) text-mode)
-
-means \"use this mode in all modes derived from `c-mode', don't use in
-modes derived from `message-mode' or `mail-mode', but do use in other
-modes derived from `text-mode'\".  An element with value t means \"use\"
-and nil means \"don't use\".  There's an implicit nil at the end of the
-list."
-  :type
-  '(choice (const :tag "Enable in all major modes" t)
-           (repeat :tag "Rules (earlier takes precedence)..."
-                   (choice
-                    (const :tag "Enable in all (other) modes" t)
-                    (symbol :value fundamental-mode :tag
-                            "Enable in major mode")
-                    (cons :tag "Don't enable in major modes"
-                          (const :tag "Don't enable in..." not)
-                          (repeat
-                           (symbol :value fundamental-mode :tag
-                                   "Major mode"))))))
+(defcustom global-hl-line-buffers '(not (derived-mode . completion-list-mode))
+  "Whether the Global HL-Line mode should be enabled in a buffer.
+The predicate is passed as argument to `buffer-match-p', which see."
+  :type '(buffer-predicate :tag "Predicate for `buffer-match-p'")
   :version "31.1")
 
 (defvar hl-line-range-function nil
@@ -287,9 +266,8 @@ on `post-command-hook'."
 
 (defun global-hl-line-highlight ()
   "Highlight the current line in the current window."
-  (require 'easy-mmode)
   (when (and global-hl-line-mode ; Might be changed outside the mode function.
-             (easy-mmode--globalized-predicate-p global-hl-line-modes))
+             (buffer-match-p global-hl-line-buffers (current-buffer)))
     (unless (window-minibuffer-p)
       (unless (overlayp global-hl-line-overlay)
         (setq global-hl-line-overlay (hl-line-make-overlay))) ; To be moved.
@@ -353,19 +331,23 @@ Global-Hl-Line-Window mode uses the function
 `global-hl-line-window-redisplay' on `pre-redisplay-functions'."
   :global t
   :group 'hl-line
-  (require 'easy-mmode)
   (if global-hl-line-window-mode
       (add-hook 'pre-redisplay-functions
                 #'global-hl-line-window-redisplay)
     (remove-hook 'pre-redisplay-functions
-                 #'global-hl-line-window-redisplay)))
+                 #'global-hl-line-window-redisplay)
+    (walk-windows (lambda (window)
+                    (redisplay--unhighlight-overlay-function
+                     (window-parameter window 'hl-line-overlay))
+                    (set-window-parameter window 'hl-line-overlay nil))
+                  t t)))
 
 (defun global-hl-line-window-redisplay (window)
   "Highlight the overlay that indicates the line with window's point."
   (unless (window-minibuffer-p window)
     (let ((rol (window-parameter window 'hl-line-overlay)))
       (with-current-buffer (window-buffer window)
-        (if (easy-mmode--globalized-predicate-p global-hl-line-modes)
+        (if (buffer-match-p global-hl-line-buffers (buffer-name))
             (let* ((bounds (save-excursion
                              (goto-char (window-point window))
                              (if hl-line-range-function
