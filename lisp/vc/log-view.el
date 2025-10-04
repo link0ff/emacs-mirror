@@ -127,6 +127,7 @@
   "RET" #'log-view-toggle-entry-display
   "m" #'log-view-mark-entry
   "u" #'log-view-unmark-entry
+  "U" #'log-view-unmark-all-entries
   "e" #'log-view-modify-change-comment
   "d" #'log-view-diff
   "=" #'log-view-diff
@@ -135,6 +136,7 @@
   "f" #'log-view-find-revision
   "n" #'log-view-msg-next
   "p" #'log-view-msg-prev
+  "w" #'log-view-copy-revision-as-kill
   "TAB" #'log-view-msg-next
   "<backtab>" #'log-view-msg-prev)
 
@@ -439,6 +441,12 @@ See `log-view-mark-entry'."
       (delete-overlay found))
     (log-view-msg-next 1)))
 
+(defun log-view-unmark-all-entries ()
+  "Unmark all marked log entries in this buffer."
+  (interactive)
+  (log-view--mark-unmark #'log-view--unmark-entry
+                         nil (point-min) (point-max)))
+
 ;;;###autoload
 (defun log-view-get-marked ()
   "Return the list of tags for the marked log entries."
@@ -741,6 +749,20 @@ considered file(s)."
                  (list (log-view-current-file))
                log-view-vc-fileset)))
      fr to)))
+
+(defun log-view-copy-revision-as-kill ()
+  "Copy the ID of the revision at point to the kill ring.
+If there are marked revisions, copy the IDs of those, separated by spaces."
+  (interactive)
+  (let ((revisions (log-view-get-marked)))
+    (if (length> revisions 1)
+        (let ((found (string-join revisions " ")))
+          (kill-new found)
+          (message "%s" found))
+      (if-let* ((rev (or (car revisions) (log-view-current-tag))))
+          (progn (kill-new rev)
+                 (message "%s" rev))
+        (user-error "No revision at point")))))
 
 (provide 'log-view)
 
