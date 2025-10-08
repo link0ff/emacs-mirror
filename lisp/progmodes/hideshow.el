@@ -623,12 +623,10 @@ Skip \"internal\" overlays if `hs-allow-nesting' is non-nil."
 (defun hs-hideable-region-p (beg end)
   "Return t if region in BEG and END can be hidden."
   ;; Check if BEG and END are not in the same line number,
-  ;; since using `count-lines' is slow, only check if both
-  ;; positions do not share the same BOL.
+  ;; since using `count-lines' is slow.
   (save-excursion
-    (let ((pos1 (progn (goto-char beg) (line-beginning-position)))
-          (pos2 (progn (goto-char end) (line-beginning-position))))
-      (and (< pos1 pos2) (not (= pos1 pos2))))))
+    (let ((pos2 (progn (goto-char end) (line-beginning-position))))
+      (< beg pos2))))
 
 (defun hs-make-overlay (b e kind &optional b-offset e-offset)
   "Return a new overlay in region defined by B and E with type KIND.
@@ -885,19 +883,19 @@ The block beginning is adjusted by `hs-adjust-block-beginning'
 and then further adjusted to be at the end of the line."
   (if comment-reg
       (hs-hide-comment-region (car comment-reg) (cadr comment-reg) end)
-    (let* ((block (hs-block-positions))
-           (p (car-safe block))
-           (q (cdr-safe block))
-           ov)
-      (if (hs-hideable-region-p p q)
-          (progn
-            (cond ((and hs-allow-nesting (setq ov (hs-overlay-at p)))
-                   (delete-overlay ov))
-                  ((not hs-allow-nesting)
-                   (hs-discard-overlays p q)))
-            (goto-char q)
-            (hs-make-overlay p q 'code (- (match-end 0) p)))
-        (goto-char (if end q (min p (match-end 0))))))))
+    (when-let* ((block (hs-block-positions)))
+      (let ((p (car-safe block))
+            (q (cdr-safe block))
+            ov)
+        (if (hs-hideable-region-p p q)
+            (progn
+              (cond ((and hs-allow-nesting (setq ov (hs-overlay-at p)))
+                     (delete-overlay ov))
+                    ((not hs-allow-nesting)
+                     (hs-discard-overlays p q)))
+              (goto-char q)
+              (hs-make-overlay p q 'code (- (match-end 0) p)))
+          (goto-char (if end q (min p (match-end 0)))))))))
 
 (defun hs-inside-comment-p ()
   "Return non-nil if point is inside a comment, otherwise nil.
