@@ -210,7 +210,10 @@ VC commands are globally reachable under the prefix \\[vc-prefix-map]:
 \\{vc-prefix-map}"
   nil)
 
-(defvar auto-revert-mode)
+;; A compiler declaration (defvar auto-revert-mode) is not enough here
+;; because `define-globalized-minor-mode' wants to check the variable's
+;; value before causing autorevert.el to be autoloaded.
+(defvar-local auto-revert-mode nil)
 (define-globalized-minor-mode vc-auto-revert-mode auto-revert-mode
   vc-turn-on-auto-revert-mode-for-tracked-files
   :group 'vc
@@ -747,6 +750,14 @@ Before doing that, check if there are any old backups and get rid of them."
     ;; Resynch *vc-dir* buffers, if any are present.
     (when vc-dir-buffers
       (vc-dir-resynch-file file))))
+
+(defun vc-after-revert ()
+  "Update VC-Dir contents after reverting a buffer from disk."
+  (when-let* (vc-dir-buffers
+              (backend (vc-backend buffer-file-name)))
+    (vc-dir-resynch-file buffer-file-name)))
+
+(add-hook 'after-revert-hook #'vc-after-revert)
 
 (defvar vc-menu-entry
   '(menu-item "Version Control" vc-menu-map
