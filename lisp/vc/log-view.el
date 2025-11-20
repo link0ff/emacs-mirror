@@ -917,7 +917,7 @@ considered file(s)."
          (fr (cadr fr-entry)))
     ;; When TO and FR are the same, or when point is on a line after
     ;; the last entry, look at the previous revision.
-    (when (or (string-equal fr to)
+    (when (or (and fr to (string-equal fr to))
               (>= end
                   (save-excursion
                     (goto-char end)
