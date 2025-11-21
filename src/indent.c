@@ -484,6 +484,9 @@ check_display_width (Lisp_Object window,
 {
   Lisp_Object val, overlay;
 
+  if (EQ (Vthis_command, intern_c_string ("indent-pp-sexp")))
+    return -1;
+
   if (!NILP (val = get_char_property_and_overlay (make_fixnum (pos), Qdisplay,
 						  Qnil, &overlay)))
     {
