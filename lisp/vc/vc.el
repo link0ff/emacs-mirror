@@ -4029,8 +4029,8 @@ The command prompts for the branch whose change log to show."
   (or (and (not refresh)
            (cdr (assoc upstream-location
                        (vc--repo-getprop 'vc-incoming-revision))))
-      (let ((res (vc-call-backend backend 'incoming-revision
-                                  upstream-location refresh)))
+      (and-let* ((res (vc-call-backend backend 'incoming-revision
+                                       upstream-location refresh)))
         (if-let* ((alist (vc--repo-getprop 'vc-incoming-revision)))
             (setf (alist-get upstream-location alist nil nil #'equal)
                   res)
@@ -4258,7 +4258,10 @@ It also signals an error in a Bazaar bound branch."
 	 (backend (car vc-fileset)))
 ;;;	 (files (cadr vc-fileset)))
     (if (vc-find-backend-function backend 'push)
-        (vc-call-backend backend 'push arg)
+        (progn (vc-call-backend backend 'push arg)
+               ;; FIXME: Ideally we would only clear out the
+               ;; REMOTE-LOCATION to which we are pushing.
+               (vc--repo-setprop 'vc-incoming-revision nil))
       (user-error "VC push is unsupported for `%s'" backend))))
 
 ;;;###autoload
