@@ -4254,29 +4254,6 @@ If FORK is non-nil, it is passed to `Info-goto-node'."
       (Info-extract-pointer item)
     (error nil)))
 
-;; (intern "Back in History") Back\ in\ History
-;; (make-symbol "Back in History") #:Back\ in\ History
-;; (intern-soft "Back in History") Back\ in\ History
-;; (downcase "Back in History") "back in history"
-
-;; (defvar-keymap Info-mode-map2
-;;   "<tool-bar> C-<Back in history>"    'Info-history-back-menu
-;;   "<tool-bar> C-<Forward in history>" 'Info-history-forward-menu
-;;   )
-
-;; (defvar-keymap Info-mode-map3
-;;   "<tool-bar> C-<back-in-history>" 'Info-history-back-menu
-;;   )
-
-;; (kbd "<tool-bar> C-<back-in-history>")
-;; [tool-bar C-back-in-history]
-;; [tool-bar C-Back\ in\ history]
-;; (kbd "<tool-bar> C-<Back\\ in\\ history>")
-
-;; (kbd "<tool-bar> <C-Back in history>")
-;; [tool-bar C-Back\ in\ history]
-;; (kbd "<tool-bar> C-<Back in history>")
-
 (easy-menu-define
  Info-mode-menu Info-mode-map
  "Menu for Info files."
