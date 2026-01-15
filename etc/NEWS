@@ -2060,6 +2060,14 @@ When you kill the IELM process with 'C-c C-c', the input history is now
 saved to the file specified by 'ielm-history-file-name', just like when
 you exit the Emacs session or kill the IELM buffer.
 
+---
+*** New value 'point' for user option 'ielm-dynamic-return'.
+When 'ielm-dynamic-return' is set to 'point', typing RET has dynamic
+behavior based on whether point is inside an sexp.  While point is
+inside an sexp typing RET inserts a newline, and otherwise Emacs
+proceeds with evaluating the expression.  This is useful when
+'electric-pair-mode', or a similar automatic pairing mode, is enabled.
+
 ** DocView
 
 ---
