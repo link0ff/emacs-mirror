@@ -793,11 +793,16 @@ attached."
                 ;; prepare mail buffer
                 (let ((tmp-buf (current-buffer)))
                   (compose-mail (with-demoted-errors "Failed to find maintainers: %S"
-                                  (package-maintainers pkg-desc)))
+                                  (package-maintainers pkg-desc))
+                                (concat "Emacs Package Review: "
+                                        (package-desc-full-name pkg-desc)))
                   (pcase mail-user-agent
                     ('sendmail-user-agent (mail-text))
                     (_ (message-goto-body)))
-                  (insert-buffer-substring tmp-buf)))
+                  (let ((start (point)))
+                    (save-excursion
+                      (insert-buffer-substring tmp-buf)
+                      (comment-region start (point))))))
               t)
              (?c
               (view-file news)
@@ -2321,7 +2326,7 @@ compiled, and remove the DIR from `load-path'."
       (delete-file (directory-file-name dir))
     (delete-directory dir t)))
 
-
+;;;###autoload
 (defun package-delete (pkg-desc &optional force nosave)
   "Delete package PKG-DESC.
 
@@ -4673,14 +4678,14 @@ form (PKG-NAME PKG-DESC).  If not specified, it will default to
         (cadr (assoc (completing-read "Package: " alist nil t)
                      alist #'string=)))))
 
+;;;###autoload
 (defun package-browse-url (desc &optional secondary)
   "Open the website of the package under point in a browser.
 `browse-url' is used to determine the browser to be used.  If
 SECONDARY (interactively, the prefix), use the secondary browser.
 DESC must be a `package-desc' object."
   (interactive (list (package--query-desc)
-                     current-prefix-arg)
-               package-menu-mode)
+                     current-prefix-arg))
   (unless desc
     (user-error "No package here"))
   (let ((url (cdr (assoc :url (package-desc-extras desc)))))
@@ -4726,8 +4731,7 @@ will be signaled in that case."
 (defun package-report-bug (desc)
   "Prepare a message to send to the maintainers of a package.
 DESC must be a `package-desc' object."
-  (interactive (list (package--query-desc package-alist))
-               package-menu-mode)
+  (interactive (list (package--query-desc package-alist)))
   (let ((maint (package-maintainers desc))
         (name (symbol-name (package-desc-name desc)))
         (pkgdir (package-desc-dir desc))
