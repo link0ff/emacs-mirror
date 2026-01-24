@@ -82,6 +82,13 @@ other directory on your system.  You can also invoke the
 
 * Changes in Emacs 31.1
 
++++
+** 'line-spacing' now supports specifying spacing above the line.
+Previously, only spacing below the line could be specified.  The variable
+can now be set to a cons cell to specify spacing both above and below
+the line, which allows for vertically centering text.
+
++++
 ** 'prettify-symbols-mode' attempts to ignore undisplayable characters.
 Previously, such characters would be rendered as, e.g., white boxes.
 
@@ -2599,8 +2606,15 @@ cloning, or prompts for that, too.
 When the argument is non-nil, the function switches to a buffer visiting
 the directory into which the repository was cloned.
 
++++
+*** 'vc-revert' is now bound to '@' in VC-Dir.
+
++++
+*** 'vc-revert' is now additionally bound to 'C-x v @'.
+This is in addition to 'C-x v u'.
+
 ---
-*** 'C-x v u' ('vc-revert') now works on directories listed in VC Directory.
+*** 'vc-revert' now works on directories listed in VC Directory.
 Reverting a directory means reverting changes to all files inside it.
 
 +++

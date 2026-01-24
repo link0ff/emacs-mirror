@@ -1024,7 +1024,8 @@ In the latter case, VC mode is deactivated for this buffer."
   "r"   #'vc-retrieve-tag
   "s"   #'vc-create-tag
   "S"   #'vc-log-search
-  "u"   #'vc-revert
+  "u"   #'vc-revert                     ; The traditional binding.
+  "@"   #'vc-revert                     ; Following VC-Dir's binding.
   "v"   #'vc-next-action
   "+"   #'vc-update
   "P"   #'vc-push
