@@ -586,35 +586,36 @@ project backend implementation of `project-external-roots'.")
 
 See `project-vc-extra-root-markers' for the marker value format.")
 
-(defvar project-vc-cache-timeout 1
+(defvar project-vc-cache-timeout '((file-remote-p . 300)
+                                   (always . 2))
   "Number of seconds to cache project VC information.
-Used by `project-try-vc' and `project--value-in-dir'.
+Used by `project-try-vc'.
+It can be nil, a number, or a list of cons where
+the car is a predicate, and cdr is a number.
 Set to nil to disable time-based expiration.")
 
-(defvar project-vc-cache-remote-timeout 300
-  "Number of seconds to cache remote project VC information.
-Used by `project-try-vc' and `project--value-in-dir'.
-Set to nil to disable time-based expiration.")
-
-;; FIXME: Should perhaps use `vc--repo-*prop' functions
-;;        (after promoting those to public).  --spwhitton
 (defun project-try-vc (dir)
-  ;; FIXME: Learn to invalidate when the value changes:
-  ;; `project-vc-merge-submodules' or `project-vc-extra-root-markers'.
   (let ((cached (vc-file-getprop dir 'project-vc))
         (current-time (float-time)))
-    (if (and cached
-             (let ((timeout (if (file-remote-p dir)
-                                project-vc-cache-remote-timeout
-                              project-vc-cache-timeout)))
-               (or (null timeout)
-                   (< (- current-time (cdr cached)) timeout))))
-        (let ((value (car cached)))
-          (if (eq value 'none) nil value))
-      (let ((res (condition-case nil
-                     (project-try-vc--search dir)
-                   (error nil))))
-        (vc-file-setprop dir 'project-vc (cons (or res 'none) current-time))
+    (if (and cached (< current-time (cdr cached)))
+        (car cached)
+      (let* ((res (project-try-vc--search dir))
+             (timeout
+              (cond
+               ((null project-vc-cache-timeout)
+                nil)
+               ((numberp project-vc-cache-timeout)
+                project-vc-cache-timeout)
+               ((listp project-vc-cache-timeout)
+                (seq-some (lambda (pair)
+                            (and (functionp (car pair))
+                                 (funcall (car pair) dir)
+                                 (cdr pair)))
+                          project-vc-cache-timeout))
+               (t nil))))
+        (when (numberp timeout)
+          (vc-file-setprop dir 'project-vc
+                           (cons res (+ current-time timeout))))
         res))))
 
 (defun project-try-vc--search (dir)
@@ -915,25 +916,13 @@ DIRS must contain directory names."
   (cl-set-difference files dirs :test #'file-in-directory-p))
 
 (defun project--value-in-dir (var dir)
-  (let ((cached (vc-file-getprop dir var))
-        (current-time (float-time)))
-    (if (and cached
-             (let ((timeout (if (file-remote-p dir)
-                                project-vc-cache-remote-timeout
-                              project-vc-cache-timeout)))
-               (or (null timeout)
-                   (< (- current-time (cdr cached)) timeout))))
-        (let ((value (car cached)))
-          (if (eq value 'none) nil value))
-      (let ((res (with-temp-buffer
-                   (setq default-directory (file-name-as-directory dir))
-                   (let ((enable-local-variables :all))
-                     (hack-dir-local-variables))
-                   ;; Don't use `hack-local-variables-apply' to avoid setting modes.
-                   (alist-get var file-local-variables-alist
-                              (symbol-value var)))))
-        (vc-file-setprop dir var (cons (or res 'none) current-time))
-        res))))
+  (with-temp-buffer
+    (setq default-directory (file-name-as-directory dir))
+    (let ((enable-local-variables :all))
+      (hack-dir-local-variables))
+    ;; Don't use `hack-local-variables-apply' to avoid setting modes.
+    (alist-get var file-local-variables-alist
+               (symbol-value var))))
 
 (cl-defmethod project-buffers ((project (head vc)))
   (let* ((root (expand-file-name (file-name-as-directory (project-root project))))
@@ -2646,6 +2635,12 @@ to directory DIR."
       (with-current-buffer buffer
         (kill-local-variable 'project-current-directory-override)))))
 
+
+(defvar project-unimportant-cache-timeout '((file-remote-p . 3600)
+                                            (always . 300))
+  "Number of seconds to cache unimportant information.
+See more in `project-vc-cache-timeout'.")
+
 ;;;###autoload
 (defun project-uniquify-dirname-transform (dirname)
   "Uniquify name of directory DIRNAME using `project-name', if in a project.
@@ -2654,12 +2649,13 @@ If you set `uniquify-dirname-transform' to this function,
 slash-separated components from `project-name' will be appended to
 the buffer's directory name when buffers from two different projects
 would otherwise have the same name."
-  (if-let* ((proj (project-current nil dirname)))
+  (if-let* ((project-vc-cache-timeout project-unimportant-cache-timeout)
+            (proj (project-current nil dirname)))
       (let ((root (project-root proj)))
         (expand-file-name
          (file-name-concat
           (file-name-directory root)
-          (project-name proj)
+          (project-name-cached root)
           (file-relative-name dirname root))))
     dirname))
 
