@@ -589,10 +589,15 @@ See `project-vc-extra-root-markers' for the marker value format.")
 (defvar project-vc-cache-timeout '((file-remote-p . 300)
                                    (always . 2))
   "Number of seconds to cache project VC information.
-Used by `project-try-vc'.
-It can be nil, a number, or a list of cons where
-the car is a predicate, and cdr is a number.
+It can be nil, a number, or an alist where
+the key is a predicate, and the value is a number.
 Set to nil to disable time-based expiration.")
+
+(defun project-invalidate-cache (&optional dir)
+  (interactive (list default-directory))
+  (let ((dir (or dir default-directory)))
+    (when (vc-file-getprop dir 'project-vc)
+      (vc-file-setprop dir 'project-vc nil))))
 
 (defun project-try-vc (dir)
   (let ((cached (vc-file-getprop dir 'project-vc))
@@ -2636,11 +2641,13 @@ to directory DIR."
       (with-current-buffer buffer
         (kill-local-variable 'project-current-directory-override)))))
 
-
-(defvar project-unimportant-cache-timeout '((file-remote-p . 3600)
+(defvar project-noncritical-cache-timeout '((file-remote-p . 3600)
                                             (always . 300))
-  "Number of seconds to cache unimportant information.
-See more in `project-vc-cache-timeout'.")
+  "Number of seconds to cache non-critical information.
+Unlike `project-vc-cache-timeout' intended for interactive
+commands, this variable has much more aggressive caching,
+and is intended for \"background\" things like `project-mode-line'
+indicators and `project-uniquify-dirname-transform'.")
 
 ;;;###autoload
 (defun project-uniquify-dirname-transform (dirname)
@@ -2650,8 +2657,9 @@ If you set `uniquify-dirname-transform' to this function,
 slash-separated components from `project-name' will be appended to
 the buffer's directory name when buffers from two different projects
 would otherwise have the same name."
-  (if-let* ((project-vc-cache-timeout project-unimportant-cache-timeout)
-            (proj (project-current nil dirname)))
+  (if-let* ((proj (let ((project-vc-cache-timeout
+                         project-noncritical-cache-timeout))
+                    (project-current nil dirname))))
       (let ((root (project-root proj)))
         (expand-file-name
          (file-name-concat
