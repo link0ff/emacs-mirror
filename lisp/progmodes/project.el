@@ -862,6 +862,7 @@ Set to nil to disable time-based expiration.")
                        (project--value-in-dir 'project-vc-ignores dir)))
 
 (defun project--vc-ignores (dir backend extra-ignores)
+  (require 'vc)
   (append
    (when backend
      (delq
