@@ -586,42 +586,41 @@ project backend implementation of `project-external-roots'.")
 
 See `project-vc-extra-root-markers' for the marker value format.")
 
-(defvar project-vc-cache-timeout '((file-remote-p . 300)
-                                   (always . 2))
+(defvar project-vc-cache-timeout 2
   "Number of seconds to cache project VC information.
 It can be nil, a number, or an alist where
 the key is a predicate, and the value is a number.
 Set to nil to disable time-based expiration.")
 
-(defun project-invalidate-cache (&optional dir)
-  (interactive (list default-directory))
-  (let ((dir (or dir default-directory)))
-    (when (vc-file-getprop dir 'project-vc)
-      (vc-file-setprop dir 'project-vc nil))))
+(defun project--get-cached (dir key)
+  (let ((cached (vc-file-getprop dir key))
+        (current-time (float-time)))
+    (when (and cached
+               (let ((timeout
+                      (cond
+                       ((numberp project-vc-cache-timeout)
+                        project-vc-cache-timeout)
+                       ((null project-vc-cache-timeout)
+                        nil)
+                       ((listp project-vc-cache-timeout)
+                        (seq-some (lambda (pair)
+                                    (and (functionp (car pair))
+                                         (funcall (car pair) dir)
+                                         (cdr pair)))
+                                  project-vc-cache-timeout))
+                       (t nil))))
+                 (or (null timeout)
+                     (< (- current-time (cdr cached)) timeout))))
+      (car cached))))
+
+(defun project--set-cached (dir key value)
+  (vc-file-setprop dir key (cons value (float-time))))
 
 (defun project-try-vc (dir)
-  (let ((cached (vc-file-getprop dir 'project-vc))
-        (current-time (float-time)))
-    (if (and cached (< current-time (cdr cached)))
-        (car cached)
-      (let* ((res (project-try-vc--search dir))
-             (timeout
-              (cond
-               ((null project-vc-cache-timeout)
-                nil)
-               ((numberp project-vc-cache-timeout)
-                project-vc-cache-timeout)
-               ((listp project-vc-cache-timeout)
-                (seq-some (lambda (pair)
-                            (and (functionp (car pair))
-                                 (funcall (car pair) dir)
-                                 (cdr pair)))
-                          project-vc-cache-timeout))
-               (t nil))))
-        (when (numberp timeout)
-          (vc-file-setprop dir 'project-vc
-                           (cons res (+ current-time timeout))))
-        res))))
+  (or (project--get-cached dir 'project-vc)
+      (let ((res (project-try-vc--search dir)))
+        (project--set-cached dir 'project-vc res)
+        res)))
 
 (defun project-try-vc--search (dir)
   (let* ((backend-markers
@@ -2641,8 +2640,7 @@ to directory DIR."
       (with-current-buffer buffer
         (kill-local-variable 'project-current-directory-override)))))
 
-(defvar project-noncritical-cache-timeout '((file-remote-p . 3600)
-                                            (always . 300))
+(defvar project-noncritical-cache-timeout 300
   "Number of seconds to cache non-critical information.
 Unlike `project-vc-cache-timeout' intended for interactive
 commands, this variable has much more aggressive caching,
@@ -2670,33 +2668,19 @@ would otherwise have the same name."
 
 ;;; Project mode-line
 
-(defvar project-name-cache-timeout 300
-  "Number of seconds to cache the project name.
-Used by `project-name-cached'.")
-
-(defvar project-name-cache-remote-timeout 3600
-  "Number of seconds to cache the remote project name.
-Used by `project-name-cached' for remote directories.")
-
 (defun project-name-cached (dir)
   "Return the cached project name for the directory DIR.
 Until it's cached, retrieve the project name using `project-current'
 and `project-name', then put the name to the cache for the time defined
-by the variable `project-name-cache-timeout' for local projects,
-or `project-name-cache-remote-timeout' for remote projects.  This
-function is useful for project indicators such as on the mode line."
-  (let ((cached (vc-file-getprop dir 'project-name))
-        (current-time (float-time)))
-    (if (and cached (< (- current-time (cdr cached))
-                       (if (file-remote-p dir)
-                           project-name-cache-remote-timeout
-                         project-name-cache-timeout)))
-        (let ((value (car cached)))
-          (if (eq value 'none) nil value))
-      (let ((res (when-let* ((project (project-current nil dir)))
-                   (project-name project))))
-        (vc-file-setprop dir 'project-name (cons (or res 'none) current-time))
-        res))))
+by the variable `project-noncritical-cache-timeout'.  This function
+is useful for project indicators such as on the mode line."
+  (let ((project-vc-cache-timeout
+         project-noncritical-cache-timeout))
+    (or (project--get-cached dir 'project-name)
+        (let ((res (when-let* ((project (project-current nil dir)))
+                     (project-name project))))
+          (project--set-cached dir 'project-name res)
+          res))))
 
 ;;;###autoload
 (defcustom project-mode-line nil
