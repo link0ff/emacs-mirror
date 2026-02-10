@@ -586,40 +586,15 @@ project backend implementation of `project-external-roots'.")
 
 See `project-vc-extra-root-markers' for the marker value format.")
 
-(defvar project-vc-cache-timeout 2
-  "Number of seconds to cache project VC information.
-It can be nil, a number, or an alist where
-the key is a predicate, and the value is a number.
-Set to nil to disable time-based expiration.")
-
-(defun project--get-cached (dir key)
-  (let ((cached (vc-file-getprop dir key))
-        (current-time (float-time)))
-    (when (and cached
-               (let ((timeout
-                      (cond
-                       ((numberp project-vc-cache-timeout)
-                        project-vc-cache-timeout)
-                       ((null project-vc-cache-timeout)
-                        nil)
-                       ((listp project-vc-cache-timeout)
-                        (seq-some (lambda (pair)
-                                    (and (functionp (car pair))
-                                         (funcall (car pair) dir)
-                                         (cdr pair)))
-                                  project-vc-cache-timeout))
-                       (t nil))))
-                 (or (null timeout)
-                     (< (- current-time (cdr cached)) timeout))))
-      (car cached))))
-
-(defun project--set-cached (dir key value)
-  (vc-file-setprop dir key (cons value (float-time))))
-
+;; FIXME: Should perhaps use `vc--repo-*prop' functions
+;;        (after promoting those to public).  --spwhitton
 (defun project-try-vc (dir)
-  (or (project--get-cached dir 'project-vc)
+  ;; FIXME: Learn to invalidate when the value changes:
+  ;; `project-vc-merge-submodules' or `project-vc-extra-root-markers'.
+  (or (vc-file-getprop dir 'project-vc)
+      ;; FIXME: Cache for a shorter time (bug#78545).
       (let ((res (project-try-vc--search dir)))
-        (project--set-cached dir 'project-vc res)
+        (and res (vc-file-setprop dir 'project-vc res))
         res)))
 
 (defun project-try-vc--search (dir)
@@ -2645,13 +2620,6 @@ to directory DIR."
       (with-current-buffer buffer
         (kill-local-variable 'project-current-directory-override)))))
 
-(defvar project-noncritical-cache-timeout 300
-  "Number of seconds to cache non-critical information.
-Unlike `project-vc-cache-timeout' intended for interactive
-commands, this variable has much more aggressive caching,
-and is intended for \"background\" things like `project-mode-line'
-indicators and `project-uniquify-dirname-transform'.")
-
 ;;;###autoload
 (defun project-uniquify-dirname-transform (dirname)
   "Uniquify name of directory DIRNAME using `project-name', if in a project.
@@ -2660,32 +2628,37 @@ If you set `uniquify-dirname-transform' to this function,
 slash-separated components from `project-name' will be appended to
 the buffer's directory name when buffers from two different projects
 would otherwise have the same name."
-  (if-let* ((proj (let ((project-vc-cache-timeout
-                         project-noncritical-cache-timeout))
-                    (project-current nil dirname))))
+  (if-let* ((proj (project-current nil dirname)))
       (let ((root (project-root proj)))
         (expand-file-name
          (file-name-concat
           (file-name-directory root)
-          (project-name-cached root)
+          (project-name proj)
           (file-relative-name dirname root))))
     dirname))
 
 ;;; Project mode-line
 
+(defvar project-name-cache-timeout 300
+  "Number of seconds to cache the project name.
+Used by `project-name-cached'.")
+
 (defun project-name-cached (dir)
   "Return the cached project name for the directory DIR.
 Until it's cached, retrieve the project name using `project-current'
 and `project-name', then put the name to the cache for the time defined
-by the variable `project-noncritical-cache-timeout'.  This function
-is useful for project indicators such as on the mode line."
-  (let ((project-vc-cache-timeout
-         project-noncritical-cache-timeout))
-    (or (project--get-cached dir 'project-name)
-        (let ((res (when-let* ((project (project-current nil dir)))
-                     (project-name project))))
-          (project--set-cached dir 'project-name res)
-          res))))
+by the variable `project-name-cache-timeout'.  This function is useful
+for project indicators such as on the mode line."
+  (let ((cached (vc-file-getprop dir 'project-name))
+        (current-time (float-time)))
+    (if (and cached (< (- current-time (cdr cached))
+                       project-name-cache-timeout))
+        (let ((value (car cached)))
+          (if (eq value 'none) nil value))
+      (let ((res (when-let* ((project (project-current nil dir)))
+                   (project-name project))))
+        (vc-file-setprop dir 'project-name (cons (or res 'none) current-time))
+        res))))
 
 ;;;###autoload
 (defcustom project-mode-line nil
